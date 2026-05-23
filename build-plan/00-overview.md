@@ -57,7 +57,7 @@ Keep these stable — they are the schema for config persistence, IPC messages, 
 ## Build order (dependency DAG)
 
 ```
-types → utils → {secrets, ipc, ui} → {config, sessions} → {proxy, harnesses} → cli → desktop
+{types, utils} → {secrets, ipc, ui, config, sessions, harnesses} → proxy → cli → desktop
 ```
 
 Braced groups are independent and may be implemented by parallel subagents. The full edge list is in [`02-monorepo/boundaries.md`](02-monorepo/boundaries.md).

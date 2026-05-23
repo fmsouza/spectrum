@@ -4,14 +4,14 @@
 
 ```
 types        → (none — foundation)
-utils        → types
-secrets      → utils
-ipc          → types
-ui           → types            (prop shapes only; no backend deps)
-config       → types, utils, secrets
+utils        → (none — pure toolbox, no internal deps)
+secrets      → types, utils
+ipc          → types, utils
+ui           → types, utils      (prop shapes + formatting only; no backend deps)
+config       → types, utils
 sessions     → types, utils
-proxy        → types, utils, config
-harnesses    → types, utils, config
+harnesses    → types, utils
+proxy        → types, utils, config, secrets   (resolves provider config + secret refs)
 cli          → types, utils, config, secrets, proxy, harnesses, sessions
 apps/desktop → cli, proxy, harnesses, config, sessions, secrets, ipc, ui, types, utils
 ```
@@ -32,10 +32,10 @@ External deps are pinned per package: `proxy` owns `ai` + `@ai-sdk/*`; `config`/
 Topological order (left to right); braces = independent, parallelizable:
 
 ```
-types → utils → { secrets, ipc, ui } → { config, sessions } → { proxy, harnesses } → cli → desktop
+{ types, utils } → { secrets, ipc, ui, config, sessions, harnesses } → proxy → cli → desktop
 ```
 
-The orchestrator uses this to fan out parallel subagents: once `utils` is `done`, `secrets`/`ipc`/`ui` can proceed concurrently; once `config` is `done`, `proxy`/`harnesses` can proceed concurrently; etc. `apps/desktop` is last (it composes everything).
+The orchestrator uses this to fan out parallel subagents: `types` and `utils` are independent roots; once both are `done`, the entire middle tier (`secrets`, `ipc`, `ui`, `config`, `sessions`, `harnesses`) can proceed **concurrently**; `proxy` follows (it needs `config` + `secrets`); then `cli` (needs `proxy`/`harnesses`/`sessions`/`config`/`secrets`); `apps/desktop` is last (it composes everything).
 
 ## Public-API surfaces (high level — exact signatures pinned in each plan)
 
