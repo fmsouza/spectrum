@@ -204,3 +204,112 @@ describe("createSessionStore.close", () => {
     })
   })
 })
+
+describe("createSessionStore.query", () => {
+  it("returns every session ordered by startedAt descending when query() is called without a filter", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    deps.db.run(
+      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_old", "claude", "default", "2026-05-23T09:00:00.000Z"],
+    )
+    deps.db.run(
+      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_new", "codex", "fast", "2026-05-23T11:00:00.000Z"],
+    )
+    const r = store.query()
+    expect(isOk(r) && r.value.map((s) => s.id)).toEqual(["s_new", "s_old"])
+  })
+
+  it("issues a SELECT with no WHERE clause when query() is called without a filter", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query()
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).not.toMatch(/WHERE/i)
+    expect(select?.sql).toMatch(/ORDER BY startedAt DESC/i)
+    expect(select?.params).toEqual([])
+  })
+
+  it("builds a parameterized WHERE binding the harnessId in params when query() filters by harnessId", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query({ harnessId: "claude" as never })
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).toMatch(/WHERE harnessId = \?/i)
+    expect(select?.sql).not.toContain("claude")
+    expect(select?.params).toEqual(["claude"])
+  })
+
+  it("combines harnessId, alias and since with AND and binds all three values when query() filters by all", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query({
+      harnessId: "claude" as never,
+      alias: "default" as never,
+      since: "2026-05-23T00:00:00.000Z",
+    })
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).toMatch(
+      /WHERE harnessId = \? AND alias = \? AND startedAt >= \?/i,
+    )
+    expect(select?.params).toEqual([
+      "claude",
+      "default",
+      "2026-05-23T00:00:00.000Z",
+    ])
+  })
+
+  it("never interpolates any filter value into the SELECT sql when query() filters", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query({
+      harnessId: "claude" as never,
+      alias: "default" as never,
+      since: "2026-05-23T00:00:00.000Z",
+    })
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).not.toContain("claude")
+    expect(select?.sql).not.toContain("default")
+    expect(select?.sql).not.toContain("2026-05-23T00:00:00.000Z")
+  })
+
+  it("returns only sessions at or after the since bound when query() filters by since", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    deps.db.run(
+      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_old", "claude", "default", "2026-05-23T08:00:00.000Z"],
+    )
+    deps.db.run(
+      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_new", "claude", "default", "2026-05-23T12:00:00.000Z"],
+    )
+    const r = store.query({ since: "2026-05-23T10:00:00.000Z" })
+    expect(isOk(r) && r.value.map((s) => s.id)).toEqual(["s_new"])
+  })
+
+  it("returns the db-failed error when the SELECT fails", () => {
+    const failing = {
+      ...makeDeps(),
+      db: {
+        exec: () => ({ ok: true as const, value: undefined }),
+        run: () => ({ ok: true as const, value: undefined }),
+        all: () => ({
+          ok: false as const,
+          error: { kind: "db-failed" as const, detail: "io" },
+        }),
+        get: () => ({ ok: true as const, value: undefined }),
+      },
+    }
+    const store = createSessionStore(failing)
+    const r = store.query({ harnessId: "claude" as never })
+    expect(r).toEqual({ ok: false, error: { kind: "db-failed", detail: "io" } })
+  })
+})

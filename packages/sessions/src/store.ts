@@ -46,8 +46,9 @@ const INSERT_SESSION =
   "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)"
 const UPDATE_CLOSE =
   "UPDATE sessions SET endedAt = ?, exitCode = ? WHERE id = ?"
-const SELECT_BY_ID =
-  "SELECT id, harnessId, alias, startedAt, endedAt, exitCode FROM sessions WHERE id = ?"
+const SELECT_COLUMNS =
+  "SELECT id, harnessId, alias, startedAt, endedAt, exitCode FROM sessions"
+const SELECT_BY_ID = `${SELECT_COLUMNS} WHERE id = ?`
 
 /** Map a raw sqlite row into a Session, dropping NULL endedAt/exitCode. */
 const toSession = (row: Record<string, unknown>): Session => {
@@ -64,6 +65,29 @@ const toSession = (row: Record<string, unknown>): Session => {
     ...(typeof endedAt === "string" ? { endedAt } : {}),
     ...(typeof exitCode === "number" ? { exitCode } : {}),
   }
+}
+
+/** Build a parameterized WHERE from a filter: column names go in the sql, values go in params. */
+const buildWhere = (
+  filter: SessionFilter,
+): { readonly clause: string; readonly params: readonly unknown[] } => {
+  const conditions: string[] = []
+  const params: unknown[] = []
+  if (filter.harnessId !== undefined) {
+    conditions.push("harnessId = ?")
+    params.push(filter.harnessId)
+  }
+  if (filter.alias !== undefined) {
+    conditions.push("alias = ?")
+    params.push(filter.alias)
+  }
+  if (filter.since !== undefined) {
+    conditions.push("startedAt >= ?")
+    params.push(filter.since)
+  }
+  const clause =
+    conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : ""
+  return { clause, params }
 }
 
 export const createSessionStore = (deps: {
@@ -111,8 +135,14 @@ export const createSessionStore = (deps: {
       if (fetched.value === undefined) return err({ kind: "not-found" })
       return ok(toSession(fetched.value))
     },
-    query: () => {
-      throw new Error("not implemented until sessions-05")
+    query: (
+      filter?: SessionFilter,
+    ): Result<readonly Session[], SessionError> => {
+      const { clause, params } = buildWhere(filter ?? {})
+      const sql = `${SELECT_COLUMNS}${clause} ORDER BY startedAt DESC`
+      const rows = db.all(sql, params)
+      if (isErr(rows)) return rows
+      return ok(rows.value.map(toSession))
     },
   }
 }
