@@ -1,4 +1,3 @@
-import { useState } from "react"
 import type { HarnessDefinition, HarnessId } from "@launchkit/types"
 import {
   Badge,
@@ -9,6 +8,7 @@ import {
   Spinner,
 } from "@launchkit/ui"
 import type { HarnessFormValues } from "@launchkit/ui"
+import { type ReactElement, useState } from "react"
 import { useIpcClient } from "../IpcClientContext"
 import { useHarnesses } from "../hooks/useHarnesses"
 
@@ -19,7 +19,7 @@ const NEW_HARNESS_DEFAULTS: HarnessFormValues = {
   defaultAlias: "default",
 }
 
-export const HarnessesPage = (): JSX.Element => {
+export const HarnessesPage = (): ReactElement => {
   const client = useIpcClient()
   const { data, loading, error, refetch } = useHarnesses()
   const [addOpen, setAddOpen] = useState<boolean>(false)
@@ -54,7 +54,10 @@ export const HarnessesPage = (): JSX.Element => {
     <SettingsLayout title="Harnesses">
       {loading ? <Spinner label="Loading harnesses" /> : null}
       {error !== undefined ? (
-        <EmptyState title="Could not load harnesses" hint={`IPC error: ${error.kind}`} />
+        <EmptyState
+          title="Could not load harnesses"
+          hint={`IPC error: ${error.kind}`}
+        />
       ) : null}
 
       {data !== undefined ? (
@@ -75,14 +78,20 @@ export const HarnessesPage = (): JSX.Element => {
           <section aria-label="Custom harnesses">
             <h2>Custom</h2>
             {customs.length === 0 ? (
-              <EmptyState title="No custom harnesses yet" hint="Add one to launch your own tool." />
+              <EmptyState
+                title="No custom harnesses yet"
+                hint="Add one to launch your own tool."
+              />
             ) : (
               <ul>
                 {customs.map((h) => (
                   <li key={h.id}>
                     <span>{h.name}</span>
                     <Badge tone="info">{h.apiFormat}</Badge>
-                    <Button variant="danger" onClick={() => void deleteHarness(h.id)}>
+                    <Button
+                      variant="danger"
+                      onClick={() => void deleteHarness(h.id)}
+                    >
                       {`Delete ${h.name}`}
                     </Button>
                   </li>

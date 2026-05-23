@@ -1,4 +1,3 @@
-import { useState } from "react"
 import type { ProviderView } from "@launchkit/ipc"
 import type { SdkProvider } from "@launchkit/types"
 import {
@@ -12,6 +11,7 @@ import {
   TextInput,
 } from "@launchkit/ui"
 import type { ProviderDisplay } from "@launchkit/ui"
+import { type ReactElement, useState } from "react"
 import { useIpcClient } from "../IpcClientContext"
 import { useProviders } from "../hooks/useProviders"
 
@@ -29,7 +29,7 @@ const toDisplay = (view: ProviderView): ProviderDisplay => ({
   sdkProvider: view.sdkProvider,
 })
 
-export const ProvidersPage = (): JSX.Element => {
+export const ProvidersPage = (): ReactElement => {
   const client = useIpcClient()
   const { data, loading, error, refetch } = useProviders()
 
@@ -37,7 +37,9 @@ export const ProvidersPage = (): JSX.Element => {
   const [newName, setNewName] = useState<string>("")
   const [newSdk, setNewSdk] = useState<SdkProvider>("openai")
 
-  const [secretFor, setSecretFor] = useState<ProviderView | undefined>(undefined)
+  const [secretFor, setSecretFor] = useState<ProviderView | undefined>(
+    undefined,
+  )
   const [secretField, setSecretField] = useState<string>("")
   const [secretValue, setSecretValue] = useState<string>("")
 
@@ -58,7 +60,12 @@ export const ProvidersPage = (): JSX.Element => {
   }
 
   const submitSecret = async (): Promise<void> => {
-    if (secretFor === undefined || secretField.trim() === "" || secretValue.trim() === "") return
+    if (
+      secretFor === undefined ||
+      secretField.trim() === "" ||
+      secretValue.trim() === ""
+    )
+      return
     const r = await client.setProviderSecret({
       providerId: secretFor.id,
       field: secretField,
@@ -77,7 +84,10 @@ export const ProvidersPage = (): JSX.Element => {
     <SettingsLayout title="Providers">
       {loading ? <Spinner label="Loading providers" /> : null}
       {error !== undefined ? (
-        <EmptyState title="Could not load providers" hint={`IPC error: ${error.kind}`} />
+        <EmptyState
+          title="Could not load providers"
+          hint={`IPC error: ${error.kind}`}
+        />
       ) : null}
 
       {data !== undefined ? (
@@ -93,10 +103,17 @@ export const ProvidersPage = (): JSX.Element => {
             {data.map((provider) => (
               <li key={provider.id}>
                 <span>{provider.name}</span>
-                {Object.entries(provider.secretFields).map(([field, status]) => (
-                  <span key={field}>{`${field}: ${status.isSet ? "set" : "unset"}`}</span>
-                ))}
-                <Button variant="secondary" onClick={() => setSecretFor(provider)}>
+                {Object.entries(provider.secretFields).map(
+                  ([field, status]) => (
+                    <span
+                      key={field}
+                    >{`${field}: ${status.isSet ? "set" : "unset"}`}</span>
+                  ),
+                )}
+                <Button
+                  variant="secondary"
+                  onClick={() => setSecretFor(provider)}
+                >
                   {`Set secret for ${provider.name}`}
                 </Button>
               </li>
@@ -114,7 +131,11 @@ export const ProvidersPage = (): JSX.Element => {
           }}
         >
           <FormField id="new-provider-name" label="Provider name">
-            <TextInput id="new-provider-name" value={newName} onChange={setNewName} />
+            <TextInput
+              id="new-provider-name"
+              value={newName}
+              onChange={setNewName}
+            />
           </FormField>
           <FormField id="new-provider-sdk" label="SDK provider">
             <Select
@@ -125,7 +146,9 @@ export const ProvidersPage = (): JSX.Element => {
             />
           </FormField>
           <Button onClick={() => void submitAdd()}>Create provider</Button>
-          <Button variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Button>
+          <Button variant="secondary" onClick={() => setAddOpen(false)}>
+            Cancel
+          </Button>
         </form>
       ) : null}
 
@@ -138,14 +161,25 @@ export const ProvidersPage = (): JSX.Element => {
           }}
         >
           <FormField id="secret-field" label="Secret field">
-            <TextInput id="secret-field" value={secretField} onChange={setSecretField} />
+            <TextInput
+              id="secret-field"
+              value={secretField}
+              onChange={setSecretField}
+            />
           </FormField>
           {/* type="password" + write-only: the value is sent, then cleared, never shown. */}
           <FormField id="secret-value" label="Secret value">
-            <TextInput id="secret-value" type="password" value={secretValue} onChange={setSecretValue} />
+            <TextInput
+              id="secret-value"
+              type="password"
+              value={secretValue}
+              onChange={setSecretValue}
+            />
           </FormField>
           <Button onClick={() => void submitSecret()}>Save secret</Button>
-          <Button variant="secondary" onClick={() => setSecretFor(undefined)}>Cancel</Button>
+          <Button variant="secondary" onClick={() => setSecretFor(undefined)}>
+            Cancel
+          </Button>
         </form>
       ) : null}
     </SettingsLayout>

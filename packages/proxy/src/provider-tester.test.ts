@@ -1,10 +1,10 @@
-import { describe, it, expect } from "bun:test"
-import { createFixedClock, ok, err, type Result } from "@launchkit/utils"
+import { describe, expect, it } from "bun:test"
 import type { Provider } from "@launchkit/types"
-import { createProviderTester } from "./provider-tester"
+import { type Result, createFixedClock, err, ok } from "@launchkit/utils"
 import { createScriptedGateway } from "./gateway"
-import type { ProviderFactory, ModelHandle } from "./providers/factory"
 import type { LanguageModelGateway } from "./gateway"
+import { createProviderTester } from "./provider-tester"
+import type { ModelHandle, ProviderFactory } from "./providers/factory"
 import type { NormalizedRequest, ProxyError, StreamEvent } from "./types"
 
 const provider = (over: Partial<Provider> = {}): Provider =>
@@ -19,7 +19,9 @@ const provider = (over: Partial<Provider> = {}): Provider =>
   }) as Provider
 
 /** A factory fake that returns a fixed model handle (or a preset error). */
-const fakeFactory = (result: Result<ModelHandle, ProxyError> = ok({})): ProviderFactory => ({
+const fakeFactory = (
+  result: Result<ModelHandle, ProxyError> = ok({}),
+): ProviderFactory => ({
   getModel: async () => result,
 })
 
@@ -41,7 +43,11 @@ describe("createProviderTester", () => {
       { type: "text-delta", text: "p" },
       { type: "finish", finishReason: "stop" },
     ])
-    const tester = createProviderTester({ factory: fakeFactory(), gateway, clock: steppingClock(1000, 25) })
+    const tester = createProviderTester({
+      factory: fakeFactory(),
+      gateway,
+      clock: steppingClock(1000, 25),
+    })
 
     const result = await tester(provider(), "gpt-4o")
 
@@ -49,9 +55,15 @@ describe("createProviderTester", () => {
   })
 
   it("measures latency as the elapsed time between the first and last clock reads", async () => {
-    const gateway = createScriptedGateway([{ type: "finish", finishReason: "stop" }])
+    const gateway = createScriptedGateway([
+      { type: "finish", finishReason: "stop" },
+    ])
     // first now()=2000 (start), second now()=2120 (end) → 120ms
-    const tester = createProviderTester({ factory: fakeFactory(), gateway, clock: steppingClock(2000, 120) })
+    const tester = createProviderTester({
+      factory: fakeFactory(),
+      gateway,
+      clock: steppingClock(2000, 120),
+    })
 
     const result = await tester(provider(), "gpt-4o")
 
@@ -61,7 +73,10 @@ describe("createProviderTester", () => {
   it("sends a minimal one-token ping request to the gateway", async () => {
     const captured: NormalizedRequest[] = []
     const capturingGateway: LanguageModelGateway = {
-      async *stream(_model: ModelHandle, req: NormalizedRequest): AsyncIterable<StreamEvent> {
+      async *stream(
+        _model: ModelHandle,
+        req: NormalizedRequest,
+      ): AsyncIterable<StreamEvent> {
         captured.push(req)
         yield { type: "finish", finishReason: "stop" }
       },
@@ -81,9 +96,13 @@ describe("createProviderTester", () => {
   })
 
   it("returns ok:false when the provider factory fails to build a model", async () => {
-    const gateway = createScriptedGateway([{ type: "finish", finishReason: "stop" }])
+    const gateway = createScriptedGateway([
+      { type: "finish", finishReason: "stop" },
+    ])
     const tester = createProviderTester({
-      factory: fakeFactory(err({ kind: "provider-failed", detail: "secret apiKey unavailable" })),
+      factory: fakeFactory(
+        err({ kind: "provider-failed", detail: "secret apiKey unavailable" }),
+      ),
       gateway,
       clock: steppingClock(0, 10),
     })
@@ -94,8 +113,14 @@ describe("createProviderTester", () => {
   })
 
   it("returns ok:false when the stream yields an error event", async () => {
-    const gateway = createScriptedGateway([{ type: "error", detail: "401 from upstream" }])
-    const tester = createProviderTester({ factory: fakeFactory(), gateway, clock: steppingClock(500, 40) })
+    const gateway = createScriptedGateway([
+      { type: "error", detail: "401 from upstream" },
+    ])
+    const tester = createProviderTester({
+      factory: fakeFactory(),
+      gateway,
+      clock: steppingClock(500, 40),
+    })
 
     const result = await tester(provider(), "gpt-4o")
 

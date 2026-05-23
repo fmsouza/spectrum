@@ -1,11 +1,14 @@
-import { type Result, ok, isOk, type Clock } from "@launchkit/utils"
 import type { Provider } from "@launchkit/types"
-import type { ProviderFactory } from "./providers/factory"
+import { type Clock, type Result, isOk, ok } from "@launchkit/utils"
 import type { LanguageModelGateway } from "./gateway"
+import type { ProviderFactory } from "./providers/factory"
 import type { NormalizedRequest, ProxyError } from "./types"
 
 /** The outcome of a connectivity probe: whether it succeeded and how long it took. */
-export type ProviderTestResult = { readonly ok: boolean; readonly latencyMs: number }
+export type ProviderTestResult = {
+  readonly ok: boolean
+  readonly latencyMs: number
+}
 
 /** A connectivity probe: build the model, stream one cheap token, report ok + latency. */
 export type ProviderTester = (
@@ -45,7 +48,10 @@ export const createProviderTester = (deps: {
 
     let streamErrored = false
     try {
-      for await (const event of deps.gateway.stream(model.value, pingRequest(providerModel))) {
+      for await (const event of deps.gateway.stream(
+        model.value,
+        pingRequest(providerModel),
+      )) {
         if (event.type === "error") streamErrored = true
       }
     } catch {

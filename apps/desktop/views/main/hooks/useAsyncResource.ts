@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import type { Result } from "@launchkit/utils"
 import type { IpcError } from "@launchkit/ipc"
+import type { Result } from "@launchkit/utils"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 /** The uniform shape every data hook returns. */
 export type AsyncResource<T> = {

@@ -1,5 +1,9 @@
-import { Electroview } from "electrobun/view"
-import { type ClientTransport, createIpcClient, type IpcClient } from "@launchkit/ipc"
+import {
+  type ClientTransport,
+  type IpcClient,
+  createIpcClient,
+} from "@launchkit/ipc"
+import { Electroview, type RPCSchema } from "electrobun/view"
 
 /** Re-export the webview's client type so pages/hooks import it from one place. */
 export type { IpcClient } from "@launchkit/ipc"
@@ -9,7 +13,15 @@ export type { IpcClient } from "@launchkit/ipc"
  * (main->webview handlers return values); `send` (fire-and-forget) is unused here.
  */
 type ElectrobunRpc = {
-  readonly request: Readonly<Record<string, (payload: unknown) => Promise<unknown>>>
+  readonly request: Readonly<
+    Record<string, (payload: unknown) => Promise<unknown>>
+  >
+}
+
+/** Empty RPC schema with no requests or messages on either side. */
+type EmptySchema = {
+  readonly bun: RPCSchema
+  readonly webview: RPCSchema
 }
 
 /**
@@ -17,7 +29,9 @@ type ElectrobunRpc = {
  * in the transport-agnostic `ClientTransport` interface so everything above it
  * (hooks, pages) is tested with a fake client and no Electrobun runtime.
  */
-export const createElectrobunTransport = (rpc: ElectrobunRpc): ClientTransport => ({
+export const createElectrobunTransport = (
+  rpc: ElectrobunRpc,
+): ClientTransport => ({
   send: (method, payload) => {
     const call = rpc.request[method]
     if (call === undefined) {
@@ -34,11 +48,13 @@ export const createElectrobunTransport = (rpc: ElectrobunRpc): ClientTransport =
  * the main process; it only initiates them.
  */
 export const createRealIpcClient = (): IpcClient => {
-  const rpc = Electroview.defineRPC<Record<string, never>>({
+  const rpc = Electroview.defineRPC<EmptySchema>({
     maxRequestTime: 5000,
     handlers: { requests: {}, messages: {} },
   })
   const view = new Electroview({ rpc })
-  const transport = createElectrobunTransport(view.rpc as ElectrobunRpc)
+  const transport = createElectrobunTransport(
+    view.rpc as unknown as ElectrobunRpc,
+  )
   return createIpcClient(transport)
 }

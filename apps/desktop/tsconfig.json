@@ -3,7 +3,9 @@
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "dist",
+    "composite": false,
     "types": ["bun", "react", "react-dom"]
   },
-  "exclude": ["electrobun.config.ts"]
+  "include": ["src", "views"],
+  "exclude": ["electrobun.config.ts", "**/*.test.ts", "**/*.test.tsx"]
 }
