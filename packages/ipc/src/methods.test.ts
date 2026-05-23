@@ -1,17 +1,18 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
+import type { AliasName, HarnessId, ProviderId } from "@launchkit/types"
 import {
   AddProviderParamsSchema,
-  SetProviderSecretParamsSchema,
-  LaunchHarnessParamsSchema,
   GetSessionsParamsSchema,
   IpcMethodSchemas,
+  LaunchHarnessParamsSchema,
+  SetProviderSecretParamsSchema,
 } from "./methods"
 
 describe("AddProviderParamsSchema", () => {
   it("parses an input with non-secret config and secret field names", () => {
     const input = {
       name: "OpenAI",
-      sdkProvider: "openai",
+      sdkProvider: "openai" as const,
       config: { baseUrl: "https://api.openai.com/v1" },
       secretFieldNames: ["apiKey"],
       models: ["gpt-4o"],
@@ -21,7 +22,7 @@ describe("AddProviderParamsSchema", () => {
   it("rejects an add-provider input that smuggles a secret value", () => {
     const input = {
       name: "OpenAI",
-      sdkProvider: "openai",
+      sdkProvider: "openai" as const,
       config: { baseUrl: "x" },
       secretFieldNames: ["apiKey"],
       models: ["gpt-4o"],
@@ -33,20 +34,37 @@ describe("AddProviderParamsSchema", () => {
 
 describe("SetProviderSecretParamsSchema", () => {
   it("parses the only secret-bearing method's params", () => {
-    const p = { providerId: "p_openai", field: "apiKey", value: "sk-secret" }
+    const p = {
+      providerId: "p_openai" as ProviderId,
+      field: "apiKey",
+      value: "sk-secret",
+    }
     expect(SetProviderSecretParamsSchema.parse(p)).toEqual(p)
   })
   it("rejects an empty secret value", () => {
-    expect(SetProviderSecretParamsSchema.safeParse({ providerId: "p", field: "apiKey", value: "" }).success).toBe(false)
+    expect(
+      SetProviderSecretParamsSchema.safeParse({
+        providerId: "p" as ProviderId,
+        field: "apiKey",
+        value: "",
+      }).success,
+    ).toBe(false)
   })
 })
 
 describe("LaunchHarnessParamsSchema", () => {
   it("parses with an optional alias omitted", () => {
-    expect(LaunchHarnessParamsSchema.parse({ id: "claude" })).toEqual({ id: "claude" })
+    expect(
+      LaunchHarnessParamsSchema.parse({ id: "claude" as HarnessId }),
+    ).toEqual({ id: "claude" as HarnessId })
   })
   it("parses with an alias provided", () => {
-    expect(LaunchHarnessParamsSchema.parse({ id: "claude", alias: "fast" })).toEqual({ id: "claude", alias: "fast" })
+    expect(
+      LaunchHarnessParamsSchema.parse({
+        id: "claude" as HarnessId,
+        alias: "fast" as AliasName,
+      }),
+    ).toEqual({ id: "claude" as HarnessId, alias: "fast" as AliasName })
   })
 })
 
@@ -55,17 +73,32 @@ describe("GetSessionsParamsSchema", () => {
     expect(GetSessionsParamsSchema.parse(undefined)).toBeUndefined()
   })
   it("parses a filter narrowing by harnessId", () => {
-    expect(GetSessionsParamsSchema.parse({ harnessId: "claude" })).toEqual({ harnessId: "claude" })
+    expect(
+      GetSessionsParamsSchema.parse({ harnessId: "claude" as HarnessId }),
+    ).toEqual({ harnessId: "claude" as HarnessId })
   })
 })
 
 describe("IpcMethodSchemas", () => {
   it("exposes a params and result schema for every contract method", () => {
     const expected = [
-      "getProviders", "addProvider", "updateProvider", "deleteProvider", "testProvider", "setProviderSecret",
-      "getAliases", "addAlias", "updateAlias", "deleteAlias",
-      "getHarnesses", "addHarness", "updateHarness", "deleteHarness", "launchHarness",
-      "getSessions", "getProxyStatus",
+      "getProviders",
+      "addProvider",
+      "updateProvider",
+      "deleteProvider",
+      "testProvider",
+      "setProviderSecret",
+      "getAliases",
+      "addAlias",
+      "updateAlias",
+      "deleteAlias",
+      "getHarnesses",
+      "addHarness",
+      "updateHarness",
+      "deleteHarness",
+      "launchHarness",
+      "getSessions",
+      "getProxyStatus",
     ] as const
     for (const name of expected) {
       expect(IpcMethodSchemas[name]).toBeDefined()

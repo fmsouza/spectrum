@@ -1,12 +1,12 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { createIpcClient } from "./client"
 import type { ClientTransport } from "./client"
-import { ProviderViewSchema } from "./provider-view"
+import { type ProviderView, ProviderViewSchema } from "./provider-view"
 
-const sampleView = {
-  id: "p_openai",
+const sampleView: ProviderView = {
+  id: "p_openai" as ProviderView["id"],
   name: "OpenAI",
-  sdkProvider: "openai",
+  sdkProvider: "openai" as const,
   config: {},
   secretFields: { apiKey: { isSet: true } },
   models: ["gpt-4o"],
@@ -15,7 +15,9 @@ const sampleView = {
 /** Records calls and replays a scripted reply (or throws) per method. */
 const fakeTransport = (
   reply: (method: string, payload: unknown) => Promise<unknown>,
-): ClientTransport & { calls: ReadonlyArray<{ method: string; payload: unknown }> } => {
+): ClientTransport & {
+  calls: ReadonlyArray<{ method: string; payload: unknown }>
+} => {
   const calls: Array<{ method: string; payload: unknown }> = []
   return {
     calls,
@@ -31,8 +33,13 @@ describe("createIpcClient", () => {
     const transport = fakeTransport(async () => [sampleView])
     const client = createIpcClient(transport)
     const r = await client.getProviders(undefined)
-    expect(r).toEqual({ ok: true, value: [ProviderViewSchema.parse(sampleView)] })
-    expect(transport.calls).toEqual([{ method: "getProviders", payload: undefined }])
+    expect(r).toEqual({
+      ok: true,
+      value: [ProviderViewSchema.parse(sampleView)],
+    })
+    expect(transport.calls).toEqual([
+      { method: "getProviders", payload: undefined },
+    ])
   })
 
   it("returns a validation-failed error and never sends when params are invalid", async () => {
@@ -54,7 +61,9 @@ describe("createIpcClient", () => {
   })
 
   it("returns a transport-failed error when the transport rejects", async () => {
-    const transport = fakeTransport(async () => { throw new Error("bridge down") })
+    const transport = fakeTransport(async () => {
+      throw new Error("bridge down")
+    })
     const client = createIpcClient(transport)
     const r = await client.getProxyStatus(undefined)
     expect(r.ok).toBe(false)
@@ -67,14 +76,20 @@ describe("createIpcClient", () => {
   it("encodes a void result (null) as an Ok carrying null", async () => {
     const transport = fakeTransport(async () => null)
     const client = createIpcClient(transport)
-    const r = await client.deleteProvider({ id: "p_openai" })
+    const r = await client.deleteProvider({
+      id: "p_openai" as ProviderView["id"],
+    })
     expect(r).toEqual({ ok: true, value: null })
   })
 
   it("passes the secret value through on setProviderSecret and returns Ok(null)", async () => {
     const transport = fakeTransport(async () => null)
     const client = createIpcClient(transport)
-    const r = await client.setProviderSecret({ providerId: "p_openai", field: "apiKey", value: "sk-secret" })
+    const r = await client.setProviderSecret({
+      providerId: "p_openai" as ProviderView["id"],
+      field: "apiKey",
+      value: "sk-secret",
+    })
     expect(r).toEqual({ ok: true, value: null })
     expect(transport.calls[0]).toEqual({
       method: "setProviderSecret",
