@@ -1,5 +1,5 @@
-import { describe, it, expect, mock } from "bun:test"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { describe, expect, it, mock } from "bun:test"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { Select } from "./Select"
 
 const options = [
@@ -19,7 +19,9 @@ describe("Select", () => {
   it("calls onChange with the chosen value when the selection changes", () => {
     const onChange = mock((_v: string) => {})
     render(<Select value="openai" options={options} onChange={onChange} />)
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "anthropic" } })
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "anthropic" },
+    })
     expect(onChange).toHaveBeenCalledWith("anthropic")
   })
 })

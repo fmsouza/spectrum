@@ -1,5 +1,5 @@
-import { describe, it, expect, mock } from "bun:test"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { describe, expect, it, mock } from "bun:test"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { TextInput } from "./TextInput"
 
 describe("TextInput", () => {
@@ -8,7 +8,9 @@ describe("TextInput", () => {
     expect(screen.getByRole("textbox")).toHaveValue("hello")
   })
   it("shows the placeholder when given one", () => {
-    render(<TextInput value="" onChange={() => {}} placeholder="API base URL" />)
+    render(
+      <TextInput value="" onChange={() => {}} placeholder="API base URL" />,
+    )
     expect(screen.getByPlaceholderText("API base URL")).toBeInTheDocument()
   })
   it("calls onChange with the new text when the user types", () => {
@@ -18,7 +20,9 @@ describe("TextInput", () => {
     expect(onChange).toHaveBeenCalledWith("abc")
   })
   it("renders a password field when type is password", () => {
-    const { container } = render(<TextInput value="" onChange={() => {}} type="password" />)
+    const { container } = render(
+      <TextInput value="" onChange={() => {}} type="password" />,
+    )
     expect(container.querySelector("input[type='password']")).not.toBeNull()
   })
 })

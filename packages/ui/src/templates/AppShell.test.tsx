@@ -1,5 +1,5 @@
-import { describe, it, expect, mock } from "bun:test"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { describe, expect, it, mock } from "bun:test"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { AppShell } from "./AppShell"
 
 const items = [
@@ -23,7 +23,10 @@ describe("AppShell", () => {
         <p>content</p>
       </AppShell>,
     )
-    expect(screen.getByRole("link", { name: "Providers" })).toHaveAttribute("aria-current", "page")
+    expect(screen.getByRole("link", { name: "Providers" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    )
   })
   it("renders the content slot", () => {
     render(
@@ -36,7 +39,11 @@ describe("AppShell", () => {
   it("calls onNavigate with the route when a nav item is clicked", () => {
     const onNavigate = mock((_r: string) => {})
     render(
-      <AppShell navItems={items} activeRoute="dashboard" onNavigate={onNavigate}>
+      <AppShell
+        navItems={items}
+        activeRoute="dashboard"
+        onNavigate={onNavigate}
+      >
         <p>content</p>
       </AppShell>,
     )

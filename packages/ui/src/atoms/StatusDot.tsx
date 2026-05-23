@@ -8,5 +8,9 @@ export type StatusDotProps = {
 }
 
 export const StatusDot = ({ status, label }: StatusDotProps): ReactElement => (
-  <span role="img" aria-label={label} data-color={status === "on" ? "green" : "grey"} />
+  <span
+    role="img"
+    aria-label={label}
+    data-color={status === "on" ? "green" : "grey"}
+  />
 )

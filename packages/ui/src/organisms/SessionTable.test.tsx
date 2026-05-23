@@ -1,12 +1,31 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
+import type { Session } from "@launchkit/types"
 import { render, screen } from "@testing-library/react"
 import { SessionTable } from "./SessionTable"
-import type { Session } from "@launchkit/types"
 
 const sessions = [
-  { id: "s_1", harnessId: "claude", alias: "default", startedAt: "2026-05-23T10:00:00.000Z", endedAt: "2026-05-23T10:05:00.000Z", exitCode: 0 },
-  { id: "s_2", harnessId: "codex", alias: "fast", startedAt: "2026-05-23T11:00:00.000Z" },
-  { id: "s_3", harnessId: "opencode", alias: "smart", startedAt: "2026-05-23T12:00:00.000Z", endedAt: "2026-05-23T12:01:00.000Z", exitCode: 1 },
+  {
+    id: "s_1",
+    harnessId: "claude",
+    alias: "default",
+    startedAt: "2026-05-23T10:00:00.000Z",
+    endedAt: "2026-05-23T10:05:00.000Z",
+    exitCode: 0,
+  },
+  {
+    id: "s_2",
+    harnessId: "codex",
+    alias: "fast",
+    startedAt: "2026-05-23T11:00:00.000Z",
+  },
+  {
+    id: "s_3",
+    harnessId: "opencode",
+    alias: "smart",
+    startedAt: "2026-05-23T12:00:00.000Z",
+    endedAt: "2026-05-23T12:01:00.000Z",
+    exitCode: 1,
+  },
 ] as unknown as readonly Session[]
 
 describe("SessionTable", () => {
@@ -32,6 +51,8 @@ describe("SessionTable", () => {
   })
   it("shows an empty state when there are no sessions", () => {
     render(<SessionTable sessions={[]} />)
-    expect(screen.getByRole("heading", { name: /no sessions/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole("heading", { name: /no sessions/i }),
+    ).toBeInTheDocument()
   })
 })

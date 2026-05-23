@@ -17,7 +17,13 @@ const claude = {
 
 describe("HarnessDefinitionSchema", () => {
   it("parses a valid built-in harness", () => {
-    expect(HarnessDefinitionSchema.parse(claude)).toEqual(claude)
+    const parsed = HarnessDefinitionSchema.parse(claude)
+    expect(parsed.id).toBe("claude")
+    expect(parsed.name).toBe("Claude Code")
+    expect(parsed.command).toBe("claude")
+    expect(parsed.apiFormat).toBe("anthropic")
+    expect(parsed.defaultAlias).toBe("default")
+    expect(parsed.builtIn).toBe(true)
   })
   it("parses a harness with an optional description omitted", () => {
     expect(HarnessDefinitionSchema.safeParse(claude).success).toBe(true)

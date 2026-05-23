@@ -12,7 +12,12 @@ export type AppShellProps = {
   readonly children: ReactNode
 }
 
-export const AppShell = ({ navItems, activeRoute, onNavigate, children }: AppShellProps): ReactElement => (
+export const AppShell = ({
+  navItems,
+  activeRoute,
+  onNavigate,
+  children,
+}: AppShellProps): ReactElement => (
   <div>
     <nav aria-label="Primary">
       <ul>

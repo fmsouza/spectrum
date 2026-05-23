@@ -13,8 +13,19 @@ export type SelectProps = {
   readonly disabled?: boolean
 }
 
-export const Select = ({ value, options, onChange, id, disabled = false }: SelectProps): ReactElement => (
-  <select id={id} value={value} disabled={disabled} onChange={(e) => onChange(e.currentTarget.value)}>
+export const Select = ({
+  value,
+  options,
+  onChange,
+  id,
+  disabled = false,
+}: SelectProps): ReactElement => (
+  <select
+    id={id}
+    value={value}
+    disabled={disabled}
+    onChange={(e) => onChange(e.currentTarget.value)}
+  >
     {options.map((option) => (
       <option key={option.value} value={option.value}>
         {option.label}

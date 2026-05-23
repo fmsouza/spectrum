@@ -1,5 +1,5 @@
-import type { ReactElement } from "react"
 import type { ModelAlias } from "@launchkit/types"
+import type { ReactElement } from "react"
 import { AliasRow } from "../molecules/AliasRow"
 import { EmptyState } from "../molecules/EmptyState"
 
@@ -10,9 +10,19 @@ export type AliasTableProps = {
   readonly onDelete: (alias: string) => void
 }
 
-export const AliasTable = ({ aliases, providerNames, onEdit, onDelete }: AliasTableProps): ReactElement => {
+export const AliasTable = ({
+  aliases,
+  providerNames,
+  onEdit,
+  onDelete,
+}: AliasTableProps): ReactElement => {
   if (aliases.length === 0) {
-    return <EmptyState title="No aliases yet" hint="Map an alias to a provider model." />
+    return (
+      <EmptyState
+        title="No aliases yet"
+        hint="Map an alias to a provider model."
+      />
+    )
   }
   return (
     <table>
