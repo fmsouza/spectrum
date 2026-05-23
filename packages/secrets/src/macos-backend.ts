@@ -10,6 +10,15 @@ const redactError = (error: SecretError, secrets: readonly string[]): SecretErro
     ? { kind: "backend-failed", detail: redactSecrets(error.detail, secrets) }
     : error
 
+const NOT_FOUND_MARKER = "could not be found"
+
+const classifyError = (error: SecretError, secrets: readonly string[]): SecretError => {
+  if (error.kind === "backend-failed" && error.detail.includes(NOT_FOUND_MARKER)) {
+    return { kind: "not-found" }
+  }
+  return redactError(error, secrets)
+}
+
 export const createMacosSecurityBackend = (deps: {
   readonly runner: ProcessRunner
 }): KeychainBackend => {
@@ -25,14 +34,14 @@ export const createMacosSecurityBackend = (deps: {
       const result = await runner.run("security", [
         "find-generic-password", "-a", account, "-s", SERVICE, "-w",
       ])
-      if (!isOk(result)) return err(redactError(result.error, []))
+      if (!isOk(result)) return err(classifyError(result.error, []))
       return ok(result.value.stdout.replace(/\n$/, ""))
     },
     remove: async (account) => {
       const result = await runner.run("security", [
         "delete-generic-password", "-a", account, "-s", SERVICE,
       ])
-      return isOk(result) ? ok(undefined) : err(redactError(result.error, []))
+      return isOk(result) ? ok(undefined) : err(classifyError(result.error, []))
     },
   }
 }
