@@ -22,7 +22,7 @@ describe("SdkProviderSchema", () => {
       "cerebras",
       "ollama",
     ]
-    expect([...SdkProviderSchema.options]).toEqual(expected)
+    expect([...SdkProviderSchema.options]).toMatchObject(expected)
   })
   it("rejects an unknown provider when given 'made-up'", () => {
     expect(SdkProviderSchema.safeParse("made-up").success).toBe(false)

@@ -1,5 +1,5 @@
-import type { ReactElement } from "react"
 import type { Session } from "@launchkit/types"
+import type { ReactElement } from "react"
 import { Badge } from "../atoms/Badge"
 import { EmptyState } from "../molecules/EmptyState"
 
@@ -9,11 +9,20 @@ export type SessionTableProps = {
   readonly maxVisible?: number
 }
 
-export const SessionTable = ({ sessions, maxVisible }: SessionTableProps): ReactElement => {
+export const SessionTable = ({
+  sessions,
+  maxVisible,
+}: SessionTableProps): ReactElement => {
   if (sessions.length === 0) {
-    return <EmptyState title="No sessions yet" hint="Launched harnesses will appear here." />
+    return (
+      <EmptyState
+        title="No sessions yet"
+        hint="Launched harnesses will appear here."
+      />
+    )
   }
-  const visible = maxVisible === undefined ? sessions : sessions.slice(0, maxVisible)
+  const visible =
+    maxVisible === undefined ? sessions : sessions.slice(0, maxVisible)
   const hidden = sessions.length - visible.length
 
   return (
@@ -37,7 +46,9 @@ export const SessionTable = ({ sessions, maxVisible }: SessionTableProps): React
                 {session.endedAt === undefined ? (
                   <Badge tone="info">running</Badge>
                 ) : (
-                  <Badge tone={session.exitCode === 0 ? "success" : "danger"}>{`exit ${session.exitCode ?? "?"}`}</Badge>
+                  <Badge
+                    tone={session.exitCode === 0 ? "success" : "danger"}
+                  >{`exit ${session.exitCode ?? "?"}`}</Badge>
                 )}
               </td>
             </tr>

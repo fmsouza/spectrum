@@ -5,7 +5,10 @@ export type SettingsLayoutProps = {
   readonly children: ReactNode
 }
 
-export const SettingsLayout = ({ title, children }: SettingsLayoutProps): ReactElement => (
+export const SettingsLayout = ({
+  title,
+  children,
+}: SettingsLayoutProps): ReactElement => (
   <section>
     <header>
       <h1>{title}</h1>

@@ -9,8 +9,18 @@ export type ButtonProps = {
   readonly disabled?: boolean
 }
 
-export const Button = ({ children, onClick, variant = "primary", disabled = false }: ButtonProps): ReactElement => (
-  <button type="button" data-variant={variant} disabled={disabled} onClick={() => onClick()}>
+export const Button = ({
+  children,
+  onClick,
+  variant = "primary",
+  disabled = false,
+}: ButtonProps): ReactElement => (
+  <button
+    type="button"
+    data-variant={variant}
+    disabled={disabled}
+    onClick={() => onClick()}
+  >
     {children}
   </button>
 )

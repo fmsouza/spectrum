@@ -1,9 +1,13 @@
-import { describe, it, expect, mock } from "bun:test"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { describe, expect, it, mock } from "bun:test"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { ProviderCard } from "./ProviderCard"
 import type { ProviderDisplay } from "./ProviderCard"
 
-const provider: ProviderDisplay = { id: "p_openai", name: "OpenAI", sdkProvider: "openai" }
+const provider: ProviderDisplay = {
+  id: "p_openai",
+  name: "OpenAI",
+  sdkProvider: "openai",
+}
 
 describe("ProviderCard", () => {
   it("renders the provider name", () => {

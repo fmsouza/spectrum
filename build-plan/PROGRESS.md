@@ -80,7 +80,7 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 | secrets-02 | createSecretStore (set/get/delete/has) | | done | 38fb329 |
 | secrets-03 | createMacosSecurityBackend (arg arrays + redaction) | | done | cd4d332 |
 | secrets-04 | createBunProcessRunner + darwin-only integration | | done | 4ff2c10 |
-| secrets-05 | Barrel + package CLAUDE.md | | done | (pending) |
+| secrets-05 | Barrel + package CLAUDE.md | | done | 3d1fdd8 |
 
 ## 2 — ipc (`04-ipc.md`)
 

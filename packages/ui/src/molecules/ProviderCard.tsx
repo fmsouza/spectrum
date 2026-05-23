@@ -1,5 +1,5 @@
-import type { ReactElement } from "react"
 import type { Provider } from "@launchkit/types"
+import type { ReactElement } from "react"
 import { Badge } from "../atoms/Badge"
 import { Button } from "../atoms/Button"
 
@@ -11,7 +11,10 @@ export type ProviderCardProps = {
   readonly onLaunch?: (providerId: string) => void
 }
 
-export const ProviderCard = ({ provider, onLaunch }: ProviderCardProps): ReactElement => (
+export const ProviderCard = ({
+  provider,
+  onLaunch,
+}: ProviderCardProps): ReactElement => (
   <article>
     <h3>{provider.name}</h3>
     <Badge tone="info">{provider.sdkProvider}</Badge>

@@ -1,7 +1,7 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { render, screen } from "@testing-library/react"
-import { FormField } from "./FormField"
 import { TextInput } from "../atoms/TextInput"
+import { FormField } from "./FormField"
 
 describe("FormField", () => {
   it("labels the wrapped control via the shared id", () => {

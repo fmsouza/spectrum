@@ -9,14 +9,24 @@ export type AliasRowProps = {
   readonly onDelete: (alias: string) => void
 }
 
-export const AliasRow = ({ alias, provider, model, onEdit, onDelete }: AliasRowProps): ReactElement => (
+export const AliasRow = ({
+  alias,
+  provider,
+  model,
+  onEdit,
+  onDelete,
+}: AliasRowProps): ReactElement => (
   <tr>
     <td>{alias}</td>
     <td>{provider}</td>
     <td>{model}</td>
     <td>
-      <Button variant="secondary" onClick={() => onEdit(alias)}>Edit</Button>
-      <Button variant="danger" onClick={() => onDelete(alias)}>Delete</Button>
+      <Button variant="secondary" onClick={() => onEdit(alias)}>
+        Edit
+      </Button>
+      <Button variant="danger" onClick={() => onDelete(alias)}>
+        Delete
+      </Button>
     </td>
   </tr>
 )

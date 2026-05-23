@@ -8,7 +8,12 @@ export type FormFieldProps = {
   readonly error?: string
 }
 
-export const FormField = ({ id, label, children, error }: FormFieldProps): ReactElement => (
+export const FormField = ({
+  id,
+  label,
+  children,
+  error,
+}: FormFieldProps): ReactElement => (
   <div>
     <Label htmlFor={id}>{label}</Label>
     {children}
