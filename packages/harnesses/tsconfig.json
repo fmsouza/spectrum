@@ -1,0 +1,4 @@
+{
+  "extends": "@launchkit/tsconfig/lib.json",
+  "compilerOptions": { "rootDir": "src", "outDir": "dist" }
+}
