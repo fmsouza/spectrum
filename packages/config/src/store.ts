@@ -1,8 +1,8 @@
-import { type Result, ok, err, isOk } from "@launchkit/utils"
-import { type Config, ConfigSchema, defaultConfig } from "./schema"
-import { runMigrations } from "./migrations"
+import { type Result, err, isOk, ok } from "@launchkit/utils"
 import type { ConfigError } from "./errors"
 import type { ConfigFile } from "./file"
+import { runMigrations } from "./migrations"
+import { type Config, ConfigSchema, defaultConfig } from "./schema"
 
 /** Read/write the whole config document. The read path returns a fully migrated + validated `Config`. */
 export interface ConfigStore {
@@ -19,7 +19,9 @@ const parseJson = (raw: string): Result<unknown, ConfigError> => {
   }
 }
 
-export const createFileConfigStore = (deps: { readonly file: ConfigFile }): ConfigStore => {
+export const createFileConfigStore = (deps: {
+  readonly file: ConfigFile
+}): ConfigStore => {
   const { file } = deps
   return {
     load: async (): Promise<Result<Config, ConfigError>> => {

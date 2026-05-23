@@ -1,15 +1,20 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { type Result, ok } from "@launchkit/utils"
+import { createCachedConfigStore } from "./cached-store"
+import type { ConfigError } from "./errors"
 import type { Config } from "./schema"
 import { defaultConfig } from "./schema"
-import type { ConfigError } from "./errors"
 import type { ConfigStore } from "./store"
-import { createCachedConfigStore } from "./cached-store"
 
 /** An inner store that counts loads/saves and lets a test mutate the value it would load. */
 const countingStore = (
   initial: Config,
-): { store: ConfigStore; loads: () => number; saves: () => number; setBacking: (c: Config) => void } => {
+): {
+  store: ConfigStore
+  loads: () => number
+  saves: () => number
+  setBacking: (c: Config) => void
+} => {
   let loadCount = 0
   let saveCount = 0
   let backing = initial
@@ -86,12 +91,18 @@ describe("createCachedConfigStore", () => {
     const inner = countingStore(defaultConfig())
     const failingSave: ConfigStore = {
       load: inner.store.load,
-      save: async () => ({ ok: false, error: { kind: "write-failed", detail: "disk full" } }),
+      save: async () => ({
+        ok: false,
+        error: { kind: "write-failed", detail: "disk full" },
+      }),
     }
     const cached = createCachedConfigStore(failingSave)
     await cached.load() // cache holds defaultConfig()
 
-    const updated: Config = { ...defaultConfig(), settings: { proxyPort: 9999, proxyHost: "127.0.0.1" } }
+    const updated: Config = {
+      ...defaultConfig(),
+      settings: { proxyPort: 9999, proxyHost: "127.0.0.1" },
+    }
     const result = await cached.save(updated)
 
     expect(result.ok).toBe(false)

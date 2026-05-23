@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { migrations, runMigrations } from "./migrations"
 import { CURRENT_CONFIG_VERSION } from "./schema"
 
@@ -43,13 +43,18 @@ describe("runMigrations", () => {
       version: CURRENT_CONFIG_VERSION,
       providers: [],
       aliases: [],
-      settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+      settings: { proxyPort: 4000, proxyHost: "127.0.0.1" as const },
     }
     expect(runMigrations(current)).toEqual({ ok: true, value: current })
   })
 
   it("returns migration-failed when version is newer than CURRENT", () => {
-    const future = { version: CURRENT_CONFIG_VERSION + 1, providers: [], aliases: [], settings: {} }
+    const future = {
+      version: CURRENT_CONFIG_VERSION + 1,
+      providers: [],
+      aliases: [],
+      settings: {},
+    }
     const result = runMigrations(future)
     expect(result.ok).toBe(false)
     if (result.ok) return
@@ -67,7 +72,9 @@ describe("runMigrations", () => {
     // v1 provider with an invalid sdkProvider survives the migration but must fail ConfigSchema.
     const broken = {
       ...v1Config,
-      providers: [{ ...v1Config.providers[0], sdkProvider: "not-a-real-provider" }],
+      providers: [
+        { ...v1Config.providers[0], sdkProvider: "not-a-real-provider" },
+      ],
     }
     const result = runMigrations(broken)
     expect(result.ok).toBe(false)

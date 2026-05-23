@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { isOk } from "@launchkit/utils"
 import { createInMemoryConfigFile } from "./file"
 
@@ -6,7 +6,10 @@ describe("createInMemoryConfigFile", () => {
   it("reports exists=false and returns not-found from read when created empty", async () => {
     const file = createInMemoryConfigFile()
     expect(await file.exists()).toBe(false)
-    expect(await file.read()).toEqual({ ok: false, error: { kind: "not-found" } })
+    expect(await file.read()).toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    })
   })
 
   it("reports exists=true and reads back the initial contents when seeded", async () => {

@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach } from "bun:test"
-import { mkdtemp, rm, stat, readFile, writeFile } from "node:fs/promises"
+import { afterEach, describe, expect, it } from "bun:test"
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { isOk } from "@launchkit/utils"
@@ -14,13 +14,17 @@ describe("createFsConfigFile (real filesystem)", () => {
   }
 
   afterEach(async () => {
-    for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true })
+    for (const dir of dirs.splice(0))
+      await rm(dir, { recursive: true, force: true })
   })
 
   it("reports exists=false and returns not-found before anything is written", async () => {
     const file = createFsConfigFile(join(await freshDir(), "config.json"))
     expect(await file.exists()).toBe(false)
-    expect(await file.read()).toEqual({ ok: false, error: { kind: "not-found" } })
+    expect(await file.read()).toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    })
   })
 
   it("writes atomically, reads the contents back, and leaves no .tmp file behind", async () => {
@@ -47,6 +51,9 @@ describe("createFsConfigFile (real filesystem)", () => {
   it("returns parse-free raw bytes from read so the store owns JSON parsing", async () => {
     const path = join(await freshDir(), "config.json")
     await writeFile(path, "{ not json", "utf8")
-    expect(await createFsConfigFile(path).read()).toEqual({ ok: true, value: "{ not json" })
+    expect(await createFsConfigFile(path).read()).toEqual({
+      ok: true,
+      value: "{ not json",
+    })
   })
 })

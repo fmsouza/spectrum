@@ -1,6 +1,14 @@
+import {
+  access,
+  chmod,
+  mkdir,
+  open,
+  readFile,
+  rename,
+  writeFile,
+} from "node:fs/promises"
 import { dirname } from "node:path"
-import { mkdir, readFile, writeFile, rename, chmod, open, access } from "node:fs/promises"
-import { type Result, ok, err } from "@launchkit/utils"
+import { type Result, err, ok } from "@launchkit/utils"
 import type { ConfigError } from "./errors"
 import type { ConfigFile } from "./file"
 
@@ -17,7 +25,8 @@ export const createFsConfigFile = (path: string): ConfigFile => ({
     try {
       return ok(await readFile(path, "utf8"))
     } catch (cause) {
-      if ((cause as NodeJS.ErrnoException).code === "ENOENT") return err({ kind: "not-found" })
+      if ((cause as NodeJS.ErrnoException).code === "ENOENT")
+        return err({ kind: "not-found" })
       const detail = cause instanceof Error ? cause.message : String(cause)
       return err({ kind: "parse-failed", detail })
     }

@@ -1,7 +1,7 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { createInMemoryConfigFile } from "./file"
-import { createFileConfigStore } from "./store"
 import { defaultConfig } from "./schema"
+import { createFileConfigStore } from "./store"
 
 describe("createFileConfigStore.save", () => {
   it("writes the config as 2-space pretty JSON exactly once when given a valid config", async () => {
@@ -31,7 +31,10 @@ describe("createFileConfigStore.save", () => {
     const file = createInMemoryConfigFile()
     const store = createFileConfigStore({ file })
     // A non-loopback host is invalid (security.md) — save must reject before touching the file.
-    const invalid = { ...defaultConfig(), settings: { proxyPort: 4000, proxyHost: "0.0.0.0" } }
+    const invalid = {
+      ...defaultConfig(),
+      settings: { proxyPort: 4000, proxyHost: "0.0.0.0" },
+    }
 
     const result = await store.save(invalid as ReturnType<typeof defaultConfig>)
 
@@ -46,12 +49,18 @@ describe("createFileConfigStore.save", () => {
       writes: [] as readonly string[],
       read: async () => ({ ok: false, error: { kind: "not-found" } }) as const,
       writeAtomic: async () =>
-        ({ ok: false, error: { kind: "write-failed", detail: "disk full" } }) as const,
+        ({
+          ok: false,
+          error: { kind: "write-failed", detail: "disk full" },
+        }) as const,
       exists: async () => false,
     }
     const store = createFileConfigStore({ file: failing })
 
     const result = await store.save(defaultConfig())
-    expect(result).toEqual({ ok: false, error: { kind: "write-failed", detail: "disk full" } })
+    expect(result).toEqual({
+      ok: false,
+      error: { kind: "write-failed", detail: "disk full" },
+    })
   })
 })

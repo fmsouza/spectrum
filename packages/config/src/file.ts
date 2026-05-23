@@ -1,4 +1,4 @@
-import { type Result, ok, err } from "@launchkit/utils"
+import { type Result, err, ok } from "@launchkit/utils"
 import type { ConfigError } from "./errors"
 
 /**
@@ -30,7 +30,9 @@ export interface InMemoryConfigFile extends ConfigFile {
  * stored value in one step — mirroring the real adapter's atomic rename, so a reader never observes
  * a partial document.
  */
-export const createInMemoryConfigFile = (initial?: string): InMemoryConfigFile => {
+export const createInMemoryConfigFile = (
+  initial?: string,
+): InMemoryConfigFile => {
   const writes: string[] = []
   let contents: string | undefined = initial
   return {

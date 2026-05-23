@@ -1,5 +1,5 @@
+import { ModelAliasSchema, ProviderSchema } from "@launchkit/types"
 import { z } from "zod"
-import { ProviderSchema, ModelAliasSchema } from "@launchkit/types"
 
 /** Bump on any breaking config shape change; add a matching `Migration` (see migrations.ts). */
 export const CURRENT_CONFIG_VERSION = 2
