@@ -43,11 +43,11 @@ The orchestrator uses this to fan out parallel subagents: `types` and `utils` ar
 |---|---|
 | `types` | `Provider`, `ModelAlias`, `HarnessDefinition`, `Session` + their zod schemas; branded id types/schemas (`ProviderId`, `AliasName`, `HarnessId`, `SessionId`); `SecretRef` |
 | `utils` | `Result`/`ok`/`err` + combinators, `pipe`/`flow`, `renderTemplate`, `redactSecrets`, and the `Clock`/`IdGen` effect interfaces (+ real & in-memory fake adapters) |
-| `secrets` | `SecretStore` interface + `createKeychainSecretStore()` + in-memory fake |
-| `ipc` | `IpcContract` (method map types), request/response schemas, `createIpcClient`/`createIpcServer` helpers |
+| `secrets` | `SecretStore` + `createSecretStore(deps)`; `KeychainBackend` + `createMacosSecurityBackend`/`createInMemoryKeychainBackend`; `ProcessRunner`; `SecretError` |
+| `ipc` | `ProviderView` + per-method zod schemas, `IpcMethods` map, `createIpcClient`/`createIpcServer`, transports, `IpcError` |
 | `ui` | atomic components (atoms→organisms) + templates |
-| `config` | `ConfigStore` interface + `createFileConfigStore()`, defaults, migration runner, `ConfigError` |
-| `sessions` | `SessionStore` interface + `createSqliteSessionStore()`, `SessionError` |
+| `config` | `ConfigStore` + `createFileConfigStore`/`createCachedConfigStore`; `Config`/`ConfigSchema`, `defaultConfig`, `runMigrations`, `ConfigFile`, `ConfigError` |
+| `sessions` | `SessionStore` + `createSessionStore(deps)`; `Database` + `createBunSqliteDatabase`/`createInMemoryDatabase`; `SessionInput`, `SessionFilter`, `SessionError` |
 | `proxy` | `startProxy(deps)` / `isProxyRunning()`, adapters, router, provider factory, `ProxyError` |
 | `harnesses` | `createRegistry(deps)`, `launchHarness(deps)`, builtin definitions, `HarnessError` |
 | `cli` | `runCli(deps, argv)` + per-command functions, `CliError` |
