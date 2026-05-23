@@ -162,12 +162,12 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 
 | ID | Task | Deps | Status | Commit |
 |---|---|---|---|---|
-| cli-01 | `parseArgs` (pure argv tokenizer) | config-07, secrets-05, proxy-13, harnesses-07, sessions-07 | todo | |
-| cli-02 | `Writer` + `CliError` + `CliDeps` + `runCli` dispatch | | todo | |
-| cli-03 | `list harnesses \| providers \| aliases` | | todo | |
-| cli-04 | `launch <harnessId> [--model <alias>]` | | todo | |
-| cli-05 | `add` / `remove` provider + alias | | todo | |
-| cli-06 | Barrel + package CLAUDE.md | | todo | |
+| cli-01 | `parseArgs` (pure argv tokenizer) | config-07, secrets-05, proxy-13, harnesses-07, sessions-07 | done | d800070 |
+| cli-02 | `Writer` + `CliError` + `CliDeps` + `runCli` dispatch | | done | cf38426 |
+| cli-03 | `list harnesses \| providers \| aliases` | | done | 9d88c5d |
+| cli-04 | `launch <harnessId> [--model <alias>]` | | done | 5366de8 |
+| cli-05 | `add` / `remove` provider + alias | | done | d013c06 |
+| cli-06 | Barrel + package CLAUDE.md | | done | e4448e8 |
 
 ## 4 — gui-pages (`12-gui-pages.md`)
 
