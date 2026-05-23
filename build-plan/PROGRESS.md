@@ -16,7 +16,7 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 
 | Order | Package | Plan file | Ready when these are `done` | Tasks | Status |
 |---|---|---|---|---|---|
-| 0 | bootstrap | `04-plans/00-phase0-bootstrap.md` | — | 6 | todo |
+| 0 | bootstrap | `04-plans/00-phase0-bootstrap.md` | — | 6 | done |
 | 1 | types | `04-plans/01-types.md` | phase0-06 | 7 | todo |
 | 1 | utils | `04-plans/02-utils.md` | phase0-06 | 7 | todo |
 | 2 | secrets | `04-plans/03-secrets.md` | types-07, utils-07 | 5 | todo |
@@ -43,10 +43,10 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 |---|---|---|---|---|
 | phase0-01 | Root workspace + tooling presets | — | done | dc16c70 |
 | phase0-02 | `bun test` + DOM smoke test (first RED→GREEN) | | done | 5df3a34 |
-| phase0-03 | Root `CLAUDE.md` + resume/new-package skills | | done | |
+| phase0-03 | Root `CLAUDE.md` + resume/new-package skills | | done | 8682ba4 |
 | phase0-04 | Initialize the Electrobun app shell | | done | 513538a |
-| phase0-05 | CI workflow | | done | |
-| phase0-06 | Green-gate verification + cleanup | | todo | |
+| phase0-05 | CI workflow | | done | 6accec6 |
+| phase0-06 | Green-gate verification + cleanup | | done | 
 
 ## 1 — types (`01-types.md`)
 
