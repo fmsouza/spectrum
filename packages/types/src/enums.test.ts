@@ -1,12 +1,27 @@
-import { describe, it, expect } from "bun:test"
-import { SdkProviderSchema, ApiFormatSchema } from "./enums"
+import { describe, expect, it } from "bun:test"
+import { ApiFormatSchema, SdkProviderSchema } from "./enums"
 
 describe("SdkProviderSchema", () => {
   it("accepts a known provider when given 'anthropic'", () => {
     expect(SdkProviderSchema.parse("anthropic")).toBe("anthropic")
   })
   it("includes every provider from the architecture doc", () => {
-    const expected = ["openai","anthropic","google","vertex","bedrock","azure","mistral","cohere","groq","xai","fireworks","perplexity","cerebras","ollama"]
+    const expected = [
+      "openai",
+      "anthropic",
+      "google",
+      "vertex",
+      "bedrock",
+      "azure",
+      "mistral",
+      "cohere",
+      "groq",
+      "xai",
+      "fireworks",
+      "perplexity",
+      "cerebras",
+      "ollama",
+    ]
     expect([...SdkProviderSchema.options]).toEqual(expected)
   })
   it("rejects an unknown provider when given 'made-up'", () => {

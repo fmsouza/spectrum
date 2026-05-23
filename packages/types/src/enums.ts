@@ -1,8 +1,20 @@
 import { z } from "zod"
 
 export const SdkProviderSchema = z.enum([
-  "openai", "anthropic", "google", "vertex", "bedrock", "azure",
-  "mistral", "cohere", "groq", "xai", "fireworks", "perplexity", "cerebras", "ollama",
+  "openai",
+  "anthropic",
+  "google",
+  "vertex",
+  "bedrock",
+  "azure",
+  "mistral",
+  "cohere",
+  "groq",
+  "xai",
+  "fireworks",
+  "perplexity",
+  "cerebras",
+  "ollama",
 ])
 export type SdkProvider = z.infer<typeof SdkProviderSchema>
 

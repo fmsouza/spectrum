@@ -1,5 +1,5 @@
-import { describe, it, expect } from "bun:test"
-import { ok, err, isOk, isErr } from "./result"
+import { describe, expect, it } from "bun:test"
+import { err, isErr, isOk, ok } from "./result"
 
 describe("Result constructors", () => {
   it("creates an Ok carrying the value when ok() is called", () => {

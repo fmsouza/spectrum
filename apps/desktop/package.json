@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@launchkit/types": "workspace:*",
-    "@launchkit/utils": "workspace:*",
+    "@launchkit/utils": "workspace:*"
   },
   "devDependencies": {
     "bun-types": "latest"
