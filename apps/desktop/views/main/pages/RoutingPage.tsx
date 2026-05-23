@@ -1,4 +1,3 @@
-import { useState } from "react"
 import type { ModelAlias, ProviderId } from "@launchkit/types"
 import {
   AliasTable,
@@ -10,6 +9,7 @@ import {
   Spinner,
   TextInput,
 } from "@launchkit/ui"
+import { type ReactElement, useState } from "react"
 import { useIpcClient } from "../IpcClientContext"
 import { useAliases } from "../hooks/useAliases"
 import { useProviders } from "../hooks/useProviders"
@@ -22,9 +22,14 @@ type AliasDraft = {
   readonly editingOf: string | undefined
 }
 
-const EMPTY_DRAFT: AliasDraft = { alias: "", providerId: "", providerModel: "", editingOf: undefined }
+const EMPTY_DRAFT: AliasDraft = {
+  alias: "",
+  providerId: "",
+  providerModel: "",
+  editingOf: undefined,
+}
 
-export const RoutingPage = (): JSX.Element => {
+export const RoutingPage = (): ReactElement => {
   const client = useIpcClient()
   const aliases = useAliases()
   const providers = useProviders()
@@ -34,7 +39,10 @@ export const RoutingPage = (): JSX.Element => {
   const providerNames: Record<string, string> = {}
   for (const p of providers.data ?? []) providerNames[p.id] = p.name
 
-  const providerOptions = (providers.data ?? []).map((p) => ({ value: p.id, label: p.name }))
+  const providerOptions = (providers.data ?? []).map((p) => ({
+    value: p.id,
+    label: p.name,
+  }))
 
   const startEdit = (aliasName: string): void => {
     const found = (aliases.data ?? []).find((a) => a.alias === aliasName)
@@ -49,7 +57,12 @@ export const RoutingPage = (): JSX.Element => {
 
   const submitDraft = async (): Promise<void> => {
     if (draft === undefined) return
-    if (draft.alias.trim() === "" || draft.providerId.trim() === "" || draft.providerModel.trim() === "") return
+    if (
+      draft.alias.trim() === "" ||
+      draft.providerId.trim() === "" ||
+      draft.providerModel.trim() === ""
+    )
+      return
 
     const mapping = {
       alias: draft.alias,
@@ -62,7 +75,10 @@ export const RoutingPage = (): JSX.Element => {
         ? await client.addAlias(mapping)
         : await client.updateAlias({
             alias: draft.editingOf as ModelAlias["alias"],
-            input: { providerId: mapping.providerId, providerModel: mapping.providerModel },
+            input: {
+              providerId: mapping.providerId,
+              providerModel: mapping.providerModel,
+            },
           })
     if (r.ok) {
       setDraft(undefined)
@@ -71,23 +87,34 @@ export const RoutingPage = (): JSX.Element => {
   }
 
   const deleteAlias = async (aliasName: string): Promise<void> => {
-    const r = await client.deleteAlias({ alias: aliasName as ModelAlias["alias"] })
+    const r = await client.deleteAlias({
+      alias: aliasName as ModelAlias["alias"],
+    })
     if (r.ok) aliases.refetch()
   }
 
-  const update = <K extends keyof AliasDraft>(key: K, value: AliasDraft[K]): void =>
-    setDraft((prev) => ({ ...(prev ?? EMPTY_DRAFT), [key]: value }))
+  const update = <K extends keyof AliasDraft>(
+    key: K,
+    value: AliasDraft[K],
+  ): void => setDraft((prev) => ({ ...(prev ?? EMPTY_DRAFT), [key]: value }))
 
   return (
     <SettingsLayout title="Routing">
-      {aliases.loading || providers.loading ? <Spinner label="Loading routing" /> : null}
+      {aliases.loading || providers.loading ? (
+        <Spinner label="Loading routing" />
+      ) : null}
       {aliases.error !== undefined ? (
-        <EmptyState title="Could not load aliases" hint={`IPC error: ${aliases.error.kind}`} />
+        <EmptyState
+          title="Could not load aliases"
+          hint={`IPC error: ${aliases.error.kind}`}
+        />
       ) : null}
 
       {aliases.data !== undefined ? (
         <>
-          <Button onClick={() => setDraft({ ...EMPTY_DRAFT })}>Add alias</Button>
+          <Button onClick={() => setDraft({ ...EMPTY_DRAFT })}>
+            Add alias
+          </Button>
           <AliasTable
             aliases={aliases.data}
             providerNames={providerNames}
@@ -99,7 +126,11 @@ export const RoutingPage = (): JSX.Element => {
 
       {draft !== undefined ? (
         <form
-          aria-label={draft.editingOf === undefined ? "Add alias" : `Edit alias ${draft.editingOf}`}
+          aria-label={
+            draft.editingOf === undefined
+              ? "Add alias"
+              : `Edit alias ${draft.editingOf}`
+          }
           onSubmit={(e) => {
             e.preventDefault()
             void submitDraft()
@@ -122,10 +153,16 @@ export const RoutingPage = (): JSX.Element => {
             />
           </FormField>
           <FormField id="alias-model" label="Model">
-            <TextInput id="alias-model" value={draft.providerModel} onChange={(v) => update("providerModel", v)} />
+            <TextInput
+              id="alias-model"
+              value={draft.providerModel}
+              onChange={(v) => update("providerModel", v)}
+            />
           </FormField>
           <Button onClick={() => void submitDraft()}>Save alias</Button>
-          <Button variant="secondary" onClick={() => setDraft(undefined)}>Cancel</Button>
+          <Button variant="secondary" onClick={() => setDraft(undefined)}>
+            Cancel
+          </Button>
         </form>
       ) : null}
     </SettingsLayout>

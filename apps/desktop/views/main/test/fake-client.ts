@@ -15,10 +15,23 @@ export type FakeIpcClient = IpcClient & {
 }
 
 const METHOD_NAMES = [
-  "getProviders", "addProvider", "updateProvider", "deleteProvider", "testProvider", "setProviderSecret",
-  "getAliases", "addAlias", "updateAlias", "deleteAlias",
-  "getHarnesses", "addHarness", "updateHarness", "deleteHarness", "launchHarness",
-  "getSessions", "getProxyStatus",
+  "getProviders",
+  "addProvider",
+  "updateProvider",
+  "deleteProvider",
+  "testProvider",
+  "setProviderSecret",
+  "getAliases",
+  "addAlias",
+  "updateAlias",
+  "deleteAlias",
+  "getHarnesses",
+  "addHarness",
+  "updateHarness",
+  "deleteHarness",
+  "launchHarness",
+  "getSessions",
+  "getProxyStatus",
 ] as const satisfies ReadonlyArray<keyof IpcClient>
 
 /**
@@ -27,20 +40,27 @@ const METHOD_NAMES = [
  * tests can assert (e.g.) that `setProviderSecret` received the typed value.
  */
 export const createFakeIpcClient = (stubs: FakeClientStubs): FakeIpcClient => {
-  const calls = {} as { [K in keyof IpcClient]: Array<Parameters<IpcClient[K]>[0]> }
-  const client = {} as Record<keyof IpcClient, (params: unknown) => Promise<unknown>>
+  // Build mutably, cast at the end — IpcClient keys are `readonly` so direct
+  // assignment to a typed record would fail strict typecheck.
+  const raw: Record<string, unknown> = {}
+  const calls = {} as Record<string, unknown[]>
 
   for (const name of METHOD_NAMES) {
     calls[name] = []
-    const stub = stubs[name] as ((params: unknown) => Promise<unknown>) | undefined
-    client[name] = async (params: unknown): Promise<unknown> => {
-      calls[name].push(params as never)
+    const stub = stubs[name]
+    raw[name] = async (params: unknown): Promise<unknown> => {
+      calls[name]?.push(params)
       if (stub === undefined) {
-        return { ok: false, error: { kind: "handler-failed", detail: `unstubbed: ${name}` } }
+        return {
+          ok: false,
+          error: { kind: "handler-failed", detail: `unstubbed: ${name}` },
+        }
       }
-      return stub(params)
+      return (stub as (p: unknown) => Promise<unknown>)(params)
     }
   }
 
-  return Object.assign(client as unknown as IpcClient, { calls }) as FakeIpcClient
+  return Object.assign(raw as unknown as IpcClient, {
+    calls,
+  }) as unknown as FakeIpcClient
 }

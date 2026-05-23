@@ -1,5 +1,10 @@
-import { createContext, type ReactNode, useContext } from "react"
 import type { IpcClient } from "@launchkit/ipc"
+import {
+  type ReactElement,
+  type ReactNode,
+  createContext,
+  useContext,
+} from "react"
 
 const IpcClientContext = createContext<IpcClient | null>(null)
 
@@ -9,8 +14,13 @@ export type IpcClientProviderProps = {
 }
 
 /** Injects the IPC client so pages/hooks consume it via `useIpcClient()`. */
-export const IpcClientProvider = ({ client, children }: IpcClientProviderProps): JSX.Element => (
-  <IpcClientContext.Provider value={client}>{children}</IpcClientContext.Provider>
+export const IpcClientProvider = ({
+  client,
+  children,
+}: IpcClientProviderProps): ReactElement => (
+  <IpcClientContext.Provider value={client}>
+    {children}
+  </IpcClientContext.Provider>
 )
 
 /**

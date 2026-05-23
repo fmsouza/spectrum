@@ -1,4 +1,3 @@
-import { useState } from "react"
 import type { HarnessId } from "@launchkit/types"
 import {
   Button,
@@ -9,18 +8,23 @@ import {
   SettingsLayout,
   Spinner,
 } from "@launchkit/ui"
+import { type ReactElement, useState } from "react"
 import { useHarnesses } from "../hooks/useHarnesses"
 import { useSessions } from "../hooks/useSessions"
 
 /** Page-level window size: render at most this many rows, raised by "show more". */
 const PAGE_SIZE = 50
 
-export const SessionsPage = (): JSX.Element => {
+export const SessionsPage = (): ReactElement => {
   const harnesses = useHarnesses()
   const [harnessFilter, setHarnessFilter] = useState<string>("")
   const [visible, setVisible] = useState<number>(PAGE_SIZE)
 
-  const sessions = useSessions(harnessFilter === "" ? undefined : { harnessId: harnessFilter as HarnessId })
+  const sessions = useSessions(
+    harnessFilter === ""
+      ? undefined
+      : { harnessId: harnessFilter as HarnessId },
+  )
 
   const harnessOptions = [
     { value: "", label: "All harnesses" },
@@ -45,7 +49,10 @@ export const SessionsPage = (): JSX.Element => {
 
       {sessions.loading ? <Spinner label="Loading sessions" /> : null}
       {sessions.error !== undefined ? (
-        <EmptyState title="Could not load sessions" hint={`IPC error: ${sessions.error.kind}`} />
+        <EmptyState
+          title="Could not load sessions"
+          hint={`IPC error: ${sessions.error.kind}`}
+        />
       ) : null}
 
       {sessions.data !== undefined ? (
@@ -53,7 +60,10 @@ export const SessionsPage = (): JSX.Element => {
           {/* Page owns windowing per performance.md; SessionTable renders <= maxVisible rows. */}
           <SessionTable sessions={sessions.data} maxVisible={visible} />
           {total > visible ? (
-            <Button variant="secondary" onClick={() => setVisible((v) => v + PAGE_SIZE)}>
+            <Button
+              variant="secondary"
+              onClick={() => setVisible((v) => v + PAGE_SIZE)}
+            >
               {`Show more (${total - visible} hidden)`}
             </Button>
           ) : null}

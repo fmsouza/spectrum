@@ -1,5 +1,5 @@
-import { useCallback } from "react"
 import type { ProviderView } from "@launchkit/ipc"
+import { useCallback } from "react"
 import { useIpcClient } from "../IpcClientContext"
 import { type AsyncResource, useAsyncResource } from "./useAsyncResource"
 
