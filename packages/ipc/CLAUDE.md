@@ -1,0 +1,11 @@
+# @launchkit/ipc
+
+**Responsibility:** the typed GUI-main IPC contract + (de)serialization -- a zod schema per method, validated on receive in both directions, plus `createIpcClient`/`createIpcServer` over an injected transport.
+
+**Public API (barrel `src/index.ts`):** `ProviderView` + `ProviderViewSchema`; the per-method `XParamsSchema`/`XResultSchema` + `IpcMethodSchemas` map + `IpcMethods`/`IpcMethodName` types; `IpcError`; `ClientTransport` + `createIpcClient` (+ `IpcClient`); `ServerTransport` + `IpcHandlers` + `createIpcServer` + `IpcRequestError`; `createMemoryTransportPair` (test fake).
+
+**Depends on:** `@launchkit/types`, `@launchkit/utils` (see build-plan/02-monorepo/boundaries.md).
+
+**Effects owned:** none -- the message bus is an injected `ClientTransport`/`ServerTransport`; production wires Electrobun in `apps/desktop`, tests use `createMemoryTransportPair`.
+
+**Local rules:** every payload has a zod schema validated on receive (both directions); the contract mirrors the CRUD list in the architecture doc. **Secrets never travel main-webview:** providers leave as `ProviderView` (presence flags, no `ref`/value); `setProviderSecret` is the ONLY secret-bearing method and is inbound (webview-main) only. `void` results are encoded as `null`; errors are returned as `Result<T, IpcError>`, never thrown across the boundary.
