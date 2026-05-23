@@ -1,4 +1,4 @@
-import { type Result, ok, err } from "@launchkit/utils"
+import { type Result, err, ok } from "@launchkit/utils"
 import type { SecretError } from "./backend"
 import type { ProcessRunner } from "./process-runner"
 
@@ -13,14 +13,20 @@ export const createBunProcessRunner = (): ProcessRunner => ({
     args: readonly string[],
   ): Promise<Result<{ stdout: string }, SecretError>> => {
     try {
-      const proc = Bun.spawn([command, ...args], { stdout: "pipe", stderr: "pipe" })
+      const proc = Bun.spawn([command, ...args], {
+        stdout: "pipe",
+        stderr: "pipe",
+      })
       const [stdout, stderr, exitCode] = await Promise.all([
         new Response(proc.stdout).text(),
         new Response(proc.stderr).text(),
         proc.exited,
       ])
       if (exitCode !== 0) {
-        return err({ kind: "backend-failed", detail: `exit ${exitCode}: ${stderr.trim()}` })
+        return err({
+          kind: "backend-failed",
+          detail: `exit ${exitCode}: ${stderr.trim()}`,
+        })
       }
       return ok({ stdout })
     } catch (cause) {

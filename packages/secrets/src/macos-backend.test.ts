@@ -1,8 +1,8 @@
-import { describe, it, expect } from "bun:test"
-import { type Result, ok, err } from "@launchkit/utils"
-import type { SecretError, KeychainBackend } from "./backend"
-import type { ProcessRunner } from "./process-runner"
+import { describe, expect, it } from "bun:test"
+import { type Result, err, ok } from "@launchkit/utils"
+import type { KeychainBackend, SecretError } from "./backend"
 import { createMacosSecurityBackend } from "./macos-backend"
+import type { ProcessRunner } from "./process-runner"
 
 type Call = { readonly command: string; readonly args: readonly string[] }
 
@@ -34,7 +34,14 @@ describe("createMacosSecurityBackend", () => {
     expect(calls).toHaveLength(1)
     expect(calls[0]?.command).toBe("security")
     expect(calls[0]?.args).toEqual([
-      "add-generic-password", "-a", "kc_1", "-s", "launchkit", "-w", "sk-secret", "-U",
+      "add-generic-password",
+      "-a",
+      "kc_1",
+      "-s",
+      "launchkit",
+      "-w",
+      "sk-secret",
+      "-U",
     ])
   })
 
@@ -46,7 +53,12 @@ describe("createMacosSecurityBackend", () => {
 
     expect(result).toEqual({ ok: true, value: "sk-secret" })
     expect(calls[0]?.args).toEqual([
-      "find-generic-password", "-a", "kc_1", "-s", "launchkit", "-w",
+      "find-generic-password",
+      "-a",
+      "kc_1",
+      "-s",
+      "launchkit",
+      "-w",
     ])
   })
 
@@ -58,13 +70,20 @@ describe("createMacosSecurityBackend", () => {
 
     expect(result).toEqual({ ok: true, value: undefined })
     expect(calls[0]?.args).toEqual([
-      "delete-generic-password", "-a", "kc_1", "-s", "launchkit",
+      "delete-generic-password",
+      "-a",
+      "kc_1",
+      "-s",
+      "launchkit",
     ])
   })
 
   it("redacts the secret value out of the error detail so a failed add never leaks the key", async () => {
     const { runner } = recordingRunner([
-      err({ kind: "backend-failed", detail: "security: write failed for sk-secret near keychain" }),
+      err({
+        kind: "backend-failed",
+        detail: "security: write failed for sk-secret near keychain",
+      }),
     ])
     const backend = createMacosSecurityBackend({ runner })
 

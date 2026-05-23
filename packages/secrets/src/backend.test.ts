@@ -1,5 +1,5 @@
-import { describe, it, expect } from "bun:test"
-import { isOk, isErr } from "@launchkit/utils"
+import { describe, expect, it } from "bun:test"
+import { isErr, isOk } from "@launchkit/utils"
 import { createInMemoryKeychainBackend } from "./backend"
 
 describe("createInMemoryKeychainBackend", () => {

@@ -6,5 +6,8 @@ import type { SecretError } from "./backend"
  * `command` + `args` are passed as an argument array — never joined into a shell string.
  */
 export interface ProcessRunner {
-  run(command: string, args: readonly string[]): Promise<Result<{ stdout: string }, SecretError>>
+  run(
+    command: string,
+    args: readonly string[],
+  ): Promise<Result<{ stdout: string }, SecretError>>
 }

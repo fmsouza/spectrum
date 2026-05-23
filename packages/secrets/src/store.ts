@@ -1,5 +1,5 @@
 import type { SecretRef } from "@launchkit/types"
-import { type Result, ok, isOk, type IdGen } from "@launchkit/utils"
+import { type IdGen, type Result, isOk, ok } from "@launchkit/utils"
 import type { KeychainBackend, SecretError } from "./backend"
 
 /**

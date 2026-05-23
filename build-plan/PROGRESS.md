@@ -76,11 +76,11 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 
 | ID | Task | Deps | Status | Commit |
 |---|---|---|---|---|
-| secrets-01 | SecretError + KeychainBackend interface + in-memory fake | types-07, utils-07 | todo | |
-| secrets-02 | createSecretStore (set/get/delete/has) | | todo | |
-| secrets-03 | createMacosSecurityBackend (arg arrays + redaction) | | todo | |
-| secrets-04 | createBunProcessRunner + darwin-only integration | | todo | |
-| secrets-05 | Barrel + package CLAUDE.md | | todo | |
+| secrets-01 | SecretError + KeychainBackend interface + in-memory fake | types-07, utils-07 | done | 7c2a30e |
+| secrets-02 | createSecretStore (set/get/delete/has) | | done | 38fb329 |
+| secrets-03 | createMacosSecurityBackend (arg arrays + redaction) | | done | cd4d332 |
+| secrets-04 | createBunProcessRunner + darwin-only integration | | done | 4ff2c10 |
+| secrets-05 | Barrel + package CLAUDE.md | | done | (pending) |
 
 ## 2 — ipc (`04-ipc.md`)
 
