@@ -1,8 +1,8 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import {
-  SettingsSchema,
-  ConfigSchema,
   CURRENT_CONFIG_VERSION,
+  ConfigSchema,
+  SettingsSchema,
   defaultConfig,
 } from "./schema"
 
@@ -17,10 +17,15 @@ const validProvider = {
 
 describe("SettingsSchema", () => {
   it("defaults proxyPort to 4000 and proxyHost to loopback when given an empty object", () => {
-    expect(SettingsSchema.parse({})).toEqual({ proxyPort: 4000, proxyHost: "127.0.0.1" })
+    expect(SettingsSchema.parse({})).toEqual({
+      proxyPort: 4000,
+      proxyHost: "127.0.0.1",
+    })
   })
   it("rejects a non-loopback proxyHost so the proxy can never bind a public interface", () => {
-    expect(SettingsSchema.safeParse({ proxyHost: "0.0.0.0" }).success).toBe(false)
+    expect(SettingsSchema.safeParse({ proxyHost: "0.0.0.0" }).success).toBe(
+      false,
+    )
   })
   it("rejects a non-integer proxyPort", () => {
     expect(SettingsSchema.safeParse({ proxyPort: 40.5 }).success).toBe(false)
@@ -32,7 +37,9 @@ describe("ConfigSchema", () => {
     const config = {
       version: CURRENT_CONFIG_VERSION,
       providers: [validProvider],
-      aliases: [{ alias: "fast", providerId: "p_openai", providerModel: "gpt-4o-mini" }],
+      aliases: [
+        { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o-mini" },
+      ],
       settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
     }
     expect(ConfigSchema.parse(config)).toEqual(config)
@@ -40,7 +47,9 @@ describe("ConfigSchema", () => {
   it("rejects a provider whose secret is an inline raw string instead of a SecretRef", () => {
     const config = {
       version: CURRENT_CONFIG_VERSION,
-      providers: [{ ...validProvider, secrets: { apiKey: "sk-raw-inline-key" } }],
+      providers: [
+        { ...validProvider, secrets: { apiKey: "sk-raw-inline-key" } },
+      ],
       aliases: [],
       settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
     }

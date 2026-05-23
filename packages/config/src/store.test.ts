@@ -1,7 +1,7 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { createInMemoryConfigFile } from "./file"
+import { CURRENT_CONFIG_VERSION, defaultConfig } from "./schema"
 import { createFileConfigStore } from "./store"
-import { defaultConfig, CURRENT_CONFIG_VERSION } from "./schema"
 
 describe("createFileConfigStore.load", () => {
   it("returns factory defaults when the file does not exist", async () => {
@@ -25,7 +25,9 @@ describe("createFileConfigStore.load", () => {
       ],
       aliases: [],
     })
-    const store = createFileConfigStore({ file: createInMemoryConfigFile(v1OnDisk) })
+    const store = createFileConfigStore({
+      file: createInMemoryConfigFile(v1OnDisk),
+    })
 
     const result = await store.load()
     expect(result.ok).toBe(true)
@@ -35,7 +37,9 @@ describe("createFileConfigStore.load", () => {
   })
 
   it("returns parse-failed when the file contains invalid JSON", async () => {
-    const store = createFileConfigStore({ file: createInMemoryConfigFile("{ not json") })
+    const store = createFileConfigStore({
+      file: createInMemoryConfigFile("{ not json"),
+    })
     const result = await store.load()
     expect(result.ok).toBe(false)
     if (result.ok) return
@@ -43,8 +47,15 @@ describe("createFileConfigStore.load", () => {
   })
 
   it("returns migration-failed when the parsed JSON has a future version", async () => {
-    const onDisk = JSON.stringify({ version: 999, providers: [], aliases: [], settings: {} })
-    const store = createFileConfigStore({ file: createInMemoryConfigFile(onDisk) })
+    const onDisk = JSON.stringify({
+      version: 999,
+      providers: [],
+      aliases: [],
+      settings: {},
+    })
+    const store = createFileConfigStore({
+      file: createInMemoryConfigFile(onDisk),
+    })
     const result = await store.load()
     expect(result.ok).toBe(false)
     if (result.ok) return

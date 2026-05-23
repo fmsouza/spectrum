@@ -1,6 +1,11 @@
-import { type Result, ok, err } from "@launchkit/utils"
-import { type Config, ConfigSchema, CURRENT_CONFIG_VERSION, SettingsSchema } from "./schema"
+import { type Result, err, ok } from "@launchkit/utils"
 import type { ConfigError } from "./errors"
+import {
+  CURRENT_CONFIG_VERSION,
+  type Config,
+  ConfigSchema,
+  SettingsSchema,
+} from "./schema"
 
 /** A single forward step: take a raw doc at version `from` and return it shaped for version `to`. */
 export type Migration = {
@@ -10,7 +15,9 @@ export type Migration = {
 }
 
 const asRecord = (value: unknown): Record<string, unknown> =>
-  typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {}
+  typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : {}
 
 /**
  * v1 stored each provider's API key inline as `provider.apiKey`. v2 moves secrets to the
@@ -25,8 +32,9 @@ const v1ToV2: Migration = {
     const providers = Array.isArray(raw.providers) ? raw.providers : []
     const migratedProviders = providers.map((entry) => {
       // Shallow-copy, drop the legacy inline secret, and re-key secrets as an empty ref map.
-      const next = { ...asRecord(entry), secrets: {} }
-      delete next.apiKey
+      const { apiKey: _unused, ...rest } = asRecord(entry)
+      void _unused
+      const next: Record<string, unknown> = { ...rest, secrets: {} }
       return next
     })
     return {
@@ -51,7 +59,10 @@ export const runMigrations = (raw: unknown): Result<Config, ConfigError> => {
   const version = doc.version
 
   if (typeof version !== "number" || !Number.isInteger(version)) {
-    return err({ kind: "migration-failed", detail: "config is missing a numeric version" })
+    return err({
+      kind: "migration-failed",
+      detail: "config is missing a numeric version",
+    })
   }
   if (version > CURRENT_CONFIG_VERSION) {
     return err({
@@ -65,7 +76,10 @@ export const runMigrations = (raw: unknown): Result<Config, ConfigError> => {
   while (at < CURRENT_CONFIG_VERSION) {
     const step = migrations.find((migration) => migration.from === at)
     if (step === undefined) {
-      return err({ kind: "migration-failed", detail: `no migration from version ${at}` })
+      return err({
+        kind: "migration-failed",
+        detail: `no migration from version ${at}`,
+      })
     }
     current = step.migrate(current)
     at = step.to
