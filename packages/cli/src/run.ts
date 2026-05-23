@@ -1,5 +1,6 @@
 import { type Result, err } from "@launchkit/utils"
 import { parseArgs } from "./parse-args"
+import { list } from "./list"
 import type { CliError } from "./errors"
 import type { CliDeps } from "./deps"
 
@@ -42,10 +43,8 @@ const runLaunch = async (
   _flags: Readonly<Record<string, string | boolean>>,
 ): Promise<Result<void, CliError>> => err({ kind: "usage", detail: "launch: not implemented until cli-04" })
 
-const runList = async (
-  _deps: CliDeps,
-  _rest: readonly string[],
-): Promise<Result<void, CliError>> => err({ kind: "usage", detail: "list: not implemented until cli-03" })
+const runList = (deps: CliDeps, rest: readonly string[]): Promise<Result<void, CliError>> =>
+  list(deps, rest)
 
 const runAdd = async (
   _deps: CliDeps,
