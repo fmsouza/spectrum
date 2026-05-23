@@ -1,14 +1,16 @@
-import { describe, it, expect, afterEach } from "bun:test"
+import { afterEach, describe, expect, it } from "bun:test"
 import { isOk } from "@launchkit/utils"
-import { createMacosSecurityBackend } from "./macos-backend"
 import { createBunProcessRunner } from "./bun-process-runner"
+import { createMacosSecurityBackend } from "./macos-backend"
 
 // The real `security` CLI only exists on macOS — skip elsewhere.
 const onDarwin = process.platform === "darwin"
 const describeDarwin = onDarwin ? describe : describe.skip
 
 describeDarwin("createMacosSecurityBackend (real security CLI)", () => {
-  const backend = createMacosSecurityBackend({ runner: createBunProcessRunner() })
+  const backend = createMacosSecurityBackend({
+    runner: createBunProcessRunner(),
+  })
   // Unique per run so concurrent/leftover runs never collide in the shared keychain.
   const account = `kc_launchkit_test_${crypto.randomUUID()}`
 

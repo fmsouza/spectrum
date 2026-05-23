@@ -1,1 +1,7 @@
-export {}
+export type { SecretError, KeychainBackend } from "./backend"
+export { createInMemoryKeychainBackend } from "./backend"
+export type { SecretStore } from "./store"
+export { createSecretStore } from "./store"
+export type { ProcessRunner } from "./process-runner"
+export { createBunProcessRunner } from "./bun-process-runner"
+export { createMacosSecurityBackend } from "./macos-backend"

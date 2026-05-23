@@ -1,19 +1,28 @@
-import { type Result, ok, err, isOk, redactSecrets } from "@launchkit/utils"
+import { err, isOk, ok, redactSecrets } from "@launchkit/utils"
 import type { KeychainBackend, SecretError } from "./backend"
 import type { ProcessRunner } from "./process-runner"
 
 const SERVICE = "launchkit"
 
 /** Scrub the live secret out of any backend-failed detail before it propagates. */
-const redactError = (error: SecretError, secrets: readonly string[]): SecretError =>
+const redactError = (
+  error: SecretError,
+  secrets: readonly string[],
+): SecretError =>
   error.kind === "backend-failed"
     ? { kind: "backend-failed", detail: redactSecrets(error.detail, secrets) }
     : error
 
 const NOT_FOUND_MARKER = "could not be found"
 
-const classifyError = (error: SecretError, secrets: readonly string[]): SecretError => {
-  if (error.kind === "backend-failed" && error.detail.includes(NOT_FOUND_MARKER)) {
+const classifyError = (
+  error: SecretError,
+  secrets: readonly string[],
+): SecretError => {
+  if (
+    error.kind === "backend-failed" &&
+    error.detail.includes(NOT_FOUND_MARKER)
+  ) {
     return { kind: "not-found" }
   }
   return redactError(error, secrets)
@@ -26,20 +35,38 @@ export const createMacosSecurityBackend = (deps: {
   return {
     add: async (account, secret) => {
       const result = await runner.run("security", [
-        "add-generic-password", "-a", account, "-s", SERVICE, "-w", secret, "-U",
+        "add-generic-password",
+        "-a",
+        account,
+        "-s",
+        SERVICE,
+        "-w",
+        secret,
+        "-U",
       ])
-      return isOk(result) ? ok(undefined) : err(redactError(result.error, [secret]))
+      return isOk(result)
+        ? ok(undefined)
+        : err(redactError(result.error, [secret]))
     },
     find: async (account) => {
       const result = await runner.run("security", [
-        "find-generic-password", "-a", account, "-s", SERVICE, "-w",
+        "find-generic-password",
+        "-a",
+        account,
+        "-s",
+        SERVICE,
+        "-w",
       ])
       if (!isOk(result)) return err(classifyError(result.error, []))
       return ok(result.value.stdout.replace(/\n$/, ""))
     },
     remove: async (account) => {
       const result = await runner.run("security", [
-        "delete-generic-password", "-a", account, "-s", SERVICE,
+        "delete-generic-password",
+        "-a",
+        account,
+        "-s",
+        SERVICE,
       ])
       return isOk(result) ? ok(undefined) : err(classifyError(result.error, []))
     },

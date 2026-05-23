@@ -1,4 +1,4 @@
-import { type Result, ok, err } from "@launchkit/utils"
+import { type Result, err, ok } from "@launchkit/utils"
 
 /** Typed failure modes for any keychain operation. */
 export type SecretError =
