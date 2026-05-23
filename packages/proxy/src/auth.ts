@@ -1,4 +1,4 @@
-import { type Result, ok, err } from "@launchkit/utils"
+import { type Result, err, ok } from "@launchkit/utils"
 import type { ProxyError } from "./types"
 
 const constantTimeEquals = (a: string, b: string): boolean => {
@@ -8,10 +8,14 @@ const constantTimeEquals = (a: string, b: string): boolean => {
   return diff === 0
 }
 
-export const checkAuth = (headers: Headers, proxyKey: string): Result<void, ProxyError> => {
+export const checkAuth = (
+  headers: Headers,
+  proxyKey: string,
+): Result<void, ProxyError> => {
   const bearer = headers.get("authorization")?.replace(/^Bearer\s+/i, "")
   const apiKey = headers.get("x-api-key") ?? undefined
   const presented = bearer ?? apiKey
-  if (presented !== undefined && constantTimeEquals(presented, proxyKey)) return ok(undefined)
+  if (presented !== undefined && constantTimeEquals(presented, proxyKey))
+    return ok(undefined)
   return err({ kind: "unauthorized" })
 }

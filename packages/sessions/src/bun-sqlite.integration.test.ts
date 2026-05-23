@@ -16,7 +16,10 @@ describe("createBunSqliteDatabase + SessionStore", () => {
       harnessId: "claude" as never,
       alias: "default" as never,
     })
-    expect(isOk(created) && created.value).toEqual({
+    expect(isOk(created) && created.value).toEqual<
+      | false
+      | { id: string; harnessId: string; alias: string; startedAt: string }
+    >({
       id: "s_1",
       harnessId: "claude",
       alias: "default",
@@ -24,7 +27,17 @@ describe("createBunSqliteDatabase + SessionStore", () => {
     })
 
     const closed = store.close("s_1" as never, 0)
-    expect(isOk(closed) && closed.value).toEqual({
+    expect(isOk(closed) && closed.value).toEqual<
+      | false
+      | {
+          id: string
+          harnessId: string
+          alias: string
+          startedAt: string
+          endedAt: string
+          exitCode: number
+        }
+    >({
       id: "s_1",
       harnessId: "claude",
       alias: "default",
@@ -34,7 +47,9 @@ describe("createBunSqliteDatabase + SessionStore", () => {
     })
 
     const all = store.query()
-    expect(isOk(all) && all.value.map((s) => s.id)).toEqual(["s_1"])
+    expect(isOk(all) && all.value.map((s) => s.id)).toEqual<false | string[]>([
+      "s_1",
+    ])
   })
 
   it("returns a not-found error when close() targets a missing row against real bun:sqlite", () => {
@@ -60,6 +75,8 @@ describe("createBunSqliteDatabase + SessionStore", () => {
     store.create({ harnessId: "claude" as never, alias: "default" as never })
     store.create({ harnessId: "codex" as never, alias: "fast" as never })
     const r = store.query({ harnessId: "codex" as never })
-    expect(isOk(r) && r.value.map((s) => s.harnessId)).toEqual(["codex"])
+    expect(isOk(r) && r.value.map((s) => s.harnessId)).toEqual<
+      false | string[]
+    >(["codex"])
   })
 })

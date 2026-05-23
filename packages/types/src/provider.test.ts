@@ -13,7 +13,7 @@ const valid = {
 describe("ProviderSchema", () => {
   it("parses a valid provider with secret references", () => {
     const parsed = ProviderSchema.parse(valid)
-    expect(parsed.id).toBe("p_openai")
+    expect(parsed.id).toBe<string>("p_openai")
     expect(parsed.name).toBe("OpenAI")
     expect(parsed.sdkProvider).toBe("openai")
     expect(parsed.models).toEqual(["gpt-4o", "gpt-4o-mini"])

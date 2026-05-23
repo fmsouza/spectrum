@@ -1,5 +1,5 @@
+import { type Result, err, ok } from "@launchkit/utils"
 import { z } from "zod"
-import { type Result, ok, err } from "@launchkit/utils"
 import type { ProxyError } from "../types"
 
 const providerConfigSchemas: Record<string, z.ZodSchema> = {
@@ -8,7 +8,12 @@ const providerConfigSchemas: Record<string, z.ZodSchema> = {
   google: z.object({}).strict(),
   vertex: z.object({}).strict(),
   bedrock: z.object({ region: z.string().min(1) }).strict(),
-  azure: z.object({ resourceName: z.string().min(1), deploymentId: z.string().min(1) }).strict(),
+  azure: z
+    .object({
+      resourceName: z.string().min(1),
+      deploymentId: z.string().min(1),
+    })
+    .strict(),
   mistral: z.object({}).strict(),
   cohere: z.object({}).strict(),
   groq: z.object({}).strict(),
@@ -19,7 +24,10 @@ const providerConfigSchemas: Record<string, z.ZodSchema> = {
   ollama: z.object({ baseUrl: z.string().url().optional() }).strict(),
 }
 
-export const validateProviderConfig = (sdkProvider: string, config: unknown): Result<void, ProxyError> => {
+export const validateProviderConfig = (
+  sdkProvider: string,
+  config: unknown,
+): Result<void, ProxyError> => {
   const schema = providerConfigSchemas[sdkProvider]
   if (!schema) return err({ kind: "unsupported-provider", sdkProvider })
   const r = schema.safeParse(config)

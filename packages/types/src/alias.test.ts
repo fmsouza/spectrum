@@ -9,8 +9,8 @@ describe("ModelAliasSchema", () => {
       providerModel: "gpt-4o-mini",
     }
     const parsed = ModelAliasSchema.parse(a)
-    expect(parsed.alias).toBe("fast")
-    expect(parsed.providerId).toBe("p_openai")
+    expect(parsed.alias).toBe<string>("fast")
+    expect(parsed.providerId).toBe<string>("p_openai")
     expect(parsed.providerModel).toBe("gpt-4o-mini")
   })
   it("rejects an alias with an empty providerModel", () => {

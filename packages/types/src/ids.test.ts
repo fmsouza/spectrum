@@ -3,7 +3,7 @@ import { ProviderIdSchema, SecretRefSchema } from "./ids"
 
 describe("ProviderIdSchema", () => {
   it("parses a non-empty string into a branded ProviderId", () => {
-    expect(ProviderIdSchema.parse("p_123")).toBe("p_123")
+    expect(ProviderIdSchema.parse("p_123")).toBe<string>("p_123")
   })
   it("rejects an empty string", () => {
     expect(ProviderIdSchema.safeParse("").success).toBe(false)
