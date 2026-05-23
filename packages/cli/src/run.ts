@@ -2,6 +2,7 @@ import { type Result, err } from "@launchkit/utils"
 import { parseArgs } from "./parse-args"
 import { list } from "./list"
 import { launchCommand } from "./launch-command"
+import { add, remove } from "./mutate-command"
 import type { CliError } from "./errors"
 import type { CliDeps } from "./deps"
 
@@ -47,13 +48,11 @@ const runLaunch = (
 const runList = (deps: CliDeps, rest: readonly string[]): Promise<Result<void, CliError>> =>
   list(deps, rest)
 
-const runAdd = async (
-  _deps: CliDeps,
-  _rest: readonly string[],
-  _flags: Readonly<Record<string, string | boolean>>,
-): Promise<Result<void, CliError>> => err({ kind: "usage", detail: "add: not implemented until cli-05" })
+const runAdd = (
+  deps: CliDeps,
+  rest: readonly string[],
+  flags: Readonly<Record<string, string | boolean>>,
+): Promise<Result<void, CliError>> => add(deps, rest, flags)
 
-const runRemove = async (
-  _deps: CliDeps,
-  _rest: readonly string[],
-): Promise<Result<void, CliError>> => err({ kind: "usage", detail: "remove: not implemented until cli-05" })
+const runRemove = (deps: CliDeps, rest: readonly string[]): Promise<Result<void, CliError>> =>
+  remove(deps, rest)
