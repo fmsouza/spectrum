@@ -64,13 +64,13 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 
 | ID | Task | Deps | Status | Commit |
 |---|---|---|---|---|
-| utils-01 | Result core (`ok`/`err`/`isOk`/`isErr`) | phase0-06 | todo | |
-| utils-02 | Result combinators | | todo | |
-| utils-03 | `pipe` & `flow` | | todo | |
-| utils-04 | `renderTemplate` | | todo | |
-| utils-05 | `redactSecrets` | | todo | |
-| utils-06 | `Clock` & `IdGen` effect interfaces + adapters | | todo | |
-| utils-07 | Barrel + CLAUDE.md | | todo | |
+| utils-01 | Result core (`ok`/`err`/`isOk`/`isErr`) | phase0-06 | done | 847c341 |
+| utils-02 | Result combinators | | done | 2ef4f67 |
+| utils-03 | `pipe` & `flow` | | done | 5d35dc9 |
+| utils-04 | `renderTemplate` | | done | 7bc92b5 |
+| utils-05 | `redactSecrets` | | done | 7f4c639 |
+| utils-06 | `Clock` & `IdGen` effect interfaces + adapters | | done | defcdb6 |
+| utils-07 | Barrel + CLAUDE.md | | done | f221ab2 |
 
 ## 2 — secrets (`03-secrets.md`)
 
