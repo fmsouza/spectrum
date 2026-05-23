@@ -41,8 +41,8 @@ The orchestrator uses this to fan out parallel subagents: once `utils` is `done`
 
 | Package | Exposes (barrel) |
 |---|---|
-| `types` | `Provider`, `ModelAlias`, `HarnessDefinition`, `Session` + their zod schemas + branded id types |
-| `utils` | `Result`/`ok`/`err` + combinators, `pipe`/`flow`, `renderTemplate`, `redactSecrets`, `makeId`, branded-id constructors, effect interfaces shared cross-cutting (`Clock`, `IdGen`) |
+| `types` | `Provider`, `ModelAlias`, `HarnessDefinition`, `Session` + their zod schemas; branded id types/schemas (`ProviderId`, `AliasName`, `HarnessId`, `SessionId`); `SecretRef` |
+| `utils` | `Result`/`ok`/`err` + combinators, `pipe`/`flow`, `renderTemplate`, `redactSecrets`, and the `Clock`/`IdGen` effect interfaces (+ real & in-memory fake adapters) |
 | `secrets` | `SecretStore` interface + `createKeychainSecretStore()` + in-memory fake |
 | `ipc` | `IpcContract` (method map types), request/response schemas, `createIpcClient`/`createIpcServer` helpers |
 | `ui` | atomic components (atoms→organisms) + templates |
