@@ -4,5 +4,14 @@
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },
-  "scripts": { "test": "bun test" }
+  "scripts": { "test": "bun test" },
+  "dependencies": {
+    "@launchkit/types": "workspace:*",
+    "@launchkit/utils": "workspace:*",
+    "@launchkit/config": "workspace:*",
+    "@launchkit/secrets": "workspace:*",
+    "@launchkit/proxy": "workspace:*",
+    "@launchkit/harnesses": "workspace:*",
+    "@launchkit/sessions": "workspace:*"
+  }
 }
