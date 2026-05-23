@@ -1,10 +1,11 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { ProviderViewSchema } from "./provider-view"
+import type { ProviderView } from "./provider-view"
 
-const view = {
-  id: "p_openai",
+const view: ProviderView = {
+  id: "p_openai" as ProviderView["id"],
   name: "OpenAI",
-  sdkProvider: "openai",
+  sdkProvider: "openai" as const,
   config: { baseUrl: "https://api.openai.com/v1" },
   secretFields: { apiKey: { isSet: true } },
   models: ["gpt-4o", "gpt-4o-mini"],
@@ -15,15 +16,29 @@ describe("ProviderViewSchema", () => {
     expect(ProviderViewSchema.parse(view)).toEqual(view)
   })
   it("rejects a secret field that carries a ref", () => {
-    expect(ProviderViewSchema.safeParse({ ...view, secretFields: { apiKey: { isSet: true, ref: "kc_x" } } }).success).toBe(false)
+    expect(
+      ProviderViewSchema.safeParse({
+        ...view,
+        secretFields: { apiKey: { isSet: true, ref: "kc_x" } },
+      }).success,
+    ).toBe(false)
   })
   it("rejects a secret field that carries a raw value", () => {
-    expect(ProviderViewSchema.safeParse({ ...view, secretFields: { apiKey: { isSet: true, value: "sk-xxx" } } }).success).toBe(false)
+    expect(
+      ProviderViewSchema.safeParse({
+        ...view,
+        secretFields: { apiKey: { isSet: true, value: "sk-xxx" } },
+      }).success,
+    ).toBe(false)
   })
   it("rejects an unknown sdkProvider", () => {
-    expect(ProviderViewSchema.safeParse({ ...view, sdkProvider: "nope" }).success).toBe(false)
+    expect(
+      ProviderViewSchema.safeParse({ ...view, sdkProvider: "nope" }).success,
+    ).toBe(false)
   })
   it("rejects unknown top-level fields", () => {
-    expect(ProviderViewSchema.safeParse({ ...view, extra: 1 }).success).toBe(false)
+    expect(ProviderViewSchema.safeParse({ ...view, extra: 1 }).success).toBe(
+      false,
+    )
   })
 })
