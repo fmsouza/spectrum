@@ -41,8 +41,8 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 
 | ID | Task | Deps | Status | Commit |
 |---|---|---|---|---|
-| phase0-01 | Root workspace + tooling presets | — | done | |
-| phase0-02 | `bun test` + DOM smoke test (first RED→GREEN) | | todo | |
+| phase0-01 | Root workspace + tooling presets | — | done | dc16c70 |
+| phase0-02 | `bun test` + DOM smoke test (first RED→GREEN) | | done | a13fd00 |
 | phase0-03 | Root `CLAUDE.md` + resume/new-package skills | | todo | |
 | phase0-04 | Initialize the Electrobun app shell | | todo | |
 | phase0-05 | CI workflow | | todo | |

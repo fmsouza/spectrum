@@ -6,13 +6,20 @@
       "name": "launchkit-monorepo",
       "devDependencies": {
         "@biomejs/biome": "1.9.4",
+        "@happy-dom/global-registrator": "17.4.4",
         "@testing-library/jest-dom": "6.6.3",
         "@testing-library/react": "16.3.0",
         "@types/bun": "latest",
         "happy-dom": "17.4.4",
+        "react": "^19.2.6",
+        "react-dom": "^19.2.6",
         "turbo": "2.5.2",
         "typescript": "5.8.3",
       },
+    },
+    "packages/sentinel": {
+      "name": "@launchkit/sentinel",
+      "version": "0.0.0",
     },
     "tooling/biome-config": {
       "name": "@launchkit/biome-config",
@@ -50,7 +57,11 @@
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@1.9.4", "", { "os": "win32", "cpu": "x64" }, "sha512-8Y5wMhVIPaWe6jw2H+KlEm4wP/f7EW3810ZLmDlrEEy5KvBsb9ECEfu/kMWD484ijfQ8+nIi0giMgu9g1UAuuA=="],
 
+    "@happy-dom/global-registrator": ["@happy-dom/global-registrator@17.4.4", "", { "dependencies": { "happy-dom": "^17.4.4" } }, "sha512-njrU74GrYVHO43upIJr96f7pEmUG7YLZbHCGiHALBECeVnDKpepzL9kVc7KIl8S2nQOkPA0rAA1EyC3xASb54w=="],
+
     "@launchkit/biome-config": ["@launchkit/biome-config@workspace:tooling/biome-config"],
+
+    "@launchkit/sentinel": ["@launchkit/sentinel@workspace:packages/sentinel"],
 
     "@launchkit/tsconfig": ["@launchkit/tsconfig@workspace:tooling/tsconfig"],
 
