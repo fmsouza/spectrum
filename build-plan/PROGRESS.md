@@ -173,13 +173,13 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 
 | ID | Task | Deps | Status | Commit |
 |---|---|---|---|---|
-| gui-pages-01 | Electrobun transport + `IpcClientContext` + fake client | ui-07, ipc-05 | todo | |
-| gui-pages-02 | The five data hooks over the injected client | | todo | |
-| gui-pages-03 | `ProvidersPage` (no secret values + setProviderSecret) | | todo | |
-| gui-pages-04 | `RoutingPage` | | todo | |
-| gui-pages-05 | `HarnessesPage` | | todo | |
-| gui-pages-06 | `SessionsPage` (filters + virtualization) | | todo | |
-| gui-pages-07 | `DashboardPage` + `app.tsx` router + `index.html` (CSP) | | todo | |
+| gui-pages-01 | Electrobun transport + `IpcClientContext` + fake client | ui-07, ipc-05 | done | ea1a1b2 |
+| gui-pages-02 | The five data hooks over the injected client | | done | c3f661d |
+| gui-pages-03 | `ProvidersPage` (no secret values + setProviderSecret) | | done | 32b5170 |
+| gui-pages-04 | `RoutingPage` | | done | e1d51b7 |
+| gui-pages-05 | `HarnessesPage` | | done | 79acf25 |
+| gui-pages-06 | `SessionsPage` (filters + virtualization) | | done | 1d68580 |
+| gui-pages-07 | `DashboardPage` + `app.tsx` router + `index.html` (CSP) | | done | 0910878 |
 
 ## 5 — desktop-shell (`11-desktop-shell.md`)
 
