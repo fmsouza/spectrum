@@ -11,9 +11,9 @@ const open = {
 describe("SessionSchema", () => {
   it("parses an open session without endedAt/exitCode", () => {
     const parsed = SessionSchema.parse(open)
-    expect(parsed.id).toBe("s_1")
-    expect(parsed.harnessId).toBe("claude")
-    expect(parsed.alias).toBe("default")
+    expect(parsed.id).toBe<string>("s_1")
+    expect(parsed.harnessId).toBe<string>("claude")
+    expect(parsed.alias).toBe<string>("default")
     expect(parsed.startedAt).toBe("2026-05-23T10:00:00.000Z")
   })
   it("parses a closed session with endedAt and exitCode", () => {

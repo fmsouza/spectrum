@@ -70,7 +70,10 @@ describe("createSessionStore.create", () => {
       harnessId: "claude" as never,
       alias: "default" as never,
     })
-    expect(isOk(r) && r.value).toEqual({
+    expect(isOk(r) && r.value).toEqual<
+      | false
+      | { id: string; harnessId: string; alias: string; startedAt: string }
+    >({
       id: "s_1",
       harnessId: "claude",
       alias: "default",
@@ -108,8 +111,8 @@ describe("createSessionStore.create", () => {
       harnessId: "claude" as never,
       alias: "default" as never,
     })
-    expect(isOk(first) && first.value.id).toBe("s_1")
-    expect(isOk(second) && second.value.id).toBe("s_2")
+    expect(isOk(first) && first.value.id).toBe<false | string>("s_1")
+    expect(isOk(second) && second.value.id).toBe<false | string>("s_2")
   })
 
   it("returns the db-failed error when the INSERT fails", () => {
@@ -148,7 +151,17 @@ describe("createSessionStore.close", () => {
     })
     const id = isOk(created) ? created.value.id : ("" as never)
     const r = store.close(id, 0)
-    expect(isOk(r) && r.value).toEqual({
+    expect(isOk(r) && r.value).toEqual<
+      | false
+      | {
+          id: string
+          harnessId: string
+          alias: string
+          startedAt: string
+          endedAt: string
+          exitCode: number
+        }
+    >({
       id: "s_1",
       harnessId: "claude",
       alias: "default",
@@ -219,7 +232,10 @@ describe("createSessionStore.query", () => {
       ["s_new", "codex", "fast", "2026-05-23T11:00:00.000Z"],
     )
     const r = store.query()
-    expect(isOk(r) && r.value.map((s) => s.id)).toEqual(["s_new", "s_old"])
+    expect(isOk(r) && r.value.map((s) => s.id)).toEqual<false | string[]>([
+      "s_new",
+      "s_old",
+    ])
   })
 
   it("issues a SELECT with no WHERE clause when query() is called without a filter", () => {
@@ -292,7 +308,9 @@ describe("createSessionStore.query", () => {
       ["s_new", "claude", "default", "2026-05-23T12:00:00.000Z"],
     )
     const r = store.query({ since: "2026-05-23T10:00:00.000Z" })
-    expect(isOk(r) && r.value.map((s) => s.id)).toEqual(["s_new"])
+    expect(isOk(r) && r.value.map((s) => s.id)).toEqual<false | string[]>([
+      "s_new",
+    ])
   })
 
   it("returns the db-failed error when the SELECT fails", () => {

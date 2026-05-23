@@ -1,4 +1,12 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "extends": ["./tooling/biome-config/biome.json"]
+  "extends": ["./tooling/biome-config/biome.json"],
+  "files": {
+    "ignore": [
+      "**/.claude/**",
+      "**/dist/**",
+      "**/.turbo/**",
+      "**/node_modules/**"
+    ]
+  }
 }

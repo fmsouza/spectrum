@@ -1,7 +1,9 @@
 {
-  "extends": "@launchkit/tsconfig/lib.json",
+  "extends": "../../tooling/tsconfig/react.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist"
-  }
+    "rootDir": ".",
+    "outDir": "dist",
+    "types": ["bun", "react", "react-dom"]
+  },
+  "exclude": ["electrobun.config.ts"]
 }

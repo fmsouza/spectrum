@@ -30,3 +30,6 @@ artifacts/
 
 # Test / coverage
 coverage/
+
+# Claude Code session worktrees (local only)
+.claude/worktrees/
