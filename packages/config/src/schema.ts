@@ -1,0 +1,38 @@
+import { z } from "zod"
+import { ProviderSchema, ModelAliasSchema } from "@launchkit/types"
+
+/** Bump on any breaking config shape change; add a matching `Migration` (see migrations.ts). */
+export const CURRENT_CONFIG_VERSION = 2
+
+/**
+ * Process-wide settings. `proxyHost` is the literal loopback address — the proxy
+ * binds `127.0.0.1` only (security.md), so any other host is rejected at validation.
+ */
+export const SettingsSchema = z
+  .object({
+    proxyPort: z.number().int().min(1).max(65535).default(4000),
+    proxyHost: z.literal("127.0.0.1").default("127.0.0.1"),
+  })
+  .strict()
+
+export type Settings = z.infer<typeof SettingsSchema>
+
+/** The on-disk config document. `providers`/`aliases` reuse the locked `@launchkit/types` schemas. */
+export const ConfigSchema = z
+  .object({
+    version: z.number().int(),
+    providers: z.array(ProviderSchema),
+    aliases: z.array(ModelAliasSchema),
+    settings: SettingsSchema,
+  })
+  .strict()
+
+export type Config = z.infer<typeof ConfigSchema>
+
+/** Factory defaults for a brand-new install — current version, nothing configured, loopback proxy. */
+export const defaultConfig = (): Config => ({
+  version: CURRENT_CONFIG_VERSION,
+  providers: [],
+  aliases: [],
+  settings: SettingsSchema.parse({}),
+})
