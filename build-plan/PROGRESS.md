@@ -21,9 +21,9 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 | 1 | utils | `04-plans/02-utils.md` | phase0-06 | 7 | todo |
 | 2 | secrets | `04-plans/03-secrets.md` | types-07, utils-07 | 5 | todo |
 | 2 | ipc | `04-plans/04-ipc.md` | types-07, utils-07 | 5 | todo |
-| 2 | config | `04-plans/05-config.md` | types-07, utils-07 | 7 | todo |
+| 2 | config | `04-plans/05-config.md` | types-07, utils-07 | 7 | done |
 | 2 | sessions | `04-plans/06-sessions.md` | types-07, utils-07 | 7 | todo |
-| 2 | harnesses | `04-plans/08-harnesses.md` | types-07, utils-07 | 7 | todo |
+| 2 | harnesses | `04-plans/08-harnesses.md` | types-07, utils-07 | 7 | done |
 | 2 | ui | `04-plans/10-ui.md` | types-07, utils-07 | 7 | todo |
 | 3 | proxy | `04-plans/07-proxy.md` | types-07, utils-07, config-07, secrets-05 | 13 | todo |
 | 4 | cli | `04-plans/09-cli.md` | config-07, secrets-05, proxy-13, harnesses-07, sessions-07 | 6 | todo |
@@ -86,47 +86,47 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 
 | ID | Task | Deps | Status | Commit |
 |---|---|---|---|---|
-| ipc-01 | `ProviderView` + `ProviderViewSchema` (secret-free) | types-07, utils-07 | todo | |
-| ipc-02 | Per-method Params/Result schemas + `IpcMethods` map | | todo | |
-| ipc-03 | `ClientTransport` + `createIpcClient` | | todo | |
-| ipc-04 | `ServerTransport` + `createIpcServer` | | todo | |
-| ipc-05 | In-memory transport pair, barrel + CLAUDE.md | | todo | |
+| ipc-01 | `ProviderView` + `ProviderViewSchema` (secret-free) | types-07, utils-07 | done | |
+| ipc-02 | Per-method Params/Result schemas + `IpcMethods` map | | done | |
+| ipc-03 | `ClientTransport` + `createIpcClient` | | done | |
+| ipc-04 | `ServerTransport` + `createIpcServer` | | done | |
+| ipc-05 | In-memory transport pair, barrel + CLAUDE.md | | done | |
 
 ## 2 — config (`05-config.md`)
 
 | ID | Task | Deps | Status | Commit |
 |---|---|---|---|---|
-| config-01 | Settings + Config schemas + defaultConfig | types-07, utils-07 | todo | |
-| config-02 | Migration type + migrations + runMigrations | | todo | |
-| config-03 | ConfigFile interface + in-memory fake | | todo | |
-| config-04 | createFileConfigStore.load | | todo | |
-| config-05 | createFileConfigStore.save (atomic) | | todo | |
-| config-06 | createCachedConfigStore | | todo | |
-| config-07 | Barrel + package CLAUDE.md | | todo | |
+| config-01 | Settings + Config schemas + defaultConfig | types-07, utils-07 | done | |
+| config-02 | Migration type + migrations + runMigrations | | done | |
+| config-03 | ConfigFile interface + in-memory fake | | done | |
+| config-04 | createFileConfigStore.load | | done | |
+| config-05 | createFileConfigStore.save (atomic) | | done | |
+| config-06 | createCachedConfigStore | | done | |
+| config-07 | Barrel + package CLAUDE.md | | done | |
 
 ## 2 — sessions (`06-sessions.md`)
 
 | ID | Task | Deps | Status | Commit |
 |---|---|---|---|---|
-| sessions-01 | SessionError + Database interface + recording fake | types-07, utils-07 | in-progress | |
-| sessions-02 | createSessionStore.init (schema + indexes) | | todo | |
-| sessions-03 | create (parameterized INSERT) | | todo | |
-| sessions-04 | close (parameterized UPDATE; not-found) | | todo | |
-| sessions-05 | query (parameterized WHERE) | | todo | |
-| sessions-06 | createBunSqliteDatabase + integration round-trip | | todo | |
+| sessions-01 | SessionError + Database interface + recording fake | types-07, utils-07 | done | 91fbc66 |
+| sessions-02 | createSessionStore.init (schema + indexes) | | done | 2ed92c0 |
+| sessions-03 | create (parameterized INSERT) | | done | d6f5988 |
+| sessions-04 | close (parameterized UPDATE; not-found) | | done | f1347f0 |
+| sessions-05 | query (parameterized WHERE) | | done | 125c6fe |
+| sessions-06 | createBunSqliteDatabase + integration round-trip | | done | c9853d5 |
 | sessions-07 | Barrel + package CLAUDE.md | | todo | |
 
 ## 2 — harnesses (`08-harnesses.md`)
 
 | ID | Task | Deps | Status | Commit |
 |---|---|---|---|---|
-| harnesses-01 | Built-in definitions + `builtinHarnesses` list | types-07, utils-07 | todo | |
-| harnesses-02 | `HarnessError` + `validateEnvTemplate` | | todo | |
-| harnesses-03 | `HarnessFileSource` + fake + `createRegistry` | | todo | |
-| harnesses-04 | `CommandResolver` + `ProcessSpawner` + fakes | | todo | |
-| harnesses-05 | `launchHarness` | | todo | |
-| harnesses-06 | Real adapters + integration test | | todo | |
-| harnesses-07 | Barrel + package CLAUDE.md | | todo | |
+| harnesses-01 | Built-in definitions + `builtinHarnesses` list | types-07, utils-07 | done | |
+| harnesses-02 | `HarnessError` + `validateEnvTemplate` | | done | |
+| harnesses-03 | `HarnessFileSource` + fake + `createRegistry` | | done | |
+| harnesses-04 | `CommandResolver` + `ProcessSpawner` + fakes | | done | |
+| harnesses-05 | `launchHarness` | | done | |
+| harnesses-06 | Real adapters + integration test | | done | |
+| harnesses-07 | Barrel + package CLAUDE.md | | done | |
 
 ## 2 — ui (`10-ui.md`)
 
