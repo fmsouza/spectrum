@@ -1,5 +1,5 @@
-import { describe, it, expect } from "bun:test"
-import { pipe, flow } from "./compose"
+import { describe, expect, it } from "bun:test"
+import { flow, pipe } from "./compose"
 
 const inc = (n: number): number => n + 1
 const double = (n: number): number => n * 2

@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test"
-import { ok, err } from "./result"
-import { map, mapErr, andThen, unwrapOr } from "./result-combinators"
+import { describe, expect, it } from "bun:test"
+import { err, ok } from "./result"
+import { andThen, map, mapErr, unwrapOr } from "./result-combinators"
 
 describe("map", () => {
   it("transforms the value when the result is Ok", () => {

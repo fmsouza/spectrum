@@ -52,13 +52,13 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 
 | ID | Task | Deps | Status | Commit |
 |---|---|---|---|---|
-| types-01 | SdkProvider & ApiFormat enums | phase0-06 | todo | |
-| types-02 | Branded ids & SecretRef | | todo | |
-| types-03 | Provider | | todo | |
-| types-04 | ModelAlias | | todo | |
-| types-05 | HarnessDefinition | | todo | |
-| types-06 | Session | | todo | |
-| types-07 | Barrel + package CLAUDE.md | | todo | |
+| types-01 | SdkProvider & ApiFormat enums | phase0-06 | done | 9f1fe79 |
+| types-02 | Branded ids & SecretRef | | done | 90c670a |
+| types-03 | Provider | | done | cac2540 |
+| types-04 | ModelAlias | | done | 53c2527 |
+| types-05 | HarnessDefinition | | done | 59ce2e9 |
+| types-06 | Session | | done | 0db5613 |
+| types-07 | Barrel + package CLAUDE.md | | done | fa50d2a |
 
 ## 1 — utils (`02-utils.md`)
 

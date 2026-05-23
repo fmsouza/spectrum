@@ -1,5 +1,5 @@
-import { describe, it, expect } from "bun:test"
-import { ProviderIdSchema, AliasNameSchema, HarnessIdSchema, SessionIdSchema, SecretRefSchema } from "./ids"
+import { describe, expect, it } from "bun:test"
+import { ProviderIdSchema, SecretRefSchema } from "./ids"
 
 describe("ProviderIdSchema", () => {
   it("parses a non-empty string into a branded ProviderId", () => {
@@ -15,6 +15,8 @@ describe("SecretRefSchema", () => {
     expect(SecretRefSchema.parse({ ref: "kc_abc" })).toEqual({ ref: "kc_abc" })
   })
   it("rejects an object containing a raw secret value field", () => {
-    expect(SecretRefSchema.safeParse({ ref: "kc_abc", value: "sk-xxx" }).success).toBe(false)
+    expect(
+      SecretRefSchema.safeParse({ ref: "kc_abc", value: "sk-xxx" }).success,
+    ).toBe(false)
   })
 })

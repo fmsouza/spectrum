@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { ProviderSchema } from "./provider"
 
 const valid = {
@@ -15,10 +15,17 @@ describe("ProviderSchema", () => {
     expect(ProviderSchema.parse(valid)).toEqual(valid)
   })
   it("rejects a provider whose secrets contain a raw value", () => {
-    expect(ProviderSchema.safeParse({ ...valid, secrets: { apiKey: { ref: "k", value: "sk" } } }).success).toBe(false)
+    expect(
+      ProviderSchema.safeParse({
+        ...valid,
+        secrets: { apiKey: { ref: "k", value: "sk" } },
+      }).success,
+    ).toBe(false)
   })
   it("rejects an unknown sdkProvider", () => {
-    expect(ProviderSchema.safeParse({ ...valid, sdkProvider: "nope" }).success).toBe(false)
+    expect(
+      ProviderSchema.safeParse({ ...valid, sdkProvider: "nope" }).success,
+    ).toBe(false)
   })
   it("rejects unknown top-level fields", () => {
     expect(ProviderSchema.safeParse({ ...valid, extra: 1 }).success).toBe(false)
