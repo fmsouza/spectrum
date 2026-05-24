@@ -10,10 +10,16 @@
   "dependencies": {
     "react": "^19",
     "react-dom": "^19",
-    "@launchkit/types": "workspace:*",
-    "@launchkit/utils": "workspace:*",
+    "@launchkit/cli": "workspace:*",
+    "@launchkit/config": "workspace:*",
+    "@launchkit/harnesses": "workspace:*",
     "@launchkit/ipc": "workspace:*",
+    "@launchkit/proxy": "workspace:*",
+    "@launchkit/secrets": "workspace:*",
+    "@launchkit/sessions": "workspace:*",
+    "@launchkit/types": "workspace:*",
     "@launchkit/ui": "workspace:*",
+    "@launchkit/utils": "workspace:*",
     "electrobun": "^1.18.1"
   },
   "devDependencies": {
