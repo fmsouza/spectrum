@@ -3,6 +3,7 @@ import type { CliDeps, StartProxyDeps } from "@launchkit/cli"
 import { type ProxyHandle, type RunAppDeps, runApp } from "./app"
 import { type AppContext, createAppContext } from "./composition"
 import { detectMode } from "./detect-mode"
+import { mountTray } from "./gui/tray"
 import { openWindow } from "./gui/window"
 
 /** Assemble the CliDeps the CLI runner needs from a wired AppContext. */
@@ -63,7 +64,15 @@ export const buildRealDeps = (
         })
         return { stop: () => stop() }
       }),
-    openWindow: overrides.openWindow ?? ((): void => openWindow(ctx)),
+    openWindow:
+      overrides.openWindow ??
+      ((): void => {
+        openWindow(ctx)
+        void mountTray(ctx, {
+          openWindow: () => openWindow(ctx),
+          quit: () => process.exit(0),
+        })
+      }),
   }
 }
 
