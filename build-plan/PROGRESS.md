@@ -189,7 +189,7 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 | desktop-shell-02 | `createIpcHandlers` (secret-masking boundary) | | done | 79ae95f |
 | desktop-shell-03 | `createAppContext` (real-adapter wiring) | tray-polish-03 | done | f6ce6d6 |
 | desktop-shell-04 | `openWindow` (Electrobun seam) + flesh out `main.ts` | | done | 08a79ab |
-| desktop-shell-05 | `apps/desktop` CLAUDE.md + full gate | | done | (pending) |
+| desktop-shell-05 | `apps/desktop` CLAUDE.md + full gate | | done | 8827728 |
 
 ## 6 — tray-polish (`13-tray-and-polish.md`)
 
