@@ -28,7 +28,7 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 | 3 | proxy | `04-plans/07-proxy.md` | types-07, utils-07, config-07, secrets-05 | 13 | done |
 | 4 | cli | `04-plans/09-cli.md` | config-07, secrets-05, proxy-13, harnesses-07, sessions-07 | 6 | todo |
 | 4 | gui-pages | `04-plans/12-gui-pages.md` | ui-07, ipc-05 | 7 | todo |
-| 5 | desktop-shell | `04-plans/11-desktop-shell.md` | cli-06, ipc-05, proxy-13, harnesses-07, sessions-07, config-07, secrets-05 | 5 | todo |
+| 5 | desktop-shell | `04-plans/11-desktop-shell.md` | cli-06, ipc-05, proxy-13, harnesses-07, sessions-07, config-07, secrets-05 | 5 | done |
 | 6 | tray-polish | `04-plans/13-tray-and-polish.md` | desktop-shell-05, gui-pages-07 (per-task deps below) | 6 | todo |
 
 **Parallelism:** Order-1 (types, utils) → Order-2 (six packages, fully parallel) → proxy → {cli, gui-pages} → desktop-shell → tray-polish. Dispatch parallel subagents per the orchestrator section of `EXECUTION.md`.
@@ -185,11 +185,11 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 
 | ID | Task | Deps | Status | Commit |
 |---|---|---|---|---|
-| desktop-shell-01 | `runApp` mode router | cli-06, ipc-05, proxy-13, harnesses-07, sessions-07, config-07, secrets-05 | todo | |
-| desktop-shell-02 | `createIpcHandlers` (secret-masking boundary) | | todo | |
-| desktop-shell-03 | `createAppContext` (real-adapter wiring) | tray-polish-03 | todo | |
-| desktop-shell-04 | `openWindow` (Electrobun seam) + flesh out `main.ts` | | todo | |
-| desktop-shell-05 | `apps/desktop` CLAUDE.md + full gate | | todo | |
+| desktop-shell-01 | `runApp` mode router | cli-06, ipc-05, proxy-13, harnesses-07, sessions-07, config-07, secrets-05 | done | 24447a7 |
+| desktop-shell-02 | `createIpcHandlers` (secret-masking boundary) | | done | 79ae95f |
+| desktop-shell-03 | `createAppContext` (real-adapter wiring) | tray-polish-03 | done | f6ce6d6 |
+| desktop-shell-04 | `openWindow` (Electrobun seam) + flesh out `main.ts` | | done | 08a79ab |
+| desktop-shell-05 | `apps/desktop` CLAUDE.md + full gate | | done | (pending) |
 
 ## 6 — tray-polish (`13-tray-and-polish.md`)
 
