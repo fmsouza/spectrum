@@ -206,7 +206,7 @@ A task is **runnable** when its status is `todo` AND every dependency is `done`.
 | tray-polish-03 | `createProviderTester` (connectivity probe) | proxy-13 | done | 47e1c50 |
 | tray-polish-04 | `exportConfig` / `importConfig` (pure round-trip) | config-07 | done | d807370 |
 | tray-polish-05 | Final end-to-end / integration verification | desktop-shell-05, gui-pages-07, tray-polish-02, tray-polish-03, tray-polish-04 | done | d14cfe7 |
-| tray-polish-06 | Wrap-up — whole-repo gate green + finalize ledger | tray-polish-05 | done | 8e9d054 |
+| tray-polish-06 | Wrap-up — whole-repo gate green + finalize ledger | tray-polish-05 | done | 3173fb2 |
 
 ---
 
