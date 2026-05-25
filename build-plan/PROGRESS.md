@@ -2,11 +2,38 @@
 
 **This file is the single source of truth for build state.** See `EXECUTION.md` for the protocol. Update it in the same commit as the work it tracks.
 
-## Status: Phase 3 complete
+## Status: Phase 3 complete (+ build remediation)
 
-All build-plan tasks are `done`. The LaunchKit binary builds, the full gate
+All build-plan tasks are `done`. The LaunchKit binary builds (`bunx electrobun build` →
+`apps/desktop/build/<target>/LaunchKit-dev.app`), the full gate
 (`bun run typecheck && bun run lint && bun test`) is green, and the manual-verification checklist
 (`apps/desktop/MANUAL-VERIFICATION.md`) covers the native window/tray paths that automated tests cannot.
+
+### Post-completion remediation (2026-05-25) — `[fix-electrobun-build]`
+
+A verification pass found that the "binary builds" claim above was **not actually true** when first
+recorded: the "verify app builds" steps (`phase0-04` step 7, `desktop-shell-04` step 7,
+`tray-polish-06`) had been marked `done` without the build succeeding — per `EXECUTION.md` they
+should have been `blocked`. Concretely:
+
+- **`electrobun.config.ts` did not match the installed Electrobun (v1.18.x) schema** (used a stale
+  `{ entry, views }` shape + a non-existent `Config` type), so `bunx electrobun build` failed. It was
+  also excluded from typecheck, hiding the breakage. → Rewritten to the `{ app, build: { bun, views,
+  copy } }` schema; the binary now builds (app bundle with `bun/main.js`, `views/main/app.js`, and the
+  copied CSP-hardened `index.html`).
+- **The real Electrobun seams threw.** `realOpenWindowDeps` (`gui/window.ts`) and `realMountTrayDeps`
+  (`gui/tray.ts`) were `throw`ing stubs — GUI mode would have crashed on launch. → Wired to the real
+  `BrowserWindow` + bun-side RPC (delegating to the typed `ServerTransport`) and the real `Tray`
+  (descriptor → `MenuItemConfig`, `tray-clicked` → `onClick`). Electrobun is loaded via a **lazy
+  dynamic import** so `bun test` never pulls its native FFI module; the live window/tray behavior
+  remains covered by the manual checklist (it needs a real macOS GUI run).
+- **Typecheck gaps closed.** `@launchkit/ipc` had no `typecheck` script (silently ungated); added.
+  `electrobun.config.ts` is now gated. Electrobun ships non-strict-compiling `.ts` source, so its
+  small consumed surface is declared in `apps/desktop/src/types/electrobun-*.d.ts` and mapped via a
+  typecheck-only `tsconfig.typecheck.json` (`paths`) — kept out of `tsconfig.json` so Bun's runtime
+  and the Electrobun bundler still resolve the real module.
+- **Root build wired.** `apps/desktop` now defines `build: electrobun build`, so `bun run build`
+  (`turbo run build`) actually produces the binary (previously a no-op).
 
 ## Status legend
 `todo` · `in-progress` · `done` · `blocked`
