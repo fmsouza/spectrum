@@ -1,6 +1,7 @@
 import { isOk } from "@launchkit/utils"
+import type { Tray as ElectrobunTray, MenuItemConfig } from "electrobun/bun"
 import type { AppContext } from "../composition"
-import { type TrayMenu, buildTrayMenu } from "./tray-menu"
+import { type TrayItem, type TrayMenu, buildTrayMenu } from "./tray-menu"
 
 /** The native tray handle the seam returns. `setMenu` re-renders; `destroy` tears down. */
 export interface TrayHandle {
@@ -87,20 +88,72 @@ export const mountTray = async (
 }
 
 /**
- * Production Electrobun wiring. CONFIRM the exact `Tray` constructor + menu/click API against the
- * installed Electrobun version (context7 / Electrobun docs) and adapt ONLY this block. It must
- * translate the `TrayMenu` descriptor into native menu items, assign each actionable item the
- * clickId convention (`"open"`, `"quit"`, `"launch:<harnessId>"`), and invoke `onClick(clickId)`.
+ * PURE: translate one `TrayItem` to an Electrobun `MenuItemConfig`, assigning actionable items the
+ * clickId convention (`"open"`, `"quit"`, `"launch:<harnessId>"`) as their native `action`. Status
+ * and placeholder items are rendered as disabled (no action); submenus recurse.
+ */
+const toNativeItem = (item: TrayItem): MenuItemConfig => {
+  switch (item.kind) {
+    case "separator":
+      return { type: "separator" }
+    case "status":
+      return { type: "normal", label: item.label, enabled: false }
+    case "disabled":
+      return { type: "normal", label: item.label, enabled: false }
+    case "submenu":
+      return {
+        type: "normal",
+        label: item.label,
+        submenu: item.items.map(toNativeItem),
+      }
+    case "open":
+      return { type: "normal", label: item.label, action: "open" }
+    case "quit":
+      return { type: "normal", label: item.label, action: "quit" }
+    case "launch":
+      return {
+        type: "normal",
+        label: item.label,
+        action: `launch:${item.harnessId}`,
+      }
+  }
+}
+
+/** PURE: render the whole descriptor as the Electrobun native menu config. */
+const toNativeMenu = (menu: TrayMenu): MenuItemConfig[] =>
+  menu.items.map(toNativeItem)
+
+/**
+ * Production Electrobun wiring. Builds a native `Tray`, renders the descriptor (clickIds carried as
+ * each item's `action`), and routes `tray-clicked` events — whose payload `action` is the clicked
+ * item's clickId — back through `onClick`. `setMenu` re-renders; `destroy` removes the native tray.
  */
 export const realMountTrayDeps: MountTrayDeps = {
-  createTray: (_menu, _onClick) => {
-    // Example shape — adapt to the installed Electrobun Tray API:
-    //   import { Tray } from "electrobun/bun"
-    //   const tray = new Tray({ ... })
-    //   tray.setMenu(toNativeMenu(_menu, _onClick))  // map descriptor → native items + clickIds
-    //   return { setMenu: (m) => tray.setMenu(toNativeMenu(m, _onClick)), destroy: () => tray.destroy() }
-    throw new Error(
-      "mountTray: wire the real Electrobun Tray here (see ELECTROBUN NOTE)",
-    )
+  createTray: (menu, onClick) => {
+    let tray: ElectrobunTray | null = null
+    let current: TrayMenu = menu
+
+    // Load Electrobun lazily — and only in the built binary (see the same note in `gui/window.ts`).
+    // The returned handle works before the native tray resolves: `setMenu` buffers into `current`,
+    // which is applied as soon as the tray is created.
+    void import("electrobun/bun").then(({ Tray }) => {
+      const native = new Tray({ title: "LaunchKit" })
+      tray = native
+      native.setMenu(toNativeMenu(current))
+      native.on("tray-clicked", (event) => {
+        const action = (event as { action?: string }).action
+        if (action !== undefined && action !== "") onClick(action)
+      })
+    })
+
+    return {
+      setMenu: (next: TrayMenu) => {
+        current = next
+        if (tray !== null) tray.setMenu(toNativeMenu(next))
+      },
+      destroy: () => {
+        if (tray !== null) tray.remove()
+      },
+    }
   },
 }

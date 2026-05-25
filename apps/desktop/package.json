@@ -4,7 +4,8 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "build": "electrobun build",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "bun test"
   },
   "dependencies": {
