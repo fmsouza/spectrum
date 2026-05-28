@@ -1,35 +1,10 @@
 import { runCli } from "@launchkit/cli"
-import type { CliDeps, StartProxyDeps } from "@launchkit/cli"
 import { type ProxyHandle, type RunAppDeps, runApp } from "./app"
-import { type AppContext, createAppContext } from "./composition"
+import { cliDepsFrom } from "./cli-deps"
+import { createAppContext } from "./composition"
 import { detectMode } from "./detect-mode"
 import { mountTray } from "./gui/tray"
 import { openWindow } from "./gui/window"
-
-/** Assemble the CliDeps the CLI runner needs from a wired AppContext. */
-const cliDepsFrom = (ctx: AppContext): CliDeps => ({
-  config: ctx.config,
-  secrets: ctx.secrets,
-  sessions: ctx.sessions,
-  registry: ctx.registry,
-  launch: ctx.launch,
-  proxy: {
-    isRunning: ctx.proxy.isRunning,
-    start: (opts: StartProxyDeps) =>
-      ctx.proxy.start({
-        host: opts.host,
-        port: opts.port,
-        proxyKey: opts.proxyKey,
-        config: opts.config,
-      }),
-  },
-  genProxyKey: ctx.genProxyKey,
-  out: {
-    write: (line: string): void => {
-      process.stdout.write(`${line}\n`)
-    },
-  },
-})
 
 /**
  * Build the `RunAppDeps` the mode router needs, wiring the real subsystems via `createAppContext`.
