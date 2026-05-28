@@ -35,6 +35,32 @@ should have been `blocked`. Concretely:
 - **Root build wired.** `apps/desktop` now defines `build: electrobun build`, so `bun run build`
   (`turbo run build`) actually produces the binary (previously a no-op).
 
+### CI/CD + release pipeline (2026-05-28) — `[ci-release-pipeline]`
+
+Plan: `docs/superpowers/plans/2026-05-25-ci-release-pipeline.md` (spec:
+`docs/superpowers/specs/2026-05-25-ci-release-pipeline-design.md`). CI was red because the `bun audit`
+gate step failed on 8 advisories; the pipeline also built no artifacts.
+
+- **Audit green, no ignores.** Bumped `happy-dom`→`^20` (critical RCE) and `turbo`→`^2.9.15`; added
+  `overrides` for `uuid`/`jsondiffpatch`; migrated the Vercel AI SDK v4→**v5** in `@launchkit/proxy`
+  (`real-gateway.ts` `maxOutputTokens` + `.text` stream parts via a new pure `mapFullStreamPart`;
+  `@ai-sdk/*` bumped to v5-compatible majors; `ollama-ai-provider`→`ollama-ai-provider-v2`).
+  `bun audit` now exits 0 with **no** `--ignore`/`--audit-level` flags. `bun audit` stays a blocking
+  step in `ci.yml` (bun pinned to 1.3.14).
+- **Versions synced to 0.1.0** across root + app + all packages/tooling + `electrobun.config.ts`
+  (root `package.json` is the release source-of-truth).
+- **Standalone CLI binary.** `apps/desktop/src/cli.ts` (CLI-only entry, no Electrobun) + a `compile`
+  script (`bun build --compile` → `apps/desktop/dist/launchkit-cli`); `cliDepsFrom` extracted to
+  `cli-deps.ts` and shared with `main.ts`.
+- **Workflows.** `canary.yml` (push→`main`: gate → 5-platform matrix build of app + CLI →
+  `v0.1.0-canary.N` prerelease) and `release.yml` (`v*` tag: same gate+build → semver release).
+  Non-mac Electrobun app builds are best-effort (`continue-on-error`), falling back to CLI-only.
+
+> **Known follow-up (pre-existing, out of scope):** `apps/desktop/src/main.ts`'s CLI mode forwards the
+> full `process.argv` to `runApp`→`runCli`, but `parseArgs` reads the command at index 0, so the
+> app-binary CLI path resolves the command as `"bun"`. The new standalone `cli.ts` slices correctly;
+> the `main.ts` path needs `argv.slice(2)` at the `runApp` callsite (or in `buildRealDeps.runCli`).
+
 ## Status legend
 `todo` · `in-progress` · `done` · `blocked`
 
