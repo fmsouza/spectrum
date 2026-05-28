@@ -89,7 +89,7 @@
         "@launchkit/types": "workspace:*",
         "@launchkit/utils": "workspace:*",
         "ai": "^5",
-        "zod": "^3.23.8",
+        "zod": "^3.25.76",
       },
       "optionalDependencies": {
         "@ai-sdk/amazon-bedrock": "^3",
