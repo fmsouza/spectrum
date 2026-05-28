@@ -2,7 +2,7 @@
   "name": "launchkit",
   "type": "module",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "scripts": {
     "build": "electrobun build",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
