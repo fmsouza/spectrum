@@ -3,6 +3,23 @@ import type { LanguageModelGateway } from "../gateway"
 import type { NormalizedRequest, StreamEvent } from "../types"
 import type { ModelHandle } from "./factory"
 
+/**
+ * Pure mapping from an AI SDK v5 `fullStream` part to our internal `StreamEvent`.
+ * v5 renamed the text-delta payload from `.textDelta` to `.text`; unknown part
+ * types (e.g. `text-start`/`text-end`) map to `undefined` and are skipped.
+ */
+export const mapFullStreamPart = (
+  part: { readonly type: string } & Record<string, unknown>,
+): StreamEvent | undefined => {
+  if (part.type === "text-delta")
+    return { type: "text-delta", text: part.text as string }
+  if (part.type === "finish")
+    return { type: "finish", finishReason: String(part.finishReason) }
+  if (part.type === "error")
+    return { type: "error", detail: String(part.error) }
+  return undefined
+}
+
 export const createRealGateway = (): LanguageModelGateway => ({
   async *stream(
     model: ModelHandle,
@@ -11,31 +28,23 @@ export const createRealGateway = (): LanguageModelGateway => ({
     const result = streamText({
       model: model as Parameters<typeof streamText>[0]["model"],
       ...(req.system !== undefined ? { system: req.system } : {}),
-      messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
-      ...(req.maxTokens !== undefined ? { maxTokens: req.maxTokens } : {}),
+      messages: req.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })) as NonNullable<Parameters<typeof streamText>[0]["messages"]>,
+      ...(req.maxTokens !== undefined
+        ? { maxOutputTokens: req.maxTokens }
+        : {}),
       ...(req.temperature !== undefined
         ? { temperature: req.temperature }
         : {}),
     })
     try {
       for await (const part of result.fullStream) {
-        if (part.type === "text-delta")
-          yield {
-            type: "text-delta",
-            text: (part as { textDelta: string }).textDelta,
-          }
-        else if (part.type === "finish")
-          yield {
-            type: "finish",
-            finishReason: String(
-              (part as { finishReason: unknown }).finishReason,
-            ),
-          }
-        else if (part.type === "error")
-          yield {
-            type: "error",
-            detail: String((part as { error: unknown }).error),
-          }
+        const event = mapFullStreamPart(
+          part as { type: string } & Record<string, unknown>,
+        )
+        if (event !== undefined) yield event
       }
     } catch (e) {
       yield {
