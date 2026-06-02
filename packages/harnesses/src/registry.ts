@@ -81,6 +81,7 @@ export const createRegistry = (deps: {
     // Built-ins are not files on disk and can never be removed.
     const builtInIds = new Set(builtinHarnesses.map((h) => h.id))
     if (builtInIds.has(id as HarnessDefinition["id"])) {
+      // built-ins are not files; reuse duplicate-id to signal "id belongs to a built-in, not removable"
       return err({ kind: "duplicate-id", id: id as HarnessDefinition["id"] })
     }
     return deps.fileSource.deleteDefinition(id)

@@ -173,7 +173,9 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       // false, built-in id collisions rejected) and hot-reloads them on the next list.
       const res = await ctx.registry.add(definition)
       if (!isOk(res)) return fail("could not add harness")
-      return definition
+      // Return the NORMALIZED definition: registry.add forces builtIn:false on disk, so the reply
+      // must match what the next getHarnesses returns rather than echoing the raw caller input.
+      return { ...definition, builtIn: false }
     },
 
     updateHarness: async ({ id, input }) => {
@@ -181,7 +183,8 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       const updated = { ...input, id }
       const res = await ctx.registry.add(updated)
       if (!isOk(res)) return fail("could not update harness")
-      return updated
+      // builtIn is forced false by the registry on persist; mirror that in the reply.
+      return { ...input, id, builtIn: false }
     },
 
     deleteHarness: async ({ id }) => {

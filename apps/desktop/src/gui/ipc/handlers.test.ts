@@ -317,6 +317,18 @@ describe("createIpcHandlers.addHarness", () => {
     expect(registryAdds).toEqual([sampleHarness])
   })
 
+  it("returns the persisted definition with builtIn forced to false", async () => {
+    const { ctx } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+    // A webview could send builtIn:true; the registry persists builtIn:false, so the
+    // handler reply must match what disk holds, not the raw caller input.
+    const spoofed = { ...sampleHarness, builtIn: true } as const
+
+    const result = await handlers.addHarness(spoofed as never)
+
+    expect(result.builtIn).toBe(false)
+  })
+
   it("throws so the server surfaces handler-failed when the registry rejects", async () => {
     const { ctx } = makeCtx({ registryAddOk: false })
     const handlers = createIpcHandlers(ctx)
@@ -338,6 +350,21 @@ describe("createIpcHandlers.updateHarness", () => {
 
     expect(result).toEqual(sampleHarness)
     expect(registryAdds).toEqual([sampleHarness])
+  })
+
+  it("returns the updated definition with builtIn forced to false", async () => {
+    const { ctx } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+    const { id, ...rest } = sampleHarness
+    // input arrives with builtIn:true; the registry persists builtIn:false, so the reply must too.
+    const input = { ...rest, builtIn: true } as const
+
+    const result = await handlers.updateHarness({
+      id: id as never,
+      input: input as never,
+    })
+
+    expect(result.builtIn).toBe(false)
   })
 
   it("throws so the server surfaces handler-failed when the registry rejects", async () => {
