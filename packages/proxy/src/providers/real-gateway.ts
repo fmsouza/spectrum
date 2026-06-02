@@ -4,9 +4,11 @@ import type { NormalizedRequest, StreamEvent } from "../types"
 import type { ModelHandle } from "./factory"
 
 /**
- * Pure mapping from an AI SDK v5 `fullStream` part to our internal `StreamEvent`.
- * v5 renamed the text-delta payload from `.textDelta` to `.text`; unknown part
- * types (e.g. `text-start`/`text-end`) map to `undefined` and are skipped.
+ * Pure mapping from an AI SDK v6 high-level `fullStream` part to our internal `StreamEvent`.
+ * The high-level text-delta part carries its text in `.text` (v4 used `.textDelta`); the high-level
+ * `finish` part exposes a plain-string `.finishReason` (the v6 provider-level object form is
+ * already unwrapped by the time it reaches `fullStream`). Unknown part types (e.g.
+ * `text-start`/`text-end`/`start`/`finish-step`) map to `undefined` and are skipped.
  */
 export const mapFullStreamPart = (
   part: { readonly type: string } & Record<string, unknown>,

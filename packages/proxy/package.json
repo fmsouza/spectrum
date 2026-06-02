@@ -10,26 +10,26 @@
     "@launchkit/secrets": "workspace:*",
     "@launchkit/types": "workspace:*",
     "@launchkit/utils": "workspace:*",
-    "ai": "^5",
+    "ai": "^6",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "msw": "^2.7.0"
   },
   "optionalDependencies": {
-    "@ai-sdk/amazon-bedrock": "^3",
-    "@ai-sdk/anthropic": "^2",
-    "@ai-sdk/azure": "^2",
-    "@ai-sdk/cerebras": "^1",
-    "@ai-sdk/cohere": "^2",
-    "@ai-sdk/fireworks": "^1",
-    "@ai-sdk/google": "^2",
-    "@ai-sdk/google-vertex": "^3",
-    "@ai-sdk/groq": "^2",
-    "@ai-sdk/mistral": "^2",
-    "@ai-sdk/openai": "^2",
-    "@ai-sdk/perplexity": "^2",
-    "@ai-sdk/xai": "^2",
-    "ollama-ai-provider-v2": "^1.5"
+    "@ai-sdk/amazon-bedrock": "^4",
+    "@ai-sdk/anthropic": "^3",
+    "@ai-sdk/azure": "^3",
+    "@ai-sdk/cerebras": "^2",
+    "@ai-sdk/cohere": "^3",
+    "@ai-sdk/fireworks": "^2",
+    "@ai-sdk/google": "^3",
+    "@ai-sdk/google-vertex": "^4",
+    "@ai-sdk/groq": "^3",
+    "@ai-sdk/mistral": "^3",
+    "@ai-sdk/openai": "^3",
+    "@ai-sdk/perplexity": "^3",
+    "@ai-sdk/xai": "^3",
+    "ollama-ai-provider-v2": "^3"
   }
 }
