@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { mapFullStreamPart } from "./real-gateway"
 
 describe("mapFullStreamPart", () => {
-  it("maps a v5 text-delta part to a text-delta event", () => {
+  it("maps a high-level text-delta part (carrying `text`) to a text-delta event", () => {
     expect(mapFullStreamPart({ type: "text-delta", text: "hi" })).toEqual({
       type: "text-delta",
       text: "hi",
