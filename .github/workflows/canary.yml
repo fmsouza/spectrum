@@ -1,0 +1,138 @@
+name: Canary Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: canary-release
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun test
+      - run: bun audit
+
+  build:
+    name: Build (${{ matrix.name }})
+    needs: gate
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            os: macos-latest
+            asset: launchkit-darwin-arm64
+            archive: tar.gz
+            app: true
+          - name: macOS x64
+            os: macos-13
+            asset: launchkit-darwin-x64
+            archive: tar.gz
+            app: true
+          - name: Linux x64
+            os: ubuntu-latest
+            asset: launchkit-linux-x64
+            archive: tar.gz
+            app: true
+          - name: Linux arm64
+            os: ubuntu-24.04-arm
+            asset: launchkit-linux-arm64
+            archive: tar.gz
+            app: true
+          - name: Windows x64
+            os: windows-latest
+            asset: launchkit-windows-x64
+            archive: zip
+            app: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+
+      - name: Compile CLI binary
+        run: bun run --filter launchkit compile
+
+      - name: Build desktop app (best-effort)
+        id: app
+        if: matrix.app
+        continue-on-error: true
+        run: bun run --filter launchkit build
+
+      - name: Stage artifacts (unix)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          mkdir -p stage
+          cp apps/desktop/dist/launchkit-cli "stage/${{ matrix.asset }}-cli"
+          if [ "${{ steps.app.outcome }}" = "success" ]; then
+            tar czf "stage/${{ matrix.asset }}-app.tar.gz" -C apps/desktop/build .
+          fi
+          tar czf "stage/${{ matrix.asset }}-cli.tar.gz" -C stage "${{ matrix.asset }}-cli"
+          rm -f "stage/${{ matrix.asset }}-cli"
+
+      - name: Stage artifacts (windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path stage | Out-Null
+          Copy-Item "apps/desktop/dist/launchkit-cli.exe" "stage/${{ matrix.asset }}-cli.exe" -ErrorAction SilentlyContinue
+          if (-not (Test-Path "stage/${{ matrix.asset }}-cli.exe")) {
+            Copy-Item "apps/desktop/dist/launchkit-cli" "stage/${{ matrix.asset }}-cli.exe"
+          }
+          Compress-Archive "stage/${{ matrix.asset }}-cli.exe" "stage/${{ matrix.asset }}-cli.zip"
+          Remove-Item "stage/${{ matrix.asset }}-cli.exe"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.asset }}
+          path: stage/*
+          if-no-files-found: error
+
+  release:
+    name: Publish Canary Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Determine canary version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(jq -r .version package.json)
+          LATEST=$(gh release list --json tagName --jq \
+            "[.[] | select(.tagName | startswith(\"v${VERSION}-canary.\")) | .tagName | ltrimstr(\"v${VERSION}-canary.\") | tonumber] | max // 0")
+          NEXT=$((LATEST + 1))
+          echo "tag=v${VERSION}-canary.${NEXT}" >> "$GITHUB_OUTPUT"
+      - name: Checksums
+        run: cd artifacts && sha256sum * > checksums-sha256.txt
+      - name: Create canary release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ steps.version.outputs.tag }} \
+            --title "${{ steps.version.outputs.tag }}" \
+            --notes "Automated canary build from \`main\` (${{ github.sha }}). Unstable pre-release." \
+            --prerelease --target ${{ github.sha }} \
+            artifacts/*

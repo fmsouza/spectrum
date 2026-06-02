@@ -2,11 +2,80 @@
 
 **This file is the single source of truth for build state.** See `EXECUTION.md` for the protocol. Update it in the same commit as the work it tracks.
 
-## Status: Phase 3 complete
+## Status: Phase 3 complete (+ build remediation)
 
-All build-plan tasks are `done`. The LaunchKit binary builds, the full gate
+All build-plan tasks are `done`. The LaunchKit binary builds (`bunx electrobun build` →
+`apps/desktop/build/<target>/LaunchKit-dev.app`), the full gate
 (`bun run typecheck && bun run lint && bun test`) is green, and the manual-verification checklist
 (`apps/desktop/MANUAL-VERIFICATION.md`) covers the native window/tray paths that automated tests cannot.
+
+### Post-completion remediation (2026-05-25) — `[fix-electrobun-build]`
+
+A verification pass found that the "binary builds" claim above was **not actually true** when first
+recorded: the "verify app builds" steps (`phase0-04` step 7, `desktop-shell-04` step 7,
+`tray-polish-06`) had been marked `done` without the build succeeding — per `EXECUTION.md` they
+should have been `blocked`. Concretely:
+
+- **`electrobun.config.ts` did not match the installed Electrobun (v1.18.x) schema** (used a stale
+  `{ entry, views }` shape + a non-existent `Config` type), so `bunx electrobun build` failed. It was
+  also excluded from typecheck, hiding the breakage. → Rewritten to the `{ app, build: { bun, views,
+  copy } }` schema; the binary now builds (app bundle with `bun/main.js`, `views/main/app.js`, and the
+  copied CSP-hardened `index.html`).
+- **The real Electrobun seams threw.** `realOpenWindowDeps` (`gui/window.ts`) and `realMountTrayDeps`
+  (`gui/tray.ts`) were `throw`ing stubs — GUI mode would have crashed on launch. → Wired to the real
+  `BrowserWindow` + bun-side RPC (delegating to the typed `ServerTransport`) and the real `Tray`
+  (descriptor → `MenuItemConfig`, `tray-clicked` → `onClick`). Electrobun is loaded via a **lazy
+  dynamic import** so `bun test` never pulls its native FFI module; the live window/tray behavior
+  remains covered by the manual checklist (it needs a real macOS GUI run).
+- **Typecheck gaps closed.** `@launchkit/ipc` had no `typecheck` script (silently ungated); added.
+  `electrobun.config.ts` is now gated. Electrobun ships non-strict-compiling `.ts` source, so its
+  small consumed surface is declared in `apps/desktop/src/types/electrobun-*.d.ts` and mapped via a
+  typecheck-only `tsconfig.typecheck.json` (`paths`) — kept out of `tsconfig.json` so Bun's runtime
+  and the Electrobun bundler still resolve the real module.
+- **Root build wired.** `apps/desktop` now defines `build: electrobun build`, so `bun run build`
+  (`turbo run build`) actually produces the binary (previously a no-op).
+
+### CI/CD + release pipeline (2026-05-28) — `[ci-release-pipeline]`
+
+Plan: `docs/superpowers/plans/2026-05-25-ci-release-pipeline.md` (spec:
+`docs/superpowers/specs/2026-05-25-ci-release-pipeline-design.md`). CI was red because the `bun audit`
+gate step failed on 8 advisories; the pipeline also built no artifacts.
+
+- **Audit green, no ignores.** Bumped `happy-dom`→`^20` (critical RCE) and `turbo`→`^2.9.15`; added
+  `overrides` for `uuid`/`jsondiffpatch`; migrated the Vercel AI SDK in `@launchkit/proxy` to **v6**
+  (initially v5; bumped to v6 when a newly-published advisory, GHSA-866g-f22w-33x8, hit
+  `@ai-sdk/provider-utils <=3.0.97` with a fix only in the provider-utils 4.x / ai@6 line). All
+  `@ai-sdk/*` are on their v6 majors; `ollama-ai-provider-v2`→`^3`. The SDK stays isolated behind the
+  `LanguageModelGateway`; `mapFullStreamPart` reads the high-level `fullStream` `text-delta.text` +
+  `finish.finishReason`. `bun audit` exits 0 with **no** `--ignore`/`--audit-level` flags and stays a
+  blocking step in `ci.yml` (bun pinned to 1.3.14).
+- **Versions synced to 0.1.0** across root + app + all packages/tooling + `electrobun.config.ts`
+  (root `package.json` is the release source-of-truth).
+- **Standalone CLI binary.** `apps/desktop/src/cli.ts` (CLI-only entry, no Electrobun) + a `compile`
+  script (`bun build --compile` → `apps/desktop/dist/launchkit-cli`); `cliDepsFrom` extracted to
+  `cli-deps.ts` and shared with `main.ts`.
+- **Workflows.** `canary.yml` (push→`main`: gate → 5-platform matrix build of app + CLI →
+  `v0.1.0-canary.N` prerelease) and `release.yml` (`v*` tag: same gate+build → semver release).
+  Non-mac Electrobun app builds are best-effort (`continue-on-error`), falling back to CLI-only.
+
+**Follow-ups resolved (2026-05-28):**
+- The pre-existing `apps/desktop/src/main.ts` CLI-mode argv bug (full `process.argv` forwarded to
+  `runApp`→`runCli`, so the command parsed as `"bun"`) is **fixed**: an exported, testable
+  `main(argv, deps)` slices the `[runtime, script]` prefix once (`detectMode` still reads raw
+  `argv[2]`); regression tests cover both CLI and GUI entry wiring.
+- `apps/desktop/src/cli.ts` now renders `CliError` via an exhaustive `formatCliError`
+  (`launchkit: unknown command "x"`) instead of `JSON.stringify`; the `errOut` no-trailing-newline
+  contract is documented and the argv-threading/formatter paths are tested.
+
+**CI follow-ups resolved (2026-06-02):**
+- **Failing test fixed.** `@launchkit/proxy` re-adds `msw` (devDep): `ai/test` imports it at module
+  load, so a clean `--frozen-lockfile` install (CI) needs it — the earlier "drop unused msw" only
+  passed on a stale local `node_modules`.
+- **Skipped tests addressed.** The 3 `apps/desktop` e2e tests are platform-agnostic and were
+  de-gated (run everywhere, incl. Linux CI); the macOS-only keychain integration test now runs via a
+  new `ci.yml` `[ubuntu-latest, macos-latest]` matrix.
+- **New advisory resolved at source** via the v5→v6 AI SDK migration (above). CI is green on both
+  legs with a clean blocking audit.
 
 ## Status legend
 `todo` · `in-progress` · `done` · `blocked`

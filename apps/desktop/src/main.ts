@@ -1,35 +1,10 @@
 import { runCli } from "@launchkit/cli"
-import type { CliDeps, StartProxyDeps } from "@launchkit/cli"
 import { type ProxyHandle, type RunAppDeps, runApp } from "./app"
-import { type AppContext, createAppContext } from "./composition"
+import { cliDepsFrom } from "./cli-deps"
+import { createAppContext } from "./composition"
 import { detectMode } from "./detect-mode"
 import { mountTray } from "./gui/tray"
 import { openWindow } from "./gui/window"
-
-/** Assemble the CliDeps the CLI runner needs from a wired AppContext. */
-const cliDepsFrom = (ctx: AppContext): CliDeps => ({
-  config: ctx.config,
-  secrets: ctx.secrets,
-  sessions: ctx.sessions,
-  registry: ctx.registry,
-  launch: ctx.launch,
-  proxy: {
-    isRunning: ctx.proxy.isRunning,
-    start: (opts: StartProxyDeps) =>
-      ctx.proxy.start({
-        host: opts.host,
-        port: opts.port,
-        proxyKey: opts.proxyKey,
-        config: opts.config,
-      }),
-  },
-  genProxyKey: ctx.genProxyKey,
-  out: {
-    write: (line: string): void => {
-      process.stdout.write(`${line}\n`)
-    },
-  },
-})
 
 /**
  * Build the `RunAppDeps` the mode router needs, wiring the real subsystems via `createAppContext`.
@@ -76,14 +51,24 @@ export const buildRealDeps = (
   }
 }
 
+/**
+ * Entry wiring (pure, exported for testing): detect the mode from the raw argv, then run it.
+ *
+ * Both `bun run src/main.ts <verb>` and the compiled binary produce a `process.argv` shaped
+ * `[runtime, scriptPath, ...userArgs]`. `detectMode` reads the verb at `argv[2]`, but
+ * `runCli`/`parseArgs` treat the command as the first token — so the two-element prefix is dropped
+ * before argv reaches `runApp`/`runCli`. Passing the raw argv through would make the CLI parse the
+ * runtime path (`"bun"`) as the command.
+ */
+export const main = (
+  argv: readonly string[],
+  deps: RunAppDeps,
+): Promise<void> => runApp(detectMode(argv), argv.slice(2), deps)
+
 // --- entry point ---------------------------------------------------------------------
-// The single side effect: detect the mode and run it. Everything above is pure/exported.
-// Guarded with import.meta.main so tests can import { buildRealDeps } without triggering
-// the real entry point.
+// The single side effect: run the entry wiring against the real deps. Everything above is
+// pure/exported. Guarded with import.meta.main so tests can import { main, buildRealDeps }
+// without triggering the real entry point.
 if (import.meta.main) {
-  await runApp(
-    detectMode(process.argv),
-    process.argv,
-    buildRealDeps(createAppContext),
-  )
+  await main(process.argv, buildRealDeps(createAppContext))
 }
