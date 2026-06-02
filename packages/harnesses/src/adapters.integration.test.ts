@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from "bun:test"
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+import {
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { HarnessDefinition } from "@launchkit/types"
@@ -45,6 +51,43 @@ describe("createBunProcessSpawner (real)", () => {
     const r = createBunProcessSpawner().spawn(resolved.value, [], {})
     expect(r.ok).toBe(true)
     if (r.ok) expect(typeof r.value.pid).toBe("number")
+  })
+
+  it("inherits the parent env and lets rendered vars override inherited ones", async () => {
+    const dir = makeTempDir()
+    const outFile = join(dir, "env.json")
+
+    // A marker present in the PARENT env; the child should be able to override it.
+    const priorMarker = process.env.LK_SPAWN_MARKER
+    process.env.LK_SPAWN_MARKER = "parent-value"
+    try {
+      const r = createBunProcessSpawner().spawn(
+        process.execPath,
+        [
+          "-e",
+          "require('fs').writeFileSync(process.env.LK_OUT, JSON.stringify({ marker: process.env.LK_SPAWN_MARKER, hasPath: Boolean(process.env.PATH) }))",
+        ],
+        { LK_OUT: outFile, LK_SPAWN_MARKER: "override-value" },
+      )
+      expect(r.ok).toBe(true)
+      if (!r.ok) return
+      await r.value.exited
+
+      const captured = JSON.parse(readFileSync(outFile, "utf8")) as {
+        marker: string
+        hasPath: boolean
+      }
+      // Rendered/override vars WIN over inherited ones (proxy key authority).
+      expect(captured.marker).toBe("override-value")
+      // ... while the rest of the parent env (PATH) is still inherited.
+      expect(captured.hasPath).toBe(true)
+    } finally {
+      if (priorMarker === undefined) {
+        process.env.LK_SPAWN_MARKER = ""
+      } else {
+        process.env.LK_SPAWN_MARKER = priorMarker
+      }
+    }
   })
 })
 

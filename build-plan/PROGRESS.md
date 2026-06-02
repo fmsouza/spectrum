@@ -82,7 +82,7 @@ gate step failed on 8 advisories; the pipeline also built no artifacts.
 Plan: `docs/superpowers/plans/2026-06-02-launchkit-runtime-remediation.md`. A thorough review found
 that "binary builds" was again masking "binary **runs**": the built `.app` launched but its own code
 never executed, plus several functional gaps. Fixed via subagent-driven TDD on branch
-`remediation/runtime-fixes` (gate green throughout: typecheck + lint + **479 tests**; `bun audit`
+`remediation/runtime-fixes` (gate green throughout: typecheck + lint + **487 tests**; `bun audit`
 clean; `apps/desktop/scripts/smoke.sh` PASS).
 
 - **P0 — GUI app never ran (the headline bug).** Electrobun's launcher loads `bun/index.js` via
@@ -108,6 +108,15 @@ clean; `apps/desktop/scripts/smoke.sh` PASS).
   (harness rejected by the live proxy). → New `RuntimeState` adapter (`@launchkit/proxy`) persists the
   per-run key to `~/.config/launchkit/runtime.json` (0600); GUI writes it on start / clears on stop;
   CLI reads it on reuse. `473b729`. Stale comment in `cli/src/run.ts` corrected (`a4e0d58`).
+- **P4 — spawn lost the env + CLI orphaned the harness (`[remediation-bug2]`).** (a) `createBunProcessSpawner`
+  passed only the 3 rendered template vars as `env`, which Bun.spawn treats as a full REPLACEMENT — the
+  child got no PATH/HOME/TERM. → spawn with `{ ...process.env, ...env }` (rendered vars still win, keeping
+  the proxy key/base-url authoritative). (b) The CLI returned immediately after spawning, orphaning an
+  interactive TUI and killing the ephemeral proxy it had just started. → `ProcessSpawner.spawn` /
+  `launchHarness` now return `{ pid, exited: Promise<number> }`; `launchCommand` foregrounds the harness
+  (`await launched.value.exited`) and stops ONLY a proxy it owns (started this run) afterward — a reused,
+  externally-running proxy is never stopped. GUI/tray launch stays fire-and-forget (uses `.pid` only).
+  `079779d`.
 
 **Known minor follow-ups (non-blocking, from code review):**
 - Orphaned `.tmp` on a partial atomic-write failure (shared pattern in `runtime-state.ts` and

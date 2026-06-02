@@ -86,7 +86,7 @@ const makeCtx = (
       launchParams.push(params)
       return over.launchOk === false
         ? err({ kind: "spawn-failed", detail: "ENOENT" })
-        : ok({ pid: 4321 })
+        : ok({ pid: 4321, exited: Promise.resolve(0) })
     },
     proxy: {
       isRunning: async () => over.proxyRunning ?? true,

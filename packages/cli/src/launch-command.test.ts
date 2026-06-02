@@ -118,6 +118,77 @@ describe("launch", () => {
     expect(startCalls[0]?.port).toBe(4000)
   })
 
+  it("awaits the harness exit before returning", async () => {
+    let resolveExit: (code: number) => void = () => {}
+    const exited = new Promise<number>((resolve) => {
+      resolveExit = resolve
+    })
+
+    let commandReturned = false
+    const promise = runCli(
+      makeFakeDeps({ harnesses: [claude], launchExited: exited }),
+    )(["launch", "claude"]).then((r) => {
+      commandReturned = true
+      return r
+    })
+
+    // Yield a full macrotask; the command must NOT have returned while the harness
+    // (its `exited` promise) is still pending.
+    await new Promise((r) => setTimeout(r, 0))
+    expect(commandReturned).toBe(false)
+
+    resolveExit(0)
+    const result = await promise
+    expect(result).toEqual({ ok: true, value: undefined })
+    expect(commandReturned).toBe(true)
+  })
+
+  it("stops the proxy it started after the harness exits", async () => {
+    const stopOrder: string[] = []
+    let resolveExit: (code: number) => void = () => {}
+    const exited = new Promise<number>((resolve) => {
+      resolveExit = (code: number) => {
+        stopOrder.push("exited")
+        resolve(code)
+      }
+    })
+
+    const promise = runCli(
+      makeFakeDeps({
+        harnesses: [claude],
+        isProxyRunning: false,
+        launchExited: exited,
+        proxyStopSpy: () => stopOrder.push("stop"),
+      }),
+    )(["launch", "claude"])
+
+    await Promise.resolve()
+    expect(stopOrder).toEqual([]) // not stopped while the harness is alive
+
+    resolveExit(0)
+    const result = await promise
+    expect(result).toEqual({ ok: true, value: undefined })
+    // The owned proxy is stopped only AFTER the harness exits.
+    expect(stopOrder).toEqual(["exited", "stop"])
+  })
+
+  it("does NOT stop the proxy when reusing an already-running one", async () => {
+    let stopped = false
+    const result = await runCli(
+      makeFakeDeps({
+        harnesses: [claude],
+        isProxyRunning: true,
+        launchExited: Promise.resolve(0),
+        proxyStopSpy: () => {
+          stopped = true
+        },
+      }),
+    )(["launch", "claude"])
+
+    expect(result).toEqual({ ok: true, value: undefined })
+    expect(stopped).toBe(false) // a reused proxy is NOT owned by this run, so never stopped
+  })
+
   it("launches the harness with the resolved alias and records a session", async () => {
     const launchCalls: LaunchParams[] = []
     const out = createMemoryWriter()
@@ -127,7 +198,10 @@ describe("launch", () => {
       launchSpy: (params) => {
         launchCalls.push(params)
       },
-      launchResult: { ok: true, value: { pid: 4321 } },
+      launchResult: {
+        ok: true,
+        value: { pid: 4321, exited: Promise.resolve(0) },
+      },
     })
 
     const result = await runCli(deps)(["launch", "claude", "--model", "fast"])

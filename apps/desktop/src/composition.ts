@@ -64,10 +64,13 @@ export interface AppContext {
   readonly secrets: SecretStore
   readonly sessions: SessionStore
   readonly registry: HarnessRegistry
-  /** `launchHarness(realDeps)` partially applied — a single `(params) => Result<{ pid }, unknown>`. */
+  /** `launchHarness(realDeps)` partially applied — a single `(params) => Result<{ pid, exited }, unknown>`. */
   readonly launch: (
     params: LaunchParams,
-  ) => Result<{ readonly pid: number }, unknown>
+  ) => Result<
+    { readonly pid: number; readonly exited: Promise<number> },
+    unknown
+  >
   readonly proxy: {
     isRunning(baseUrl: string): Promise<boolean>
     start(opts: {

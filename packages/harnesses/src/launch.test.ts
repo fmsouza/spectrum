@@ -38,7 +38,8 @@ describe("launchHarness", () => {
 
     const r = launchHarness({ resolver, spawner })(params)
 
-    expect(r).toEqual({ ok: true, value: { pid: 999 } })
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.value.pid).toBe(999)
     expect(spawner.calls).toHaveLength(1)
     const call = spawner.calls[0]
     expect(call?.command).toBe("/usr/local/bin/claude")
@@ -49,6 +50,19 @@ describe("launchHarness", () => {
       ANTHROPIC_API_KEY: "k-secret",
       ANTHROPIC_MODEL: "default",
     })
+  })
+
+  it("surfaces the spawner's exited promise so callers can foreground the harness", async () => {
+    const resolver = createFakeCommandResolver({
+      claude: "/usr/local/bin/claude",
+    })
+    const spawner = createRecordingProcessSpawner(999, 42)
+
+    const r = launchHarness({ resolver, spawner })(params)
+
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(await r.value.exited).toBe(42)
   })
 
   it("returns an invalid-command error and never spawns when the command is relative", () => {

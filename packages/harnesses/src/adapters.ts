@@ -5,7 +5,7 @@ import { type Result, err, ok } from "@launchkit/utils"
 import { type CommandResolver, guardCommand } from "./command-resolver"
 import type { HarnessError } from "./errors"
 import type { HarnessFileSource } from "./file-source"
-import type { ProcessSpawner } from "./process-spawner"
+import type { ProcessSpawner, SpawnedProcess } from "./process-spawner"
 
 /** Real resolver: guard the input, then resolve bare names via `Bun.which`. */
 export const createPathCommandResolver = (): CommandResolver => ({
@@ -30,13 +30,16 @@ export const createBunProcessSpawner = (): ProcessSpawner => ({
     command: string,
     args: readonly string[],
     env: Readonly<Record<string, string>>,
-  ): Result<{ readonly pid: number }, HarnessError> => {
+  ): Result<SpawnedProcess, HarnessError> => {
     try {
+      // MERGE the inherited environment with the rendered overrides: the child needs PATH/HOME/
+      // TERM/etc. to function, while the rendered vars (proxy base-url + per-run key) WIN over any
+      // pre-existing ones in the user's shell so the proxy stays authoritative.
       const child = Bun.spawn([command, ...args], {
-        env,
+        env: { ...process.env, ...env },
         stdio: ["inherit", "inherit", "inherit"],
       })
-      return ok({ pid: child.pid })
+      return ok({ pid: child.pid, exited: child.exited })
     } catch (cause) {
       const detail = cause instanceof Error ? cause.message : String(cause)
       return err({ kind: "spawn-failed", detail })

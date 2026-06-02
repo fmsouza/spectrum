@@ -57,7 +57,7 @@ const makeCtx = (
       launchParams.push(params)
       return over.launchOk === false
         ? err({ kind: "spawn-failed", detail: "ENOENT" })
-        : ok({ pid: 42 })
+        : ok({ pid: 42, exited: Promise.resolve(0) })
     },
     sessions: {
       init: () => ok(undefined),

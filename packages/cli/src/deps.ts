@@ -35,7 +35,10 @@ export type CliDeps = {
   }
   readonly launch: (
     params: LaunchParams,
-  ) => Result<{ readonly pid: number }, unknown>
+  ) => Result<
+    { readonly pid: number; readonly exited: Promise<number> },
+    unknown
+  >
   readonly proxy: {
     isRunning(baseUrl: string): Promise<boolean>
     start(opts: StartProxyDeps): RunningProxy

@@ -1,3 +1,4 @@
+import type { RunningProxy } from "@launchkit/proxy"
 import {
   type AliasName,
   AliasNameSchema,
@@ -61,13 +62,16 @@ export const launchCommand = async (
   // harness authenticates against it); otherwise start an ephemeral one and persist its key.
   const alreadyRunning = await deps.proxy.isRunning(proxyUrl)
   let proxyKey: string
+  // The ephemeral proxy this run OWNS (started here) — null when reusing a running one. We keep
+  // the handle so we can stop it after the harness exits (a reused proxy is never ours to stop).
+  let owned: RunningProxy | null = null
   if (alreadyRunning) {
     // Reuse the running proxy's key so auth succeeds; fall back to a fresh one only if the
     // runtime file is missing (e.g. a proxy started outside this app).
     proxyKey = (await deps.runtime.readProxyKey()) ?? deps.genProxyKey()
   } else {
     proxyKey = deps.genProxyKey()
-    deps.proxy.start({
+    owned = deps.proxy.start({
       host: settings.proxyHost,
       port: settings.proxyPort,
       proxyKey,
@@ -77,15 +81,26 @@ export const launchCommand = async (
   }
 
   const launched = deps.launch({ harness, proxyUrl, proxyKey, model: alias })
-  if (isErr(launched))
+  if (isErr(launched)) {
+    // Spawning failed: tear down the proxy we just started so we don't leak it.
+    owned?.stop()
     return err({ kind: "failed", detail: "failed to launch harness" })
+  }
 
   const session = deps.sessions.create({ harnessId: harness.id, alias })
-  if (isErr(session))
+  if (isErr(session)) {
+    owned?.stop()
     return err({ kind: "failed", detail: "failed to record session" })
+  }
 
   deps.out.write(
     `launched ${harness.id} (pid ${launched.value.pid}, session ${session.value.id})`,
   )
+
+  // Run the harness in the FOREGROUND: keep this process (and any ephemeral proxy we started)
+  // alive until the harness exits, so an interactive TUI owns the terminal and can talk to the
+  // proxy. Then stop the proxy we OWN (never a reused, externally-running one).
+  await launched.value.exited
+  owned?.stop()
   return ok(undefined)
 }

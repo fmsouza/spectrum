@@ -2,7 +2,7 @@ import type { AliasName, HarnessDefinition } from "@launchkit/types"
 import { type Result, err, isErr, renderTemplate } from "@launchkit/utils"
 import type { CommandResolver } from "./command-resolver"
 import type { HarnessError } from "./errors"
-import type { ProcessSpawner } from "./process-spawner"
+import type { ProcessSpawner, SpawnedProcess } from "./process-spawner"
 import { validateEnvTemplate } from "./validate-env-template"
 
 export interface LaunchParams {
@@ -17,7 +17,7 @@ export const launchHarness =
     readonly resolver: CommandResolver
     readonly spawner: ProcessSpawner
   }) =>
-  (params: LaunchParams): Result<{ readonly pid: number }, HarnessError> => {
+  (params: LaunchParams): Result<SpawnedProcess, HarnessError> => {
     const { harness, proxyUrl, proxyKey, model } = params
 
     // 1. Restrict env-template tokens to the allowed three.

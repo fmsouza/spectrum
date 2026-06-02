@@ -18,6 +18,7 @@ export { createFakeCommandResolver } from "./command-resolver"
 
 export type {
   ProcessSpawner,
+  SpawnedProcess,
   SpawnCall,
   RecordingProcessSpawner,
 } from "./process-spawner"

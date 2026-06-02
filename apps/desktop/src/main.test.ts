@@ -24,7 +24,7 @@ const fakeFactory = (() =>
       init: () => ({ ok: true, value: undefined }),
     },
     registry: { list: async () => ({ ok: true, value: [] }) },
-    launch: () => ({ ok: true, value: { pid: 1 } }),
+    launch: () => ({ ok: true, value: { pid: 1, exited: Promise.resolve(0) } }),
     proxy: {
       isRunning: async () => false,
       start: () => ({ hostname: "127.0.0.1", port: 4000, stop: () => {} }),

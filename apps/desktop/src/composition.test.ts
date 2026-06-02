@@ -41,7 +41,7 @@ const makeFakeDeps = (): {
     createBunProcessSpawner: record("createBunProcessSpawner") as never,
     launchHarness: ((..._a: unknown[]) => {
       calls.launchHarness = _a
-      return (..._p: unknown[]) => ok({ pid: 1 })
+      return (..._p: unknown[]) => ok({ pid: 1, exited: Promise.resolve(0) })
     }) as never,
     createProviderFactory: record("createProviderFactory") as never,
     loadSdk: (async () => ({ create: () => ({}) })) as never,
