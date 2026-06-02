@@ -13,7 +13,9 @@
     "ai": "^5",
     "zod": "^3.25.76"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "msw": "^2.7.0"
+  },
   "optionalDependencies": {
     "@ai-sdk/amazon-bedrock": "^3",
     "@ai-sdk/anthropic": "^2",
