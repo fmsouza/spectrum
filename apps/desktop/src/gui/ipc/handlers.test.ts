@@ -35,6 +35,8 @@ const makeCtx = (
     proxyPort?: number
     session?: Session
     launchOk?: boolean
+    registryAddOk?: boolean
+    registryRemoveOk?: boolean
   } = {},
 ): {
   ctx: AppContext
@@ -42,11 +44,15 @@ const makeCtx = (
   secretSets: string[]
   launchParams: unknown[]
   sessionInputs: unknown[]
+  registryAdds: unknown[]
+  registryRemoves: string[]
 } => {
   const saves: Config[] = []
   const secretSets: string[] = []
   const launchParams: unknown[] = []
   const sessionInputs: unknown[] = []
+  const registryAdds: unknown[] = []
+  const registryRemoves: string[] = []
   let current = baseConfig(over.providers ?? [provider()])
 
   const ctx = {
@@ -106,6 +112,18 @@ const makeCtx = (
             builtIn: true,
           },
         ]),
+      add: async (definition: unknown) => {
+        registryAdds.push(definition)
+        return over.registryAddOk === false
+          ? err({ kind: "write-failed", detail: "EACCES" })
+          : ok(undefined)
+      },
+      remove: async (id: string) => {
+        registryRemoves.push(id)
+        return over.registryRemoveOk === false
+          ? err({ kind: "write-failed", detail: "EACCES" })
+          : ok(undefined)
+      },
     },
     genProxyKey: () => "test-key",
     factory: {},
@@ -117,8 +135,30 @@ const makeCtx = (
     },
   } as unknown as AppContext
 
-  return { ctx, saves, secretSets, launchParams, sessionInputs }
+  return {
+    ctx,
+    saves,
+    secretSets,
+    launchParams,
+    sessionInputs,
+    registryAdds,
+    registryRemoves,
+  }
 }
+
+const sampleHarness = {
+  id: "my-tool",
+  name: "My Tool",
+  command: "my-tool",
+  apiFormat: "openai",
+  envTemplate: {
+    OPENAI_BASE_URL: "{{proxyUrl}}",
+    OPENAI_API_KEY: "{{proxyKey}}",
+    OPENAI_MODEL: "{{model}}",
+  },
+  defaultAlias: "default",
+  builtIn: false,
+} as const
 
 const sampleSession: Session = {
   id: "s_1",
@@ -262,6 +302,72 @@ describe("createIpcHandlers.launchHarness", () => {
 
     await expect(
       handlers.launchHarness({ id: "claude" as never }),
+    ).rejects.toThrow()
+  })
+})
+
+describe("createIpcHandlers.addHarness", () => {
+  it("persists via the registry and returns the definition", async () => {
+    const { ctx, registryAdds } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.addHarness(sampleHarness as never)
+
+    expect(result).toEqual(sampleHarness)
+    expect(registryAdds).toEqual([sampleHarness])
+  })
+
+  it("throws so the server surfaces handler-failed when the registry rejects", async () => {
+    const { ctx } = makeCtx({ registryAddOk: false })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(handlers.addHarness(sampleHarness as never)).rejects.toThrow()
+  })
+})
+
+describe("createIpcHandlers.updateHarness", () => {
+  it("upserts via registry.add and returns the updated definition", async () => {
+    const { ctx, registryAdds } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+    const { id, ...input } = sampleHarness
+
+    const result = await handlers.updateHarness({
+      id: id as never,
+      input: input as never,
+    })
+
+    expect(result).toEqual(sampleHarness)
+    expect(registryAdds).toEqual([sampleHarness])
+  })
+
+  it("throws so the server surfaces handler-failed when the registry rejects", async () => {
+    const { ctx } = makeCtx({ registryAddOk: false })
+    const handlers = createIpcHandlers(ctx)
+    const { id, ...input } = sampleHarness
+
+    await expect(
+      handlers.updateHarness({ id: id as never, input: input as never }),
+    ).rejects.toThrow()
+  })
+})
+
+describe("createIpcHandlers.deleteHarness", () => {
+  it("calls registry.remove and returns null on success", async () => {
+    const { ctx, registryRemoves } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.deleteHarness({ id: "my-tool" as never })
+
+    expect(result).toBeNull()
+    expect(registryRemoves).toEqual(["my-tool"])
+  })
+
+  it("throws so the server surfaces handler-failed when removal fails", async () => {
+    const { ctx } = makeCtx({ registryRemoveOk: false })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.deleteHarness({ id: "my-tool" as never }),
     ).rejects.toThrow()
   })
 })

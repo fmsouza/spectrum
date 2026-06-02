@@ -169,15 +169,26 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
     },
 
     addHarness: async (definition) => {
-      // User-defined harnesses are files on disk; the registry hot-reloads them. The GUI write-path
-      // for harness JSON is owned by gui-pages — here we accept + echo the validated definition so
-      // the contract is satisfied. (No-op persistence stub; gui-pages replaces with a file write.)
+      // User-defined harnesses are files on disk; the registry validates + persists (builtIn forced
+      // false, built-in id collisions rejected) and hot-reloads them on the next list.
+      const res = await ctx.registry.add(definition)
+      if (!isOk(res)) return fail("could not add harness")
       return definition
     },
 
-    updateHarness: async ({ id, input }) => ({ ...input, id }),
+    updateHarness: async ({ id, input }) => {
+      // Update is an upsert by id: writeDefinition overwrites the existing file for this id.
+      const updated = { ...input, id }
+      const res = await ctx.registry.add(updated)
+      if (!isOk(res)) return fail("could not update harness")
+      return updated
+    },
 
-    deleteHarness: async () => null,
+    deleteHarness: async ({ id }) => {
+      const res = await ctx.registry.remove(String(id))
+      if (!isOk(res)) return fail("could not delete harness")
+      return null
+    },
 
     launchHarness: async ({ id, alias }) => {
       const config = await loadConfig()
