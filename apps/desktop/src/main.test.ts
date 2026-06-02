@@ -31,6 +31,11 @@ const fakeFactory = (() =>
     },
     factory: {},
     gateway: {},
+    runtime: {
+      readProxyKey: async () => null,
+      writeProxyKey: async () => ({ ok: true, value: undefined }),
+      clear: async () => {},
+    },
     testProvider: async () => ({ ok: true, value: { ok: true, latencyMs: 0 } }),
     proxyPort: 4000,
     proxyBaseUrl: "http://127.0.0.1:4000",

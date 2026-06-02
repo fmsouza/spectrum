@@ -57,19 +57,24 @@ export const launchCommand = async (
   const alias = resolveAlias(harness, flags)
   const proxyUrl = `http://${settings.proxyHost}:${settings.proxyPort}`
 
-  // Ensure a proxy is up. Reuse a running one; otherwise start an ephemeral one.
-  const proxyKey = deps.genProxyKey()
+  // Ensure a proxy is up. Reuse a running one (reading its persisted per-run key so the
+  // harness authenticates against it); otherwise start an ephemeral one and persist its key.
   const alreadyRunning = await deps.proxy.isRunning(proxyUrl)
-  if (!alreadyRunning) {
+  let proxyKey: string
+  if (alreadyRunning) {
+    // Reuse the running proxy's key so auth succeeds; fall back to a fresh one only if the
+    // runtime file is missing (e.g. a proxy started outside this app).
+    proxyKey = (await deps.runtime.readProxyKey()) ?? deps.genProxyKey()
+  } else {
+    proxyKey = deps.genProxyKey()
     deps.proxy.start({
       host: settings.proxyHost,
       port: settings.proxyPort,
       proxyKey,
       config: loaded.value,
     })
+    await deps.runtime.writeProxyKey(proxyKey)
   }
-  // When reusing a running proxy we cannot know its key; the launcher still needs *a*
-  // value, so the freshly generated one is handed off either way. (It is never printed.)
 
   const launched = deps.launch({ harness, proxyUrl, proxyKey, model: alias })
   if (isErr(launched))

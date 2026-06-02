@@ -6,7 +6,11 @@ import {
   defaultConfig,
 } from "@launchkit/config"
 import type { LaunchParams } from "@launchkit/harnesses"
-import type { RunningProxy } from "@launchkit/proxy"
+import {
+  type RunningProxy,
+  type RuntimeState,
+  createInMemoryRuntimeState,
+} from "@launchkit/proxy"
 import {
   createInMemoryKeychainBackend,
   createSecretStore,
@@ -33,6 +37,7 @@ export type FakeDepsOverrides = {
   readonly launchSpy?: (params: LaunchParams) => void
   readonly proxyStartSpy?: (opts: StartProxyDeps) => void
   readonly proxyKey?: string
+  readonly runtime?: RuntimeState
 }
 
 export const makeFakeDeps = (over: FakeDepsOverrides = {}): CliDeps => {
@@ -62,10 +67,13 @@ export const makeFakeDeps = (over: FakeDepsOverrides = {}): CliDeps => {
     stop: () => {},
   }
 
+  const runtime = over.runtime ?? createInMemoryRuntimeState()
+
   return {
     config,
     secrets,
     sessions,
+    runtime,
     out,
     registry: {
       list: async (): Promise<Result<readonly HarnessDefinition[], unknown>> =>

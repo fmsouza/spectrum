@@ -6,6 +6,7 @@ export const cliDepsFrom = (ctx: AppContext): CliDeps => ({
   config: ctx.config,
   secrets: ctx.secrets,
   sessions: ctx.sessions,
+  runtime: ctx.runtime,
   registry: ctx.registry,
   launch: ctx.launch,
   proxy: {

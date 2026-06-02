@@ -46,6 +46,7 @@ const makeFakeDeps = (): {
     createProviderFactory: record("createProviderFactory") as never,
     loadSdk: (async () => ({ create: () => ({}) })) as never,
     createRealGateway: record("createRealGateway") as never,
+    createFileRuntimeState: record("createFileRuntimeState") as never,
     genProxyKey: () => "fixed-test-key",
   }
   return { deps, calls }
@@ -97,6 +98,16 @@ describe("createAppContext wiring", () => {
     }
     expect(sessionArgs.db).toEqual({ __stub: "createBunSqliteDatabase" })
     expect(sessionArgs.clock).toEqual({ __stub: "createSystemClock" })
+  })
+
+  it("builds the runtime state at the resolved runtime.json path and exposes it", () => {
+    const { deps, calls } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+
+    expect(calls.createFileRuntimeState?.[0] as string).toContain(
+      "/home/tester/.config/launchkit/runtime.json",
+    )
+    expect(ctx.runtime).toEqual({ __stub: "createFileRuntimeState" })
   })
 
   it("calls sessions.init() so the schema exists before first use", () => {

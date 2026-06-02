@@ -4,6 +4,7 @@ import type {
   LanguageModelGateway,
   ProviderFactory,
   RunningProxy,
+  RuntimeState,
 } from "@launchkit/proxy"
 import type { SecretStore } from "@launchkit/secrets"
 import type { SessionStore } from "@launchkit/sessions"
@@ -25,6 +26,7 @@ import {
   launchHarness,
 } from "@launchkit/harnesses"
 import {
+  createFileRuntimeState,
   createProviderFactory,
   createProviderTester,
   createRealGateway,
@@ -77,6 +79,11 @@ export interface AppContext {
   }
   readonly factory: ProviderFactory
   readonly gateway: LanguageModelGateway
+  /**
+   * Persists the GUI proxy's per-run key so the CLI `launch` can reuse it (avoiding a
+   * mismatched key the running proxy would reject). Holds only the per-run token — never a secret.
+   */
+  readonly runtime: RuntimeState
   /** Test one provider's connectivity. The real implementation is provided by the tray-and-polish plan. */
   readonly testProvider: (
     providerId: string,
@@ -120,6 +127,7 @@ export interface CreateAppContextDeps {
   readonly createProviderFactory: typeof createProviderFactory
   readonly loadSdk: typeof loadSdk
   readonly createRealGateway: typeof createRealGateway
+  readonly createFileRuntimeState: typeof createFileRuntimeState
   readonly genProxyKey: () => string
 }
 
@@ -151,6 +159,7 @@ const realDeps: CreateAppContextDeps = {
   createProviderFactory,
   loadSdk,
   createRealGateway,
+  createFileRuntimeState,
   genProxyKey: defaultGenProxyKey,
 }
 
@@ -199,6 +208,7 @@ export const createAppContext = (
   const configFile = join(configDir, "config.json")
   const dbFile = join(configDir, "launchkit.db")
   const harnessDir = join(configDir, "harnesses")
+  const runtimeFile = join(configDir, "runtime.json")
 
   // config: cached( file( fs(configFile) ) )
   const config = deps.createCachedConfigStore(
@@ -237,6 +247,9 @@ export const createAppContext = (
   })
   const gateway = deps.createRealGateway()
 
+  // runtime: persists only the running proxy's per-run key so the CLI can reuse it
+  const runtime = deps.createFileRuntimeState(runtimeFile)
+
   // proxy settings resolved from the default config shape (loopback only, security.md)
   const settings = defaultConfig().settings
   const proxyPort = settings.proxyPort
@@ -274,6 +287,7 @@ export const createAppContext = (
     proxy: { isRunning: isProxyRunning, start: startProxyAdapter },
     factory,
     gateway,
+    runtime,
     // tray-and-polish-03: real connectivity probe wired here — resolve the provider from the
     // live config, pick its first model, and delegate to the proxy's createProviderTester.
     testProvider: createTestProvider(config, factory, gateway, () =>

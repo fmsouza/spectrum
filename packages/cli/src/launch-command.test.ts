@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { LaunchParams } from "@launchkit/harnesses"
+import { createInMemoryRuntimeState } from "@launchkit/proxy"
 import {
   AliasNameSchema,
   type HarnessDefinition,
@@ -57,6 +58,47 @@ describe("launch", () => {
     )(["launch", "claude"])
     expect(result).toEqual({ ok: true, value: undefined })
     expect(started).toBe(false) // proxy.start MUST NOT be called when one is already running
+  })
+
+  it("reuses the running proxy's key instead of minting a new one when the proxy is already up", async () => {
+    const launchCalls: LaunchParams[] = []
+    const runtime = createInMemoryRuntimeState()
+    await runtime.writeProxyKey("KEY-FROM-RUNNING")
+    const deps = makeFakeDeps({
+      harnesses: [claude],
+      isProxyRunning: true,
+      runtime,
+      proxyKey: "FRESH",
+      proxyStartSpy: () => {
+        throw new Error("proxy.start MUST NOT be called when one is running")
+      },
+      launchSpy: (p) => launchCalls.push(p),
+    })
+
+    const result = await runCli(deps)(["launch", "claude"])
+
+    expect(result).toEqual({ ok: true, value: undefined })
+    expect(launchCalls[0]?.proxyKey).toBe("KEY-FROM-RUNNING")
+  })
+
+  it("mints and persists a key when starting a fresh proxy", async () => {
+    let started = false
+    const runtime = createInMemoryRuntimeState()
+    const deps = makeFakeDeps({
+      harnesses: [claude],
+      isProxyRunning: false,
+      runtime,
+      proxyKey: "MINTED-KEY",
+      proxyStartSpy: () => {
+        started = true
+      },
+    })
+
+    const result = await runCli(deps)(["launch", "claude"])
+
+    expect(result).toEqual({ ok: true, value: undefined })
+    expect(started).toBe(true)
+    expect(await runtime.readProxyKey()).toBe("MINTED-KEY")
   })
 
   it("starts an ephemeral proxy when none is running", async () => {
