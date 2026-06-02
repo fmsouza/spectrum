@@ -2,7 +2,7 @@
 
 **This file is the single source of truth for build state.** See `EXECUTION.md` for the protocol. Update it in the same commit as the work it tracks.
 
-## Status: Phase 3 complete (+ build remediation)
+## Status: Phase 3 complete (+ build & runtime remediation)
 
 All build-plan tasks are `done`. The LaunchKit binary builds (`bunx electrobun build` →
 `apps/desktop/build/<target>/LaunchKit-dev.app`), the full gate
@@ -76,6 +76,48 @@ gate step failed on 8 advisories; the pipeline also built no artifacts.
   new `ci.yml` `[ubuntu-latest, macos-latest]` matrix.
 - **New advisory resolved at source** via the v5→v6 AI SDK migration (above). CI is green on both
   legs with a clean blocking audit.
+
+### Runtime remediation (2026-06-02) — `[remediation/*]`
+
+Plan: `docs/superpowers/plans/2026-06-02-launchkit-runtime-remediation.md`. A thorough review found
+that "binary builds" was again masking "binary **runs**": the built `.app` launched but its own code
+never executed, plus several functional gaps. Fixed via subagent-driven TDD on branch
+`remediation/runtime-fixes` (gate green throughout: typecheck + lint + **479 tests**; `bun audit`
+clean; `apps/desktop/scripts/smoke.sh` PASS).
+
+- **P0 — GUI app never ran (the headline bug).** Electrobun's launcher loads `bun/index.js` via
+  `new Worker(...)`, but the build emitted `bun/main.js` (entrypoint basename) **and** startup was
+  gated behind `if (import.meta.main)` — always `false` in a Worker. So launching the `.app` started
+  no proxy, no window, no tray. → New unconditional entry `apps/desktop/src/index.ts`; `main.ts` made
+  side-effect-free; `electrobun.config.ts` entrypoint → `src/index.ts` (bundles to `bun/index.js`).
+  Proven by a new runtime smoke script that builds, launches, and asserts the loopback proxy `/health`
+  responds. `1d0878a`, `d3714c7`.
+- **P0 process gap.** `MANUAL-VERIFICATION.md` was 100% unchecked — the GUI/tray/e2e runtime was never
+  actually run, which is how P0 shipped as "done". The smoke script now guards the build-vs-runs gap
+  in CI-able form; the eyes-on checklist (window/tray/launch-click/import-export) still requires a
+  real GUI run.
+- **P1 — GUI custom-harness CRUD silently lost data.** `addHarness`/`updateHarness`/`deleteHarness`
+  echoed input but never persisted (`HarnessFileSource` was read-only). → Added
+  `writeDefinition`/`deleteDefinition` (atomic 0600 write, path-traversal-safe ids) + registry
+  `add`/`remove` (force `builtIn:false`, reject built-in ids) + wired the handlers to return the
+  registry-normalized definition. `d4c0dd4`, `f90e976`, `82c1d90`.
+- **P2 — install hardening.** AI SDK providers moved from `optionalDependencies` → `dependencies`
+  (a degraded install now fails loudly, not silently at runtime). `1abbfde`. Root `README.md` added
+  with verified build/install/run instructions for the dev `.app` + CLI. `832ed35`.
+- **P3 — CLI proxy-key mismatch.** `launch` minted a fresh key even when reusing a running proxy
+  (harness rejected by the live proxy). → New `RuntimeState` adapter (`@launchkit/proxy`) persists the
+  per-run key to `~/.config/launchkit/runtime.json` (0600); GUI writes it on start / clears on stop;
+  CLI reads it on reuse. `473b729`. Stale comment in `cli/src/run.ts` corrected (`a4e0d58`).
+
+**Known minor follow-ups (non-blocking, from code review):**
+- Orphaned `.tmp` on a partial atomic-write failure (shared pattern in `runtime-state.ts` and
+  `config/fs-config-file.ts` — best-effort `unlink` in the catch would close it).
+- `runtime.json` has no port/PID metadata, so a GUI crash-without-stop + a different proxy on the port
+  could hand a stale key (degrades to the same 401 as the original bug, only in that narrow window).
+- The GUI's `writeProxyKey`/`clear` are fire-and-forget — a CLI launch racing GUI startup may read
+  `null` and fall back to minting (graceful 401, not a crash).
+- Inbound proxy parsers don't re-validate through `NormalizedRequestSchema` (e.g. `temperature`
+  unbounded) — cosmetic; providers reject invalid values.
 
 ## Status legend
 `todo` · `in-progress` · `done` · `blocked`
