@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test"
-import { MockLanguageModelV2, simulateReadableStream } from "ai/test"
+import { MockLanguageModelV3, simulateReadableStream } from "ai/test"
 import type { NormalizedRequest, StreamEvent } from "../types"
 import { createRealGateway } from "./real-gateway"
 
 describe("createRealGateway", () => {
   it("maps streamText text deltas to normalized text-delta and finish events", async () => {
-    const model = new MockLanguageModelV2({
+    const model = new MockLanguageModelV3({
       doStream: async () => ({
         stream: simulateReadableStream({
           chunks: [
@@ -15,11 +15,17 @@ describe("createRealGateway", () => {
             { type: "text-end" as const, id: "0" },
             {
               type: "finish" as const,
-              finishReason: "stop" as const,
+              // v6 provider-level finish: finishReason is a { unified, raw } object and
+              // input/output usage are breakdown objects (LanguageModelV3Usage).
+              finishReason: { unified: "stop" as const, raw: "stop" },
               usage: {
-                inputTokens: 1,
-                outputTokens: 2,
-                totalTokens: 3,
+                inputTokens: {
+                  total: 1,
+                  noCache: 1,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                },
+                outputTokens: { total: 2, text: 2, reasoning: 0 },
               },
             },
           ],
