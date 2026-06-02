@@ -5,7 +5,7 @@ import {
   HarnessIdSchema,
 } from "@launchkit/types"
 import { createFakeCommandResolver } from "./command-resolver"
-import { launchHarness } from "./launch"
+import { launchHarness, resolveHarnessLaunch } from "./launch"
 import { createRecordingProcessSpawner } from "./process-spawner"
 
 const harness: HarnessDefinition = {
@@ -78,6 +78,24 @@ describe("launchHarness", () => {
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.error.kind).toBe("invalid-command")
     expect(spawner.calls).toEqual([])
+  })
+
+  it("resolves the command and renders the env without spawning", () => {
+    const resolver = createFakeCommandResolver({
+      claude: "/usr/local/bin/claude",
+    })
+
+    const r = resolveHarnessLaunch({ resolver })(params)
+
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.command).toBe("/usr/local/bin/claude")
+    expect(r.value.args).toEqual([])
+    expect(r.value.env).toEqual({
+      ANTHROPIC_BASE_URL: "http://127.0.0.1:4000",
+      ANTHROPIC_API_KEY: "k-secret",
+      ANTHROPIC_MODEL: "default",
+    })
   })
 
   it("returns an invalid-template error and never spawns when an env token is unknown", () => {
