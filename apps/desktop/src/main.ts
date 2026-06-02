@@ -51,14 +51,24 @@ export const buildRealDeps = (
   }
 }
 
+/**
+ * Entry wiring (pure, exported for testing): detect the mode from the raw argv, then run it.
+ *
+ * Both `bun run src/main.ts <verb>` and the compiled binary produce a `process.argv` shaped
+ * `[runtime, scriptPath, ...userArgs]`. `detectMode` reads the verb at `argv[2]`, but
+ * `runCli`/`parseArgs` treat the command as the first token — so the two-element prefix is dropped
+ * before argv reaches `runApp`/`runCli`. Passing the raw argv through would make the CLI parse the
+ * runtime path (`"bun"`) as the command.
+ */
+export const main = (
+  argv: readonly string[],
+  deps: RunAppDeps,
+): Promise<void> => runApp(detectMode(argv), argv.slice(2), deps)
+
 // --- entry point ---------------------------------------------------------------------
-// The single side effect: detect the mode and run it. Everything above is pure/exported.
-// Guarded with import.meta.main so tests can import { buildRealDeps } without triggering
-// the real entry point.
+// The single side effect: run the entry wiring against the real deps. Everything above is
+// pure/exported. Guarded with import.meta.main so tests can import { main, buildRealDeps }
+// without triggering the real entry point.
 if (import.meta.main) {
-  await runApp(
-    detectMode(process.argv),
-    process.argv,
-    buildRealDeps(createAppContext),
-  )
+  await main(process.argv, buildRealDeps(createAppContext))
 }
