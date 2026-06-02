@@ -5,6 +5,7 @@ import {
   ModelAliasSchema,
   ProviderIdSchema,
   SdkProviderSchema,
+  SessionIdSchema,
   SessionSchema,
 } from "@launchkit/types"
 import { z } from "zod"
@@ -124,7 +125,13 @@ export const LaunchHarnessParamsSchema = z
     alias: AliasNameSchema.optional(),
   })
   .strict()
-export const LaunchHarnessResultSchema = SessionSchema
+/**
+ * Launching now opens an embedded terminal session via the TerminalManager (which creates the
+ * Session internally), so the GUI only needs the new session's id back — not the full Session.
+ */
+export const LaunchHarnessResultSchema = z
+  .object({ sessionId: SessionIdSchema })
+  .strict()
 
 // ── Sessions & proxy ──────────────────────────────────────────────────────────
 

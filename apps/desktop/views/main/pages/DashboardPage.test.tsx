@@ -54,7 +54,10 @@ describe("DashboardPage", () => {
 
   it("calls launchHarness with the harness id when a quick-launch card is clicked", async () => {
     const client = renderPage({
-      launchHarness: async () => ({ ok: true, value: activeSession }),
+      launchHarness: async () => ({
+        ok: true,
+        value: { sessionId: activeSession.id },
+      }),
     })
     await waitFor(() =>
       expect(

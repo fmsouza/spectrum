@@ -5,6 +5,7 @@ import {
   GetSessionsParamsSchema,
   IpcMethodSchemas,
   LaunchHarnessParamsSchema,
+  LaunchHarnessResultSchema,
   SetProviderSecretParamsSchema,
 } from "./methods"
 
@@ -65,6 +66,16 @@ describe("LaunchHarnessParamsSchema", () => {
         alias: "fast" as AliasName,
       }),
     ).toEqual({ id: "claude" as HarnessId, alias: "fast" as AliasName })
+  })
+})
+
+describe("LaunchHarnessResultSchema", () => {
+  it("parses a result carrying only the created sessionId", () => {
+    const parsed = LaunchHarnessResultSchema.parse({ sessionId: "s_1" })
+    expect(parsed.sessionId).toBe("s_1" as typeof parsed.sessionId)
+  })
+  it("rejects a result missing the sessionId", () => {
+    expect(LaunchHarnessResultSchema.safeParse({}).success).toBe(false)
   })
 })
 

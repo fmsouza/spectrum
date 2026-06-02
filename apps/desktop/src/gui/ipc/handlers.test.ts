@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test"
 import type { Config } from "@launchkit/config"
+import {
+  createFakeCommandResolver,
+  resolveHarnessLaunch,
+} from "@launchkit/harnesses"
 import type { Provider, Session } from "@launchkit/types"
 import { type Result, err, ok } from "@launchkit/utils"
 import type { AppContext } from "../../composition"
@@ -35,6 +39,8 @@ const makeCtx = (
     proxyPort?: number
     session?: Session
     launchOk?: boolean
+    terminalOk?: boolean
+    proxyKeyStored?: string | null
     registryAddOk?: boolean
     registryRemoveOk?: boolean
   } = {},
@@ -44,6 +50,7 @@ const makeCtx = (
   secretSets: string[]
   launchParams: unknown[]
   sessionInputs: unknown[]
+  terminalInputs: unknown[]
   registryAdds: unknown[]
   registryRemoves: string[]
 } => {
@@ -51,9 +58,16 @@ const makeCtx = (
   const secretSets: string[] = []
   const launchParams: unknown[] = []
   const sessionInputs: unknown[] = []
+  const terminalInputs: unknown[] = []
   const registryAdds: unknown[] = []
   const registryRemoves: string[] = []
   let current = baseConfig(over.providers ?? [provider()])
+
+  // The handler resolves the harness command+env via ctx.resolveLaunch — use the REAL renderer
+  // over a fake resolver so the rendered proxy vars (ANTHROPIC_*) are asserted faithfully.
+  const resolveLaunch = resolveHarnessLaunch({
+    resolver: createFakeCommandResolver({ claude: "/usr/local/bin/claude" }),
+  })
 
   const ctx = {
     config: {
@@ -99,6 +113,22 @@ const makeCtx = (
     proxyPort: over.proxyPort ?? 4000,
     proxyBaseUrl: `http://127.0.0.1:${over.proxyPort ?? 4000}`,
     testProvider: async () => ok({ ok: true, latencyMs: 12 }),
+    runtime: {
+      readProxyKey: async () => over.proxyKeyStored ?? null,
+      writeProxyKey: async () => ok(undefined),
+      clear: async () => undefined,
+    },
+    terminal: {
+      launch: (input: unknown) => {
+        terminalInputs.push(input)
+        return over.terminalOk === false
+          ? err({ kind: "pty-open-failed", detail: "ENOENT" })
+          : ok({ sessionId: sampleSession.id })
+      },
+      handleInbound: () => undefined,
+      bindSend: () => undefined,
+    },
+    resolveLaunch,
     registry: {
       list: async () =>
         ok([
@@ -107,7 +137,11 @@ const makeCtx = (
             name: "Claude Code",
             command: "claude",
             apiFormat: "anthropic",
-            envTemplate: {},
+            envTemplate: {
+              ANTHROPIC_BASE_URL: "{{proxyUrl}}",
+              ANTHROPIC_API_KEY: "{{proxyKey}}",
+              ANTHROPIC_MODEL: "{{model}}",
+            },
             defaultAlias: "default",
             builtIn: true,
           },
@@ -141,6 +175,7 @@ const makeCtx = (
     secretSets,
     launchParams,
     sessionInputs,
+    terminalInputs,
     registryAdds,
     registryRemoves,
   }
@@ -280,24 +315,61 @@ describe("createIpcHandlers.setProviderSecret", () => {
 })
 
 describe("createIpcHandlers.launchHarness", () => {
-  it("launches via ctx.launch and records a session, returning the created Session", async () => {
-    const { ctx, launchParams, sessionInputs } = makeCtx({
+  it("resolves the harness env and opens a terminal session, returning the sessionId", async () => {
+    const { ctx, terminalInputs } = makeCtx({
       providers: [provider()],
+      proxyKeyStored: "stored-run-key",
+      proxyPort: 4000,
     })
     const handlers = createIpcHandlers(ctx)
 
-    const session = await handlers.launchHarness({
+    const result = await handlers.launchHarness({
       id: "claude" as never,
       alias: "fast" as never,
     })
 
-    expect(session).toEqual(sampleSession)
-    expect(launchParams).toHaveLength(1)
-    expect(sessionInputs).toEqual([{ harnessId: "claude", alias: "fast" }])
+    // The terminal manager owns session creation; the handler returns only the sessionId.
+    expect(result).toEqual({ sessionId: sampleSession.id })
+    expect(terminalInputs).toHaveLength(1)
+    const input = terminalInputs[0] as {
+      harnessId: string
+      alias: string
+      command: string
+      env: Record<string, string>
+    }
+    expect(input.harnessId).toBe("claude")
+    expect(input.alias).toBe("fast")
+    expect(input.command).toBe("/usr/local/bin/claude")
+    // The rendered proxy vars carry the loopback proxy URL + the stored per-run key + alias.
+    expect(input.env.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:4000")
+    expect(input.env.ANTHROPIC_API_KEY).toBe("stored-run-key")
+    expect(input.env.ANTHROPIC_MODEL).toBe("fast")
   })
 
-  it("throws so the server surfaces handler-failed when the launcher fails to spawn", async () => {
-    const { ctx } = makeCtx({ providers: [provider()], launchOk: false })
+  it("does NOT create a duplicate session directly — the terminal manager owns it", async () => {
+    const { ctx, sessionInputs } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({ id: "claude" as never })
+
+    expect(sessionInputs).toEqual([])
+  })
+
+  it("falls back to a freshly minted proxy key when none is stored", async () => {
+    const { ctx, terminalInputs } = makeCtx({
+      providers: [provider()],
+      proxyKeyStored: null,
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({ id: "claude" as never })
+
+    const input = terminalInputs[0] as { env: Record<string, string> }
+    expect(input.env.ANTHROPIC_API_KEY).toBe("test-key") // ctx.genProxyKey()
+  })
+
+  it("throws so the server surfaces handler-failed when terminal.launch errors", async () => {
+    const { ctx } = makeCtx({ providers: [provider()], terminalOk: false })
     const handlers = createIpcHandlers(ctx)
 
     await expect(

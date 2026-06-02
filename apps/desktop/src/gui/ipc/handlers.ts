@@ -202,22 +202,30 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
 
       const resolvedAlias = alias ?? harness.defaultAlias
       const proxyUrl = `http://${config.settings.proxyHost}:${config.settings.proxyPort}`
+      // The GUI proxy runs persistently and stored its per-run key in runtime state; reuse it so the
+      // running proxy accepts the harness's requests. If absent, mint a fresh key (security.md).
+      const proxyKey = (await ctx.runtime.readProxyKey()) ?? ctx.genProxyKey()
 
-      // The GUI proxy runs persistently while the app is open; the launcher still needs *a* key.
-      const launched = ctx.launch({
+      // Resolve the command + render the proxy env WITHOUT spawning ...
+      const resolved = ctx.resolveLaunch({
         harness,
         proxyUrl,
-        proxyKey: ctx.genProxyKey(),
+        proxyKey,
         model: resolvedAlias,
       })
-      if (!isOk(launched)) return fail("failed to launch harness")
+      if (!isOk(resolved)) return fail("failed to resolve harness launch")
 
-      const session = ctx.sessions.create({
+      // ... then open an embedded terminal session. The TerminalManager creates the Session itself,
+      // so the handler must NOT call ctx.sessions.create (that would double-record the session).
+      const opened = ctx.terminal.launch({
         harnessId: harness.id,
         alias: resolvedAlias,
+        command: resolved.value.command,
+        args: resolved.value.args,
+        env: resolved.value.env,
       })
-      if (!isOk(session)) return fail("failed to record session")
-      return session.value
+      if (!isOk(opened)) return fail("failed to launch harness")
+      return { sessionId: opened.value.sessionId }
     },
 
     // ── Sessions & proxy ─────────────────────────────────────────────────────────────────

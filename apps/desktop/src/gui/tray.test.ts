@@ -1,5 +1,9 @@
 import { describe, expect, it, mock } from "bun:test"
 import {
+  createFakeCommandResolver,
+  resolveHarnessLaunch,
+} from "@launchkit/harnesses"
+import {
   AliasNameSchema,
   type HarnessDefinition,
   HarnessIdSchema,
@@ -46,18 +50,35 @@ const makeCtx = (
   over: {
     harnesses?: readonly HarnessDefinition[]
     proxyRunning?: boolean
-    launchOk?: boolean
+    terminalOk?: boolean
   } = {},
-): { ctx: AppContext; launchParams: unknown[]; sessionInputs: unknown[] } => {
-  const launchParams: unknown[] = []
+): {
+  ctx: AppContext
+  terminalInputs: unknown[]
+  sessionInputs: unknown[]
+} => {
+  const terminalInputs: unknown[] = []
   const sessionInputs: unknown[] = []
+  const resolveLaunch = resolveHarnessLaunch({
+    resolver: createFakeCommandResolver({ claude: "/usr/local/bin/claude" }),
+  })
   const ctx = {
     registry: { list: async () => ok(over.harnesses ?? [harness]) },
-    launch: (params: unknown) => {
-      launchParams.push(params)
-      return over.launchOk === false
-        ? err({ kind: "spawn-failed", detail: "ENOENT" })
-        : ok({ pid: 42, exited: Promise.resolve(0) })
+    resolveLaunch,
+    runtime: {
+      readProxyKey: async () => null,
+      writeProxyKey: async () => ok(undefined),
+      clear: async () => undefined,
+    },
+    terminal: {
+      launch: (input: unknown) => {
+        terminalInputs.push(input)
+        return over.terminalOk === false
+          ? err({ kind: "pty-open-failed", detail: "ENOENT" })
+          : ok({ sessionId: sampleSession.id })
+      },
+      handleInbound: () => undefined,
+      bindSend: () => undefined,
     },
     sessions: {
       init: () => ok(undefined),
@@ -85,7 +106,7 @@ const makeCtx = (
       save: async () => ok(undefined),
     },
   } as unknown as AppContext
-  return { ctx, launchParams, sessionInputs }
+  return { ctx, terminalInputs, sessionInputs }
 }
 
 /**
@@ -139,23 +160,29 @@ describe("mountTray", () => {
     })
   })
 
-  it("launches the harness with its defaultAlias and records a session when a Launch item is clicked", async () => {
-    const { ctx, launchParams, sessionInputs } = makeCtx({
+  it("opens a terminal session with the resolved env and focuses the window when a Launch item is clicked", async () => {
+    const { ctx, terminalInputs, sessionInputs } = makeCtx({
       harnesses: [harness],
     })
+    const openWindow = mock(() => {})
     const { deps, click } = captureTray()
 
-    await mountTray(ctx, { openWindow: () => {}, quit: () => {} }, deps)
+    await mountTray(ctx, { openWindow, quit: () => {} }, deps)
     click("launch:claude")
     await flushMicrotasks() // let the detached launchById promises settle
 
-    // Same launch path as the IPC handler: ctx.launch(...) then ctx.sessions.create({ harnessId, alias }).
-    expect(launchParams).toHaveLength(1)
-    expect(launchParams[0]).toMatchObject({
-      harness,
-      model: harness.defaultAlias,
+    // Same path as the IPC handler: resolve env then ctx.terminal.launch — the manager owns the session.
+    expect(terminalInputs).toHaveLength(1)
+    expect(terminalInputs[0]).toMatchObject({
+      harnessId: harness.id,
+      alias: harness.defaultAlias,
+      command: "/usr/local/bin/claude",
+      env: { ANTHROPIC_BASE_URL: "http://127.0.0.1:4000" },
     })
-    expect(sessionInputs).toEqual([{ harnessId: "claude", alias: "default" }])
+    // The handler must NOT create a session directly (the manager does it).
+    expect(sessionInputs).toEqual([])
+    // The window is brought forward so the user sees the new terminal tab.
+    expect(openWindow).toHaveBeenCalledTimes(1)
   })
 
   it("invokes openWindow when the Open LaunchKit item is clicked", async () => {
@@ -180,10 +207,10 @@ describe("mountTray", () => {
     expect(quit).toHaveBeenCalledTimes(1)
   })
 
-  it("does not record a session when the launcher fails to spawn", async () => {
+  it("does not record a session when the terminal fails to open", async () => {
     const { ctx, sessionInputs } = makeCtx({
       harnesses: [harness],
-      launchOk: false,
+      terminalOk: false,
     })
     const { deps, click } = captureTray()
 
@@ -191,6 +218,6 @@ describe("mountTray", () => {
     click("launch:claude")
     await flushMicrotasks() // let the detached launchById promises settle
 
-    expect(sessionInputs).toEqual([]) // spawn failed → no session recorded
+    expect(sessionInputs).toEqual([]) // pty failed → no session recorded
   })
 })

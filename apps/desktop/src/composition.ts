@@ -1,5 +1,10 @@
 import type { ConfigStore } from "@launchkit/config"
-import type { HarnessRegistry, LaunchParams } from "@launchkit/harnesses"
+import type {
+  HarnessError,
+  HarnessRegistry,
+  LaunchParams,
+  ResolvedHarnessLaunch,
+} from "@launchkit/harnesses"
 import type {
   LanguageModelGateway,
   ProviderFactory,
@@ -25,6 +30,7 @@ import {
   createPathCommandResolver,
   createRegistry,
   launchHarness,
+  resolveHarnessLaunch,
 } from "@launchkit/harnesses"
 import {
   createFileRuntimeState,
@@ -73,6 +79,14 @@ export interface AppContext {
     { readonly pid: number; readonly exited: Promise<number> },
     unknown
   >
+  /**
+   * `resolveHarnessLaunch({ resolver })` partially applied: resolves a harness's command + renders
+   * its proxy env WITHOUT spawning. The GUI embedded-terminal path uses this (then hands the result
+   * to `ctx.terminal.launch`); the headless `ctx.launch` keeps owning the CLI spawn path.
+   */
+  readonly resolveLaunch: (
+    params: LaunchParams,
+  ) => Result<ResolvedHarnessLaunch, HarnessError>
   readonly proxy: {
     isRunning(baseUrl: string): Promise<boolean>
     start(opts: {
@@ -250,10 +264,14 @@ export const createAppContext = (
   const registry = deps.createRegistry({
     fileSource: deps.createDirHarnessFileSource(harnessDir),
   })
+  // ONE resolver shared by both launch paths: the headless `launch` (CLI spawn) and the GUI's
+  // `resolveLaunch` (resolve command + render proxy env, then hand to `terminal.launch`).
+  const resolver = deps.createPathCommandResolver()
   const launch = deps.launchHarness({
-    resolver: deps.createPathCommandResolver(),
+    resolver,
     spawner: deps.createBunProcessSpawner(),
   })
+  const resolveLaunch = resolveHarnessLaunch({ resolver })
 
   // proxy provider layer: factory (secrets + lazy SDK loader) + real streamText gateway
   const factory = deps.createProviderFactory({
@@ -309,6 +327,7 @@ export const createAppContext = (
     sessions,
     registry,
     launch,
+    resolveLaunch,
     proxy: { isRunning: isProxyRunning, start: startProxyAdapter },
     factory,
     gateway,
