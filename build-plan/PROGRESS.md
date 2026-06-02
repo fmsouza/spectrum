@@ -42,11 +42,13 @@ Plan: `docs/superpowers/plans/2026-05-25-ci-release-pipeline.md` (spec:
 gate step failed on 8 advisories; the pipeline also built no artifacts.
 
 - **Audit green, no ignores.** Bumped `happy-dom`→`^20` (critical RCE) and `turbo`→`^2.9.15`; added
-  `overrides` for `uuid`/`jsondiffpatch`; migrated the Vercel AI SDK v4→**v5** in `@launchkit/proxy`
-  (`real-gateway.ts` `maxOutputTokens` + `.text` stream parts via a new pure `mapFullStreamPart`;
-  `@ai-sdk/*` bumped to v5-compatible majors; `ollama-ai-provider`→`ollama-ai-provider-v2`).
-  `bun audit` now exits 0 with **no** `--ignore`/`--audit-level` flags. `bun audit` stays a blocking
-  step in `ci.yml` (bun pinned to 1.3.14).
+  `overrides` for `uuid`/`jsondiffpatch`; migrated the Vercel AI SDK in `@launchkit/proxy` to **v6**
+  (initially v5; bumped to v6 when a newly-published advisory, GHSA-866g-f22w-33x8, hit
+  `@ai-sdk/provider-utils <=3.0.97` with a fix only in the provider-utils 4.x / ai@6 line). All
+  `@ai-sdk/*` are on their v6 majors; `ollama-ai-provider-v2`→`^3`. The SDK stays isolated behind the
+  `LanguageModelGateway`; `mapFullStreamPart` reads the high-level `fullStream` `text-delta.text` +
+  `finish.finishReason`. `bun audit` exits 0 with **no** `--ignore`/`--audit-level` flags and stays a
+  blocking step in `ci.yml` (bun pinned to 1.3.14).
 - **Versions synced to 0.1.0** across root + app + all packages/tooling + `electrobun.config.ts`
   (root `package.json` is the release source-of-truth).
 - **Standalone CLI binary.** `apps/desktop/src/cli.ts` (CLI-only entry, no Electrobun) + a `compile`
@@ -64,6 +66,16 @@ gate step failed on 8 advisories; the pipeline also built no artifacts.
 - `apps/desktop/src/cli.ts` now renders `CliError` via an exhaustive `formatCliError`
   (`launchkit: unknown command "x"`) instead of `JSON.stringify`; the `errOut` no-trailing-newline
   contract is documented and the argv-threading/formatter paths are tested.
+
+**CI follow-ups resolved (2026-06-02):**
+- **Failing test fixed.** `@launchkit/proxy` re-adds `msw` (devDep): `ai/test` imports it at module
+  load, so a clean `--frozen-lockfile` install (CI) needs it — the earlier "drop unused msw" only
+  passed on a stale local `node_modules`.
+- **Skipped tests addressed.** The 3 `apps/desktop` e2e tests are platform-agnostic and were
+  de-gated (run everywhere, incl. Linux CI); the macOS-only keychain integration test now runs via a
+  new `ci.yml` `[ubuntu-latest, macos-latest]` matrix.
+- **New advisory resolved at source** via the v5→v6 AI SDK migration (above). CI is green on both
+  legs with a clean blocking audit.
 
 ## Status legend
 `todo` · `in-progress` · `done` · `blocked`
