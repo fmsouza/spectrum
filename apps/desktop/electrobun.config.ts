@@ -3,8 +3,11 @@ import type { ElectrobunConfig } from "electrobun"
 /**
  * Electrobun build configuration for the LaunchKit binary (Electrobun v1.18.x schema).
  *
- * - `build.bun.entrypoint` → the main (Bun) process; bundled to `bun/main.js`. This is the
- *   dual-mode entry that calls `runApp(detectMode(argv), argv, buildRealDeps(...))`.
+ * - `build.bun.entrypoint` → the main (Bun) process; bundled to `bun/index.js`. The Electrobun
+ *   launcher loads that file via `new Worker(...)`, where `import.meta.main` is always `false`, so
+ *   the entry (`src/index.ts`) must run startup unconditionally — it is a thin shell over the
+ *   tested `main`/`buildRealDeps` (see src/main.ts) that calls
+ *   `runApp(detectMode(argv), argv, buildRealDeps(...))`.
  * - `build.views.main.entrypoint` → the React webview; bundled (target: browser) to
  *   `views/main/app.js`, which `views/main/index.html` references as `./app.js`.
  * - `build.copy` → copies the CSP-hardened `index.html` next to the bundled `app.js` so the
@@ -18,7 +21,7 @@ export default {
     version: "0.1.0",
   },
   build: {
-    bun: { entrypoint: "src/main.ts" },
+    bun: { entrypoint: "src/index.ts" },
     views: {
       main: { entrypoint: "views/main/app.tsx" },
     },

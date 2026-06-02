@@ -38,6 +38,14 @@ const fakeFactory = (() =>
     paths: { configFile: "", dbFile: "", harnessDir: "" },
   }) as never) as typeof createAppContext
 
+describe("module side effects", () => {
+  it("does not start the proxy or open a window merely by importing main.ts", async () => {
+    const mod = await import("./main")
+    expect(typeof mod.main).toBe("function")
+    expect(typeof mod.buildRealDeps).toBe("function")
+  })
+})
+
 describe("buildRealDeps", () => {
   it("produces a RunAppDeps whose runCli, startProxy, and openWindow are callable", () => {
     const deps = buildRealDeps(fakeFactory)

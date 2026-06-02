@@ -1,7 +1,7 @@
 import { runCli } from "@launchkit/cli"
 import { type ProxyHandle, type RunAppDeps, runApp } from "./app"
 import { cliDepsFrom } from "./cli-deps"
-import { createAppContext } from "./composition"
+import type { createAppContext } from "./composition"
 import { detectMode } from "./detect-mode"
 import { mountTray } from "./gui/tray"
 import { openWindow } from "./gui/window"
@@ -64,11 +64,3 @@ export const main = (
   argv: readonly string[],
   deps: RunAppDeps,
 ): Promise<void> => runApp(detectMode(argv), argv.slice(2), deps)
-
-// --- entry point ---------------------------------------------------------------------
-// The single side effect: run the entry wiring against the real deps. Everything above is
-// pure/exported. Guarded with import.meta.main so tests can import { main, buildRealDeps }
-// without triggering the real entry point.
-if (import.meta.main) {
-  await main(process.argv, buildRealDeps(createAppContext))
-}
