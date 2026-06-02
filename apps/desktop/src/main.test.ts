@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
+import type { RunAppDeps } from "./app"
 import type { createAppContext } from "./composition"
-import { buildRealDeps } from "./main"
+import { buildRealDeps, main } from "./main"
 
 /** Build a fake context with minimal stand-ins so real IO is never triggered. */
 const fakeFactory = (() =>
@@ -55,5 +56,39 @@ describe("buildRealDeps", () => {
     })
     await deps.runCli(["bun", "main.ts", "list", "harnesses"])
     expect(cliArgv).toEqual(["bun", "main.ts", "list", "harnesses"])
+  })
+})
+
+describe("main (entry wiring)", () => {
+  /** A RunAppDeps that records whether/how each path ran, no real effects. */
+  const recordingDeps = (record: {
+    cliArgv?: readonly string[]
+    guiOpened?: boolean
+  }): RunAppDeps => ({
+    runCli: async (argv) => {
+      record.cliArgv = argv
+      return undefined
+    },
+    startProxy: () => ({ stop: () => {} }),
+    openWindow: () => {
+      record.guiOpened = true
+    },
+  })
+
+  it("hands the CLI the argv tail (command at index 0), not the runtime/script prefix", async () => {
+    const record: { cliArgv?: readonly string[] } = {}
+    // A real `process.argv` for `launchkit list harnesses` is [runtime, script, "list", "harnesses"].
+    await main(
+      ["bun", "/path/main.ts", "list", "harnesses"],
+      recordingDeps(record),
+    )
+    expect(record.cliArgv).toEqual(["list", "harnesses"])
+  })
+
+  it("runs GUI mode (no CLI verb) without invoking the CLI runner", async () => {
+    const record: { cliArgv?: readonly string[]; guiOpened?: boolean } = {}
+    await main(["bun", "/path/main.ts"], recordingDeps(record))
+    expect(record.cliArgv).toBeUndefined()
+    expect(record.guiOpened).toBe(true)
   })
 })

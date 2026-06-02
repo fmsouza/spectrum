@@ -1,24 +1,35 @@
 import { describe, expect, it } from "bun:test"
-import { MockLanguageModelV1, simulateReadableStream } from "ai/test"
-import type { NormalizedRequest } from "../types"
+import { MockLanguageModelV3, simulateReadableStream } from "ai/test"
+import type { NormalizedRequest, StreamEvent } from "../types"
 import { createRealGateway } from "./real-gateway"
 
 describe("createRealGateway", () => {
   it("maps streamText text deltas to normalized text-delta and finish events", async () => {
-    const model = new MockLanguageModelV1({
+    const model = new MockLanguageModelV3({
       doStream: async () => ({
         stream: simulateReadableStream({
           chunks: [
-            { type: "text-delta" as const, textDelta: "Hello" },
-            { type: "text-delta" as const, textDelta: " world" },
+            { type: "text-start" as const, id: "0" },
+            { type: "text-delta" as const, id: "0", delta: "Hello" },
+            { type: "text-delta" as const, id: "0", delta: " world" },
+            { type: "text-end" as const, id: "0" },
             {
               type: "finish" as const,
-              finishReason: "stop" as const,
-              usage: { promptTokens: 1, completionTokens: 2 },
+              // v6 provider-level finish: finishReason is a { unified, raw } object and
+              // input/output usage are breakdown objects (LanguageModelV3Usage).
+              finishReason: { unified: "stop" as const, raw: "stop" },
+              usage: {
+                inputTokens: {
+                  total: 1,
+                  noCache: 1,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                },
+                outputTokens: { total: 2, text: 2, reasoning: 0 },
+              },
             },
           ],
         }),
-        rawCall: { rawPrompt: "hi", rawSettings: {} },
       }),
     })
     const gw = createRealGateway()
@@ -27,7 +38,7 @@ describe("createRealGateway", () => {
       messages: [{ role: "user", content: "hi" }],
       stream: true,
     }
-    const events: import("../types").StreamEvent[] = []
+    const events: StreamEvent[] = []
     for await (const e of gw.stream(model, req)) events.push(e)
     expect(events[0]).toEqual({ type: "text-delta", text: "Hello" })
     expect(events[1]).toEqual({ type: "text-delta", text: " world" })

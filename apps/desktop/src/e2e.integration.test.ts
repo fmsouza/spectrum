@@ -24,7 +24,6 @@ import {
 } from "@launchkit/proxy"
 import { buildTrayMenu } from "./gui/tray-menu"
 
-const isDarwin = process.platform === "darwin"
 const dirs: string[] = []
 
 const freshConfig = async (): Promise<{
@@ -66,9 +65,9 @@ afterEach(async () => {
     await rm(dir, { recursive: true, force: true })
 })
 
-const describeDarwin = isDarwin ? describe : describe.skip
-
-describeDarwin("LaunchKit end-to-end (darwin)", () => {
+// These end-to-end paths (CLI over fakes, a real loopback proxy on an ephemeral port, the pure
+// tray-menu descriptor) are platform-agnostic — run them everywhere, including Linux CI.
+describe("LaunchKit end-to-end", () => {
   it("runs the CLI `list harnesses` against a temp config and prints the built-in ids", async () => {
     const { store } = await freshConfig()
     const out = createMemoryWriter()

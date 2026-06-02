@@ -6,6 +6,6 @@
     "composite": false,
     "types": ["bun", "react", "react-dom"]
   },
-  "include": ["src", "views"],
-  "exclude": ["electrobun.config.ts", "**/*.test.ts", "**/*.test.tsx"]
+  "include": ["src", "views", "electrobun.config.ts"],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx"]
 }
