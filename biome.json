@@ -5,6 +5,7 @@
     "ignore": [
       "**/.claude/**",
       "**/dist/**",
+      "**/build/**",
       "**/.turbo/**",
       "**/node_modules/**"
     ]

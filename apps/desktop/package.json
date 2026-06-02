@@ -2,9 +2,12 @@
   "name": "launchkit",
   "type": "module",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "bin": { "launchkit": "./src/cli.ts" },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "build": "electrobun build",
+    "compile": "bun build --compile --minify --outfile dist/launchkit-cli ./src/cli.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "bun test"
   },
   "dependencies": {

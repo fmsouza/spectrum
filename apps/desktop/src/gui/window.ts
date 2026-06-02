@@ -1,4 +1,8 @@
-import { type ServerTransport, createIpcServer } from "@launchkit/ipc"
+import {
+  IpcMethodSchemas,
+  type ServerTransport,
+  createIpcServer,
+} from "@launchkit/ipc"
 import type { AppContext } from "../composition"
 import { createIpcHandlers } from "./ipc/handlers"
 
@@ -49,28 +53,76 @@ export const openWindow = (
   deps.wireServer(transport, ctx)
 }
 
+/** The inbound IPC handler the webview's RPC requests are dispatched to (bound by `wireServer`). */
+type ServerHandler = (method: string, payload: unknown) => Promise<unknown>
+
 /**
- * Production Electrobun wiring. CONFIRM the exact `BrowserWindow` constructor + message-bus API
- * against the installed Electrobun version (context7 / Electrobun docs) and adapt ONLY this block.
- * The view url points at the built `views/main` entry declared in `electrobun.config.ts`.
+ * What `createWindow` hands to `makeTransport`: the late-binding hook for the IPC server handler.
+ * The Electrobun RPC request handlers are fixed at `BrowserWindow` construction, but the project's
+ * `ServerTransport.onRequest(handler)` is called afterwards (in `wireServer`) — so the RPC handlers
+ * delegate to this mutable slot, which `makeTransport` fills. The webview only issues requests once
+ * its view has loaded, by which point the handler is bound.
+ */
+interface WindowBundle {
+  readonly bindHandler: (handler: ServerHandler) => void
+}
+
+/**
+ * Production Electrobun wiring. The bun-side RPC exposes one request handler per IPC method name
+ * (from `IpcMethodSchemas`); each delegates to the bound `ServerTransport` handler, which
+ * `createIpcServer` validates both directions. The webview side (`views/main/ipc-client.ts`)
+ * mirrors this with `Electroview.defineRPC`. SECURITY: navigation is locked to bundled, local
+ * assets — the window only ever loads `views://main/*` (the strict CSP in `index.html` blocks
+ * remote scripts/eval), so the webview gets no direct fs/network/secret access, only validated IPC.
  */
 export const realOpenWindowDeps: OpenWindowDeps = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Electrobun types confirmed at impl time
-  createWindow: (_opts) => {
-    // Example shape — adapt to the installed Electrobun API:
-    //   import { BrowserWindow } from "electrobun/bun"
-    //   return new BrowserWindow({ title: opts.title, url: opts.url, /* CSP/navigation lock */ })
-    throw new Error(
-      "openWindow: wire the real Electrobun BrowserWindow here (see ELECTROBUN NOTE)",
+  createWindow: (opts) => {
+    let handler: ServerHandler | null = null
+
+    // One delegating request handler per IPC method; routes to the bound server handler.
+    const requests: Record<string, (payload: unknown) => Promise<unknown>> =
+      Object.fromEntries(
+        Object.keys(IpcMethodSchemas).map((method) => [
+          method,
+          (payload: unknown): Promise<unknown> =>
+            handler === null
+              ? Promise.reject(new Error("ipc server not ready"))
+              : handler(method, payload),
+        ]),
+      )
+
+    // Load Electrobun lazily — and only in the built binary. A top-level import would pull its
+    // native FFI module into `bun test`; the tested paths use injected fake deps and never reach
+    // here. The webview only issues requests after its view loads, by which point `bindHandler`
+    // has run, so deferring window creation past this dynamic import is safe.
+    void import("electrobun/bun").then(
+      ({ BrowserWindow, defineElectrobunRPC }) => {
+        const rpc = defineElectrobunRPC("bun", {
+          maxRequestTime: 5000,
+          handlers: { requests: {}, messages: {} },
+          extraRequestHandlers: requests,
+        })
+        new BrowserWindow({
+          title: opts.title,
+          url: opts.url,
+          frame: { width: 1024, height: 720, x: 100, y: 100 },
+          rpc,
+        })
+      },
     )
+
+    const bundle: WindowBundle = {
+      bindHandler: (h) => {
+        handler = h
+      },
+    }
+    return bundle
   },
-  makeTransport: (_window) => {
-    // Build a ServerTransport over the window's Electrobun RPC/message bus:
-    //   return { onRequest: (handler) => window.webview.on("ipc", (method, payload) => handler(method, payload)) }
-    throw new Error(
-      "openWindow: wire the real Electrobun transport here (see ELECTROBUN NOTE)",
-    )
-  },
+  makeTransport: (window) => ({
+    onRequest: (h) => {
+      ;(window as WindowBundle).bindHandler(h)
+    },
+  }),
   wireServer: defaultWireServer,
   viewUrl: "views://main/index.html",
 }
