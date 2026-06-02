@@ -22,12 +22,16 @@
     "apps/desktop": {
       "name": "launchkit",
       "version": "0.1.0",
+      "bin": {
+        "launchkit": "./src/cli.ts",
+      },
       "dependencies": {
         "@launchkit/cli": "workspace:*",
         "@launchkit/config": "workspace:*",
         "@launchkit/harnesses": "workspace:*",
         "@launchkit/ipc": "workspace:*",
         "@launchkit/proxy": "workspace:*",
+        "@launchkit/pty": "workspace:*",
         "@launchkit/secrets": "workspace:*",
         "@launchkit/sessions": "workspace:*",
         "@launchkit/types": "workspace:*",

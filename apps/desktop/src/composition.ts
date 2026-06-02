@@ -6,6 +6,7 @@ import type {
   RunningProxy,
   RuntimeState,
 } from "@launchkit/proxy"
+import type { TerminalManager } from "@launchkit/pty"
 import type { SecretStore } from "@launchkit/secrets"
 import type { SessionStore } from "@launchkit/sessions"
 import type { Result } from "@launchkit/utils"
@@ -35,6 +36,7 @@ import {
   loadSdk,
   startProxy,
 } from "@launchkit/proxy"
+import { createFfiPty, createTerminalManager } from "@launchkit/pty"
 import {
   createBunProcessRunner,
   createMacosSecurityBackend,
@@ -97,6 +99,12 @@ export interface AppContext {
   readonly proxyBaseUrl: string
   /** Mints the per-run >=32-byte proxy key (security.md) when the shell starts an ephemeral proxy. */
   readonly genProxyKey: () => string
+  /**
+   * The embedded-terminal engine for the GUI: allocates a real PTY per launched harness and streams
+   * its bytes over the Electrobun `messages` seam. Its `send` sink is a no-op until `window.ts` calls
+   * `terminal.bindSend(...)` with the real RPC. Unused by the CLI/`launch` headless path.
+   */
+  readonly terminal: TerminalManager
   /** Resolved settings paths (config + db + harness dir), surfaced for diagnostics/tests. */
   readonly paths: {
     readonly configFile: string
@@ -131,6 +139,8 @@ export interface CreateAppContextDeps {
   readonly loadSdk: typeof loadSdk
   readonly createRealGateway: typeof createRealGateway
   readonly createFileRuntimeState: typeof createFileRuntimeState
+  readonly createFfiPty: typeof createFfiPty
+  readonly createTerminalManager: typeof createTerminalManager
   readonly genProxyKey: () => string
 }
 
@@ -163,6 +173,8 @@ const realDeps: CreateAppContextDeps = {
   loadSdk,
   createRealGateway,
   createFileRuntimeState,
+  createFfiPty,
+  createTerminalManager,
   genProxyKey: defaultGenProxyKey,
 }
 
@@ -253,6 +265,16 @@ export const createAppContext = (
   // runtime: persists only the running proxy's per-run key so the CLI can reuse it
   const runtime = deps.createFileRuntimeState(runtimeFile)
 
+  // terminal: the GUI embedded-terminal engine over a real FFI pty + the session store. Its `send`
+  // sink is a no-op until window.ts binds the real Electrobun `messages` channel via `bindSend`.
+  const terminal = deps.createTerminalManager({
+    pty: deps.createFfiPty(),
+    sessions: { create: sessions.create, close: sessions.close },
+    send: () => {},
+    capBytes: 1_000_000,
+    defaultSize: { cols: 80, rows: 24 },
+  })
+
   // proxy settings resolved from the default config shape (loopback only, security.md)
   const settings = defaultConfig().settings
   const proxyPort = settings.proxyPort
@@ -299,6 +321,7 @@ export const createAppContext = (
     proxyPort,
     proxyBaseUrl,
     genProxyKey: deps.genProxyKey,
+    terminal,
     paths: { configFile, dbFile, harnessDir },
   }
 }
