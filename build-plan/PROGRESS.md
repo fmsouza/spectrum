@@ -56,10 +56,14 @@ gate step failed on 8 advisories; the pipeline also built no artifacts.
   `v0.1.0-canary.N` prerelease) and `release.yml` (`v*` tag: same gate+build → semver release).
   Non-mac Electrobun app builds are best-effort (`continue-on-error`), falling back to CLI-only.
 
-> **Known follow-up (pre-existing, out of scope):** `apps/desktop/src/main.ts`'s CLI mode forwards the
-> full `process.argv` to `runApp`→`runCli`, but `parseArgs` reads the command at index 0, so the
-> app-binary CLI path resolves the command as `"bun"`. The new standalone `cli.ts` slices correctly;
-> the `main.ts` path needs `argv.slice(2)` at the `runApp` callsite (or in `buildRealDeps.runCli`).
+**Follow-ups resolved (2026-05-28):**
+- The pre-existing `apps/desktop/src/main.ts` CLI-mode argv bug (full `process.argv` forwarded to
+  `runApp`→`runCli`, so the command parsed as `"bun"`) is **fixed**: an exported, testable
+  `main(argv, deps)` slices the `[runtime, script]` prefix once (`detectMode` still reads raw
+  `argv[2]`); regression tests cover both CLI and GUI entry wiring.
+- `apps/desktop/src/cli.ts` now renders `CliError` via an exhaustive `formatCliError`
+  (`launchkit: unknown command "x"`) instead of `JSON.stringify`; the `errOut` no-trailing-newline
+  contract is documented and the argv-threading/formatter paths are tested.
 
 ## Status legend
 `todo` · `in-progress` · `done` · `blocked`
