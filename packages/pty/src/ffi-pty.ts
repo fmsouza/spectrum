@@ -107,74 +107,90 @@ export const createFfiPty = (): PtyAdapter => ({
       const masterFd = master[0] as number
       const slaveFd = slave[0] as number
 
-      const child = Bun.spawn([opts.command, ...opts.args], {
-        stdio: [slaveFd, slaveFd, slaveFd],
-        env: { ...opts.env },
-      })
+      // openpty has allocated both fds. Any failure during the setup below
+      // (spawn ENOENT, ioctl/fcntl, drain wiring) must close BOTH fds before
+      // returning err, or each failed open leaks a master/slave fd pair. On the
+      // SUCCESS path the slave is closed after spawn and the master on exit, so
+      // this fallback only runs for an error before a successful return — it
+      // never double-closes (slaveClosed gates the slave).
+      let slaveClosed = false
+      try {
+        const child = Bun.spawn([opts.command, ...opts.args], {
+          stdio: [slaveFd, slaveFd, slaveFd],
+          env: { ...opts.env },
+        })
 
-      // The child now holds the slave fd; closing the parent's copy lets read()
-      // on the master return EOF when the child exits (otherwise it blocks).
-      libc.close(slaveFd)
+        // The child now holds the slave fd; closing the parent's copy lets read()
+        // on the master return EOF when the child exits (otherwise it blocks).
+        libc.close(slaveFd)
+        slaveClosed = true
 
-      // Apply the initial window size.
-      const ws = makeWinsize(opts.cols, opts.rows)
-      libc.ioctl(masterFd, TIOCSWINSZ, ptr(ws))
+        // Apply the initial window size.
+        const ws = makeWinsize(opts.cols, opts.rows)
+        libc.ioctl(masterFd, TIOCSWINSZ, ptr(ws))
 
-      // Make the master non-blocking so reads return immediately when idle.
-      libc.fcntl(masterFd, F_SETFL, O_NONBLOCK)
+        // Make the master non-blocking so reads return immediately when idle.
+        libc.fcntl(masterFd, F_SETFL, O_NONBLOCK)
 
-      // Single-subscriber callback slots (read live by the drain loop / exit handler).
-      let onDataCb: ((chunk: Uint8Array) => void) | null = null
-      let onExitCb: ((code: number) => void) | null = null
+        // Single-subscriber callback slots (read live by the drain loop / exit handler).
+        let onDataCb: ((chunk: Uint8Array) => void) | null = null
+        let onExitCb: ((code: number) => void) | null = null
 
-      // Buffer any output produced before onData is first registered, then flush.
-      const earlyBuffer: Uint8Array[] = []
+        // Buffer any output produced before onData is first registered, then flush.
+        const earlyBuffer: Uint8Array[] = []
 
-      const buf = new Uint8Array(READ_BUFFER_BYTES)
-      const drainOnce = (): void => {
-        // Loop until EAGAIN so a single tick fully empties the kernel buffer.
-        for (;;) {
-          const n = Number(libc.read(masterFd, ptr(buf), buf.length))
-          if (n <= 0) return
-          const chunk = buf.slice(0, n)
-          if (onDataCb) onDataCb(chunk)
-          else earlyBuffer.push(chunk)
-        }
-      }
-
-      const interval = setInterval(drainOnce, DRAIN_INTERVAL_MS)
-
-      void child.exited.then((code: number) => {
-        clearInterval(interval)
-        drainOnce()
-        libc.close(masterFd)
-        onExitCb?.(code)
-      })
-
-      const handle: PtyHandle = {
-        write: (data: Uint8Array): void => {
-          libc.write(masterFd, ptr(data), data.length)
-        },
-        resize: (cols: number, rows: number): void => {
-          const next = makeWinsize(cols, rows)
-          libc.ioctl(masterFd, TIOCSWINSZ, ptr(next))
-        },
-        onData: (cb: (chunk: Uint8Array) => void): void => {
-          onDataCb = cb
-          if (earlyBuffer.length > 0) {
-            for (const chunk of earlyBuffer) cb(chunk)
-            earlyBuffer.length = 0
+        const buf = new Uint8Array(READ_BUFFER_BYTES)
+        const drainOnce = (): void => {
+          // Loop until EAGAIN so a single tick fully empties the kernel buffer.
+          for (;;) {
+            const n = Number(libc.read(masterFd, ptr(buf), buf.length))
+            if (n <= 0) return
+            const chunk = buf.slice(0, n)
+            if (onDataCb) onDataCb(chunk)
+            else earlyBuffer.push(chunk)
           }
-        },
-        onExit: (cb: (code: number) => void): void => {
-          onExitCb = cb
-        },
-        kill: (): void => {
-          child.kill()
-        },
-      }
+        }
 
-      return ok(handle)
+        const interval = setInterval(drainOnce, DRAIN_INTERVAL_MS)
+
+        void child.exited.then((code: number) => {
+          clearInterval(interval)
+          drainOnce()
+          libc.close(masterFd)
+          onExitCb?.(code)
+        })
+
+        const handle: PtyHandle = {
+          write: (data: Uint8Array): void => {
+            libc.write(masterFd, ptr(data), data.length)
+          },
+          resize: (cols: number, rows: number): void => {
+            const next = makeWinsize(cols, rows)
+            libc.ioctl(masterFd, TIOCSWINSZ, ptr(next))
+          },
+          onData: (cb: (chunk: Uint8Array) => void): void => {
+            onDataCb = cb
+            if (earlyBuffer.length > 0) {
+              for (const chunk of earlyBuffer) cb(chunk)
+              earlyBuffer.length = 0
+            }
+          },
+          onExit: (cb: (code: number) => void): void => {
+            onExitCb = cb
+          },
+          kill: (): void => {
+            child.kill()
+          },
+        }
+
+        return ok(handle)
+      } catch (e) {
+        // Reclaim the fds openpty allocated. Close the slave only if spawn
+        // succeeded but a later step failed before it was already closed.
+        if (!slaveClosed) libc.close(slaveFd)
+        libc.close(masterFd)
+        return err({ kind: "open-failed", detail: String(e) })
+      }
     } catch (e) {
       return err({ kind: "open-failed", detail: String(e) })
     }
