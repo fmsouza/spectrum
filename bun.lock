@@ -109,6 +109,16 @@
         "msw": "^2.7.0",
       },
     },
+    "packages/pty": {
+      "name": "@launchkit/pty",
+      "version": "0.1.0",
+      "dependencies": {
+        "@launchkit/sessions": "workspace:*",
+        "@launchkit/types": "workspace:*",
+        "@launchkit/utils": "workspace:*",
+        "zod": "^3.25.76",
+      },
+    },
     "packages/secrets": {
       "name": "@launchkit/secrets",
       "version": "0.1.0",
@@ -251,6 +261,8 @@
     "@launchkit/ipc": ["@launchkit/ipc@workspace:packages/ipc"],
 
     "@launchkit/proxy": ["@launchkit/proxy@workspace:packages/proxy"],
+
+    "@launchkit/pty": ["@launchkit/pty@workspace:packages/pty"],
 
     "@launchkit/secrets": ["@launchkit/secrets@workspace:packages/secrets"],
 
