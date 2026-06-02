@@ -103,6 +103,10 @@ export const createTerminalManager = (
       case "pty-kill":
         state.pty.kill()
         return
+      default:
+        // Compile-time exhaustiveness: a new PtyInbound variant fails the build here.
+        message satisfies never
+        return
     }
   }
 
