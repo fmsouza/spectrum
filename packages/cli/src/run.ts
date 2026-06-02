@@ -39,8 +39,8 @@ export const runCli =
     }
   }
 
-// --- command stubs (replaced in cli-03/04/05) ----------------------------------------
-// These return a `usage` Result so dispatch is testable now and nothing throws.
+// --- command dispatch helpers --------------------------------------------------------
+// Thin wrappers that forward to each command's implementation; nothing throws (Result-typed).
 
 const runLaunch = (
   deps: CliDeps,
