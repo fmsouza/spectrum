@@ -10,8 +10,10 @@ import type { ElectrobunConfig } from "electrobun"
  *   `runApp(detectMode(argv), argv, buildRealDeps(...))`.
  * - `build.views.main.entrypoint` → the React webview; bundled (target: browser) to
  *   `views/main/app.js`, which `views/main/index.html` references as `./app.js`.
- * - `build.copy` → copies the CSP-hardened `index.html` next to the bundled `app.js` so the
- *   `views://main/index.html` URL (see `gui/window.ts`) resolves to local, bundled assets only.
+ * - `build.copy` → copies the CSP-hardened `index.html` AND the global stylesheet `app.css`
+ *   next to the bundled `app.js` so the `views://main/index.html` URL (see `gui/window.ts`)
+ *   resolves to local, bundled assets only (the `<link rel="stylesheet" href="./app.css">`
+ *   loads same-origin under `style-src 'self'`).
  * - `build.mac.createDmg: false` → a local app-bundle build needs no DMG/codesign tooling.
  */
 export default {
@@ -27,6 +29,7 @@ export default {
     },
     copy: {
       "views/main/index.html": "views/main/index.html",
+      "views/main/app.css": "views/main/app.css",
     },
     mac: { createDmg: false },
   },
