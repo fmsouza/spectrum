@@ -128,6 +128,37 @@ clean; `apps/desktop/scripts/smoke.sh` PASS).
 - Inbound proxy parsers don't re-validate through `NormalizedRequestSchema` (e.g. `temperature`
   unbounded) — cosmetic; providers reject invalid values.
 
+### Embedded harness terminal (2026-06-03) — `[terminal-*]`
+
+Spec: `docs/superpowers/specs/2026-06-02-embedded-harness-terminal-design.md`. Plan:
+`docs/superpowers/plans/2026-06-02-embedded-harness-terminal.md`. GUI **Launch** previously recorded a
+session but never surfaced the harness (the GUI has no controlling terminal, so the headless
+inherit-stdio spawn was invisible). Now GUI launch opens the harness in an **embedded, interactive,
+tabbed** terminal inside the window. Built subagent-driven via TDD (gate green throughout: typecheck +
+lint + **538 tests**; `bun audit` clean; `bunx electrobun build` exit 0; `smoke.sh` PASS). The live
+xterm round-trip is the one item that needs an eyes-on GUI run (`MANUAL-VERIFICATION.md` Terminal
+section).
+
+- **New package `@launchkit/pty`.** Pure, fully unit-tested core — `createFakePty`, bounded scrollback
+  ring buffer, `createTerminalRegistry`, a zod-validated message protocol (`PtyInbound`/`PtyOutbound`,
+  base64 byte-safe codec), and `createTerminalManager` (ties pty ↔ webview ↔ `SessionStore`; registers
+  the single-subscriber `onData`/`onExit` once and fans out; closes the session with the exit code on
+  harness exit). `3bc5e80`,`1e57ba4`,`d052e81`,`adb6a92`,`66453c4`,`7f50500`,`f2a502d`,`d3fe421`,`c2b79b7`.
+- **Real PTY with zero native deps.** `createFfiPty` uses `bun:ffi` `openpty` (libutil) + `Bun.spawn`
+  on the slave fd — the child gets a real TTY (verified by integration test). Non-blocking master
+  drain, ioctl `TIOCSWINSZ` resize, fd-leak-safe on spawn failure. `ac39ab9`,`2ef3604`.
+- **Bun-side wiring.** `resolveHarnessLaunch` extracted from `launchHarness` for reuse (`beb375a`);
+  `composition.ts` builds `ctx.terminal` (`d788428`); `gui/window.ts` wires Electrobun's bidirectional
+  `messages` channel under a single `"pty"` name — inbound → `routeInboundMessage` → manager, outbound
+  bound via `terminal.bindSend(m => rpc.send("pty", m))` (`cd56f27`); the GUI `launchHarness` handler +
+  tray Launch now call `ctx.terminal.launch` (reusing the running proxy's key) and return `{sessionId}`
+  — the manager is the sole session creator, no duplicates; the CLI path is untouched (`6136c32`).
+- **Webview UI.** A browser-safe `@launchkit/pty/protocol` subpath export keeps `bun:ffi` out of the
+  view bundle; `terminalClient`/`useTerminals` (`4c3b130`) + a new **Terminal** route with a tab strip
+  and `@xterm/xterm` pane (`124afa1`). Launch navigates to the new tab; scrollback survives tab
+  switches; closing a tab kills the harness; xterm is loaded via dynamic import so `bun test` never
+  pulls it.
+
 ## Status legend
 `todo` · `in-progress` · `done` · `blocked`
 
