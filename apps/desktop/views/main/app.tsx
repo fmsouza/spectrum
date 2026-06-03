@@ -1,16 +1,10 @@
 import type { IpcClient } from "@launchkit/ipc"
 import type { HarnessId, SessionId } from "@launchkit/types"
 import { AppShell } from "@launchkit/ui"
-import {
-  type ReactElement,
-  StrictMode,
-  useEffect,
-  useMemo,
-  useState,
-} from "react"
+import { type ReactElement, StrictMode, useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
 import { IpcClientProvider } from "./IpcClientContext"
-import { createRealIpcClient } from "./ipc-client"
+import { createRealClients } from "./clients"
 import {
   DashboardPage,
   HarnessesPage,
@@ -21,7 +15,7 @@ import {
 import { TerminalPage } from "./terminal/TerminalPage"
 import type { CreateTerminal } from "./terminal/TerminalPane"
 import type { TerminalClient } from "./terminal/terminalClient"
-import { createRealTerminalClient, useTerminals } from "./terminal/useTerminals"
+import { useTerminals } from "./terminal/useTerminals"
 
 const ROUTES = [
   "dashboard",
@@ -53,9 +47,9 @@ export type AppProps = {
   readonly initialRoute?: string
   /**
    * The terminal transport client. Injected so tests run without an Electroview;
-   * production builds the real one via `createRealTerminalClient`.
+   * production builds the real one via `createRealClients` in `clients.ts`.
    */
-  readonly terminalClient?: TerminalClient
+  readonly terminalClient: TerminalClient
   /**
    * The xterm factory for terminal panes. Injected from `mount()` in production
    * (the real `createXterm`); tests pass a fake so xterm + its CSS never load.
@@ -71,13 +65,7 @@ export const App = ({
 }: AppProps): ReactElement => {
   const [route, setRoute] = useState<Route>(normalizeRoute(initialRoute))
 
-  // Build the Electroview-backed terminal client once for the app's lifetime
-  // unless one was injected (tests). `useMemo` keeps the single RPC seam stable.
-  const tClient = useMemo<TerminalClient>(
-    () => terminalClient ?? createRealTerminalClient(),
-    [terminalClient],
-  )
-  const { tabs, openTab, closeTab } = useTerminals(tClient)
+  const { tabs, openTab, closeTab } = useTerminals(terminalClient)
   const [labels, setLabels] = useState<
     Readonly<Partial<Record<SessionId, string>>>
   >({})
@@ -108,7 +96,7 @@ export const App = ({
       case "terminal":
         return (
           <TerminalPage
-            client={tClient}
+            client={terminalClient}
             tabs={tabs}
             closeTab={closeTab}
             labels={labels}
@@ -143,11 +131,14 @@ export const mount = async (): Promise<void> => {
   // Dynamic import keeps xterm (and its CSS) out of the test module graph: the
   // test runner imports `App` directly and never calls `mount`.
   const { createXterm } = await import("./terminal/createXterm")
+  // Build the ONE shared Electroview (carries IPC requests + the terminal pty
+  // channel) and get both clients from it. See `clients.ts`.
+  const { ipcClient, terminalClient } = createRealClients()
   createRoot(container).render(
     <StrictMode>
       <App
-        client={createRealIpcClient()}
-        terminalClient={createRealTerminalClient()}
+        client={ipcClient}
+        terminalClient={terminalClient}
         createTerminal={createXterm}
         initialRoute={startRoute}
       />

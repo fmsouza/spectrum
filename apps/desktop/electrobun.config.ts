@@ -30,6 +30,7 @@ export default {
     copy: {
       "views/main/index.html": "views/main/index.html",
       "views/main/app.css": "views/main/app.css",
+      "views/main/xterm.css": "views/main/xterm.css",
     },
     mac: { createDmg: false },
   },

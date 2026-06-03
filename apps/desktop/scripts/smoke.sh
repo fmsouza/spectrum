@@ -14,6 +14,11 @@ echo "==> verifying launcher entrypoint exists (bun/index.js)"
 test -f "$APP/Contents/Resources/app/bun/index.js" \
   || { echo "FAIL: bundle is missing bun/index.js — launcher will load nothing"; exit 1; }
 
+echo "==> verifying the built app.css contains the app theme (not just xterm)"
+CSS="$APP/Contents/Resources/app/views/main/app.css"
+grep -q ":root" "$CSS" && grep -q "nav\[aria-label" "$CSS" \
+  || { echo "FAIL: built app.css is missing the app theme (xterm CSS likely clobbered it)"; exit 1; }
+
 echo "==> launching app"
 open "$APP"
 trap 'pkill -f "LaunchKit-dev" 2>/dev/null || true' EXIT

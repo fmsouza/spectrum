@@ -1,27 +1,18 @@
-import {
-  type ClientTransport,
-  type IpcClient,
-  createIpcClient,
-} from "@launchkit/ipc"
-import { Electroview, type RPCSchema } from "electrobun/view"
+import { type ClientTransport, createIpcClient } from "@launchkit/ipc"
 
 /** Re-export the webview's client type so pages/hooks import it from one place. */
 export type { IpcClient } from "@launchkit/ipc"
+export { createIpcClient }
 
 /**
  * The Electrobun RPC surface this adapter calls. We only ever invoke `request`
  * (main->webview handlers return values); `send` (fire-and-forget) is unused here.
+ * Exported so `clients.ts` can build the transport over the shared Electroview.
  */
-type ElectrobunRpc = {
+export type ElectrobunRpc = {
   readonly request: Readonly<
     Record<string, (payload: unknown) => Promise<unknown>>
   >
-}
-
-/** Empty RPC schema with no requests or messages on either side. */
-type EmptySchema = {
-  readonly bun: RPCSchema
-  readonly webview: RPCSchema
 }
 
 /**
@@ -40,21 +31,3 @@ export const createElectrobunTransport = (
     return call(payload)
   },
 })
-
-/**
- * Construct the Electroview, expose its RPC as a `ClientTransport`, and build
- * the typed `IpcClient` over it. Called once by `app.tsx` for the real client.
- * The empty handler set is intentional -- the webview answers no requests from
- * the main process; it only initiates them.
- */
-export const createRealIpcClient = (): IpcClient => {
-  const rpc = Electroview.defineRPC<EmptySchema>({
-    maxRequestTime: 5000,
-    handlers: { requests: {}, messages: {} },
-  })
-  const view = new Electroview({ rpc })
-  const transport = createElectrobunTransport(
-    view.rpc as unknown as ElectrobunRpc,
-  )
-  return createIpcClient(transport)
-}

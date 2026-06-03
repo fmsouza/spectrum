@@ -1,13 +1,15 @@
 import { FitAddon } from "@xterm/addon-fit"
 import { Terminal } from "@xterm/xterm"
-import "@xterm/xterm/css/xterm.css"
 import type { CreateTerminal, XtermInstance } from "./TerminalPane"
 
 /**
  * The real `@xterm/xterm` terminal factory (with the fit addon), themed to match
  * the app's design tokens. Kept in its own module so it — and the heavy xterm
  * package + its CSS — never enter the test module graph: `TerminalPane` is
- * factory-injected and tests pass a fake `createTerminal` instead.
+ * factory-injected and tests pass a fake `createTerminal` instead. xterm's
+ * stylesheet is vendored to `views/main/xterm.css` and linked from `index.html`
+ * (NOT imported here) so the view bundler never emits it as `app.css` and
+ * clobbers the hand-written theme.
  */
 export const createXterm: CreateTerminal = (): XtermInstance => {
   const term = new Terminal({
