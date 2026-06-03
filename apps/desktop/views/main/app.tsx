@@ -1,6 +1,13 @@
 import type { IpcClient } from "@launchkit/ipc"
+import type { HarnessId, SessionId } from "@launchkit/types"
 import { AppShell } from "@launchkit/ui"
-import { type ReactElement, StrictMode, useEffect, useState } from "react"
+import {
+  type ReactElement,
+  StrictMode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 import { createRoot } from "react-dom/client"
 import { IpcClientProvider } from "./IpcClientContext"
 import { createRealIpcClient } from "./ipc-client"
@@ -11,6 +18,10 @@ import {
   RoutingPage,
   SessionsPage,
 } from "./pages"
+import { TerminalPage } from "./terminal/TerminalPage"
+import type { CreateTerminal } from "./terminal/TerminalPane"
+import type { TerminalClient } from "./terminal/terminalClient"
+import { createRealTerminalClient, useTerminals } from "./terminal/useTerminals"
 
 const ROUTES = [
   "dashboard",
@@ -18,6 +29,7 @@ const ROUTES = [
   "routing",
   "harnesses",
   "sessions",
+  "terminal",
 ] as const
 export type Route = (typeof ROUTES)[number]
 
@@ -27,6 +39,7 @@ const NAV_ITEMS = [
   { route: "routing", label: "Routing" },
   { route: "harnesses", label: "Harnesses" },
   { route: "sessions", label: "Sessions" },
+  { route: "terminal", label: "Terminal" },
 ] as const
 
 const isRoute = (value: string): value is Route =>
@@ -35,31 +48,79 @@ const isRoute = (value: string): value is Route =>
 const normalizeRoute = (value: string): Route =>
   isRoute(value) ? value : "dashboard"
 
-const PAGES: Readonly<Record<Route, () => ReactElement>> = {
-  dashboard: DashboardPage,
-  providers: ProvidersPage,
-  routing: RoutingPage,
-  harnesses: HarnessesPage,
-  sessions: SessionsPage,
-}
-
 export type AppProps = {
   readonly client: IpcClient
   readonly initialRoute?: string
+  /**
+   * The terminal transport client. Injected so tests run without an Electroview;
+   * production builds the real one via `createRealTerminalClient`.
+   */
+  readonly terminalClient?: TerminalClient
+  /**
+   * The xterm factory for terminal panes. Injected from `mount()` in production
+   * (the real `createXterm`); tests pass a fake so xterm + its CSS never load.
+   */
+  readonly createTerminal: CreateTerminal
 }
 
 export const App = ({
   client,
   initialRoute = "dashboard",
+  terminalClient,
+  createTerminal,
 }: AppProps): ReactElement => {
   const [route, setRoute] = useState<Route>(normalizeRoute(initialRoute))
+
+  // Build the Electroview-backed terminal client once for the app's lifetime
+  // unless one was injected (tests). `useMemo` keeps the single RPC seam stable.
+  const tClient = useMemo<TerminalClient>(
+    () => terminalClient ?? createRealTerminalClient(),
+    [terminalClient],
+  )
+  const { tabs, openTab, closeTab } = useTerminals(tClient)
+  const [labels, setLabels] = useState<
+    Readonly<Partial<Record<SessionId, string>>>
+  >({})
 
   // Keep the URL hash in sync so reloads land on the same page (no remote nav).
   useEffect(() => {
     window.location.hash = `#${route}`
   }, [route])
 
-  const Page = PAGES[route]
+  const onLaunched = (sessionId: SessionId, harnessId: HarnessId): void => {
+    setLabels((prev) => ({ ...prev, [sessionId]: harnessId }))
+    openTab(sessionId)
+    setRoute("terminal")
+  }
+
+  const renderPage = (): ReactElement => {
+    switch (route) {
+      case "dashboard":
+        return <DashboardPage onLaunched={onLaunched} />
+      case "providers":
+        return <ProvidersPage />
+      case "routing":
+        return <RoutingPage />
+      case "harnesses":
+        return <HarnessesPage />
+      case "sessions":
+        return <SessionsPage />
+      case "terminal":
+        return (
+          <TerminalPage
+            client={tClient}
+            tabs={tabs}
+            closeTab={closeTab}
+            labels={labels}
+            createTerminal={createTerminal}
+          />
+        )
+      default: {
+        const _exhaustive: never = route
+        return _exhaustive
+      }
+    }
+  }
 
   return (
     <IpcClientProvider client={client}>
@@ -68,20 +129,28 @@ export const App = ({
         activeRoute={route}
         onNavigate={(next) => setRoute(normalizeRoute(next))}
       >
-        <Page />
+        {renderPage()}
       </AppShell>
     </IpcClientProvider>
   )
 }
 
 /** Production entry: build the Electrobun-backed client and mount into #root. */
-export const mount = (): void => {
+export const mount = async (): Promise<void> => {
   const container = document.getElementById("root")
   if (container === null) throw new Error("missing #root element")
   const startRoute = window.location.hash.replace(/^#/, "")
+  // Dynamic import keeps xterm (and its CSS) out of the test module graph: the
+  // test runner imports `App` directly and never calls `mount`.
+  const { createXterm } = await import("./terminal/createXterm")
   createRoot(container).render(
     <StrictMode>
-      <App client={createRealIpcClient()} initialRoute={startRoute} />
+      <App
+        client={createRealIpcClient()}
+        terminalClient={createRealTerminalClient()}
+        createTerminal={createXterm}
+        initialRoute={startRoute}
+      />
     </StrictMode>,
   )
 }
@@ -92,5 +161,5 @@ if (
   typeof document !== "undefined" &&
   document.getElementById("root") !== null
 ) {
-  mount()
+  void mount()
 }

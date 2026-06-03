@@ -1,4 +1,4 @@
-import type { PtyInbound, PtyOutbound } from "@launchkit/pty"
+import type { PtyInbound, PtyOutbound } from "@launchkit/pty/protocol"
 import type { SessionId } from "@launchkit/types"
 import { Electroview, type RPCSchema } from "electrobun/view"
 import { useCallback, useState } from "react"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { bytesToBase64 } from "@launchkit/pty"
+import { bytesToBase64 } from "@launchkit/pty/protocol"
 import { SessionIdSchema } from "@launchkit/types"
 import { createTerminalClient } from "./terminalClient"
 

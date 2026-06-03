@@ -3,7 +3,7 @@ import {
   type PtyOutbound,
   base64ToBytes,
   bytesToBase64,
-} from "@launchkit/pty"
+} from "@launchkit/pty/protocol"
 import type { SessionId } from "@launchkit/types"
 
 /**
