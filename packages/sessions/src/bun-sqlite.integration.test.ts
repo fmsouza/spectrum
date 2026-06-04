@@ -147,6 +147,36 @@ describe("createSessionStore.init column migration against real bun:sqlite", () 
   })
 })
 
+describe("createSessionStore.query offset-without-limit against real bun:sqlite", () => {
+  it("returns tail rows without throwing when query() uses offset with no limit", () => {
+    const db = createBunSqliteDatabase(":memory:")
+    const store = createSessionStore({
+      db,
+      clock: createFixedClock(new Date("2026-05-23T10:00:00.000Z")),
+      idGen: createSequentialIdGen(),
+    })
+    store.init()
+    db.run(
+      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_a", "claude", "default", "2026-05-23T09:00:00.000Z"],
+    )
+    db.run(
+      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_b", "claude", "default", "2026-05-23T10:00:00.000Z"],
+    )
+    db.run(
+      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_c", "claude", "default", "2026-05-23T11:00:00.000Z"],
+    )
+    // offset=1, no limit — must NOT throw a SQLite syntax error
+    // ordered DESC: s_c, s_b, s_a — skipping first (s_c), expect [s_b, s_a]
+    const result = store.query({ offset: 1 })
+    expect(isOk(result) && result.value.map((s) => s.id)).toEqual<
+      false | string[]
+    >(["s_b", "s_a"])
+  })
+})
+
 describe("createSessionStore.query running filter against real bun:sqlite", () => {
   it("returns only open sessions when query() filters running true", () => {
     const db = createBunSqliteDatabase(":memory:")

@@ -44,7 +44,7 @@ describe("createSessionStore.init", () => {
     ).toBe(true)
   })
 
-  it("declares every Session column in the CREATE TABLE statement when init() is called", () => {
+  it("declares the base schema columns in the CREATE TABLE statement when init() is called", () => {
     const deps = makeDeps()
     createSessionStore(deps).init()
     const create =

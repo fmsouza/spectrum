@@ -54,7 +54,7 @@ describe("ConfigSchema", () => {
     expect(ConfigSchema.parse(config)).toEqual(config)
   })
 
-  it("defaults profiles to an empty array shape and rejects a non-array profiles", () => {
+  it("rejects a non-array profiles value", () => {
     expect(
       ConfigSchema.safeParse({
         version: CURRENT_CONFIG_VERSION,
@@ -64,6 +64,18 @@ describe("ConfigSchema", () => {
         settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
       }).success,
     ).toBe(false)
+  })
+
+  it("accepts a valid config with an empty profiles array", () => {
+    expect(
+      ConfigSchema.safeParse({
+        version: CURRENT_CONFIG_VERSION,
+        providers: [],
+        aliases: [],
+        profiles: [],
+        settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+      }).success,
+    ).toBe(true)
   })
   it("rejects a provider whose secret is an inline raw string instead of a SecretRef", () => {
     const config = {

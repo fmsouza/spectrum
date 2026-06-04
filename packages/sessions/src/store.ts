@@ -183,6 +183,8 @@ export const createSessionStore = (deps: {
       if (active.limit !== undefined) {
         sql += " LIMIT ?"
         params.push(active.limit)
+      } else if (active.offset !== undefined) {
+        sql += " LIMIT -1"
       }
       if (active.offset !== undefined) {
         sql += " OFFSET ?"

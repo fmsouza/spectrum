@@ -38,6 +38,7 @@ describe("runMigrations", () => {
     expect(provider?.secrets).toEqual({})
     // The inline `apiKey` string is gone — it is not part of the validated Provider shape.
     expect((provider as Record<string, unknown>).apiKey).toBeUndefined()
+    expect(result.value.profiles).toEqual([])
   })
 
   it("passes an already-current config through and validates it", () => {
