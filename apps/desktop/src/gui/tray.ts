@@ -30,10 +30,11 @@ export interface TrayActions {
 
 /**
  * Build the tray menu from the live registry + proxy status, render it through the seam, and route
- * clicks: `open` → openWindow, `quit` → quit, `launch:<id>` → launch that harness with its
- * `defaultAlias` and record a session — reusing the SAME path as `createIpcHandlers.launchHarness`
- * (`ctx.launch(...)` then `ctx.sessions.create({ harnessId, alias })`). Thin by design: all the menu
- * shape lives in the pure `buildTrayMenu`; this only assembles + dispatches.
+ * clicks: `open` → openWindow, `quit` → quit, `launch:<id>` → open an embedded terminal session for
+ * that harness with its `defaultAlias` — reusing the SAME path as `createIpcHandlers.launchHarness`
+ * (`ctx.resolveLaunch(...)` then `ctx.terminal.launch(...)`; the manager owns session creation).
+ * Thin by design: all the menu shape lives in the pure `buildTrayMenu`; this only assembles +
+ * dispatches.
  */
 export const mountTray = async (
   ctx: AppContext,
@@ -46,7 +47,12 @@ export const mountTray = async (
 
   const menu = buildTrayMenu({ harnesses, proxyRunning })
 
-  /** Launch a harness by id via the shared launch+session path (mirrors the IPC handler). */
+  /**
+   * Launch a harness by id via the shared embedded-terminal path (mirrors the IPC handler):
+   * resolve the command + render the proxy env, then `ctx.terminal.launch` (which creates the
+   * Session itself — so we do NOT call `ctx.sessions.create`). On success, bring the window forward
+   * so the user sees the new terminal tab; never block on exit.
+   */
   const launchById = async (harnessId: string): Promise<void> => {
     const list = await ctx.registry.list()
     if (!isOk(list)) return
@@ -57,16 +63,26 @@ export const mountTray = async (
     if (!isOk(loaded)) return
     const { proxyHost, proxyPort } = loaded.value.settings
     const proxyUrl = `http://${proxyHost}:${proxyPort}`
+    const proxyKey = (await ctx.runtime.readProxyKey()) ?? ctx.genProxyKey()
 
-    const launched = ctx.launch({
+    const resolved = ctx.resolveLaunch({
       harness,
       proxyUrl,
-      proxyKey: ctx.genProxyKey(),
+      proxyKey,
       model: harness.defaultAlias,
     })
-    if (!isOk(launched)) return // spawn failed → do NOT record a session
+    if (!isOk(resolved)) return
 
-    ctx.sessions.create({ harnessId: harness.id, alias: harness.defaultAlias })
+    const opened = ctx.terminal.launch({
+      harnessId: harness.id,
+      alias: harness.defaultAlias,
+      command: resolved.value.command,
+      args: resolved.value.args,
+      env: resolved.value.env,
+    })
+    if (!isOk(opened)) return // pty failed → no session was recorded by the manager
+
+    actions.openWindow() // surface the window so the new terminal tab is visible
   }
 
   const onClick = (clickId: string): void => {

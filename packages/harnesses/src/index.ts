@@ -18,6 +18,7 @@ export { createFakeCommandResolver } from "./command-resolver"
 
 export type {
   ProcessSpawner,
+  SpawnedProcess,
   SpawnCall,
   RecordingProcessSpawner,
 } from "./process-spawner"
@@ -26,8 +27,8 @@ export { createRecordingProcessSpawner } from "./process-spawner"
 export type { HarnessRegistry } from "./registry"
 export { createRegistry } from "./registry"
 
-export type { LaunchParams } from "./launch"
-export { launchHarness } from "./launch"
+export type { LaunchParams, ResolvedHarnessLaunch } from "./launch"
+export { launchHarness, resolveHarnessLaunch } from "./launch"
 
 export {
   createPathCommandResolver,

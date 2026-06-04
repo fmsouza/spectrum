@@ -6,7 +6,11 @@ import {
   defaultConfig,
 } from "@launchkit/config"
 import type { LaunchParams } from "@launchkit/harnesses"
-import type { RunningProxy } from "@launchkit/proxy"
+import {
+  type RunningProxy,
+  type RuntimeState,
+  createInMemoryRuntimeState,
+} from "@launchkit/proxy"
 import {
   createInMemoryKeychainBackend,
   createSecretStore,
@@ -22,6 +26,9 @@ import {
 import type { CliDeps, StartProxyDeps } from "./deps"
 import { type MemoryWriter, createMemoryWriter } from "./writer"
 
+/** The launch result shape exposed by the CLI deps: pid + a promise of the harness exit code. */
+type LaunchValue = { readonly pid: number; readonly exited: Promise<number> }
+
 /** A configurable, fully in-memory `CliDeps` for command tests. */
 export type FakeDepsOverrides = {
   readonly out?: MemoryWriter
@@ -29,10 +36,15 @@ export type FakeDepsOverrides = {
   readonly harnesses?: readonly HarnessDefinition[]
   readonly registryError?: unknown
   readonly isProxyRunning?: boolean
-  readonly launchResult?: Result<{ readonly pid: number }, unknown>
+  readonly launchResult?: Result<LaunchValue, unknown>
   readonly launchSpy?: (params: LaunchParams) => void
+  /** The promise `launch().value.exited` resolves with (default: already-resolved `0`). */
+  readonly launchExited?: Promise<number>
   readonly proxyStartSpy?: (opts: StartProxyDeps) => void
+  /** Invoked when the `RunningProxy` returned by `proxy.start` is stopped. */
+  readonly proxyStopSpy?: () => void
   readonly proxyKey?: string
+  readonly runtime?: RuntimeState
 }
 
 export const makeFakeDeps = (over: FakeDepsOverrides = {}): CliDeps => {
@@ -59,13 +71,16 @@ export const makeFakeDeps = (over: FakeDepsOverrides = {}): CliDeps => {
   const runningProxy: RunningProxy = {
     hostname: "127.0.0.1",
     port: 4000,
-    stop: () => {},
+    stop: () => over.proxyStopSpy?.(),
   }
+
+  const runtime = over.runtime ?? createInMemoryRuntimeState()
 
   return {
     config,
     secrets,
     sessions,
+    runtime,
     out,
     registry: {
       list: async (): Promise<Result<readonly HarnessDefinition[], unknown>> =>
@@ -73,11 +88,12 @@ export const makeFakeDeps = (over: FakeDepsOverrides = {}): CliDeps => {
           ? { ok: false, error: over.registryError }
           : ok(over.harnesses ?? []),
     },
-    launch: (
-      params: LaunchParams,
-    ): Result<{ readonly pid: number }, unknown> => {
+    launch: (params: LaunchParams): Result<LaunchValue, unknown> => {
       over.launchSpy?.(params)
-      return over.launchResult ?? ok({ pid: 4321 })
+      return (
+        over.launchResult ??
+        ok({ pid: 4321, exited: over.launchExited ?? Promise.resolve(0) })
+      )
     },
     proxy: {
       isRunning: async (): Promise<boolean> => over.isProxyRunning ?? false,

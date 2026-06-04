@@ -22,17 +22,25 @@
     "apps/desktop": {
       "name": "launchkit",
       "version": "0.1.0",
+      "bin": {
+        "launchkit": "./src/cli.ts",
+      },
       "dependencies": {
         "@launchkit/cli": "workspace:*",
         "@launchkit/config": "workspace:*",
         "@launchkit/harnesses": "workspace:*",
         "@launchkit/ipc": "workspace:*",
         "@launchkit/proxy": "workspace:*",
+        "@launchkit/pty": "workspace:*",
         "@launchkit/secrets": "workspace:*",
         "@launchkit/sessions": "workspace:*",
         "@launchkit/types": "workspace:*",
         "@launchkit/ui": "workspace:*",
         "@launchkit/utils": "workspace:*",
+        "@xterm/addon-fit": "^0.11.0",
+        "@xterm/addon-webgl": "^0.19.0",
+        "@xterm/headless": "^6.0.0",
+        "@xterm/xterm": "^6.0.0",
         "electrobun": "^1.18.1",
         "react": "^19",
         "react-dom": "^19",
@@ -84,17 +92,6 @@
       "name": "@launchkit/proxy",
       "version": "0.1.0",
       "dependencies": {
-        "@launchkit/config": "workspace:*",
-        "@launchkit/secrets": "workspace:*",
-        "@launchkit/types": "workspace:*",
-        "@launchkit/utils": "workspace:*",
-        "ai": "^6",
-        "zod": "^3.25.76",
-      },
-      "devDependencies": {
-        "msw": "^2.7.0",
-      },
-      "optionalDependencies": {
         "@ai-sdk/amazon-bedrock": "^4",
         "@ai-sdk/anthropic": "^3",
         "@ai-sdk/azure": "^3",
@@ -108,7 +105,26 @@
         "@ai-sdk/openai": "^3",
         "@ai-sdk/perplexity": "^3",
         "@ai-sdk/xai": "^3",
+        "@launchkit/config": "workspace:*",
+        "@launchkit/secrets": "workspace:*",
+        "@launchkit/types": "workspace:*",
+        "@launchkit/utils": "workspace:*",
+        "ai": "^6",
         "ollama-ai-provider-v2": "^3",
+        "zod": "^3.25.76",
+      },
+      "devDependencies": {
+        "msw": "^2.7.0",
+      },
+    },
+    "packages/pty": {
+      "name": "@launchkit/pty",
+      "version": "0.1.0",
+      "dependencies": {
+        "@launchkit/sessions": "workspace:*",
+        "@launchkit/types": "workspace:*",
+        "@launchkit/utils": "workspace:*",
+        "zod": "^3.25.76",
       },
     },
     "packages/secrets": {
@@ -254,6 +270,8 @@
 
     "@launchkit/proxy": ["@launchkit/proxy@workspace:packages/proxy"],
 
+    "@launchkit/pty": ["@launchkit/pty@workspace:packages/pty"],
+
     "@launchkit/secrets": ["@launchkit/secrets@workspace:packages/secrets"],
 
     "@launchkit/sessions": ["@launchkit/sessions@workspace:packages/sessions"],
@@ -331,6 +349,14 @@
     "@types/ws": ["@types/ws@8.18.1", "", { "dependencies": { "@types/node": "*" } }, "sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg=="],
 
     "@vercel/oidc": ["@vercel/oidc@3.2.0", "", {}, "sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug=="],
+
+    "@xterm/addon-fit": ["@xterm/addon-fit@0.11.0", "", {}, "sha512-jYcgT6xtVYhnhgxh3QgYDnnNMYTcf8ElbxxFzX0IZo+vabQqSPAjC3c1wJrKB5E19VwQei89QCiZZP86DCPF7g=="],
+
+    "@xterm/addon-webgl": ["@xterm/addon-webgl@0.19.0", "", {}, "sha512-b3fMOsyLVuCeNJWxolACEUED0vm7qC0cy4wRvf3oURSzDTYVQiGPhTnhWZwIHdvC48Y+oLhvYXnY4XDXPoJo6A=="],
+
+    "@xterm/headless": ["@xterm/headless@6.0.0", "", {}, "sha512-5Yj1QINYCyzrZtf8OFIHi47iQtI+0qYFPHmouEfG8dHNxbZ9Tb9YGSuLcsEwj9Z+OL75GJqPyJbyoFer80a2Hw=="],
+
+    "@xterm/xterm": ["@xterm/xterm@6.0.0", "", {}, "sha512-TQwDdQGtwwDt+2cgKDLn0IRaSxYu1tSUjgKarSDkUM0ZNiSRXFpjxEsvc/Zgc5kq5omJ+V0a8/kIM2WD3sMOYg=="],
 
     "agent-base": ["agent-base@7.1.4", "", {}, "sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ=="],
 

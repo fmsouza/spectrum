@@ -1,10 +1,17 @@
 import type { ConfigStore } from "@launchkit/config"
-import type { HarnessRegistry, LaunchParams } from "@launchkit/harnesses"
+import type {
+  HarnessError,
+  HarnessRegistry,
+  LaunchParams,
+  ResolvedHarnessLaunch,
+} from "@launchkit/harnesses"
 import type {
   LanguageModelGateway,
   ProviderFactory,
   RunningProxy,
+  RuntimeState,
 } from "@launchkit/proxy"
+import type { TerminalManager } from "@launchkit/pty"
 import type { SecretStore } from "@launchkit/secrets"
 import type { SessionStore } from "@launchkit/sessions"
 import type { Result } from "@launchkit/utils"
@@ -23,8 +30,10 @@ import {
   createPathCommandResolver,
   createRegistry,
   launchHarness,
+  resolveHarnessLaunch,
 } from "@launchkit/harnesses"
 import {
+  createFileRuntimeState,
   createProviderFactory,
   createProviderTester,
   createRealGateway,
@@ -33,6 +42,7 @@ import {
   loadSdk,
   startProxy,
 } from "@launchkit/proxy"
+import { createFfiPty, createTerminalManager } from "@launchkit/pty"
 import {
   createBunProcessRunner,
   createMacosSecurityBackend,
@@ -44,6 +54,7 @@ import {
 } from "@launchkit/sessions"
 import { createCryptoIdGen, createSystemClock } from "@launchkit/utils"
 import { err } from "@launchkit/utils"
+import { startTerminalSocket } from "./gui/terminal-socket"
 
 /** Result of testing one provider's live connectivity (mirrors ipc TestProviderResult). */
 export type ProviderTestResult = {
@@ -62,10 +73,21 @@ export interface AppContext {
   readonly secrets: SecretStore
   readonly sessions: SessionStore
   readonly registry: HarnessRegistry
-  /** `launchHarness(realDeps)` partially applied — a single `(params) => Result<{ pid }, unknown>`. */
+  /** `launchHarness(realDeps)` partially applied — a single `(params) => Result<{ pid, exited }, unknown>`. */
   readonly launch: (
     params: LaunchParams,
-  ) => Result<{ readonly pid: number }, unknown>
+  ) => Result<
+    { readonly pid: number; readonly exited: Promise<number> },
+    unknown
+  >
+  /**
+   * `resolveHarnessLaunch({ resolver })` partially applied: resolves a harness's command + renders
+   * its proxy env WITHOUT spawning. The GUI embedded-terminal path uses this (then hands the result
+   * to `ctx.terminal.launch`); the headless `ctx.launch` keeps owning the CLI spawn path.
+   */
+  readonly resolveLaunch: (
+    params: LaunchParams,
+  ) => Result<ResolvedHarnessLaunch, HarnessError>
   readonly proxy: {
     isRunning(baseUrl: string): Promise<boolean>
     start(opts: {
@@ -77,6 +99,11 @@ export interface AppContext {
   }
   readonly factory: ProviderFactory
   readonly gateway: LanguageModelGateway
+  /**
+   * Persists the GUI proxy's per-run key so the CLI `launch` can reuse it (avoiding a
+   * mismatched key the running proxy would reject). Holds only the per-run token — never a secret.
+   */
+  readonly runtime: RuntimeState
   /** Test one provider's connectivity. The real implementation is provided by the tray-and-polish plan. */
   readonly testProvider: (
     providerId: string,
@@ -87,6 +114,14 @@ export interface AppContext {
   readonly proxyBaseUrl: string
   /** Mints the per-run >=32-byte proxy key (security.md) when the shell starts an ephemeral proxy. */
   readonly genProxyKey: () => string
+  /**
+   * The embedded-terminal engine for the GUI: allocates a real PTY per launched harness and streams
+   * its bytes over a dedicated loopback WebSocket (`terminalSocketUrl`). Its `send` sink is a no-op
+   * until the terminal socket binds it on connect. Unused by the CLI/`launch` headless path.
+   */
+  readonly terminal: TerminalManager
+  /** Loopback `ws://localhost:<port>/` the webview connects to for the PTY byte stream. */
+  readonly terminalSocketUrl: string
   /** Resolved settings paths (config + db + harness dir), surfaced for diagnostics/tests. */
   readonly paths: {
     readonly configFile: string
@@ -120,6 +155,10 @@ export interface CreateAppContextDeps {
   readonly createProviderFactory: typeof createProviderFactory
   readonly loadSdk: typeof loadSdk
   readonly createRealGateway: typeof createRealGateway
+  readonly createFileRuntimeState: typeof createFileRuntimeState
+  readonly createFfiPty: typeof createFfiPty
+  readonly createTerminalManager: typeof createTerminalManager
+  readonly startTerminalSocket: typeof startTerminalSocket
   readonly genProxyKey: () => string
 }
 
@@ -151,6 +190,10 @@ const realDeps: CreateAppContextDeps = {
   createProviderFactory,
   loadSdk,
   createRealGateway,
+  createFileRuntimeState,
+  createFfiPty,
+  createTerminalManager,
+  startTerminalSocket,
   genProxyKey: defaultGenProxyKey,
 }
 
@@ -199,6 +242,7 @@ export const createAppContext = (
   const configFile = join(configDir, "config.json")
   const dbFile = join(configDir, "launchkit.db")
   const harnessDir = join(configDir, "harnesses")
+  const runtimeFile = join(configDir, "runtime.json")
 
   // config: cached( file( fs(configFile) ) )
   const config = deps.createCachedConfigStore(
@@ -225,10 +269,14 @@ export const createAppContext = (
   const registry = deps.createRegistry({
     fileSource: deps.createDirHarnessFileSource(harnessDir),
   })
+  // ONE resolver shared by both launch paths: the headless `launch` (CLI spawn) and the GUI's
+  // `resolveLaunch` (resolve command + render proxy env, then hand to `terminal.launch`).
+  const resolver = deps.createPathCommandResolver()
   const launch = deps.launchHarness({
-    resolver: deps.createPathCommandResolver(),
+    resolver,
     spawner: deps.createBunProcessSpawner(),
   })
+  const resolveLaunch = resolveHarnessLaunch({ resolver })
 
   // proxy provider layer: factory (secrets + lazy SDK loader) + real streamText gateway
   const factory = deps.createProviderFactory({
@@ -236,6 +284,21 @@ export const createAppContext = (
     loadSdk: deps.loadSdk,
   })
   const gateway = deps.createRealGateway()
+
+  // runtime: persists only the running proxy's per-run key so the CLI can reuse it
+  const runtime = deps.createFileRuntimeState(runtimeFile)
+
+  // terminal: the GUI embedded-terminal engine over a real FFI pty + the session store. Its `send`
+  // sink is a no-op until window.ts binds the real Electrobun `messages` channel via `bindSend`.
+  const terminal = deps.createTerminalManager({
+    pty: deps.createFfiPty(),
+    sessions: { create: sessions.create, close: sessions.close },
+    send: () => {},
+    capBytes: 1_000_000,
+    defaultSize: { cols: 80, rows: 24 },
+  })
+  // The dedicated loopback WebSocket for the PTY byte stream binds `terminal`'s send sink on connect.
+  const terminalSocketUrl = deps.startTerminalSocket(terminal).url
 
   // proxy settings resolved from the default config shape (loopback only, security.md)
   const settings = defaultConfig().settings
@@ -271,9 +334,11 @@ export const createAppContext = (
     sessions,
     registry,
     launch,
+    resolveLaunch,
     proxy: { isRunning: isProxyRunning, start: startProxyAdapter },
     factory,
     gateway,
+    runtime,
     // tray-and-polish-03: real connectivity probe wired here — resolve the provider from the
     // live config, pick its first model, and delegate to the proxy's createProviderTester.
     testProvider: createTestProvider(config, factory, gateway, () =>
@@ -282,6 +347,8 @@ export const createAppContext = (
     proxyPort,
     proxyBaseUrl,
     genProxyKey: deps.genProxyKey,
+    terminal,
+    terminalSocketUrl,
     paths: { configFile, dbFile, harnessDir },
   }
 }

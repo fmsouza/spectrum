@@ -22,6 +22,11 @@ export { serializeOpenAIStream } from "./adapters/openai-stream"
 export { validateProviderConfig } from "./providers/config-schemas"
 export { createProviderTester } from "./provider-tester"
 export type { ProviderTester, ProviderTestResult } from "./provider-tester"
+export {
+  createInMemoryRuntimeState,
+  createFileRuntimeState,
+} from "./runtime-state"
+export type { RuntimeState } from "./runtime-state"
 export type {
   NormalizedRequest,
   NormalizedMessage,

@@ -41,12 +41,26 @@ const makeFakeDeps = (): {
     createBunProcessSpawner: record("createBunProcessSpawner") as never,
     launchHarness: ((..._a: unknown[]) => {
       calls.launchHarness = _a
-      return (..._p: unknown[]) => ok({ pid: 1 })
+      return (..._p: unknown[]) => ok({ pid: 1, exited: Promise.resolve(0) })
     }) as never,
     createProviderFactory: record("createProviderFactory") as never,
     loadSdk: (async () => ({ create: () => ({}) })) as never,
     createRealGateway: record("createRealGateway") as never,
+    createFileRuntimeState: record("createFileRuntimeState") as never,
     genProxyKey: () => "fixed-test-key",
+    createFfiPty: (() => ({ open: () => ok({}) })) as never,
+    createTerminalManager: ((..._a: unknown[]) => {
+      calls.createTerminalManager = _a
+      return {
+        launch: () => ok({ sessionId: "s1" }),
+        handleInbound: () => undefined,
+        bindSend: () => undefined,
+      }
+    }) as never,
+    startTerminalSocket: (() => ({
+      url: "ws://localhost:12345/",
+      stop: () => undefined,
+    })) as never,
   }
   return { deps, calls }
 }
@@ -99,6 +113,16 @@ describe("createAppContext wiring", () => {
     expect(sessionArgs.clock).toEqual({ __stub: "createSystemClock" })
   })
 
+  it("builds the runtime state at the resolved runtime.json path and exposes it", () => {
+    const { deps, calls } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+
+    expect(calls.createFileRuntimeState?.[0] as string).toContain(
+      "/home/tester/.config/launchkit/runtime.json",
+    )
+    expect(ctx.runtime).toEqual({ __stub: "createFileRuntimeState" })
+  })
+
   it("calls sessions.init() so the schema exists before first use", () => {
     const { deps } = makeFakeDeps()
     const ctx = createAppContext(deps)
@@ -146,5 +170,30 @@ describe("createAppContext wiring", () => {
     // default config settings: 127.0.0.1:4000
     expect(ctx.proxyBaseUrl).toBe("http://127.0.0.1:4000")
     expect(ctx.proxyPort).toBe(4000)
+  })
+
+  it("builds the terminal manager from an ffi pty + the session store's create/close and exposes it", () => {
+    const { deps, calls } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+
+    // the manager is wired with the ffi pty adapter, the session sink, and the defaults
+    const managerArgs = calls.createTerminalManager?.[0] as {
+      pty: unknown
+      sessions: { create: unknown; close: unknown }
+      send: unknown
+      capBytes: number
+      defaultSize: { cols: number; rows: number }
+    }
+    expect(typeof managerArgs.pty).toBe("object")
+    expect(typeof managerArgs.sessions.create).toBe("function")
+    expect(typeof managerArgs.sessions.close).toBe("function")
+    expect(typeof managerArgs.send).toBe("function")
+    expect(managerArgs.capBytes).toBe(1_000_000)
+    expect(managerArgs.defaultSize).toEqual({ cols: 80, rows: 24 })
+
+    // and the wired manager is exposed on the context
+    expect(typeof ctx.terminal.launch).toBe("function")
+    expect(typeof ctx.terminal.handleInbound).toBe("function")
+    expect(typeof ctx.terminal.bindSend).toBe("function")
   })
 })

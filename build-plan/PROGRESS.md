@@ -2,7 +2,7 @@
 
 **This file is the single source of truth for build state.** See `EXECUTION.md` for the protocol. Update it in the same commit as the work it tracks.
 
-## Status: Phase 3 complete (+ build remediation)
+## Status: Phase 3 complete (+ build & runtime remediation)
 
 All build-plan tasks are `done`. The LaunchKit binary builds (`bunx electrobun build` →
 `apps/desktop/build/<target>/LaunchKit-dev.app`), the full gate
@@ -76,6 +76,115 @@ gate step failed on 8 advisories; the pipeline also built no artifacts.
   new `ci.yml` `[ubuntu-latest, macos-latest]` matrix.
 - **New advisory resolved at source** via the v5→v6 AI SDK migration (above). CI is green on both
   legs with a clean blocking audit.
+
+### Runtime remediation (2026-06-02) — `[remediation/*]`
+
+Plan: `docs/superpowers/plans/2026-06-02-launchkit-runtime-remediation.md`. A thorough review found
+that "binary builds" was again masking "binary **runs**": the built `.app` launched but its own code
+never executed, plus several functional gaps. Fixed via subagent-driven TDD on branch
+`remediation/runtime-fixes` (gate green throughout: typecheck + lint + **487 tests**; `bun audit`
+clean; `apps/desktop/scripts/smoke.sh` PASS).
+
+- **P0 — GUI app never ran (the headline bug).** Electrobun's launcher loads `bun/index.js` via
+  `new Worker(...)`, but the build emitted `bun/main.js` (entrypoint basename) **and** startup was
+  gated behind `if (import.meta.main)` — always `false` in a Worker. So launching the `.app` started
+  no proxy, no window, no tray. → New unconditional entry `apps/desktop/src/index.ts`; `main.ts` made
+  side-effect-free; `electrobun.config.ts` entrypoint → `src/index.ts` (bundles to `bun/index.js`).
+  Proven by a new runtime smoke script that builds, launches, and asserts the loopback proxy `/health`
+  responds. `1d0878a`, `d3714c7`.
+- **P0 process gap.** `MANUAL-VERIFICATION.md` was 100% unchecked — the GUI/tray/e2e runtime was never
+  actually run, which is how P0 shipped as "done". The smoke script now guards the build-vs-runs gap
+  in CI-able form; the eyes-on checklist (window/tray/launch-click/import-export) still requires a
+  real GUI run.
+- **P1 — GUI custom-harness CRUD silently lost data.** `addHarness`/`updateHarness`/`deleteHarness`
+  echoed input but never persisted (`HarnessFileSource` was read-only). → Added
+  `writeDefinition`/`deleteDefinition` (atomic 0600 write, path-traversal-safe ids) + registry
+  `add`/`remove` (force `builtIn:false`, reject built-in ids) + wired the handlers to return the
+  registry-normalized definition. `d4c0dd4`, `f90e976`, `82c1d90`.
+- **P2 — install hardening.** AI SDK providers moved from `optionalDependencies` → `dependencies`
+  (a degraded install now fails loudly, not silently at runtime). `1abbfde`. Root `README.md` added
+  with verified build/install/run instructions for the dev `.app` + CLI. `832ed35`.
+- **P3 — CLI proxy-key mismatch.** `launch` minted a fresh key even when reusing a running proxy
+  (harness rejected by the live proxy). → New `RuntimeState` adapter (`@launchkit/proxy`) persists the
+  per-run key to `~/.config/launchkit/runtime.json` (0600); GUI writes it on start / clears on stop;
+  CLI reads it on reuse. `473b729`. Stale comment in `cli/src/run.ts` corrected (`a4e0d58`).
+- **P4 — spawn lost the env + CLI orphaned the harness (`[remediation-bug2]`).** (a) `createBunProcessSpawner`
+  passed only the 3 rendered template vars as `env`, which Bun.spawn treats as a full REPLACEMENT — the
+  child got no PATH/HOME/TERM. → spawn with `{ ...process.env, ...env }` (rendered vars still win, keeping
+  the proxy key/base-url authoritative). (b) The CLI returned immediately after spawning, orphaning an
+  interactive TUI and killing the ephemeral proxy it had just started. → `ProcessSpawner.spawn` /
+  `launchHarness` now return `{ pid, exited: Promise<number> }`; `launchCommand` foregrounds the harness
+  (`await launched.value.exited`) and stops ONLY a proxy it owns (started this run) afterward — a reused,
+  externally-running proxy is never stopped. GUI/tray launch stays fire-and-forget (uses `.pid` only).
+  `079779d`.
+
+**Known minor follow-ups (non-blocking, from code review):**
+- Orphaned `.tmp` on a partial atomic-write failure (shared pattern in `runtime-state.ts` and
+  `config/fs-config-file.ts` — best-effort `unlink` in the catch would close it).
+- `runtime.json` has no port/PID metadata, so a GUI crash-without-stop + a different proxy on the port
+  could hand a stale key (degrades to the same 401 as the original bug, only in that narrow window).
+- The GUI's `writeProxyKey`/`clear` are fire-and-forget — a CLI launch racing GUI startup may read
+  `null` and fall back to minting (graceful 401, not a crash).
+- Inbound proxy parsers don't re-validate through `NormalizedRequestSchema` (e.g. `temperature`
+  unbounded) — cosmetic; providers reject invalid values.
+
+### Embedded harness terminal (2026-06-03) — `[terminal-*]`
+
+Spec: `docs/superpowers/specs/2026-06-02-embedded-harness-terminal-design.md`. Plan:
+`docs/superpowers/plans/2026-06-02-embedded-harness-terminal.md`. GUI **Launch** previously recorded a
+session but never surfaced the harness (the GUI has no controlling terminal, so the headless
+inherit-stdio spawn was invisible). Now GUI launch opens the harness in an **embedded, interactive,
+tabbed** terminal inside the window. Built subagent-driven via TDD (gate green throughout: typecheck +
+lint + **538 tests**; `bun audit` clean; `bunx electrobun build` exit 0; `smoke.sh` PASS). The live
+xterm round-trip is the one item that needs an eyes-on GUI run (`MANUAL-VERIFICATION.md` Terminal
+section).
+
+- **New package `@launchkit/pty`.** Pure, fully unit-tested core — `createFakePty`, bounded scrollback
+  ring buffer, `createTerminalRegistry`, a zod-validated message protocol (`PtyInbound`/`PtyOutbound`,
+  base64 byte-safe codec), and `createTerminalManager` (ties pty ↔ webview ↔ `SessionStore`; registers
+  the single-subscriber `onData`/`onExit` once and fans out; closes the session with the exit code on
+  harness exit). `3bc5e80`,`1e57ba4`,`d052e81`,`adb6a92`,`66453c4`,`7f50500`,`f2a502d`,`d3fe421`,`c2b79b7`.
+- **Real PTY with zero native deps.** `createFfiPty` uses `bun:ffi` `openpty` (libutil) + `Bun.spawn`
+  on the slave fd — the child gets a real TTY (verified by integration test). Non-blocking master
+  drain, ioctl `TIOCSWINSZ` resize, fd-leak-safe on spawn failure. `ac39ab9`,`2ef3604`.
+- **Bun-side wiring.** `resolveHarnessLaunch` extracted from `launchHarness` for reuse (`beb375a`);
+  `composition.ts` builds `ctx.terminal` (`d788428`); `gui/window.ts` wires Electrobun's bidirectional
+  `messages` channel under a single `"pty"` name — inbound → `routeInboundMessage` → manager, outbound
+  bound via `terminal.bindSend(m => rpc.send("pty", m))` (`cd56f27`); the GUI `launchHarness` handler +
+  tray Launch now call `ctx.terminal.launch` (reusing the running proxy's key) and return `{sessionId}`
+  — the manager is the sole session creator, no duplicates; the CLI path is untouched (`6136c32`).
+- **Webview UI.** A browser-safe `@launchkit/pty/protocol` subpath export keeps `bun:ffi` out of the
+  view bundle; `terminalClient`/`useTerminals` (`4c3b130`) + a new **Terminal** route with a tab strip
+  and `@xterm/xterm` pane (`124afa1`). Launch navigates to the new tab; scrollback survives tab
+  switches; closing a tab kills the harness; xterm is loaded via dynamic import so `bun test` never
+  pulls it.
+
+### Embedded terminal — runtime fixes (2026-06-04) — `[remediation/runtime-fixes]`
+
+Eyes-on GUI runs surfaced a garbled harness TUI; root-caused and fixed end-to-end (gate green:
+typecheck + lint + **540 tests**; new pty integration tests; `electrobun build` exit 0; `smoke.sh`
+PASS; headless-xterm replay of real `claude` output renders its clean TUI at the right width).
+
+- **PTY window size was garbage (the headline bug).** `ioctl(TIOCSWINSZ)`'s `struct winsize *` is a
+  **variadic** argument, and bun:ffi mis-passes varargs on arm64 (the same defect already noted for
+  `fcntl`): the pointer went in a register but the variadic callee reads it off the stack, so the
+  kernel stored an uninitialised winsize (`stty size` reported e.g. `45187×1786`). The harness then
+  rendered its Ink TUI for a ~1786-column terminal — stray accumulating `────` rules, content emitted
+  at impossible columns (`ESC[1778G`), right-edge wrapping. Fix: set the **initial** size via
+  `openpty`'s **fixed** `winp` parameter (reliable, and atomic before the child reads it), and do
+  **resize** through a second ioctl binding **padded with 6 dummy register args** so the real pointer
+  lands on the stack where the variadic call reads it. New integration tests assert the child's TTY
+  reports exactly the requested size on both open and resize. (Supersedes the `TIOCSWINSZ resize` note
+  above, which was silently writing garbage.)
+- **Dedicated loopback PTY WebSocket.** The high-frequency byte stream + the TUI's startup capability
+  queries (DA1, cursor reports) degraded over Electrobun's `messages` channel. Moved the pty stream to
+  a loopback `ws://localhost:<port>` (`gui/terminal-socket.ts`, fetched via a `getTerminalSocketUrl`
+  IPC method); IPC requests stay on Electrobun. Removed the `messages:{pty}` channel from `window.ts`.
+- **xterm robustness.** WebGL renderer promoted only **after** the first valid fit (a 0×0 container at
+  `open()` mis-measured the cell); `fit()` validates the proposed grid and refuses absurd dimensions
+  so a bad measurement can never resize the pty. Deferred the pty spawn to the first real resize
+  (spawn at the webview's true size, no startup churn). CSP allows `ws://localhost:*`; added a webview
+  `ErrorBoundary` and the hand-written `app.css` theme + vendored `xterm.css`.
 
 ## Status legend
 `todo` · `in-progress` · `done` · `blocked`

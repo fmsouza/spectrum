@@ -5,4 +5,5 @@ export type HarnessError =
   | { readonly kind: "duplicate-id"; readonly id: string }
   | { readonly kind: "invalid-definition"; readonly detail: string }
   | { readonly kind: "read-failed"; readonly detail: string }
+  | { readonly kind: "write-failed"; readonly detail: string }
   | { readonly kind: "spawn-failed"; readonly detail: string }

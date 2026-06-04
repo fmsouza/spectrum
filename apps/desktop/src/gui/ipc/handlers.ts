@@ -169,15 +169,29 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
     },
 
     addHarness: async (definition) => {
-      // User-defined harnesses are files on disk; the registry hot-reloads them. The GUI write-path
-      // for harness JSON is owned by gui-pages — here we accept + echo the validated definition so
-      // the contract is satisfied. (No-op persistence stub; gui-pages replaces with a file write.)
-      return definition
+      // User-defined harnesses are files on disk; the registry validates + persists (builtIn forced
+      // false, built-in id collisions rejected) and hot-reloads them on the next list.
+      const res = await ctx.registry.add(definition)
+      if (!isOk(res)) return fail("could not add harness")
+      // Return the NORMALIZED definition: registry.add forces builtIn:false on disk, so the reply
+      // must match what the next getHarnesses returns rather than echoing the raw caller input.
+      return { ...definition, builtIn: false }
     },
 
-    updateHarness: async ({ id, input }) => ({ ...input, id }),
+    updateHarness: async ({ id, input }) => {
+      // Update is an upsert by id: writeDefinition overwrites the existing file for this id.
+      const updated = { ...input, id }
+      const res = await ctx.registry.add(updated)
+      if (!isOk(res)) return fail("could not update harness")
+      // builtIn is forced false by the registry on persist; mirror that in the reply.
+      return { ...input, id, builtIn: false }
+    },
 
-    deleteHarness: async () => null,
+    deleteHarness: async ({ id }) => {
+      const res = await ctx.registry.remove(String(id))
+      if (!isOk(res)) return fail("could not delete harness")
+      return null
+    },
 
     launchHarness: async ({ id, alias }) => {
       const config = await loadConfig()
@@ -188,22 +202,30 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
 
       const resolvedAlias = alias ?? harness.defaultAlias
       const proxyUrl = `http://${config.settings.proxyHost}:${config.settings.proxyPort}`
+      // The GUI proxy runs persistently and stored its per-run key in runtime state; reuse it so the
+      // running proxy accepts the harness's requests. If absent, mint a fresh key (security.md).
+      const proxyKey = (await ctx.runtime.readProxyKey()) ?? ctx.genProxyKey()
 
-      // The GUI proxy runs persistently while the app is open; the launcher still needs *a* key.
-      const launched = ctx.launch({
+      // Resolve the command + render the proxy env WITHOUT spawning ...
+      const resolved = ctx.resolveLaunch({
         harness,
         proxyUrl,
-        proxyKey: ctx.genProxyKey(),
+        proxyKey,
         model: resolvedAlias,
       })
-      if (!isOk(launched)) return fail("failed to launch harness")
+      if (!isOk(resolved)) return fail("failed to resolve harness launch")
 
-      const session = ctx.sessions.create({
+      // ... then open an embedded terminal session. The TerminalManager creates the Session itself,
+      // so the handler must NOT call ctx.sessions.create (that would double-record the session).
+      const opened = ctx.terminal.launch({
         harnessId: harness.id,
         alias: resolvedAlias,
+        command: resolved.value.command,
+        args: resolved.value.args,
+        env: resolved.value.env,
       })
-      if (!isOk(session)) return fail("failed to record session")
-      return session.value
+      if (!isOk(opened)) return fail("failed to launch harness")
+      return { sessionId: opened.value.sessionId }
     },
 
     // ── Sessions & proxy ─────────────────────────────────────────────────────────────────
@@ -224,5 +246,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       const running = await ctx.proxy.isRunning(ctx.proxyBaseUrl)
       return { running, port: ctx.proxyPort }
     },
+
+    getTerminalSocketUrl: async () => ({ url: ctx.terminalSocketUrl }),
   }
 }

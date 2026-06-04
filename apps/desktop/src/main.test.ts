@@ -24,19 +24,32 @@ const fakeFactory = (() =>
       init: () => ({ ok: true, value: undefined }),
     },
     registry: { list: async () => ({ ok: true, value: [] }) },
-    launch: () => ({ ok: true, value: { pid: 1 } }),
+    launch: () => ({ ok: true, value: { pid: 1, exited: Promise.resolve(0) } }),
     proxy: {
       isRunning: async () => false,
       start: () => ({ hostname: "127.0.0.1", port: 4000, stop: () => {} }),
     },
     factory: {},
     gateway: {},
+    runtime: {
+      readProxyKey: async () => null,
+      writeProxyKey: async () => ({ ok: true, value: undefined }),
+      clear: async () => {},
+    },
     testProvider: async () => ({ ok: true, value: { ok: true, latencyMs: 0 } }),
     proxyPort: 4000,
     proxyBaseUrl: "http://127.0.0.1:4000",
     genProxyKey: () => "k",
     paths: { configFile: "", dbFile: "", harnessDir: "" },
   }) as never) as typeof createAppContext
+
+describe("module side effects", () => {
+  it("does not start the proxy or open a window merely by importing main.ts", async () => {
+    const mod = await import("./main")
+    expect(typeof mod.main).toBe("function")
+    expect(typeof mod.buildRealDeps).toBe("function")
+  })
+})
 
 describe("buildRealDeps", () => {
   it("produces a RunAppDeps whose runCli, startProxy, and openWindow are callable", () => {

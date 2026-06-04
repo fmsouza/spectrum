@@ -1,4 +1,4 @@
-import type { HarnessId } from "@launchkit/types"
+import type { HarnessId, SessionId } from "@launchkit/types"
 import {
   Button,
   EmptyState,
@@ -13,7 +13,14 @@ import { useHarnesses } from "../hooks/useHarnesses"
 import { useProxyStatus } from "../hooks/useProxyStatus"
 import { useSessions } from "../hooks/useSessions"
 
-export const DashboardPage = (): ReactElement => {
+export type DashboardPageProps = {
+  /** Called with the new session id (and its harness) after a successful launch. */
+  readonly onLaunched?: (sessionId: SessionId, harnessId: HarnessId) => void
+}
+
+export const DashboardPage = ({
+  onLaunched,
+}: DashboardPageProps = {}): ReactElement => {
   const client = useIpcClient()
   const proxy = useProxyStatus()
   const harnesses = useHarnesses()
@@ -22,8 +29,12 @@ export const DashboardPage = (): ReactElement => {
   const active = (sessions.data ?? []).filter((s) => s.endedAt === undefined)
 
   const launch = async (id: string): Promise<void> => {
-    const r = await client.launchHarness({ id: id as HarnessId })
-    if (r.ok) sessions.refetch()
+    const harnessId = id as HarnessId
+    const r = await client.launchHarness({ id: harnessId })
+    if (r.ok) {
+      sessions.refetch()
+      onLaunched?.(r.value.sessionId, harnessId)
+    }
   }
 
   return (
