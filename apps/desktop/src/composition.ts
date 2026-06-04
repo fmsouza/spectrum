@@ -425,7 +425,7 @@ export const createAppContext = (
         ? {}
         : { startingFolder: opts.startingFolder }),
     })
-    console.warn("[launchkit] openFileDialog ->", JSON.stringify(paths))
+    // Empty/cancelled selection comes back as [""] from the comma-split; drop it.
     return paths.filter((p) => p.trim() !== "")
   }
 
