@@ -130,4 +130,17 @@ describe("NewSessionModal", () => {
     rerender(<NewSessionModal {...baseProps} open />)
     expect(screen.getByLabelText("Name")).toHaveValue("")
   })
+
+  it("preserves typed fields when the folder prop changes (Browse) while open", () => {
+    const { rerender } = render(
+      <NewSessionModal {...baseProps} folder="/a" open />,
+    )
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "auth-refactor" },
+    })
+    // Simulate Browse updating the parent's folder while modal stays open
+    rerender(<NewSessionModal {...baseProps} folder="/b" open />)
+    expect(screen.getByLabelText("Name")).toHaveValue("auth-refactor")
+    expect(screen.getByRole("textbox", { name: /folder/i })).toHaveValue("/b")
+  })
 })

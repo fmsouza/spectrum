@@ -5,7 +5,7 @@ import type {
   ModelAlias,
   Profile,
 } from "@launchkit/types"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { ReactElement } from "react"
 import { Button } from "../atoms/Button"
 import { Modal } from "../atoms/Modal"
@@ -73,9 +73,10 @@ export const NewSessionModal = ({
     setState((prev) => ({ ...prev, cwd: folder }))
   }, [folder])
 
-  // Fix 3: reset form when the modal is reopened
+  // Fix 3: reset form only on the false→true transition of open
+  const wasOpen = useRef(false)
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpen.current) {
       setState({
         name: "",
         cwd: folder,
@@ -87,6 +88,7 @@ export const NewSessionModal = ({
         saveName: "",
       })
     }
+    wasOpen.current = open
   }, [open, folder, firstHarness, firstAlias])
 
   const update = <K extends keyof FormState>(
