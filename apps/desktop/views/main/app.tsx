@@ -91,12 +91,21 @@ const AppInner = ({
 
   // The session list lives here (not inside SessionsView) so a launch or an exit
   // can refetch it: a new running session must appear and an exited one must
-  // move from Running to Recent. Split into running (still live) vs recent.
-  const sessions = useSessions()
-  const refetchSessions = sessions.refetch
-  const allSessions = sessions.data ?? []
-  const running = allSessions.filter((s) => s.endedAt === undefined)
-  const recent = allSessions.filter((s) => s.endedAt !== undefined)
+  // move from Running to Recent. Two server-side queries: all running sessions
+  // (pinned group) + a paginated page of ended sessions. `useSessions`
+  // auto-refetches when its filter changes (the filter is in the
+  // useCallback/useAsyncResource dep), so bumping `recentLimit` reloads `recent`.
+  const running = useSessions({ running: true })
+  const [recentLimit, setRecentLimit] = useState(20)
+  const recent = useSessions({ running: false, limit: recentLimit })
+  const refetchSessions = (): void => {
+    running.refetch()
+    recent.refetch()
+  }
+  const runningSessions = running.data ?? []
+  const recentSessions = recent.data ?? []
+  // A full page (returned length === requested limit) means there may be more.
+  const hasMore = recentSessions.length === recentLimit
 
   // Feed the new-session modal. These hooks load lazily and stay cheap when the
   // modal is closed (the data is just handed to a dumb component).
@@ -170,9 +179,10 @@ const AppInner = ({
             ? {}
             : { selectedSessionId: view.selectedSessionId }),
           openSessionIds,
-          running,
-          recent,
-          hasMore: false,
+          running: runningSessions,
+          recent: recentSessions,
+          hasMore,
+          onMore: () => setRecentLimit((l) => l + 20),
           onSelect: (id) =>
             setView({ kind: "sessions", selectedSessionId: id }),
           onNew: () => setModalOpen(true),

@@ -14,6 +14,8 @@ export type SessionsViewInput = {
   readonly recent: readonly Session[]
   /** Whether the recent list is truncated (drives the "View more" button). */
   readonly hasMore: boolean
+  /** Load the next page of ended sessions (bumps the recent limit in the shell). */
+  readonly onMore: () => void
   readonly onSelect: (id: SessionId) => void
   readonly onNew: () => void
   /**
@@ -170,6 +172,7 @@ export const SessionsView = ({
   running,
   recent,
   hasMore,
+  onMore,
   onSelect,
   onNew,
   onExit,
@@ -186,7 +189,7 @@ export const SessionsView = ({
       recent={recent}
       hasMore={hasMore}
       onSelect={onSelect}
-      onMore={() => {}}
+      onMore={onMore}
       onNew={onNew}
     />
   ),

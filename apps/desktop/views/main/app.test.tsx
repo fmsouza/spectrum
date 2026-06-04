@@ -277,16 +277,106 @@ describe("App view model", () => {
         initialView="sessions"
       />,
     )
-    // The master fetches sessions once on mount.
-    await waitFor(() => expect(client.calls.getSessions.length).toBe(1))
+    // The master fetches sessions on mount: two server-side queries (running +
+    // the first recent page).
+    await waitFor(() => expect(client.calls.getSessions.length).toBe(2))
     fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
     fireEvent.click(await screen.findByRole("button", { name: /launch/i }))
     await waitFor(() => expect(client.calls.launchHarness.length).toBe(1))
-    // After a successful launch the master must refetch so the new running
-    // session appears (the deleted DashboardPage used to do this).
+    // After a successful launch the master must refetch BOTH resources so the
+    // new running session appears (the deleted DashboardPage used to do this).
     await waitFor(() =>
-      expect(client.calls.getSessions.length).toBeGreaterThan(1),
+      expect(client.calls.getSessions.length).toBeGreaterThan(2),
     )
+  })
+
+  it("fetches running and the first recent page server-side on initial render", async () => {
+    const client = createFakeIpcClient(baseStubs)
+    render(
+      <App
+        client={client}
+        terminalClient={fakeTerminalClient}
+        createTerminal={fakeXterm}
+        initialView="sessions"
+      />,
+    )
+    // The shell now fetches running and ended sessions as two server-side
+    // queries (not one unfiltered call split client-side).
+    await waitFor(() =>
+      expect(client.calls.getSessions).toContainEqual({ running: true }),
+    )
+    expect(client.calls.getSessions).toContainEqual({
+      running: false,
+      limit: 20,
+    })
+  })
+
+  it("requests the next recent page when View more is clicked", async () => {
+    // A full first page (length === limit) so the View-more button renders.
+    const page = Array.from({ length: 20 }, (_, i) => ({
+      id: `s_${i}`,
+      harnessId: "claude",
+      alias: "fast",
+      startedAt: "2026-05-23T10:00:00.000Z",
+      endedAt: "2026-05-23T10:05:00.000Z",
+      exitCode: 0,
+    }))
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getSessions: async (params) => ({
+        ok: true as const,
+        value: params?.running === false ? page : [],
+      }),
+    })
+    render(
+      <App
+        client={client}
+        terminalClient={fakeTerminalClient}
+        createTerminal={fakeXterm}
+        initialView="sessions"
+      />,
+    )
+    fireEvent.click(await screen.findByRole("button", { name: /view more/i }))
+    // Bumping the limit re-runs the recent query with the larger page size.
+    await waitFor(() =>
+      expect(client.calls.getSessions).toContainEqual({
+        running: false,
+        limit: 40,
+      }),
+    )
+  })
+
+  it("hides the View more button when the recent page is short", async () => {
+    // Fewer than the limit → not truncated → no View-more button.
+    const page = [
+      {
+        id: "s_0",
+        harnessId: "claude",
+        alias: "fast",
+        startedAt: "2026-05-23T10:00:00.000Z",
+        endedAt: "2026-05-23T10:05:00.000Z",
+        exitCode: 0,
+      },
+    ]
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getSessions: async (params) => ({
+        ok: true as const,
+        value: params?.running === false ? page : [],
+      }),
+    })
+    render(
+      <App
+        client={client}
+        terminalClient={fakeTerminalClient}
+        createTerminal={fakeXterm}
+        initialView="sessions"
+      />,
+    )
+    await waitFor(() =>
+      expect(screen.getByText(/claude · fast/)).toBeInTheDocument(),
+    )
+    expect(screen.queryByRole("button", { name: /view more/i })).toBeNull()
   })
 
   it("transitions an open live session to replay when it exits", async () => {
