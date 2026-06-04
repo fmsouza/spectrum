@@ -208,9 +208,9 @@ Executed via `subagent-driven-development` (implementer + spec review + code-qua
 | CS.5 | sessions: `create` writes `name`/`cwd` | done | 3d9b5d5 |
 | CS.6 | sessions: `query` running/limit/offset (+offset-only fix) | done | 9205194, 6c55140 |
 | CS.7 | config/sessions barrel guards | done | 8fe2bea |
-| PH.1–PH.6 | pty: file `ScrollbackStore` (+ fakes, rotation, real fs) | todo | |
-| PH.7–PH.9 | pty: `cwd`/`name` threading + scrollback tap | todo | |
-| PH.10–PH.11 | harnesses: `ProcessSpawner` cwd + `LaunchParams` cwd/env | todo | |
+| PH.1–PH.6 | pty: file `ScrollbackStore` (+ fakes, rotation, real fs O_APPEND) | done | 7bcff78…d26c252, dfc5373 |
+| PH.7–PH.9 | pty: `cwd`/`name` threading + scrollback tap + composition wiring | done | 3f79580, 100df50, a2e63ef, 2efa088 |
+| PH.10–PH.11 | harnesses: `ProcessSpawner` cwd + `LaunchParams` cwd/env merge | done | 424ebb6, cc00446 |
 | I.1–I.7 | ipc: profiles/pickFolder/scrollback + launch/getSessions params | todo | |
 | C.1–C.6 | cli: profiles CRUD + `launch --profile/--name/--cwd` | todo | |
 | U.1–U.12 | ui: Modal/SessionRow/SessionList/NewSessionModal/ProfileForm/AppShell… | todo | |
