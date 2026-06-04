@@ -175,6 +175,7 @@ export const createFfiPty = (): PtyAdapter => ({
       try {
         const child = Bun.spawn([opts.command, ...opts.args], {
           stdio: [slaveFd, slaveFd, slaveFd],
+          cwd: opts.cwd,
           // Inherit the parent environment (PATH/HOME/…) so the harness can resolve tools and read
           // its config dir. CRITICAL: advertise TERM=xterm-256color — this pty is rendered by
           // xterm.js (which emulates xterm-256color). A GUI app launched from Finder has NO TERM in

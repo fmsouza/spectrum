@@ -20,6 +20,7 @@ export interface PtyOpenOptions {
   readonly env: Readonly<Record<string, string>>
   readonly cols: number
   readonly rows: number
+  readonly cwd?: string
 }
 
 export interface PtyAdapter {
