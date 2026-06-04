@@ -284,6 +284,61 @@ describe.each([
   },
 )
 
+// ── OpenAI-compatible default base URLs ───────────────────────────────────────
+
+describe("createModelLister – default base URL resolution", () => {
+  it("uses the default groq base URL when config has no baseUrl", async () => {
+    const { httpGet, calls } = capturingHttpGet(ok({ data: [] }))
+    const lister = createModelLister({ httpGet })
+
+    await lister({
+      sdkProvider: "groq" as SdkProvider,
+      config: {},
+      apiKey: "gsk-test",
+    })
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.url).toBe("https://api.groq.com/openai/v1/models")
+  })
+
+  it("uses the default mistral base URL when config has no baseUrl", async () => {
+    const { httpGet, calls } = capturingHttpGet(ok({ data: [] }))
+    const lister = createModelLister({ httpGet })
+
+    await lister({
+      sdkProvider: "mistral" as SdkProvider,
+      config: {},
+      apiKey: "mist-test",
+    })
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.url).toBe("https://api.mistral.ai/v1/models")
+  })
+
+  it("returns err and does NOT call the fetcher when the resolved base is empty", async () => {
+    const { httpGet, calls } = capturingHttpGet(ok({ data: [] }))
+    const lister = createModelLister({ httpGet })
+
+    // "unknown-compat" is not in DEFAULT_BASE_URLS and the test passes no baseUrl,
+    // so the resolved base collapses to "". The lister must guard this and error
+    // without hitting the network.
+    // We need a provider that is in OPENAI_COMPATIBLE_PROVIDERS but has no default URL.
+    // We'll cast a fictional provider id that would fall through to the empty-base guard.
+    // Since all known providers now have defaults, we verify via a provider with explicit "" baseUrl.
+    const result = await lister({
+      sdkProvider: "groq" as SdkProvider,
+      config: { baseUrl: "" },
+      apiKey: "gsk-test",
+    })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error.kind).toBe("provider-failed")
+    }
+    expect(calls).toHaveLength(0)
+  })
+})
+
 // ── Unsupported providers ─────────────────────────────────────────────────────
 
 describe.each([

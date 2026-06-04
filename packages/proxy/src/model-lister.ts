@@ -81,6 +81,13 @@ const UNSUPPORTED_PROVIDERS = new Set<SdkProvider>([
 /** Default base URLs per SDK (used when `config.baseUrl` is absent). */
 const DEFAULT_BASE_URLS: Partial<Record<SdkProvider, string>> = {
   openai: "https://api.openai.com",
+  groq: "https://api.groq.com/openai",
+  mistral: "https://api.mistral.ai",
+  xai: "https://api.x.ai",
+  fireworks: "https://api.fireworks.ai/inference",
+  cerebras: "https://api.cerebras.ai",
+  perplexity: "https://api.perplexity.ai",
+  cohere: "https://api.cohere.ai/compatibility",
 }
 
 // ── Response validators ───────────────────────────────────────────────────────
@@ -210,6 +217,12 @@ export const createModelLister =
     if (OPENAI_COMPATIBLE_PROVIDERS.has(sdkProvider)) {
       const defaultBase = DEFAULT_BASE_URLS[sdkProvider]
       const base = config.baseUrl ?? defaultBase ?? ""
+      if (base === "") {
+        return err({
+          kind: "provider-failed",
+          detail: `no base URL configured for provider "${sdkProvider}" and no default is known`,
+        })
+      }
       const url = `${base}/v1/models`
       const headers: Record<string, string> = {}
       if (apiKey !== undefined && apiKey.length > 0) {
