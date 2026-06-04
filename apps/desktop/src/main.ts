@@ -1,7 +1,7 @@
 import { runCli } from "@launchkit/cli"
 import { type ProxyHandle, type RunAppDeps, runApp } from "./app"
 import { cliDepsFrom } from "./cli-deps"
-import { createAppContext } from "./composition"
+import type { createAppContext } from "./composition"
 import { detectMode } from "./detect-mode"
 import { mountTray } from "./gui/tray"
 import { openWindow } from "./gui/window"
@@ -29,15 +29,24 @@ export const buildRealDeps = (
         let stop = (): void => {}
         void ctx.config.load().then((loaded) => {
           if (!loaded.ok) return
+          // Capture the per-run key so we can both hand it to the proxy AND persist it for the
+          // CLI to reuse (otherwise a CLI `launch` would mint a key this proxy rejects).
+          const proxyKey = ctx.genProxyKey()
           const running = ctx.proxy.start({
             host: loaded.value.settings.proxyHost,
             port: loaded.value.settings.proxyPort,
-            proxyKey: ctx.genProxyKey(),
+            proxyKey,
             config: loaded.value,
           })
+          void ctx.runtime.writeProxyKey(proxyKey)
           stop = running.stop
         })
-        return { stop: () => stop() }
+        return {
+          stop: () => {
+            stop()
+            void ctx.runtime.clear()
+          },
+        }
       }),
     openWindow:
       overrides.openWindow ??
@@ -64,11 +73,3 @@ export const main = (
   argv: readonly string[],
   deps: RunAppDeps,
 ): Promise<void> => runApp(detectMode(argv), argv.slice(2), deps)
-
-// --- entry point ---------------------------------------------------------------------
-// The single side effect: run the entry wiring against the real deps. Everything above is
-// pure/exported. Guarded with import.meta.main so tests can import { main, buildRealDeps }
-// without triggering the real entry point.
-if (import.meta.main) {
-  await main(process.argv, buildRealDeps(createAppContext))
-}

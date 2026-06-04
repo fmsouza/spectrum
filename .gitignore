@@ -7,6 +7,8 @@ dist/
 build/
 out/
 *.tsbuildinfo
+# transient artifact from `bun build --compile`
+*.bun-build
 
 # Turborepo
 .turbo/
