@@ -51,6 +51,9 @@ const CREATE_INDEX_STARTED =
   "CREATE INDEX IF NOT EXISTS idx_sessions_startedAt ON sessions (startedAt)"
 const CREATE_INDEX_HARNESS =
   "CREATE INDEX IF NOT EXISTS idx_sessions_harnessId ON sessions (harnessId)"
+const PRAGMA_COLUMNS = "PRAGMA table_info(sessions)"
+const ADD_COLUMN_NAME = "ALTER TABLE sessions ADD COLUMN name TEXT"
+const ADD_COLUMN_CWD = "ALTER TABLE sessions ADD COLUMN cwd TEXT"
 const INSERT_SESSION =
   "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)"
 const UPDATE_CLOSE =
@@ -113,6 +116,19 @@ export const createSessionStore = (deps: {
     if (isErr(started)) return started
     const harness = db.exec(CREATE_INDEX_HARNESS)
     if (isErr(harness)) return harness
+
+    const info = db.all(PRAGMA_COLUMNS, [])
+    if (isErr(info)) return info
+    const existing = new Set(info.value.map((row) => String(row.name)))
+
+    if (!existing.has("name")) {
+      const added = db.exec(ADD_COLUMN_NAME)
+      if (isErr(added)) return added
+    }
+    if (!existing.has("cwd")) {
+      const added = db.exec(ADD_COLUMN_CWD)
+      if (isErr(added)) return added
+    }
     return ok(undefined)
   }
 

@@ -80,3 +80,67 @@ describe("createBunSqliteDatabase + SessionStore", () => {
     >(["codex"])
   })
 })
+
+describe("createSessionStore.init column migration against real bun:sqlite", () => {
+  // The pre-v?? table shape: no name/cwd columns.
+  const LEGACY_CREATE_TABLE = `CREATE TABLE sessions (
+    id TEXT PRIMARY KEY,
+    harnessId TEXT NOT NULL,
+    alias TEXT NOT NULL,
+    startedAt TEXT NOT NULL,
+    endedAt TEXT,
+    exitCode INTEGER
+  )`
+
+  const columnNames = (db: ReturnType<typeof createBunSqliteDatabase>): string[] => {
+    const info = db.all("PRAGMA table_info(sessions)", [])
+    if (!isOk(info)) return []
+    return info.value.map((row) => String(row.name))
+  }
+
+  it("adds name and cwd columns to a legacy sessions table when init() runs", () => {
+    const db = createBunSqliteDatabase(":memory:")
+    expect(isOk(db.exec(LEGACY_CREATE_TABLE))).toBe(true)
+    expect(columnNames(db)).not.toContain("name")
+    expect(columnNames(db)).not.toContain("cwd")
+
+    const store = createSessionStore({
+      db,
+      clock: createFixedClock(new Date("2026-05-23T10:00:00.000Z")),
+      idGen: createSequentialIdGen(),
+    })
+    expect(isOk(store.init())).toBe(true)
+
+    const cols = columnNames(db)
+    expect(cols).toContain("name")
+    expect(cols).toContain("cwd")
+  })
+
+  it("is idempotent — running init() twice on a legacy table does not error", () => {
+    const db = createBunSqliteDatabase(":memory:")
+    expect(isOk(db.exec(LEGACY_CREATE_TABLE))).toBe(true)
+    const store = createSessionStore({
+      db,
+      clock: createFixedClock(new Date("2026-05-23T10:00:00.000Z")),
+      idGen: createSequentialIdGen(),
+    })
+    expect(isOk(store.init())).toBe(true)
+    expect(isOk(store.init())).toBe(true)
+    const cols = columnNames(db)
+    expect(cols.filter((c) => c === "name")).toHaveLength(1)
+    expect(cols.filter((c) => c === "cwd")).toHaveLength(1)
+  })
+
+  it("adds name and cwd on a fresh database created by init() alone", () => {
+    const db = createBunSqliteDatabase(":memory:")
+    const store = createSessionStore({
+      db,
+      clock: createFixedClock(new Date("2026-05-23T10:00:00.000Z")),
+      idGen: createSequentialIdGen(),
+    })
+    expect(isOk(store.init())).toBe(true)
+    const cols = columnNames(db)
+    expect(cols).toContain("name")
+    expect(cols).toContain("cwd")
+  })
+})
