@@ -92,7 +92,9 @@ describe("createSessionStore.init column migration against real bun:sqlite", () 
     exitCode INTEGER
   )`
 
-  const columnNames = (db: ReturnType<typeof createBunSqliteDatabase>): string[] => {
+  const columnNames = (
+    db: ReturnType<typeof createBunSqliteDatabase>,
+  ): string[] => {
     const info = db.all("PRAGMA table_info(sessions)", [])
     if (!isOk(info)) return []
     return info.value.map((row) => String(row.name))
@@ -159,9 +161,9 @@ describe("createSessionStore.query running filter against real bun:sqlite", () =
     store.close("s_1" as never, 0)
 
     const open = store.query({ running: true })
-    expect(isOk(open) && open.value.map((s) => s.id)).toEqual<false | string[]>([
-      "s_2",
-    ])
+    expect(isOk(open) && open.value.map((s) => s.id)).toEqual<false | string[]>(
+      ["s_2"],
+    )
 
     const closed = store.query({ running: false })
     expect(isOk(closed) && closed.value.map((s) => s.id)).toEqual<
@@ -190,8 +192,8 @@ describe("createSessionStore.query running filter against real bun:sqlite", () =
       ["s_c", "claude", "default", "2026-05-23T11:00:00.000Z"],
     )
     const page = store.query({ limit: 1, offset: 1 })
-    expect(isOk(page) && page.value.map((s) => s.id)).toEqual<false | string[]>([
-      "s_b",
-    ])
+    expect(isOk(page) && page.value.map((s) => s.id)).toEqual<false | string[]>(
+      ["s_b"],
+    )
   })
 })

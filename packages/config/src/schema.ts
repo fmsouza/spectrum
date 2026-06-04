@@ -1,4 +1,8 @@
-import { ModelAliasSchema, ProfileSchema, ProviderSchema } from "@launchkit/types"
+import {
+  ModelAliasSchema,
+  ProfileSchema,
+  ProviderSchema,
+} from "@launchkit/types"
 import { z } from "zod"
 
 /** Bump on any breaking config shape change; add a matching `Migration` (see migrations.ts). */

@@ -512,12 +512,7 @@ describe("createSessionStore.query with running, limit and offset", () => {
     expect(select?.sql).toMatch(
       /WHERE harnessId = \? AND startedAt >= \? ORDER BY startedAt DESC LIMIT \? OFFSET \?/i,
     )
-    expect(select?.params).toEqual([
-      "claude",
-      "2026-05-23T00:00:00.000Z",
-      2,
-      4,
-    ])
+    expect(select?.params).toEqual(["claude", "2026-05-23T00:00:00.000Z", 2, 4])
   })
 
   it("omits LIMIT and OFFSET from the sql when query() does not paginate", () => {

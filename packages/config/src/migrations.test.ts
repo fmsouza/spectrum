@@ -71,7 +71,13 @@ describe("runMigrations", () => {
       providers: [],
       aliases: [],
       profiles: [
-        { id: "pr_default", name: "Default", harnessId: "claude", alias: "fast", env: {} },
+        {
+          id: "pr_default",
+          name: "Default",
+          harnessId: "claude",
+          alias: "fast",
+          env: {},
+        },
       ],
       settings: { proxyPort: 4000, proxyHost: "127.0.0.1" as const },
     }
@@ -79,7 +85,13 @@ describe("runMigrations", () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.value.profiles).toEqual([
-      { id: "pr_default", name: "Default", harnessId: "claude", alias: "fast", env: {} },
+      {
+        id: "pr_default",
+        name: "Default",
+        harnessId: "claude",
+        alias: "fast",
+        env: {},
+      },
     ])
   })
 
