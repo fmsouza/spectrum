@@ -143,4 +143,24 @@ describe("NewSessionModal", () => {
     expect(screen.getByLabelText("Name")).toHaveValue("auth-refactor")
     expect(screen.getByRole("textbox", { name: /folder/i })).toHaveValue("/b")
   })
+
+  it("disables Launch and shows guidance when no alias is configured (Bug 1)", () => {
+    render(<NewSessionModal {...baseProps} aliases={[]} />)
+    expect(screen.getByRole("button", { name: /launch/i })).toBeDisabled()
+    expect(
+      screen.getByText(/no model alias is configured/i),
+    ).toBeInTheDocument()
+  })
+
+  it("enables Launch when a harness and an alias are available (Bug 1)", () => {
+    render(<NewSessionModal {...baseProps} />)
+    expect(screen.getByRole("button", { name: /launch/i })).not.toBeDisabled()
+  })
+
+  it("renders the error prop as an alert (Bug 1)", () => {
+    render(<NewSessionModal {...baseProps} error="failed to launch: boom" />)
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /failed to launch: boom/i,
+    )
+  })
 })

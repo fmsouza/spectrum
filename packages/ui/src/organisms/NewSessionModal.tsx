@@ -32,6 +32,8 @@ export type NewSessionModalProps = {
   readonly onBrowse: () => void
   readonly onSubmit: (values: NewSessionValues) => void
   readonly onCancel: () => void
+  /** A launch failure surfaced by the page; rendered as an inline alert. */
+  readonly error?: string
 }
 
 type FormState = {
@@ -54,6 +56,7 @@ export const NewSessionModal = ({
   onBrowse,
   onSubmit,
   onCancel,
+  error,
 }: NewSessionModalProps): ReactElement => {
   const firstHarness = (harnesses[0]?.id ?? "") as HarnessId
   const firstAlias = (aliases[0]?.alias ?? "") as AliasName
@@ -130,6 +133,11 @@ export const NewSessionModal = ({
   const harnessOptions = harnesses.map((h) => ({ value: h.id, label: h.name }))
   const aliasOptions = aliases.map((a) => ({ value: a.alias, label: a.alias }))
 
+  // A session can only launch with both a harness and a routing alias selected.
+  // Without an alias the proxy has nothing to route to, so Launch stays disabled.
+  const canLaunch = state.harnessId !== "" && state.alias !== ""
+  const noAliases = aliases.length === 0
+
   return (
     <Modal title="New session" open={open} onClose={onCancel}>
       <form
@@ -194,7 +202,16 @@ export const NewSessionModal = ({
             />
           </FormField>
         ) : null}
-        <Button onClick={() => submit()}>Launch</Button>
+        {noAliases ? (
+          <p role="alert">
+            No model alias is configured. Add one under Settings → Routing to
+            start a session.
+          </p>
+        ) : null}
+        {error === undefined ? null : <p role="alert">{error}</p>}
+        <Button disabled={!canLaunch} onClick={() => submit()}>
+          Launch
+        </Button>
         <Button variant="secondary" onClick={() => onCancel()}>
           Cancel
         </Button>
