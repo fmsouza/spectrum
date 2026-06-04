@@ -18,18 +18,21 @@ the native window, the native tray, and click-through behavior. Check each box o
 - [ ] **Open LaunchKit** focuses/opens the main window.
 - [ ] **Quit** exits the app (window + tray disappear).
 
-## Embedded terminal (terminal feature)
-- [ ] Clicking **Launch Claude Code** (Dashboard quick-launch) opens the **Terminal** tab with the
-      Claude Code TUI rendered and **interactive** — you can type and see the agent respond (routed
-      through the loopback proxy, so a provider + the `default` alias must be configured first).
-- [ ] Resizing the window reflows the terminal (the TUI uses the new width/height).
-- [ ] Launching a **second** harness opens a **second tab**; both run concurrently and you can switch
-      between them (each preserves its own scrollback).
-- [ ] Navigating to another page (Providers/etc.) and back to **Terminal** keeps the session live and
-      its scrollback intact.
-- [ ] **Closing a tab** (×) terminates that harness; the **Sessions** page shows it closed with an
-      exit code (no longer "running").
-- [ ] The tray **Launch** also opens the window to a new terminal tab.
+## Sessions master/detail + embedded terminal (session redesign)
+- [ ] **New session** (the session-list "+ New session" button) opens a modal; submitting it launches
+      the chosen harness and the Claude Code TUI renders **interactive** in the detail pane — you can
+      type and see the agent respond (routed through the loopback proxy, so a provider + the matching
+      alias must be configured first), and the new session is **selected** in the list.
+- [ ] **Click New session → the native folder picker opens for cwd**, the modal launches the chosen
+      harness, and the new live terminal appears selected. If **"save as profile"** is checked, the new
+      profile shows under **Settings → Profiles**.
+- [ ] Resizing the window reflows the selected terminal (the TUI uses the new width/height).
+- [ ] **Launch two harnesses, switch between them in the session list**, confirm each keeps its live
+      output (scrollback survives selection), and **typing reaches only the selected** live session.
+- [ ] Switching to **Settings** and back to **Sessions** keeps every running session live and its
+      scrollback intact (live panes stay mounted, just hidden).
+- [ ] Selecting an **ended** session shows its captured output **read-only** (replay), with no input.
+- [ ] The tray **Launch** also opens the window with the new session selected and its terminal live.
 
 ## CLI mode
 - [ ] `launchkit list harnesses` prints the built-in harness ids (no window opens).

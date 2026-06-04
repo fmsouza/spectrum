@@ -1,10 +1,14 @@
 import type { IpcClient } from "@launchkit/ipc"
 import type { SessionId } from "@launchkit/types"
-import { type AppMode, AppShell } from "@launchkit/ui"
+import { type AppMode, AppShell, NewSessionModal } from "@launchkit/ui"
+import type { NewSessionValues } from "@launchkit/ui"
 import { type ReactElement, StrictMode, useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
-import { IpcClientProvider } from "./IpcClientContext"
+import { IpcClientProvider, useIpcClient } from "./IpcClientContext"
 import { createRealClients } from "./clients"
+import { useAliases } from "./hooks/useAliases"
+import { useHarnesses } from "./hooks/useHarnesses"
+import { useProfiles } from "./hooks/useProfiles"
 import { useProxyStatus } from "./hooks/useProxyStatus"
 import type { CreateTerminal } from "./terminal/TerminalPane"
 import type { TerminalClient } from "./terminal/terminalClient"
@@ -74,12 +78,21 @@ const AppInner = ({
   terminalClient,
   createTerminal,
 }: AppInnerProps): ReactElement => {
+  const client = useIpcClient()
   const [view, setView] = useState<View>(parseView(initialView))
   // Open live sessions stay mounted (hidden) keyed by id so xterm scrollback
-  // survives selection changes; never auto-removed (the old tab behaviour). The
-  // launch flow that populates this set is wired in D.12.
-  const [openSessionIds] = useState<readonly SessionId[]>([])
+  // survives selection changes; never auto-removed (the old tab behaviour).
+  const [openSessionIds, setOpenSessionIds] = useState<readonly SessionId[]>([])
+  const [modalOpen, setModalOpen] = useState<boolean>(false)
+  // The cwd picked via the native folder dialog (fed into NewSessionModal).
+  const [folder, setFolder] = useState<string>("")
   const proxy = useProxyStatus()
+
+  // Feed the new-session modal. These hooks load lazily and stay cheap when the
+  // modal is closed (the data is just handed to a dumb component).
+  const profiles = useProfiles()
+  const harnesses = useHarnesses()
+  const aliases = useAliases()
 
   // Keep the URL hash in sync so reloads land on the same view (no remote nav).
   useEffect(() => {
@@ -95,6 +108,34 @@ const AppInner = ({
         : { kind: "sessions" },
     )
 
+  const onBrowse = async (): Promise<void> => {
+    const r = await client.pickFolder({})
+    if (r.ok && r.value.path !== undefined) setFolder(r.value.path)
+  }
+
+  const onSubmitNewSession = async (v: NewSessionValues): Promise<void> => {
+    const r = await client.launchHarness({
+      id: v.harnessId,
+      alias: v.alias,
+      name: v.name,
+      cwd: v.cwd,
+      env: v.env,
+    })
+    if (!r.ok) return
+    if (v.saveAsProfile !== undefined) {
+      await client.addProfile({
+        name: v.saveAsProfile.name,
+        harnessId: v.harnessId,
+        alias: v.alias,
+        env: v.env,
+      })
+    }
+    const id = r.value.sessionId
+    setOpenSessionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
+    setView({ kind: "sessions", selectedSessionId: id })
+    setModalOpen(false)
+  }
+
   const { master, detail } =
     view.kind === "settings"
       ? SettingsView({
@@ -108,20 +149,31 @@ const AppInner = ({
           openSessionIds,
           onSelect: (id) =>
             setView({ kind: "sessions", selectedSessionId: id }),
-          // The new-session modal is wired in D.12; a no-op is fine here.
-          onNew: () => {},
+          onNew: () => setModalOpen(true),
           terminalClient,
           createTerminal,
         })
 
   return (
-    <AppShell
-      mode={mode}
-      onModeChange={onModeChange}
-      proxyRunning={proxy.data?.running ?? false}
-      master={master}
-      detail={detail}
-    />
+    <>
+      <AppShell
+        mode={mode}
+        onModeChange={onModeChange}
+        proxyRunning={proxy.data?.running ?? false}
+        master={master}
+        detail={detail}
+      />
+      <NewSessionModal
+        open={modalOpen}
+        profiles={profiles.data ?? []}
+        harnesses={harnesses.data ?? []}
+        aliases={aliases.data ?? []}
+        folder={folder}
+        onBrowse={() => void onBrowse()}
+        onSubmit={(v) => void onSubmitNewSession(v)}
+        onCancel={() => setModalOpen(false)}
+      />
+    </>
   )
 }
 
