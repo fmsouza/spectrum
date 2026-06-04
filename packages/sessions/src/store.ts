@@ -13,13 +13,22 @@ import type { Database, SessionError } from "./db"
 export type SessionInput = {
   readonly harnessId: HarnessId
   readonly alias: AliasName
+  readonly name?: string
+  readonly cwd?: string
 }
 
-/** Optional, all-`AND` filter for `query`. `since` is an inclusive `startedAt >=` bound. */
+/**
+ * Optional, all-`AND` filter for `query`. `since` is an inclusive `startedAt >=` bound;
+ * `running` selects open (`true`) or closed (`false`) sessions; `limit`/`offset` paginate
+ * the `startedAt DESC` result.
+ */
 export type SessionFilter = {
   readonly harnessId?: HarnessId
   readonly alias?: AliasName
   readonly since?: string
+  readonly running?: boolean
+  readonly limit?: number
+  readonly offset?: number
 }
 
 export interface SessionStore {

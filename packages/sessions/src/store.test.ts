@@ -1,7 +1,11 @@
 import { describe, expect, it } from "bun:test"
 import { createFixedClock, createSequentialIdGen, isOk } from "@launchkit/utils"
 import { createInMemoryDatabase } from "./db"
-import { createSessionStore } from "./store"
+import {
+  type SessionFilter,
+  type SessionInput,
+  createSessionStore,
+} from "./store"
 
 const makeDeps = () => {
   const db = createInMemoryDatabase()
@@ -329,5 +333,29 @@ describe("createSessionStore.query", () => {
     const store = createSessionStore(failing)
     const r = store.query({ harnessId: "claude" as never })
     expect(r).toEqual({ ok: false, error: { kind: "db-failed", detail: "io" } })
+  })
+})
+
+describe("SessionInput and SessionFilter shapes", () => {
+  it("accepts optional name and cwd on a SessionInput literal", () => {
+    const input: SessionInput = {
+      harnessId: "claude" as never,
+      alias: "default" as never,
+      name: "my run",
+      cwd: "/tmp/project",
+    }
+    expect(input.name).toBe("my run")
+    expect(input.cwd).toBe("/tmp/project")
+  })
+
+  it("accepts optional running, limit and offset on a SessionFilter literal", () => {
+    const filter: SessionFilter = {
+      running: true,
+      limit: 10,
+      offset: 5,
+    }
+    expect(filter.running).toBe(true)
+    expect(filter.limit).toBe(10)
+    expect(filter.offset).toBe(5)
   })
 })
