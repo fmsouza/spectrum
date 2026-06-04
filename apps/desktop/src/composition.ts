@@ -417,7 +417,7 @@ export const createAppContext = (
   // Native folder picker — behind a LAZY dynamic import so bun test never loads native FFI.
   const pickFolder: AppContext["pickFolder"] = async (opts) => {
     const { Utils } = await import("electrobun/bun")
-    return Utils.openFileDialog({
+    const paths = await Utils.openFileDialog({
       canChooseDirectory: true,
       canChooseFiles: false,
       allowsMultipleSelection: false,
@@ -425,6 +425,8 @@ export const createAppContext = (
         ? {}
         : { startingFolder: opts.startingFolder }),
     })
+    console.warn("[launchkit] openFileDialog ->", JSON.stringify(paths))
+    return paths.filter((p) => p.trim() !== "")
   }
 
   return {
