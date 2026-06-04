@@ -1,3 +1,4 @@
+import { existsSync, readFileSync, renameSync, unlinkSync } from "node:fs"
 import type { SessionId } from "@launchkit/types"
 import { type Result, err, ok } from "@launchkit/utils"
 import type { PtyError } from "./pty"
@@ -168,6 +169,77 @@ export const createFileScrollbackStore = (deps: {
     },
   }
 }
+
+/**
+ * Real `ScrollbackFs`: Bun FileSink for appends, node:fs readFileSync for reads, node:fs for
+ * rename/unlink/exists.
+ *
+ * Note: the contract names `Bun.file().arrayBuffer()` for reads, but that API is async and cannot
+ * satisfy the synchronous `Result` interface. The real adapter uses `node:fs` `readFileSync` for the
+ * whole-file read while keeping Bun's `FileSink` for the append path.
+ */
+export const createBunScrollbackFs = (): ScrollbackFs => ({
+  openAppend: (path): Result<ScrollbackAppendWriter, PtyError> => {
+    try {
+      // FileSink in append mode keeps adding to the existing file rather than truncating it.
+      const sink = Bun.file(path).writer()
+      return ok({
+        write: (chunk): Result<void, PtyError> => {
+          try {
+            sink.write(chunk)
+            // flush() makes the bytes durable promptly so a concurrent read sees recent output.
+            sink.flush()
+            return ok(undefined)
+          } catch (cause) {
+            const detail = cause instanceof Error ? cause.message : String(cause)
+            return err({ kind: "scrollback-io", detail })
+          }
+        },
+        close: (): Result<void, PtyError> => {
+          try {
+            sink.end()
+            return ok(undefined)
+          } catch (cause) {
+            const detail = cause instanceof Error ? cause.message : String(cause)
+            return err({ kind: "scrollback-io", detail })
+          }
+        },
+      })
+    } catch (cause) {
+      const detail = cause instanceof Error ? cause.message : String(cause)
+      return err({ kind: "scrollback-io", detail })
+    }
+  },
+  readWhole: (path): Result<Uint8Array, PtyError> => {
+    try {
+      const buf = readFileSync(path)
+      return ok(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength))
+    } catch (cause) {
+      const detail = cause instanceof Error ? cause.message : String(cause)
+      return err({ kind: "scrollback-io", detail })
+    }
+  },
+  exists: (path): boolean => existsSync(path),
+  rename: (from, to): Result<void, PtyError> => {
+    try {
+      renameSync(from, to)
+      return ok(undefined)
+    } catch (cause) {
+      const detail = cause instanceof Error ? cause.message : String(cause)
+      return err({ kind: "scrollback-io", detail })
+    }
+  },
+  unlink: (path): Result<void, PtyError> => {
+    try {
+      unlinkSync(path)
+      return ok(undefined)
+    } catch (cause) {
+      if ((cause as { code?: string }).code === "ENOENT") return ok(undefined)
+      const detail = cause instanceof Error ? cause.message : String(cause)
+      return err({ kind: "scrollback-io", detail })
+    }
+  },
+})
 
 /** In-memory `ScrollbackStore` fake: per-session byte buffer, no disk. Durable until process exit. */
 export const createMemoryScrollbackStore = (): ScrollbackStore => {
