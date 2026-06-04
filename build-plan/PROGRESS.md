@@ -201,13 +201,13 @@ Executed via `subagent-driven-development` (implementer + spec review + code-qua
 | T.2 | types: `Profile` schema + type | done | 4f40034 |
 | T.3 | types: `Session` optional `name`/`cwd` (min(1)) | done | 529e54e, 6ce52fe |
 | T.4 | types: barrel exports | done | d7945f1 |
-| CS.1 | config: `profiles[]` schema + version 3 + defaults | todo | |
-| CS.2 | config: `v2→v3` migration | todo | |
-| CS.3 | sessions: `SessionInput`/`SessionFilter` shapes | todo | |
-| CS.4 | sessions: idempotent `name`/`cwd` column add | todo | |
-| CS.5 | sessions: `create` writes `name`/`cwd` | todo | |
-| CS.6 | sessions: `query` running/limit/offset | todo | |
-| CS.7 | config/sessions barrel guards | todo | |
+| CS.1 | config: `profiles[]` schema + version 3 + defaults | done | 889f20e |
+| CS.2 | config: `v2→v3` migration | done | 6fac4c1 |
+| CS.3 | sessions: `SessionInput`/`SessionFilter` shapes | done | cff3a6a |
+| CS.4 | sessions: idempotent `name`/`cwd` column add | done | 43adc56 |
+| CS.5 | sessions: `create` writes `name`/`cwd` | done | 3d9b5d5 |
+| CS.6 | sessions: `query` running/limit/offset (+offset-only fix) | done | 9205194, 6c55140 |
+| CS.7 | config/sessions barrel guards | done | 8fe2bea |
 | PH.1–PH.6 | pty: file `ScrollbackStore` (+ fakes, rotation, real fs) | todo | |
 | PH.7–PH.9 | pty: `cwd`/`name` threading + scrollback tap | todo | |
 | PH.10–PH.11 | harnesses: `ProcessSpawner` cwd + `LaunchParams` cwd/env | todo | |
