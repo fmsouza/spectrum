@@ -197,10 +197,10 @@ Executed via `subagent-driven-development` (implementer + spec review + code-qua
 
 | ID | Task | Status | Commit |
 |---|---|---|---|
-| T.1 | types: `ProfileId` branded id | todo | |
-| T.2 | types: `Profile` schema + type | todo | |
-| T.3 | types: `Session` optional `name`/`cwd` | todo | |
-| T.4 | types: barrel exports | todo | |
+| T.1 | types: `ProfileId` branded id | done | 4f2c6cb |
+| T.2 | types: `Profile` schema + type | done | 4f40034 |
+| T.3 | types: `Session` optional `name`/`cwd` (min(1)) | done | 529e54e, 6ce52fe |
+| T.4 | types: barrel exports | done | d7945f1 |
 | CS.1 | config: `profiles[]` schema + version 3 + defaults | todo | |
 | CS.2 | config: `v2→v3` migration | todo | |
 | CS.3 | sessions: `SessionInput`/`SessionFilter` shapes | todo | |
