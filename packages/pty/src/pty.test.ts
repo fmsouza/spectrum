@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import type { PtyError } from "./pty"
 import { createFakePty } from "./pty"
 
 describe("createFakePty", () => {
@@ -26,5 +27,13 @@ describe("createFakePty", () => {
     })
     pty.triggerExit(137)
     expect(codes).toEqual([137])
+  })
+})
+
+describe("PtyError", () => {
+  it("includes a scrollback-io variant carrying a detail string when a store fs op fails", () => {
+    const e: PtyError = { kind: "scrollback-io", detail: "ENOSPC" }
+    expect(e.kind).toBe("scrollback-io")
+    expect(e.detail).toBe("ENOSPC")
   })
 })
