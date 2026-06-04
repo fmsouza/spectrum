@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { ok } from "@launchkit/utils"
+import { err, ok } from "@launchkit/utils"
 import { createAppContext } from "./composition"
 import type { CreateAppContextDeps } from "./composition"
 
@@ -17,6 +17,7 @@ const makeFakeDeps = (): {
     }
   const deps: CreateAppContextDeps = {
     homeDir: () => "/home/tester",
+    mkdirSync: record("mkdirSync") as never,
     createFsConfigFile: record("createFsConfigFile") as never,
     createFileConfigStore: record("createFileConfigStore") as never,
     createCachedConfigStore: record("createCachedConfigStore") as never,
@@ -48,6 +49,11 @@ const makeFakeDeps = (): {
     createRealGateway: record("createRealGateway") as never,
     createFileRuntimeState: record("createFileRuntimeState") as never,
     genProxyKey: () => "fixed-test-key",
+    createBunScrollbackFs: record("createBunScrollbackFs") as never,
+    createFileScrollbackStore: ((..._a: unknown[]) => {
+      calls.createFileScrollbackStore = _a
+      return { read: () => ok(new Uint8Array()) }
+    }) as never,
     createFfiPty: (() => ({ open: () => ok({}) })) as never,
     createTerminalManager: ((..._a: unknown[]) => {
       calls.createTerminalManager = _a
@@ -64,6 +70,81 @@ const makeFakeDeps = (): {
   }
   return { deps, calls }
 }
+
+describe("createAppContext listProviderModels wiring", () => {
+  it("exposes ctx.listProviderModels as a function on the context", () => {
+    const { deps } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+    expect(typeof ctx.listProviderModels).toBe("function")
+  })
+
+  it("returns err when the provider id is not found in the config", async () => {
+    const { deps } = makeFakeDeps()
+    // Override the fake config store to return a config with no providers.
+    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
+      () => ({
+        load: async () =>
+          ok({
+            version: 2,
+            providers: [],
+            aliases: [],
+            profiles: [],
+            settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+          }),
+        save: async () => ok(undefined),
+      })
+    const ctx = createAppContext(deps)
+    const result = await ctx.listProviderModels("p_ghost")
+    expect(result.ok).toBe(false)
+  })
+
+  it("returns err and does NOT call the lister when the provider has an apiKey ref but secrets.get fails", async () => {
+    const { deps } = makeFakeDeps()
+
+    // Provider with an apiKey ref present in secrets.
+    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
+      () => ({
+        load: async () =>
+          ok({
+            version: 2,
+            providers: [
+              {
+                id: "p_groq",
+                sdkProvider: "groq",
+                label: "Groq",
+                models: ["llama3-8b-8192"],
+                config: {},
+                secrets: { apiKey: { ref: "kc_missing" } },
+              },
+            ],
+            aliases: [],
+            profiles: [],
+            settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+          }),
+        save: async () => ok(undefined),
+      })
+
+    // secrets.get always fails (keychain entry gone / corrupted).
+    ;(deps as { createSecretStore: unknown }).createSecretStore = () => ({
+      set: async () => ok({ ref: "kc_new" }),
+      get: async () => err({ kind: "not-found" } as { kind: "not-found" }),
+      delete: async () => ok(undefined),
+      has: async () => false,
+    })
+
+    const ctx = createAppContext(deps)
+    const result = await ctx.listProviderModels("p_groq")
+
+    // The error from secrets.get must be forwarded immediately — the lister
+    // (and any outbound HTTP call) must not be reached.
+    // We confirm "not reached" structurally: the error kind must be "not-found"
+    // (the secrets error), NOT "provider-failed" or "unsupported-model-discovery".
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect((result.error as { kind: string }).kind).toBe("not-found")
+    }
+  })
+})
 
 describe("createAppContext wiring", () => {
   it("builds the config store as a cached store wrapping a file store over an fs config file", () => {
@@ -180,6 +261,7 @@ describe("createAppContext wiring", () => {
     const managerArgs = calls.createTerminalManager?.[0] as {
       pty: unknown
       sessions: { create: unknown; close: unknown }
+      scrollback: unknown
       send: unknown
       capBytes: number
       defaultSize: { cols: number; rows: number }
@@ -187,6 +269,7 @@ describe("createAppContext wiring", () => {
     expect(typeof managerArgs.pty).toBe("object")
     expect(typeof managerArgs.sessions.create).toBe("function")
     expect(typeof managerArgs.sessions.close).toBe("function")
+    expect(typeof managerArgs.scrollback).toBe("object")
     expect(typeof managerArgs.send).toBe("function")
     expect(managerArgs.capBytes).toBe(1_000_000)
     expect(managerArgs.defaultSize).toEqual({ cols: 80, rows: 24 })
@@ -195,5 +278,35 @@ describe("createAppContext wiring", () => {
     expect(typeof ctx.terminal.launch).toBe("function")
     expect(typeof ctx.terminal.handleInbound).toBe("function")
     expect(typeof ctx.terminal.bindSend).toBe("function")
+
+    // mkdirSync was called to ensure the scrollback dir exists before first use
+    expect(calls.mkdirSync?.[0] as string).toContain(
+      "/home/tester/.config/launchkit/scrollback",
+    )
+    expect(calls.mkdirSync?.[1]).toEqual({ recursive: true })
+  })
+
+  it("builds the file scrollback store under the config dir and injects it into the terminal manager", () => {
+    const { deps, calls } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+
+    expect(
+      (calls.createFileScrollbackStore?.[0] as { dir: string }).dir,
+    ).toContain("/home/tester/.config/launchkit/scrollback")
+    expect(
+      (calls.createFileScrollbackStore?.[0] as { fs: unknown }).fs,
+    ).toEqual({ __stub: "createBunScrollbackFs" })
+    const managerArgs = calls.createTerminalManager?.[0] as {
+      scrollback: unknown
+    }
+    expect(managerArgs.scrollback).toEqual({ read: expect.any(Function) })
+    // The store's read is exposed for the scrollback handler.
+    expect(typeof ctx.readScrollback).toBe("function")
+  })
+
+  it("exposes a pickFolder function on the context", () => {
+    const { deps } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+    expect(typeof ctx.pickFolder).toBe("function")
   })
 })

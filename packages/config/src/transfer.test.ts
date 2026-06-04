@@ -2,24 +2,24 @@ import { describe, expect, it } from "bun:test"
 import { CURRENT_CONFIG_VERSION, type Config, defaultConfig } from "./schema"
 import { exportConfig, importConfig } from "./transfer"
 
-const configWithProvider = (): Config =>
-  ({
-    version: CURRENT_CONFIG_VERSION,
-    providers: [
-      {
-        id: "p_openai",
-        name: "OpenAI",
-        sdkProvider: "openai",
-        config: { baseUrl: "https://api.openai.com/v1" },
-        secrets: { apiKey: { ref: "kc_openai" } },
-        models: ["gpt-4o"],
-      },
-    ],
-    aliases: [
-      { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o-mini" },
-    ],
-    settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
-  }) as Config
+const configWithProvider = (): Config => ({
+  version: CURRENT_CONFIG_VERSION,
+  providers: [
+    {
+      id: "p_openai",
+      name: "OpenAI",
+      sdkProvider: "openai",
+      config: { baseUrl: "https://api.openai.com/v1" },
+      secrets: { apiKey: { ref: "kc_openai" } },
+      models: ["gpt-4o"],
+    },
+  ],
+  aliases: [
+    { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o-mini" },
+  ],
+  profiles: [],
+  settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+})
 
 describe("exportConfig", () => {
   it("produces 2-space pretty JSON that parses back to the same config", () => {

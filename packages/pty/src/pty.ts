@@ -4,6 +4,7 @@ import type { Result } from "@launchkit/utils"
 export type PtyError =
   | { readonly kind: "open-failed"; readonly detail: string }
   | { readonly kind: "not-found"; readonly id: SessionId }
+  | { readonly kind: "scrollback-io"; readonly detail: string }
 
 export interface PtyHandle {
   write(data: Uint8Array): void
@@ -19,6 +20,7 @@ export interface PtyOpenOptions {
   readonly env: Readonly<Record<string, string>>
   readonly cols: number
   readonly rows: number
+  readonly cwd?: string
 }
 
 export interface PtyAdapter {

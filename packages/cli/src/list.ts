@@ -2,7 +2,7 @@ import { type Result, err, isErr, ok } from "@launchkit/utils"
 import type { CliDeps } from "./deps"
 import type { CliError } from "./errors"
 
-const LIST_TARGETS = ["harnesses", "providers", "aliases"] as const
+const LIST_TARGETS = ["harnesses", "providers", "aliases", "profiles"] as const
 
 const listHarnesses = async (
   deps: CliDeps,
@@ -39,7 +39,17 @@ const listAliases = async (deps: CliDeps): Promise<Result<void, CliError>> => {
   return ok(undefined)
 }
 
-/** `list harnesses | providers | aliases`. */
+const listProfiles = async (deps: CliDeps): Promise<Result<void, CliError>> => {
+  const loaded = await deps.config.load()
+  if (isErr(loaded))
+    return err({ kind: "failed", detail: "could not load config" })
+  for (const p of loaded.value.profiles) {
+    deps.out.write(`${p.id}\t${p.name}\t[${p.harnessId} · ${p.alias}]`)
+  }
+  return ok(undefined)
+}
+
+/** `list harnesses | providers | aliases | profiles`. */
 export const list = async (
   deps: CliDeps,
   rest: readonly string[],
@@ -52,6 +62,8 @@ export const list = async (
       return listProviders(deps)
     case "aliases":
       return listAliases(deps)
+    case "profiles":
+      return listProfiles(deps)
     default:
       return err({ kind: "usage", detail: `list <${LIST_TARGETS.join("|")}>` })
   }

@@ -3,6 +3,8 @@ import {
   HarnessDefinitionSchema,
   HarnessIdSchema,
   ModelAliasSchema,
+  ProfileIdSchema,
+  ProfileSchema,
   ProviderIdSchema,
   SdkProviderSchema,
   SessionIdSchema,
@@ -123,6 +125,9 @@ export const LaunchHarnessParamsSchema = z
   .object({
     id: HarnessIdSchema,
     alias: AliasNameSchema.optional(),
+    name: z.string().optional(),
+    cwd: z.string().optional(),
+    env: z.record(z.string(), z.string()).optional(),
   })
   .strict()
 /**
@@ -139,10 +144,21 @@ export const GetSessionsParamsSchema = z
   .object({
     harnessId: HarnessIdSchema.optional(),
     alias: AliasNameSchema.optional(),
+    running: z.boolean().optional(),
+    limit: z.number().int().positive().optional(),
+    offset: z.number().int().nonnegative().optional(),
   })
   .strict()
   .optional()
 export const GetSessionsResultSchema = z.array(SessionSchema)
+
+// Scrollback bytes are base64-encoded for JSON transport (binary-safe over IPC).
+export const GetSessionScrollbackParamsSchema = z
+  .object({ id: SessionIdSchema })
+  .strict()
+export const GetSessionScrollbackResultSchema = z
+  .object({ bytesBase64: z.string() })
+  .strict()
 
 export const GetProxyStatusParamsSchema = z.undefined()
 export const GetProxyStatusResultSchema = z
@@ -157,6 +173,44 @@ export const GetProxyStatusResultSchema = z
 export const GetTerminalSocketUrlParamsSchema = z.undefined()
 export const GetTerminalSocketUrlResultSchema = z
   .object({ url: z.string() })
+  .strict()
+
+// ── Profiles ───────────────────────────────────────────────────────────────
+
+export const GetProfilesParamsSchema = z.undefined()
+export const GetProfilesResultSchema = z.array(ProfileSchema)
+
+/** Add omits `id` — the server mints it (mirrors addProvider). */
+export const AddProfileParamsSchema = ProfileSchema.omit({ id: true }).strict()
+export const AddProfileResultSchema = ProfileSchema
+
+export const UpdateProfileParamsSchema = ProfileSchema
+export const UpdateProfileResultSchema = ProfileSchema
+
+export const DeleteProfileParamsSchema = z
+  .object({ id: ProfileIdSchema })
+  .strict()
+export const DeleteProfileResultSchema = VoidSchema
+
+// ── Model discovery ───────────────────────────────────────────────────────
+
+export const ListProviderModelsParamsSchema = z
+  .object({ providerId: ProviderIdSchema })
+  .strict()
+export const ListProviderModelsResultSchema = z
+  .object({ models: z.array(z.string()) })
+  .strict()
+
+// ── Dialogs ────────────────────────────────────────────────────────────────
+
+// Native folder picker. Params (and the starting hint) are optional; a cancelled
+// dialog resolves to `{}` (no `path`), never an error.
+export const PickFolderParamsSchema = z
+  .object({ startingFolder: z.string().optional() })
+  .strict()
+  .optional()
+export const PickFolderResultSchema = z
+  .object({ path: z.string().optional() })
   .strict()
 
 // ── The method → {params, result} schema map ──────────────────────────────────
@@ -224,6 +278,10 @@ export const IpcMethodSchemas = {
     params: GetSessionsParamsSchema,
     result: GetSessionsResultSchema,
   },
+  getSessionScrollback: {
+    params: GetSessionScrollbackParamsSchema,
+    result: GetSessionScrollbackResultSchema,
+  },
   getProxyStatus: {
     params: GetProxyStatusParamsSchema,
     result: GetProxyStatusResultSchema,
@@ -231,6 +289,30 @@ export const IpcMethodSchemas = {
   getTerminalSocketUrl: {
     params: GetTerminalSocketUrlParamsSchema,
     result: GetTerminalSocketUrlResultSchema,
+  },
+  getProfiles: {
+    params: GetProfilesParamsSchema,
+    result: GetProfilesResultSchema,
+  },
+  addProfile: {
+    params: AddProfileParamsSchema,
+    result: AddProfileResultSchema,
+  },
+  updateProfile: {
+    params: UpdateProfileParamsSchema,
+    result: UpdateProfileResultSchema,
+  },
+  deleteProfile: {
+    params: DeleteProfileParamsSchema,
+    result: DeleteProfileResultSchema,
+  },
+  pickFolder: {
+    params: PickFolderParamsSchema,
+    result: PickFolderResultSchema,
+  },
+  listProviderModels: {
+    params: ListProviderModelsParamsSchema,
+    result: ListProviderModelsResultSchema,
   },
 } as const
 

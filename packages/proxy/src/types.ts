@@ -39,3 +39,7 @@ export type ProxyError =
   | { readonly kind: "unknown-provider"; readonly providerId: string }
   | { readonly kind: "unsupported-provider"; readonly sdkProvider: string }
   | { readonly kind: "provider-failed"; readonly detail: string }
+  | {
+      readonly kind: "unsupported-model-discovery"
+      readonly sdkProvider: string
+    }

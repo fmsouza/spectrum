@@ -34,4 +34,16 @@ describe("createRecordingProcessSpawner", () => {
     expect(Array.isArray(spawner.calls[0]?.args)).toBe(true)
     expect(spawner.calls[0]?.args).toEqual(["hello", "world"])
   })
+
+  it("records the cwd passed to spawn", () => {
+    const spawner = createRecordingProcessSpawner(7)
+    spawner.spawn("/bin/echo", ["hi"], { A: "1" }, "/work/dir")
+    expect(spawner.calls[0]?.cwd).toBe("/work/dir")
+  })
+
+  it("records undefined cwd when none is given", () => {
+    const spawner = createRecordingProcessSpawner(7)
+    spawner.spawn("/bin/echo", [], {})
+    expect(spawner.calls[0]?.cwd).toBeUndefined()
+  })
 })

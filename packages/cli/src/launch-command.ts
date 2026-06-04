@@ -1,50 +1,80 @@
+import type { Config } from "@launchkit/config"
 import type { RunningProxy } from "@launchkit/proxy"
 import {
   type AliasName,
   AliasNameSchema,
   type HarnessDefinition,
+  type Profile,
 } from "@launchkit/types"
 import { type Result, err, isErr, ok } from "@launchkit/utils"
 import type { CliDeps } from "./deps"
 import type { CliError } from "./errors"
 
-/** Resolve the alias: the `--model` flag if a string, else the harness's defaultAlias. */
-const resolveAlias = (
-  harness: HarnessDefinition,
+/** Look up the `--profile <id>` profile in config, if the flag is present. */
+const resolveProfile = (
+  config: Config,
   flags: Readonly<Record<string, string | boolean>>,
-): AliasName => {
-  const flag = flags.model
-  return typeof flag === "string"
-    ? AliasNameSchema.parse(flag)
-    : harness.defaultAlias
+): Result<Profile | undefined, CliError> => {
+  const flag = flags.profile
+  if (typeof flag !== "string") return ok(undefined)
+  const found = config.profiles.find((p) => p.id === flag)
+  return found === undefined
+    ? err({ kind: "usage", detail: `unknown profile: ${flag}` })
+    : ok(found)
 }
 
 /**
- * `launch <harnessId> [--model <alias>]`.
+ * Resolve the harness id to launch: the positional `<harnessId>` wins; otherwise the
+ * `--profile`'s harness. Errors only when neither is present.
+ */
+const resolveHarnessId = (
+  positional: string | undefined,
+  profile: Profile | undefined,
+): Result<string, CliError> => {
+  if (positional !== undefined) return ok(positional)
+  if (profile !== undefined) return ok(String(profile.harnessId))
+  return err({ kind: "usage", detail: "launch <harnessId> [--model <alias>]" })
+}
+
+/** Resolve the alias: `--model` wins, then the profile's alias, then the harness default. */
+const resolveAlias = (
+  harness: HarnessDefinition,
+  profile: Profile | undefined,
+  flags: Readonly<Record<string, string | boolean>>,
+): AliasName => {
+  const flag = flags.model
+  if (typeof flag === "string") return AliasNameSchema.parse(flag)
+  if (profile !== undefined) return profile.alias
+  return harness.defaultAlias
+}
+
+/**
+ * `launch [<harnessId>] [--profile <id>] [--model <alias>] [--name <name>] [--cwd <dir>]`.
  *
- * Loads config, finds the harness, resolves the alias, ensures a proxy is up (reusing a
- * running one, else starting an ephemeral one with a freshly generated per-run key), then
- * launches the harness and records a session. SECURITY: the generated proxy key flows only
- * into `deps.launch(...)` (which the harness launcher places in the child env) — it is
- * never passed to `deps.out.write`.
+ * Loads config; if `--profile` is given, seeds the harness, alias, and env from it (a
+ * positional `<harnessId>` and `--model` override the profile, and `--profile` makes the
+ * positional id optional). Ensures a proxy is up (reusing a running one, else starting an
+ * ephemeral one with a freshly generated per-run key), launches the harness with the
+ * profile's env + `--cwd`, and records a session with `--name`/`--cwd`. SECURITY: the
+ * generated proxy key flows only into `deps.launch(...)` — never to `deps.out.write`.
  */
 export const launchCommand = async (
   deps: CliDeps,
   rest: readonly string[],
   flags: Readonly<Record<string, string | boolean>>,
 ): Promise<Result<void, CliError>> => {
-  const harnessId = rest[0]
-  if (harnessId === undefined) {
-    return err({
-      kind: "usage",
-      detail: "launch <harnessId> [--model <alias>]",
-    })
-  }
-
   const loaded = await deps.config.load()
   if (isErr(loaded))
     return err({ kind: "failed", detail: "could not load config" })
   const { settings } = loaded.value
+
+  const profileResult = resolveProfile(loaded.value, flags)
+  if (isErr(profileResult)) return profileResult
+  const profile = profileResult.value
+
+  const harnessIdResult = resolveHarnessId(rest[0], profile)
+  if (isErr(harnessIdResult)) return harnessIdResult
+  const harnessId = harnessIdResult.value
 
   const listed = await deps.registry.list()
   if (isErr(listed))
@@ -55,7 +85,10 @@ export const launchCommand = async (
     return err({ kind: "usage", detail: `unknown harness: ${harnessId}` })
   }
 
-  const alias = resolveAlias(harness, flags)
+  const alias = resolveAlias(harness, profile, flags)
+  const env = profile?.env ?? {}
+  const cwd = typeof flags.cwd === "string" ? flags.cwd : undefined
+  const name = typeof flags.name === "string" ? flags.name : undefined
   const proxyUrl = `http://${settings.proxyHost}:${settings.proxyPort}`
 
   // Ensure a proxy is up. Reuse a running one (reading its persisted per-run key so the
@@ -80,14 +113,26 @@ export const launchCommand = async (
     await deps.runtime.writeProxyKey(proxyKey)
   }
 
-  const launched = deps.launch({ harness, proxyUrl, proxyKey, model: alias })
+  const launched = deps.launch({
+    harness,
+    proxyUrl,
+    proxyKey,
+    model: alias,
+    ...(cwd !== undefined ? { cwd } : {}),
+    env,
+  })
   if (isErr(launched)) {
     // Spawning failed: tear down the proxy we just started so we don't leak it.
     owned?.stop()
     return err({ kind: "failed", detail: "failed to launch harness" })
   }
 
-  const session = deps.sessions.create({ harnessId: harness.id, alias })
+  const session = deps.sessions.create({
+    harnessId: harness.id,
+    alias,
+    ...(name !== undefined ? { name } : {}),
+    ...(cwd !== undefined ? { cwd } : {}),
+  })
   if (isErr(session)) {
     owned?.stop()
     return err({ kind: "failed", detail: "failed to record session" })

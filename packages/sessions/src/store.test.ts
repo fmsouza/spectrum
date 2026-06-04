@@ -1,7 +1,11 @@
 import { describe, expect, it } from "bun:test"
 import { createFixedClock, createSequentialIdGen, isOk } from "@launchkit/utils"
 import { createInMemoryDatabase } from "./db"
-import { createSessionStore } from "./store"
+import {
+  type SessionFilter,
+  type SessionInput,
+  createSessionStore,
+} from "./store"
 
 const makeDeps = () => {
   const db = createInMemoryDatabase()
@@ -40,7 +44,7 @@ describe("createSessionStore.init", () => {
     ).toBe(true)
   })
 
-  it("declares every Session column in the CREATE TABLE statement when init() is called", () => {
+  it("declares the base schema columns in the CREATE TABLE statement when init() is called", () => {
     const deps = makeDeps()
     createSessionStore(deps).init()
     const create =
@@ -96,6 +100,8 @@ describe("createSessionStore.create", () => {
       "claude",
       "default",
       "2026-05-23T10:00:00.000Z",
+      null,
+      null,
     ])
   })
 
@@ -329,5 +335,298 @@ describe("createSessionStore.query", () => {
     const store = createSessionStore(failing)
     const r = store.query({ harnessId: "claude" as never })
     expect(r).toEqual({ ok: false, error: { kind: "db-failed", detail: "io" } })
+  })
+})
+
+describe("SessionInput and SessionFilter shapes", () => {
+  it("accepts optional name and cwd on a SessionInput literal", () => {
+    const input: SessionInput = {
+      harnessId: "claude" as never,
+      alias: "default" as never,
+      name: "my run",
+      cwd: "/tmp/project",
+    }
+    expect(input.name).toBe("my run")
+    expect(input.cwd).toBe("/tmp/project")
+  })
+
+  it("accepts optional running, limit and offset on a SessionFilter literal", () => {
+    const filter: SessionFilter = {
+      running: true,
+      limit: 10,
+      offset: 5,
+    }
+    expect(filter.running).toBe(true)
+    expect(filter.limit).toBe(10)
+    expect(filter.offset).toBe(5)
+  })
+})
+
+describe("createSessionStore.create with name and cwd", () => {
+  it("returns a Session carrying name and cwd when create() is given them", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    const r = store.create({
+      harnessId: "claude" as never,
+      alias: "default" as never,
+      name: "nightly",
+      cwd: "/work/app",
+    })
+    expect(isOk(r) && r.value).toEqual<
+      | false
+      | {
+          id: string
+          harnessId: string
+          alias: string
+          startedAt: string
+          name: string
+          cwd: string
+        }
+    >({
+      id: "s_1",
+      harnessId: "claude",
+      alias: "default",
+      startedAt: "2026-05-23T10:00:00.000Z",
+      name: "nightly",
+      cwd: "/work/app",
+    })
+  })
+
+  it("omits name and cwd from the returned Session when create() is not given them", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    const r = store.create({
+      harnessId: "claude" as never,
+      alias: "default" as never,
+    })
+    expect(isOk(r) && r.value).toEqual<
+      | false
+      | { id: string; harnessId: string; alias: string; startedAt: string }
+    >({
+      id: "s_1",
+      harnessId: "claude",
+      alias: "default",
+      startedAt: "2026-05-23T10:00:00.000Z",
+    })
+  })
+
+  it("binds name and cwd in params and never interpolates them when create() runs", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.create({
+      harnessId: "claude" as never,
+      alias: "default" as never,
+      name: "nightly",
+      cwd: "/work/app",
+    })
+    const insert = deps.db.statements().find((s) => /^\s*INSERT/i.test(s.sql))
+    expect(insert?.sql).toContain("name")
+    expect(insert?.sql).toContain("cwd")
+    expect(insert?.sql).not.toContain("nightly")
+    expect(insert?.sql).not.toContain("/work/app")
+    expect(insert?.params).toEqual([
+      "s_1",
+      "claude",
+      "default",
+      "2026-05-23T10:00:00.000Z",
+      "nightly",
+      "/work/app",
+    ])
+  })
+
+  it("binds null for an omitted name and cwd when create() runs without them", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.create({ harnessId: "claude" as never, alias: "default" as never })
+    const insert = deps.db.statements().find((s) => /^\s*INSERT/i.test(s.sql))
+    expect(insert?.params).toEqual([
+      "s_1",
+      "claude",
+      "default",
+      "2026-05-23T10:00:00.000Z",
+      null,
+      null,
+    ])
+  })
+})
+
+describe("createSessionStore.query with running, limit and offset", () => {
+  it("adds an endedAt IS NULL predicate with no extra param when query() filters running true", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query({ running: true })
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).toMatch(/WHERE endedAt IS NULL/i)
+    expect(select?.sql).toMatch(/ORDER BY startedAt DESC/i)
+    expect(select?.params).toEqual([])
+  })
+
+  it("adds an endedAt IS NOT NULL predicate when query() filters running false", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query({ running: false })
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).toMatch(/WHERE endedAt IS NOT NULL/i)
+    expect(select?.params).toEqual([])
+  })
+
+  it("combines a value filter and running with AND, binding only the value param, when query() filters both", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query({ harnessId: "claude" as never, running: true })
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).toMatch(/WHERE harnessId = \? AND endedAt IS NULL/i)
+    expect(select?.params).toEqual(["claude"])
+  })
+
+  it("appends LIMIT and OFFSET as bound params after ORDER BY when query() paginates", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query({ limit: 10, offset: 5 })
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).toMatch(/ORDER BY startedAt DESC LIMIT \? OFFSET \?/i)
+    expect(select?.sql).not.toContain("10")
+    expect(select?.sql).not.toContain("5")
+    expect(select?.params).toEqual([10, 5])
+  })
+
+  it("orders WHERE params before LIMIT and OFFSET params when query() filters and paginates", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query({
+      harnessId: "claude" as never,
+      since: "2026-05-23T00:00:00.000Z",
+      limit: 2,
+      offset: 4,
+    })
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).toMatch(
+      /WHERE harnessId = \? AND startedAt >= \? ORDER BY startedAt DESC LIMIT \? OFFSET \?/i,
+    )
+    expect(select?.params).toEqual(["claude", "2026-05-23T00:00:00.000Z", 2, 4])
+  })
+
+  it("omits LIMIT and OFFSET from the sql when query() does not paginate", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query()
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).not.toMatch(/LIMIT/i)
+    expect(select?.sql).not.toMatch(/OFFSET/i)
+  })
+})
+
+describe("createSessionStore.reconcileOrphaned", () => {
+  it("marks 2 open sessions as ended and returns ok(2) when reconcileOrphaned() is called with orphans", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.create({ harnessId: "claude" as never, alias: "default" as never })
+    store.create({ harnessId: "codex" as never, alias: "fast" as never })
+
+    const r = store.reconcileOrphaned()
+    expect(isOk(r) && r.value).toBe(2)
+
+    // all sessions should now be closed (not running)
+    const running = store.query({ running: true })
+    expect(isOk(running) && running.value).toHaveLength(0)
+
+    // both sessions appear in ended list with endedAt set
+    const ended = store.query({ running: false })
+    expect(isOk(ended) && ended.value).toHaveLength(2)
+    if (isOk(ended)) {
+      for (const s of ended.value) {
+        expect(typeof s.endedAt).toBe("string")
+        // exitCode is NOT set — app was killed, code is unknown
+        expect(s.exitCode).toBeUndefined()
+      }
+    }
+  })
+
+  it("leaves a session already closed unchanged when reconcileOrphaned() is called", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    const created = store.create({
+      harnessId: "claude" as never,
+      alias: "default" as never,
+    })
+    const id = isOk(created) ? created.value.id : ("" as never)
+    // close it with a known exit code
+    store.close(id, 42)
+
+    const r = store.reconcileOrphaned()
+    expect(isOk(r) && r.value).toBe(0)
+
+    // the closed session should still have its original exitCode
+    const ended = store.query({ running: false })
+    expect(isOk(ended) && ended.value).toHaveLength(1)
+    if (isOk(ended) && ended.value[0] !== undefined) {
+      expect(ended.value[0].exitCode).toBe(42)
+      expect(typeof ended.value[0].endedAt).toBe("string")
+    }
+  })
+
+  it("returns ok(0) and is idempotent when reconcileOrphaned() is called with no orphans", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+
+    const first = store.reconcileOrphaned()
+    expect(isOk(first) && first.value).toBe(0)
+
+    const second = store.reconcileOrphaned()
+    expect(isOk(second) && second.value).toBe(0)
+  })
+
+  it("issues a parameterized UPDATE with endedAt bound in params and never interpolated when reconcileOrphaned() runs", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.create({ harnessId: "claude" as never, alias: "default" as never })
+
+    store.reconcileOrphaned()
+
+    const update = deps.db
+      .statements()
+      .filter((s) => /^\s*UPDATE/i.test(s.sql))
+      // find the reconcile UPDATE (WHERE endedAt IS NULL, not WHERE id = ?)
+      .find((s) => /WHERE endedAt IS NULL/i.test(s.sql))
+    expect(update?.sql).toContain("?")
+    expect(update?.sql).toMatch(/SET endedAt = \?/i)
+    // the timestamp value must be in params, not in the sql
+    expect(update?.sql).not.toContain("2026-05-23T10:00:00.000Z")
+    expect(update?.params).toEqual(["2026-05-23T10:00:00.000Z"])
+  })
+
+  it("propagates a db-failed error from the SELECT when reconcileOrphaned() is called", () => {
+    const failing = {
+      ...makeDeps(),
+      db: {
+        exec: () => ({ ok: true as const, value: undefined }),
+        run: () => ({ ok: true as const, value: undefined }),
+        all: () => ({
+          ok: false as const,
+          error: { kind: "db-failed" as const, detail: "io-error" },
+        }),
+        get: () => ({ ok: true as const, value: undefined }),
+      },
+    }
+    const store = createSessionStore(failing)
+    const r = store.reconcileOrphaned()
+    expect(r).toEqual({
+      ok: false,
+      error: { kind: "db-failed", detail: "io-error" },
+    })
   })
 })

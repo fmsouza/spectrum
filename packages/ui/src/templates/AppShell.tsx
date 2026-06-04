@@ -1,42 +1,53 @@
 import type { ReactElement, ReactNode } from "react"
+import { StatusDot } from "../atoms/StatusDot"
+import { RailItem } from "../molecules/RailItem"
 
-export type NavItem = {
-  readonly route: string
-  readonly label: string
-}
+export type AppMode = "sessions" | "settings"
 
 export type AppShellProps = {
-  readonly navItems: readonly NavItem[]
-  readonly activeRoute: string
-  readonly onNavigate: (route: string) => void
-  readonly children: ReactNode
+  readonly mode: AppMode
+  readonly onModeChange: (mode: AppMode) => void
+  readonly proxyRunning: boolean
+  readonly master: ReactNode
+  readonly detail: ReactNode
 }
 
 export const AppShell = ({
-  navItems,
-  activeRoute,
-  onNavigate,
-  children,
+  mode,
+  onModeChange,
+  proxyRunning,
+  master,
+  detail,
 }: AppShellProps): ReactElement => (
   <div>
     <nav aria-label="Primary">
+      <span aria-hidden="true" data-app-icon="">
+        LK
+      </span>
       <ul>
-        {navItems.map((item) => (
-          <li key={item.route}>
-            <a
-              href={`#${item.route}`}
-              aria-current={item.route === activeRoute ? "page" : undefined}
-              onClick={(e) => {
-                e.preventDefault()
-                onNavigate(item.route)
-              }}
-            >
-              {item.label}
-            </a>
-          </li>
-        ))}
+        <RailItem
+          label="Sessions"
+          active={mode === "sessions"}
+          onClick={() => onModeChange("sessions")}
+        >
+          <span aria-hidden="true">▦</span>
+        </RailItem>
+        <RailItem
+          label="Settings"
+          active={mode === "settings"}
+          onClick={() => onModeChange("settings")}
+        >
+          <span aria-hidden="true">⚙</span>
+        </RailItem>
       </ul>
+      <StatusDot
+        status={proxyRunning ? "on" : "off"}
+        label={proxyRunning ? "proxy running" : "proxy stopped"}
+      />
     </nav>
-    <main>{children}</main>
+    <nav aria-label={mode === "sessions" ? "Sessions" : "Settings"}>
+      {master}
+    </nav>
+    <main>{detail}</main>
   </div>
 )

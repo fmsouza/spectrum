@@ -2,6 +2,8 @@ import type { Config } from "@launchkit/config"
 import {
   type ModelAlias,
   ModelAliasSchema,
+  type Profile,
+  ProfileSchema,
   type Provider,
   ProviderSchema,
   SdkProviderSchema,
@@ -31,6 +33,27 @@ const splitModels = (
     .split(",")
     .map((m) => m.trim())
     .filter((m) => m.length > 0)
+}
+
+/**
+ * Parse `--env K=V,K2=V2` into a string map. Splits on `,`, then each entry on the
+ * FIRST `=` (values may contain `=`); trims the key; drops entries with an empty key
+ * or no `=`. Returns `{}` when the flag is absent or a bare boolean.
+ */
+export const splitEnv = (
+  flags: Readonly<Record<string, string | boolean>>,
+): Record<string, string> => {
+  const value = flags.env
+  if (typeof value !== "string") return {}
+  const out: Record<string, string> = {}
+  for (const entry of value.split(",")) {
+    const eq = entry.indexOf("=")
+    if (eq <= 0) continue
+    const key = entry.slice(0, eq).trim()
+    if (key.length === 0) continue
+    out[key] = entry.slice(eq + 1)
+  }
+  return out
 }
 
 const saveOrFail = async (
@@ -116,7 +139,48 @@ const addAlias = async (
   return saveOrFail(deps, { ...config, aliases: [...config.aliases, alias] })
 }
 
-/** `add provider …` / `add alias …`. */
+const addProfile = async (
+  deps: CliDeps,
+  config: Config,
+  flags: Readonly<Record<string, string | boolean>>,
+): Promise<Result<void, CliError>> => {
+  const id = requireFlag(flags, "id")
+  if (isErr(id)) return id
+  const name = requireFlag(flags, "name")
+  if (isErr(name)) return name
+  const harness = requireFlag(flags, "harness")
+  if (isErr(harness)) return harness
+  const model = requireFlag(flags, "model")
+  if (isErr(model)) return model
+
+  if (config.profiles.some((p) => p.id === id.value)) {
+    return err({
+      kind: "failed",
+      detail: `profile already exists: ${id.value}`,
+    })
+  }
+
+  // Validate through ProfileSchema so the branded ids are constructed from one source
+  // of truth and a bad shape is rejected before save. `--env K=V,…` parses via splitEnv.
+  const candidate = ProfileSchema.safeParse({
+    id: id.value,
+    name: name.value,
+    harnessId: harness.value,
+    alias: model.value,
+    env: splitEnv(flags),
+  })
+  if (!candidate.success) {
+    return err({ kind: "usage", detail: candidate.error.message })
+  }
+  const profile: Profile = candidate.data
+
+  return saveOrFail(deps, {
+    ...config,
+    profiles: [...config.profiles, profile],
+  })
+}
+
+/** `add provider …` / `add alias …` / `add profile …`. */
 export const add = async (
   deps: CliDeps,
   rest: readonly string[],
@@ -132,8 +196,10 @@ export const add = async (
       return addProvider(deps, loaded.value, flags)
     case "alias":
       return addAlias(deps, loaded.value, flags)
+    case "profile":
+      return addProfile(deps, loaded.value, flags)
     default:
-      return err({ kind: "usage", detail: "add <provider|alias> --…" })
+      return err({ kind: "usage", detail: "add <provider|alias|profile> --…" })
   }
 }
 
@@ -165,7 +231,21 @@ const removeAlias = async (
   return saveOrFail(deps, { ...config, aliases: next })
 }
 
-/** `remove provider <id>` / `remove alias <name>`. */
+const removeProfile = async (
+  deps: CliDeps,
+  config: Config,
+  id: string | undefined,
+): Promise<Result<void, CliError>> => {
+  if (id === undefined)
+    return err({ kind: "usage", detail: "remove profile <id>" })
+  const next = config.profiles.filter((p) => p.id !== id)
+  if (next.length === config.profiles.length) {
+    return err({ kind: "failed", detail: `unknown profile: ${id}` })
+  }
+  return saveOrFail(deps, { ...config, profiles: next })
+}
+
+/** `remove provider <id>` / `remove alias <name>` / `remove profile <id>`. */
 export const remove = async (
   deps: CliDeps,
   rest: readonly string[],
@@ -180,7 +260,12 @@ export const remove = async (
       return removeProvider(deps, loaded.value, rest[1])
     case "alias":
       return removeAlias(deps, loaded.value, rest[1])
+    case "profile":
+      return removeProfile(deps, loaded.value, rest[1])
     default:
-      return err({ kind: "usage", detail: "remove <provider|alias> <id>" })
+      return err({
+        kind: "usage",
+        detail: "remove <provider|alias|profile> <id>",
+      })
   }
 }

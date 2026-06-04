@@ -13,13 +13,22 @@ import type { Database, SessionError } from "./db"
 export type SessionInput = {
   readonly harnessId: HarnessId
   readonly alias: AliasName
+  readonly name?: string
+  readonly cwd?: string
 }
 
-/** Optional, all-`AND` filter for `query`. `since` is an inclusive `startedAt >=` bound. */
+/**
+ * Optional, all-`AND` filter for `query`. `since` is an inclusive `startedAt >=` bound;
+ * `running` selects open (`true`) or closed (`false`) sessions; `limit`/`offset` paginate
+ * the `startedAt DESC` result.
+ */
 export type SessionFilter = {
   readonly harnessId?: HarnessId
   readonly alias?: AliasName
   readonly since?: string
+  readonly running?: boolean
+  readonly limit?: number
+  readonly offset?: number
 }
 
 export interface SessionStore {
@@ -27,7 +36,17 @@ export interface SessionStore {
   create(input: SessionInput): Result<Session, SessionError>
   close(id: SessionId, exitCode: number): Result<Session, SessionError>
   query(filter?: SessionFilter): Result<readonly Session[], SessionError>
+  /**
+   * Mark every session with `endedAt IS NULL` as ended using the injected clock timestamp.
+   * `exitCode` is left NULL — the app was killed and the true exit code is unknown.
+   * Returns `ok(count)` where count is the number of orphaned sessions reconciled.
+   * Safe to call with no orphans (returns `ok(0)`); idempotent.
+   */
+  reconcileOrphaned(): Result<number, SessionError>
 }
+
+const SELECT_ORPHAN_IDS = "SELECT id FROM sessions WHERE endedAt IS NULL"
+const UPDATE_RECONCILE = "UPDATE sessions SET endedAt = ? WHERE endedAt IS NULL"
 
 const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
@@ -42,15 +61,18 @@ const CREATE_INDEX_STARTED =
   "CREATE INDEX IF NOT EXISTS idx_sessions_startedAt ON sessions (startedAt)"
 const CREATE_INDEX_HARNESS =
   "CREATE INDEX IF NOT EXISTS idx_sessions_harnessId ON sessions (harnessId)"
+const PRAGMA_COLUMNS = "PRAGMA table_info(sessions)"
+const ADD_COLUMN_NAME = "ALTER TABLE sessions ADD COLUMN name TEXT"
+const ADD_COLUMN_CWD = "ALTER TABLE sessions ADD COLUMN cwd TEXT"
 const INSERT_SESSION =
-  "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)"
+  "INSERT INTO sessions (id, harnessId, alias, startedAt, name, cwd) VALUES (?, ?, ?, ?, ?, ?)"
 const UPDATE_CLOSE =
   "UPDATE sessions SET endedAt = ?, exitCode = ? WHERE id = ?"
 const SELECT_COLUMNS =
-  "SELECT id, harnessId, alias, startedAt, endedAt, exitCode FROM sessions"
+  "SELECT id, harnessId, alias, startedAt, endedAt, exitCode, name, cwd FROM sessions"
 const SELECT_BY_ID = `${SELECT_COLUMNS} WHERE id = ?`
 
-/** Map a raw sqlite row into a Session, dropping NULL endedAt/exitCode. */
+/** Map a raw sqlite row into a Session, dropping NULL endedAt/exitCode/name/cwd. */
 const toSession = (row: Record<string, unknown>): Session => {
   const base: Session = {
     id: row.id as SessionId,
@@ -60,10 +82,14 @@ const toSession = (row: Record<string, unknown>): Session => {
   }
   const endedAt = row.endedAt
   const exitCode = row.exitCode
+  const name = row.name
+  const cwd = row.cwd
   return {
     ...base,
     ...(typeof endedAt === "string" ? { endedAt } : {}),
     ...(typeof exitCode === "number" ? { exitCode } : {}),
+    ...(typeof name === "string" ? { name } : {}),
+    ...(typeof cwd === "string" ? { cwd } : {}),
   }
 }
 
@@ -85,6 +111,11 @@ const buildWhere = (
     conditions.push("startedAt >= ?")
     params.push(filter.since)
   }
+  if (filter.running === true) {
+    conditions.push("endedAt IS NULL")
+  } else if (filter.running === false) {
+    conditions.push("endedAt IS NOT NULL")
+  }
   const clause =
     conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : ""
   return { clause, params }
@@ -104,6 +135,19 @@ export const createSessionStore = (deps: {
     if (isErr(started)) return started
     const harness = db.exec(CREATE_INDEX_HARNESS)
     if (isErr(harness)) return harness
+
+    const info = db.all(PRAGMA_COLUMNS, [])
+    if (isErr(info)) return info
+    const existing = new Set(info.value.map((row) => String(row.name)))
+
+    if (!existing.has("name")) {
+      const added = db.exec(ADD_COLUMN_NAME)
+      if (isErr(added)) return added
+    }
+    if (!existing.has("cwd")) {
+      const added = db.exec(ADD_COLUMN_CWD)
+      if (isErr(added)) return added
+    }
     return ok(undefined)
   }
 
@@ -117,6 +161,8 @@ export const createSessionStore = (deps: {
         input.harnessId,
         input.alias,
         startedAt,
+        input.name ?? null,
+        input.cwd ?? null,
       ])
       if (isErr(written)) return written
       return ok({
@@ -124,6 +170,8 @@ export const createSessionStore = (deps: {
         harnessId: input.harnessId,
         alias: input.alias,
         startedAt,
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
       })
     },
     close: (id: SessionId, exitCode: number): Result<Session, SessionError> => {
@@ -135,11 +183,33 @@ export const createSessionStore = (deps: {
       if (fetched.value === undefined) return err({ kind: "not-found" })
       return ok(toSession(fetched.value))
     },
+    reconcileOrphaned: (): Result<number, SessionError> => {
+      const orphans = db.all(SELECT_ORPHAN_IDS, [])
+      if (isErr(orphans)) return orphans
+      const orphanCount = orphans.value.length
+      if (orphanCount === 0) return ok(0)
+      const endedAt = deps.clock.now().toISOString()
+      const updated = db.run(UPDATE_RECONCILE, [endedAt])
+      if (isErr(updated)) return updated
+      return ok(orphanCount)
+    },
     query: (
       filter?: SessionFilter,
     ): Result<readonly Session[], SessionError> => {
-      const { clause, params } = buildWhere(filter ?? {})
-      const sql = `${SELECT_COLUMNS}${clause} ORDER BY startedAt DESC`
+      const active = filter ?? {}
+      const { clause, params: whereParams } = buildWhere(active)
+      const params: unknown[] = [...whereParams]
+      let sql = `${SELECT_COLUMNS}${clause} ORDER BY startedAt DESC`
+      if (active.limit !== undefined) {
+        sql += " LIMIT ?"
+        params.push(active.limit)
+      } else if (active.offset !== undefined) {
+        sql += " LIMIT -1"
+      }
+      if (active.offset !== undefined) {
+        sql += " OFFSET ?"
+        params.push(active.offset)
+      }
       const rows = db.all(sql, params)
       if (isErr(rows)) return rows
       return ok(rows.value.map(toSession))

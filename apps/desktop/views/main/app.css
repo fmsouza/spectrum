@@ -51,7 +51,10 @@
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
   --dur: 140ms;
 
-  /* Layout */
+  /* Layout — the 3-zone shell: a narrow icon rail, a fixed master column, and a
+     flexible detail pane. (`--sidebar-w` is retained for the responsive collapse.) */
+  --rail-w: 56px;
+  --master-w: 304px;
   --sidebar-w: 244px;
 
   /* Light palette (default) */
@@ -209,37 +212,49 @@ pre {
   border-radius: var(--radius-sm);
 }
 
-/* ──────────────────────── AppShell: sidebar + main ──────────────────────── */
-/* AppShell renders <div><nav aria-label="Primary">…</nav><main>…</main></div>. */
+/* ───────────────── AppShell: rail + master + detail (3 zones) ───────────── */
+/* AppShell renders three children inside one <div>:
+ *   <nav aria-label="Primary">    — the narrow icon RAIL (mode switch + proxy dot)
+ *   <nav aria-label="Sessions"|"Settings"> — the MASTER list column
+ *   <main>                        — the DETAIL pane (terminal / settings page)
+ * A 3-column grid lays them out; each zone owns its own scroll. */
 div:has(> nav[aria-label="Primary"]) {
   display: grid;
-  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  grid-template-columns: var(--rail-w) var(--master-w) minmax(0, 1fr);
+  height: 100vh;
   min-height: 100vh;
 }
 
+/* ── Rail (column 1): narrow, dark, vertical, centered icon buttons. ── */
 nav[aria-label="Primary"] {
-  position: sticky;
-  top: 0;
-  align-self: start;
-  height: 100vh;
+  grid-column: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-5) var(--space-3);
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-2);
   background: var(--sidebar-bg);
   border-right: 1px solid color-mix(in srgb, #000 35%, var(--sidebar-bg));
   overflow-y: auto;
 }
 
-/* Wordmark above the nav list. */
-nav[aria-label="Primary"]::before {
-  content: "LaunchKit";
-  display: block;
-  padding: var(--space-1) var(--space-3) var(--space-4);
-  font-weight: 700;
-  font-size: var(--text-lg);
-  letter-spacing: -0.02em;
+/* The app mark the component renders (<span data-app-icon>LK</span>): a small
+   monogram tile at the top of the rail. (No CSS ::before wordmark — the DOM owns
+   this text now, so injecting one would double it.) */
+nav[aria-label="Primary"] [data-app-icon] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 22%, var(--sidebar-bg));
   color: var(--sidebar-active-fg);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  letter-spacing: 0.02em;
+  user-select: none;
 }
 
 nav[aria-label="Primary"] ul {
@@ -247,79 +262,248 @@ nav[aria-label="Primary"] ul {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 nav[aria-label="Primary"] li {
   margin: 0;
 }
 
-nav[aria-label="Primary"] a {
+/* Rail items are IconButtons: <button aria-label … data-active … aria-current?>.
+   Square, icon-only, with hover + active states (active = data-active="true",
+   which IconButton also mirrors as aria-current="page"). */
+nav[aria-label="Primary"] button {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
+  background: transparent;
   color: var(--sidebar-fg);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  font-size: var(--text-lg);
+  line-height: 1;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
 }
 
-/* A small leading marker dot for every nav item; brightens when active. */
-nav[aria-label="Primary"] a::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--sidebar-fg-dim);
-  transition: background var(--dur) var(--ease), box-shadow var(--dur)
+nav[aria-label="Primary"] button:hover {
+  background: color-mix(in srgb, #fff 8%, var(--sidebar-bg));
+  color: var(--sidebar-active-fg);
+}
+
+nav[aria-label="Primary"] button[data-active="true"] {
+  background: color-mix(in srgb, var(--accent) 20%, var(--sidebar-bg));
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--sidebar-active-fg);
+}
+
+/* The proxy StatusDot is the last child of the rail; pin it to the bottom. */
+nav[aria-label="Primary"] > span[role="img"][data-color] {
+  margin-top: auto;
+  margin-bottom: var(--space-1);
+}
+
+/* ── Master (column 2): the Sessions / Settings list column. ──
+   Fixed width, its own scroll, a surface background and a hairline right border. */
+nav[aria-label="Sessions"],
+nav[aria-label="Settings"] {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--space-4);
+  background: var(--surface-2);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+/* SessionList is a <div> of: the "+ New session" button, a Running <section>,
+   a Recent <section>, and an optional "View more" button. Stack them. */
+nav[aria-label="Sessions"] > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+}
+
+/* Both list buttons (+ New session / View more) span the master width. */
+nav[aria-label="Sessions"] > div > button[data-variant] {
+  width: 100%;
+}
+
+nav[aria-label="Sessions"] section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Group headings: "Running" / "Recent" — small, uppercase, muted. */
+nav[aria-label="Sessions"] section > h3 {
+  margin-bottom: var(--space-1);
+  padding: 0 var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+}
+
+/* ── SessionRow: <button aria-pressed data-selected> with 3 stacked lines. ──
+   Scoped to the master so it doesn't pick up the data-variant button chrome. */
+nav[aria-label="Sessions"] section > button[aria-pressed] {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  transition: background var(--dur) var(--ease), border-color var(--dur)
     var(--ease);
 }
 
-nav[aria-label="Primary"] a:hover {
-  background: color-mix(in srgb, #fff 7%, var(--sidebar-bg));
-  color: var(--sidebar-active-fg);
+nav[aria-label="Sessions"] section > button[aria-pressed]:hover {
+  background: var(--surface-inset);
 }
 
-nav[aria-label="Primary"] a[aria-current="page"] {
-  background: color-mix(in srgb, var(--accent) 16%, var(--sidebar-bg));
-  color: var(--sidebar-active-fg);
+nav[aria-label="Sessions"]
+  section
+  > button[aria-pressed][data-selected="true"] {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* Line 1: status dot + name + (badge pushed to the right). */
+nav[aria-label="Sessions"] section > button[aria-pressed] > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-weight: 600;
+  font-size: var(--text-sm);
 }
 
-nav[aria-label="Primary"] a[aria-current="page"]::before {
-  background: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
-}
-
-main {
+/* The name text takes the slack so the badge sits flush-right; truncate it. */
+nav[aria-label="Sessions"]
+  section
+  > button[aria-pressed]
+  > span:first-child
+  > span {
+  flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Lines 2 & 3: harness·model and cwd·time — smaller, muted; line 3 truncates. */
+nav[aria-label="Sessions"]
+  section
+  > button[aria-pressed]
+  > span:not(:first-child) {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+nav[aria-label="Sessions"]
+  section
+  > button[aria-pressed]
+  > span[data-testid="session-row-meta"] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+}
+
+/* The selected row keeps its inner text legible on the accent-soft wash. */
+nav[aria-label="Sessions"]
+  section
+  > button[aria-pressed][data-selected="true"]
+  > span:not(:first-child) {
+  color: color-mix(in srgb, var(--text-muted) 80%, var(--accent-strong));
+}
+
+/* ── Settings master (column 2): SettingsNav is <ul><li><a aria-current>. ── */
+nav[aria-label="Settings"] ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+nav[aria-label="Settings"] li {
+  margin: 0;
+}
+
+nav[aria-label="Settings"] a {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 550;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+nav[aria-label="Settings"] a:hover {
+  background: var(--surface-inset);
+  color: var(--text);
+}
+
+nav[aria-label="Settings"] a[aria-current="page"] {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 650;
+}
+
+/* ── Detail (column 3): the <main> pane fills the remaining width, full height. ── */
+main {
+  grid-column: 3;
+  min-width: 0;
+  height: 100vh;
   padding: var(--space-7) var(--space-7);
   overflow-y: auto;
 }
 
+/* The sessions detail is a full-bleed terminal surface — drop the centered
+   settings padding so the panes reach every edge of the detail pane. */
+main:has(> .sessions-detail) {
+  padding: 0;
+}
+
+/* Narrow-window fallback (the desktop window is normally far wider): collapse to
+   a rail + a single right column, with the master stacked above the detail so
+   neither overlaps. The rail spans both rows on the left. */
 @media (max-width: 720px) {
   div:has(> nav[aria-label="Primary"]) {
-    grid-template-columns: 1fr;
+    grid-template-columns: var(--rail-w) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
   nav[aria-label="Primary"] {
-    position: static;
-    height: auto;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
+    grid-row: 1 / span 2;
   }
-  nav[aria-label="Primary"]::before {
-    padding: var(--space-1) var(--space-3);
-  }
-  nav[aria-label="Primary"] ul {
-    flex-direction: row;
-    flex-wrap: wrap;
+  nav[aria-label="Sessions"],
+  nav[aria-label="Settings"] {
+    grid-column: 2;
+    grid-row: 1;
+    max-height: 40vh;
   }
   main {
-    padding: var(--space-5);
+    grid-column: 2;
+    grid-row: 2;
+    height: auto;
+  }
+  main:has(> .sessions-detail),
+  .sessions-detail {
+    height: 100%;
   }
 }
 
@@ -534,6 +718,96 @@ form:has(> button[data-variant] + button[data-variant]) {
 form > button[data-variant] + button[data-variant] {
   margin-top: calc(-1 * var(--space-4));
   margin-left: var(--space-2);
+}
+
+/* ───────────────────────── Modal (NewSession / Profile) ──────────────────── */
+/* Modal renders <div data-testid="modal-backdrop" style="position:fixed;inset:0;
+   …flex-center;dim"> wrapping a native <dialog aria-modal open>. The backdrop's
+   inline styles own the overlay + dimming + centering; we style the dialog card,
+   its header, the close button, and flatten the form chrome inside it. The
+   backdrop is fixed/inset:0 so it overlays the whole window above the shell. */
+dialog[aria-modal="true"] {
+  position: static;
+  width: min(560px, calc(100vw - 2 * var(--space-6)));
+  max-height: calc(100vh - 2 * var(--space-6));
+  margin: 0;
+  padding: 0;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden auto;
+}
+
+/* Dialog header: title left, the × close button pushed right. */
+dialog[aria-modal="true"] > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+dialog[aria-modal="true"] > header > h2 {
+  font-size: var(--text-lg);
+}
+
+dialog[aria-modal="true"] > header > button[aria-label="Close"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xl);
+  line-height: 1;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+dialog[aria-modal="true"] > header > button[aria-label="Close"]:hover {
+  background: var(--surface-inset);
+  color: var(--text);
+}
+
+/* The dialog body wraps the form. */
+dialog[aria-modal="true"] > div {
+  padding: var(--space-5);
+}
+
+/* The form is already inside the dialog card, so drop its standalone chrome. */
+dialog[aria-modal="true"] form {
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* The "Save edits as new profile" checkbox label is inline (checkbox + text),
+   not a stacked field label. */
+dialog[aria-modal="true"] form > label:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: 0;
+  font-weight: 500;
+}
+
+dialog[aria-modal="true"] form > label > input[type="checkbox"] {
+  width: auto;
+  min-height: 0;
+}
+
+/* FolderField is a <div> with a text input + a "Browse…" button on one row. */
+dialog[aria-modal="true"] form div:has(> input + button[data-variant]) {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-2);
 }
 
 /* ───────────────────────────── Badges ───────────────────────────── */
@@ -794,85 +1068,46 @@ main section li > button[data-variant] {
   margin-left: auto;
 }
 
-/* ─────────────────────────── Embedded terminal ──────────────────────────── */
-/* The terminal page is a full-height pane (tab strip + xterm surface) that
-   ignores the centered SettingsLayout chrome. It fills the <main> content box. */
-.terminal-page {
+/* ─────────────────────── Sessions detail (terminal pane) ─────────────────── */
+/* The sessions detail fills the whole <main> pane: a dark, full-bleed column
+   holding the live terminal panes (one mounted-hidden per open session), an
+   optional replay (exit banner + read-only pane), or an empty state. (Replaces
+   the deleted tabbed TerminalPage — no tab strip; selection is the master list.) */
+.sessions-detail {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 2 * var(--space-7));
+  height: 100vh;
   min-height: 0;
-  margin: calc(-1 * var(--space-7));
   background: #111216;
-  border-radius: 0;
   overflow: hidden;
 }
 
-/* The terminal's own empty state still uses the centered section layout, so it
-   needs no overrides — it renders via <section aria-label="Terminal">. */
-
-.terminal-tabs {
-  display: flex;
-  align-items: stretch;
-  gap: 2px;
-  padding: var(--space-2) var(--space-2) 0;
-  background: var(--sidebar-bg);
-  border-bottom: 1px solid color-mix(in srgb, #000 35%, var(--sidebar-bg));
-  overflow-x: auto;
+/* The empty state ("No session selected") centers in the dark detail pane rather
+   than rendering as the default dashed settings card. */
+.sessions-detail > div:has(> h2 + p):not([aria-label]) {
+  margin: auto;
+  background: transparent;
+  border: none;
 }
 
-.terminal-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+/* The replay exit banner: a thin header strip above the read-only replay pane. */
+.replay-exit-banner {
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-4);
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid color-mix(in srgb, #000 35%, var(--sidebar-bg));
   color: var(--sidebar-fg);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  font-weight: 500;
   letter-spacing: 0.01em;
-  white-space: nowrap;
-  cursor: pointer;
-  user-select: none;
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 
-.terminal-tab:hover {
-  background: color-mix(in srgb, #fff 7%, var(--sidebar-bg));
-  color: var(--sidebar-active-fg);
-}
-
-.terminal-tab[data-active="true"] {
-  background: #111216;
-  color: var(--sidebar-active-fg);
-}
-
-.terminal-tab__label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 22ch;
-}
-
-.terminal-tab__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--sidebar-fg-dim);
-  font-size: var(--text-base);
-  line-height: 1;
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
-}
-
-.terminal-tab__close:hover {
-  background: color-mix(in srgb, var(--red) 30%, transparent);
-  color: var(--sidebar-active-fg);
+/* A replay TerminalPane is a direct child of .sessions-detail (no host wrapper),
+   so it must claim the remaining height itself. */
+.sessions-detail > .terminal-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-3);
 }
 
 .terminal-panes {
