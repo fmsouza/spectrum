@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, mock } from "bun:test"
 import type { RunAppDeps } from "./app"
 import type { createAppContext } from "./composition"
 import { buildRealDeps, main } from "./main"
@@ -22,6 +22,7 @@ const fakeFactory = (() =>
       create: () => ({ ok: true, value: {} }),
       query: () => ({ ok: true, value: [] }),
       init: () => ({ ok: true, value: undefined }),
+      reconcileOrphaned: () => ({ ok: true, value: 0 }),
     },
     registry: { list: async () => ({ ok: true, value: [] }) },
     launch: () => ({ ok: true, value: { pid: 1, exited: Promise.resolve(0) } }),
@@ -69,6 +70,117 @@ describe("buildRealDeps", () => {
     })
     await deps.runCli(["bun", "main.ts", "list", "harnesses"])
     expect(cliArgv).toEqual(["bun", "main.ts", "list", "harnesses"])
+  })
+
+  it("calls reconcileOrphaned() on the session store when startProxy is invoked (GUI startup)", async () => {
+    const reconcileOrphaned = mock(() => ({ ok: true as const, value: 0 }))
+    const factoryWithSpy = (() =>
+      ({
+        config: {
+          load: async () => ({
+            ok: true,
+            value: {
+              version: 2,
+              providers: [],
+              aliases: [],
+              settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+            },
+          }),
+        },
+        secrets: {},
+        sessions: {
+          create: () => ({ ok: true, value: {} }),
+          query: () => ({ ok: true, value: [] }),
+          init: () => ({ ok: true, value: undefined }),
+          reconcileOrphaned,
+        },
+        registry: { list: async () => ({ ok: true, value: [] }) },
+        launch: () => ({
+          ok: true,
+          value: { pid: 1, exited: Promise.resolve(0) },
+        }),
+        proxy: {
+          isRunning: async () => false,
+          start: () => ({ hostname: "127.0.0.1", port: 4000, stop: () => {} }),
+        },
+        factory: {},
+        gateway: {},
+        runtime: {
+          readProxyKey: async () => null,
+          writeProxyKey: async () => ({ ok: true, value: undefined }),
+          clear: async () => {},
+        },
+        testProvider: async () => ({
+          ok: true,
+          value: { ok: true, latencyMs: 0 },
+        }),
+        proxyPort: 4000,
+        proxyBaseUrl: "http://127.0.0.1:4000",
+        genProxyKey: () => "k",
+        paths: { configFile: "", dbFile: "", harnessDir: "" },
+      }) as never) as typeof createAppContext
+
+    const deps = buildRealDeps(factoryWithSpy)
+    // startProxy is the GUI-only path; trigger it and wait for the async load to complete
+    deps.startProxy(undefined)
+    // The async config.load() is deferred; flush the microtask queue
+    await Promise.resolve()
+    expect(reconcileOrphaned).toHaveBeenCalledTimes(1)
+  })
+
+  it("does NOT call reconcileOrphaned() when only runCli is invoked (CLI path)", async () => {
+    const reconcileOrphaned = mock(() => ({ ok: true as const, value: 0 }))
+    const factoryWithSpy = (() =>
+      ({
+        config: {
+          load: async () => ({
+            ok: true,
+            value: {
+              version: 2,
+              providers: [],
+              aliases: [],
+              settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+            },
+          }),
+        },
+        secrets: {},
+        sessions: {
+          create: () => ({ ok: true, value: {} }),
+          query: () => ({ ok: true, value: [] }),
+          init: () => ({ ok: true, value: undefined }),
+          reconcileOrphaned,
+        },
+        registry: { list: async () => ({ ok: true, value: [] }) },
+        launch: () => ({
+          ok: true,
+          value: { pid: 1, exited: Promise.resolve(0) },
+        }),
+        proxy: {
+          isRunning: async () => false,
+          start: () => ({ hostname: "127.0.0.1", port: 4000, stop: () => {} }),
+        },
+        factory: {},
+        gateway: {},
+        runtime: {
+          readProxyKey: async () => null,
+          writeProxyKey: async () => ({ ok: true, value: undefined }),
+          clear: async () => {},
+        },
+        testProvider: async () => ({
+          ok: true,
+          value: { ok: true, latencyMs: 0 },
+        }),
+        proxyPort: 4000,
+        proxyBaseUrl: "http://127.0.0.1:4000",
+        genProxyKey: () => "k",
+        paths: { configFile: "", dbFile: "", harnessDir: "" },
+      }) as never) as typeof createAppContext
+
+    const deps = buildRealDeps(factoryWithSpy)
+    // Only invoke the CLI path, never startProxy
+    await deps.runCli(["list"])
+    await Promise.resolve()
+    expect(reconcileOrphaned).toHaveBeenCalledTimes(0)
   })
 })
 
