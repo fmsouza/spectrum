@@ -19,6 +19,15 @@ CSS="$APP/Contents/Resources/app/views/main/app.css"
 grep -q ":root" "$CSS" && grep -q "nav\[aria-label" "$CSS" \
   || { echo "FAIL: built app.css is missing the app theme (xterm CSS likely clobbered it)"; exit 1; }
 
+echo "==> verifying app.css matches the rail+master+detail shell (post-redesign)"
+# Guards against the CSS desyncing from the AppShell DOM again (the unstyled
+# master/detail regression): the 3-zone grid needs the master-column token, the
+# Sessions master nav, and the sessions-detail terminal container.
+grep -q -- "--master-w" "$CSS" \
+  && grep -q 'nav\[aria-label="Sessions"\]' "$CSS" \
+  && grep -q "\.sessions-detail" "$CSS" \
+  || { echo "FAIL: built app.css is out of sync with the rail+master+detail shell"; exit 1; }
+
 echo "==> launching app"
 open "$APP"
 trap 'pkill -f "LaunchKit-dev" 2>/dev/null || true' EXIT
