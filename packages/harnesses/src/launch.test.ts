@@ -121,7 +121,9 @@ describe("launchHarness", () => {
   })
 
   it("merges params.env on top of the rendered template env (params.env wins)", () => {
-    const resolver = createFakeCommandResolver({ claude: "/usr/local/bin/claude" })
+    const resolver = createFakeCommandResolver({
+      claude: "/usr/local/bin/claude",
+    })
     const r = resolveHarnessLaunch({ resolver })({
       ...params,
       env: { ANTHROPIC_MODEL: "override-model", EXTRA: "1" },
@@ -134,15 +136,22 @@ describe("launchHarness", () => {
   })
 
   it("passes cwd through to the spawner on launch", () => {
-    const resolver = createFakeCommandResolver({ claude: "/usr/local/bin/claude" })
+    const resolver = createFakeCommandResolver({
+      claude: "/usr/local/bin/claude",
+    })
     const spawner = createRecordingProcessSpawner(5)
-    const r = launchHarness({ resolver, spawner })({ ...params, cwd: "/work/dir" })
+    const r = launchHarness({ resolver, spawner })({
+      ...params,
+      cwd: "/work/dir",
+    })
     expect(r.ok).toBe(true)
     expect(spawner.calls[0]?.cwd).toBe("/work/dir")
   })
 
   it("spawns with the merged env when params.env is given", () => {
-    const resolver = createFakeCommandResolver({ claude: "/usr/local/bin/claude" })
+    const resolver = createFakeCommandResolver({
+      claude: "/usr/local/bin/claude",
+    })
     const spawner = createRecordingProcessSpawner(5)
     launchHarness({ resolver, spawner })({ ...params, env: { EXTRA: "yes" } })
     expect(spawner.calls[0]?.env.EXTRA).toBe("yes")

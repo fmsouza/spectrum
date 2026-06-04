@@ -75,7 +75,7 @@ export const createTerminalManager = (
       env: input.env,
       cols,
       rows,
-      cwd: input.cwd,
+      ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
     })
     if (isErr(handle)) {
       const note = new TextEncoder().encode(
@@ -107,8 +107,8 @@ export const createTerminalManager = (
     const session = deps.sessions.create({
       harnessId: input.harnessId,
       alias: input.alias,
-      name: input.name,
-      cwd: input.cwd,
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
     })
     if (isErr(session)) return session
     const id = session.value.id

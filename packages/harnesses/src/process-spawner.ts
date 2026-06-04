@@ -41,7 +41,7 @@ export const createRecordingProcessSpawner = (
   return {
     calls,
     spawn: (command, args, env, cwd): Result<SpawnedProcess, HarnessError> => {
-      calls.push({ command, args, env, cwd })
+      calls.push({ command, args, env, ...(cwd !== undefined ? { cwd } : {}) })
       return ok({ pid, exited: Promise.resolve(exitCode) })
     },
   }

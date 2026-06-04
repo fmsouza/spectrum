@@ -42,7 +42,12 @@ import {
   loadSdk,
   startProxy,
 } from "@launchkit/proxy"
-import { createFfiPty, createTerminalManager } from "@launchkit/pty"
+import {
+  createBunScrollbackFs,
+  createFfiPty,
+  createFileScrollbackStore,
+  createTerminalManager,
+} from "@launchkit/pty"
 import {
   createBunProcessRunner,
   createMacosSecurityBackend,
@@ -242,6 +247,7 @@ export const createAppContext = (
   const configFile = join(configDir, "config.json")
   const dbFile = join(configDir, "launchkit.db")
   const harnessDir = join(configDir, "harnesses")
+  const scrollbackDir = join(configDir, "scrollback")
   const runtimeFile = join(configDir, "runtime.json")
 
   // config: cached( file( fs(configFile) ) )
@@ -290,9 +296,14 @@ export const createAppContext = (
 
   // terminal: the GUI embedded-terminal engine over a real FFI pty + the session store. Its `send`
   // sink is a no-op until window.ts binds the real Electrobun `messages` channel via `bindSend`.
+  const scrollback = createFileScrollbackStore({
+    dir: scrollbackDir,
+    fs: createBunScrollbackFs(),
+  })
   const terminal = deps.createTerminalManager({
     pty: deps.createFfiPty(),
     sessions: { create: sessions.create, close: sessions.close },
+    scrollback,
     send: () => {},
     capBytes: 1_000_000,
     defaultSize: { cols: 80, rows: 24 },

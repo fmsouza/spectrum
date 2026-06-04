@@ -60,7 +60,10 @@ const makeDeps = (): {
       pty: { open: () => ok(pty) },
       sessions: {
         create: (input) => {
-          created.push({ name: input.name, cwd: input.cwd })
+          created.push({
+            ...(input.name !== undefined ? { name: input.name } : {}),
+            ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
+          })
           return ok(fakeSession)
         },
         close: (id, code) => {
@@ -205,7 +208,7 @@ describe("createTerminalManager", () => {
       ...deps,
       pty: {
         open: (opts) => {
-          opened.push({ cwd: opts.cwd })
+          opened.push({ ...(opts.cwd !== undefined ? { cwd: opts.cwd } : {}) })
           return ok(pty)
         },
       },

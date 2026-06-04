@@ -37,7 +37,7 @@ export const createBunProcessSpawner = (): ProcessSpawner => ({
       // TERM/etc. to function, while the rendered vars (proxy base-url + per-run key) WIN over any
       // pre-existing ones in the user's shell so the proxy stays authoritative.
       const child = Bun.spawn([command, ...args], {
-        cwd,
+        ...(cwd !== undefined ? { cwd } : {}),
         env: { ...process.env, ...env },
         stdio: ["inherit", "inherit", "inherit"],
       })

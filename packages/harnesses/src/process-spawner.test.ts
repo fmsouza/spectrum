@@ -16,7 +16,6 @@ describe("createRecordingProcessSpawner", () => {
         command: "/usr/local/bin/claude",
         args: [],
         env: { ANTHROPIC_API_KEY: "k" },
-        cwd: undefined,
       },
     ])
   })
