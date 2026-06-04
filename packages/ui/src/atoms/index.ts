@@ -1,4 +1,5 @@
 export * from "./Button"
+export * from "./IconButton"
 export * from "./Label"
 export * from "./Modal"
 export * from "./Badge"
