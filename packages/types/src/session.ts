@@ -9,8 +9,8 @@ export const SessionSchema = z
     startedAt: z.string().datetime(),
     endedAt: z.string().datetime().optional(),
     exitCode: z.number().int().optional(),
-    name: z.string().optional(),
-    cwd: z.string().optional(),
+    name: z.string().min(1).optional(),
+    cwd: z.string().min(1).optional(),
   })
   .strict()
 

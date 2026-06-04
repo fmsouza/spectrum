@@ -38,4 +38,10 @@ describe("SessionSchema", () => {
       SessionSchema.safeParse({ ...open, startedAt: "yesterday" }).success,
     ).toBe(false)
   })
+  it("rejects a session with an empty name", () => {
+    expect(SessionSchema.safeParse({ ...open, name: "" }).success).toBe(false)
+  })
+  it("rejects a session with an empty cwd", () => {
+    expect(SessionSchema.safeParse({ ...open, cwd: "" }).success).toBe(false)
+  })
 })
