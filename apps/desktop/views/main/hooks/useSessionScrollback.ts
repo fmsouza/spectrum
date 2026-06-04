@@ -1,5 +1,9 @@
 import type { IpcError } from "@launchkit/ipc"
-import { base64ToBytes } from "@launchkit/pty"
+// Import from the `/protocol` subpath (not the `@launchkit/pty` barrel) so the
+// browser view bundle never pulls in `ffi-pty` (a `bun:ffi` module that can't
+// build for the webview target). `clients.ts` uses the same subpath for the pty
+// protocol types. `base64ToBytes` is a pure helper defined in protocol.ts.
+import { base64ToBytes } from "@launchkit/pty/protocol"
 import type { SessionId } from "@launchkit/types"
 import { type Result, ok } from "@launchkit/utils"
 import { useCallback } from "react"
