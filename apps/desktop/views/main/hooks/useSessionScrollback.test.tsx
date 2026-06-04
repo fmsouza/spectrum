@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
 import { bytesToBase64 } from "@launchkit/pty"
 import type { SessionId } from "@launchkit/types"
+import { render, waitFor } from "@testing-library/react"
 import { IpcClientProvider } from "../IpcClientContext"
 import { createFakeIpcClient } from "../test/fake-client"
 import { useSessionScrollback } from "./useSessionScrollback"

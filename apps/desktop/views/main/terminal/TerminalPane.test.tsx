@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { render } from "@testing-library/react"
 import type { SessionId } from "@launchkit/types"
+import { render } from "@testing-library/react"
 import { TerminalPane, type XtermInstance } from "./TerminalPane"
 import type { TerminalClient } from "./terminalClient"
 

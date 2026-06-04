@@ -1,5 +1,5 @@
-import { base64ToBytes } from "@launchkit/pty"
 import type { IpcError } from "@launchkit/ipc"
+import { base64ToBytes } from "@launchkit/pty"
 import type { SessionId } from "@launchkit/types"
 import { type Result, ok } from "@launchkit/utils"
 import { useCallback } from "react"

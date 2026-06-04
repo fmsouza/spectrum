@@ -49,7 +49,9 @@ describe("useSessions", () => {
         <RunningProbe />
       </IpcClientProvider>,
     )
-    await waitFor(() => expect(client.calls.getSessions.length).toBeGreaterThan(0))
+    await waitFor(() =>
+      expect(client.calls.getSessions.length).toBeGreaterThan(0),
+    )
     expect(client.calls.getSessions[0]).toEqual({ running: true })
   })
 })
