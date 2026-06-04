@@ -69,7 +69,9 @@ describe("createFileScrollbackStore", () => {
     const fs = createMemoryScrollbackFs()
     const store = createFileScrollbackStore({ dir: "/scroll", fs })
     store.append(id, enc("hi"))
-    expect(fs.exists("/scroll/s_00000000-0000-4000-8000-000000000000.bin")).toBe(true)
+    expect(
+      fs.exists("/scroll/s_00000000-0000-4000-8000-000000000000.bin"),
+    ).toBe(true)
   })
 
   it("returns an empty buffer when reading a session that has no data yet", () => {
@@ -107,7 +109,9 @@ describe("createFileScrollbackStore", () => {
     const r = store.read(id)
     // read = concat(.1.bin, main) = "AABB" + "CC"
     expect(r.ok && dec(r.value)).toBe("AABBCC")
-    expect(fs.exists("/scroll/s_00000000-0000-4000-8000-000000000000.1.bin")).toBe(true)
+    expect(
+      fs.exists("/scroll/s_00000000-0000-4000-8000-000000000000.1.bin"),
+    ).toBe(true)
   })
 
   it("keeps only one rotation generation, replacing a prior .1.bin on the next rotation", () => {

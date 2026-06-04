@@ -41,7 +41,10 @@ export const createMemoryScrollbackFs = (): ScrollbackFs => {
       if (!files.has(path)) files.set(path, new Uint8Array(0))
       return ok({
         write: (chunk): Result<void, PtyError> => {
-          files.set(path, concatBytes(files.get(path) ?? new Uint8Array(0), chunk))
+          files.set(
+            path,
+            concatBytes(files.get(path) ?? new Uint8Array(0), chunk),
+          )
           return ok(undefined)
         },
         close: (): Result<void, PtyError> => ok(undefined),
@@ -80,7 +83,12 @@ const DEFAULT_CAP_BYTES = 1024 * 1024
 /** Reject ids that are empty or could escape `dir` (separators / parent refs). */
 const safeId = (id: SessionId): Result<string, PtyError> => {
   const s = String(id)
-  if (s.length === 0 || s.includes("/") || s.includes("\\") || s.includes("..")) {
+  if (
+    s.length === 0 ||
+    s.includes("/") ||
+    s.includes("\\") ||
+    s.includes("..")
+  ) {
     return err({ kind: "scrollback-io", detail: `unsafe session id: ${s}` })
   }
   return ok(s)
@@ -93,7 +101,10 @@ export const createFileScrollbackStore = (deps: {
 }): ScrollbackStore => {
   const capBytes = deps.capBytes ?? DEFAULT_CAP_BYTES
   // Per-session open append writer + the byte count written to the CURRENT <id>.bin (reset on rotate).
-  const open = new Map<string, { writer: ScrollbackAppendWriter; bytes: number }>()
+  const open = new Map<
+    string,
+    { writer: ScrollbackAppendWriter; bytes: number }
+  >()
 
   const mainPath = (safe: string): string => `${deps.dir}/${safe}.bin`
   const rotatedPath = (safe: string): string => `${deps.dir}/${safe}.1.bin`
@@ -128,7 +139,10 @@ export const createFileScrollbackStore = (deps: {
           const removed = deps.fs.unlink(rotatedPath(safe.value))
           if (!removed.ok) return removed
         }
-        const renamed = deps.fs.rename(mainPath(safe.value), rotatedPath(safe.value))
+        const renamed = deps.fs.rename(
+          mainPath(safe.value),
+          rotatedPath(safe.value),
+        )
         if (!renamed.ok) return renamed
         // Next append re-opens a fresh <id>.bin via writerFor (map entry already deleted).
       }
@@ -191,7 +205,8 @@ export const createBunScrollbackFs = (): ScrollbackFs => ({
             sink.flush()
             return ok(undefined)
           } catch (cause) {
-            const detail = cause instanceof Error ? cause.message : String(cause)
+            const detail =
+              cause instanceof Error ? cause.message : String(cause)
             return err({ kind: "scrollback-io", detail })
           }
         },
@@ -200,7 +215,8 @@ export const createBunScrollbackFs = (): ScrollbackFs => ({
             sink.end()
             return ok(undefined)
           } catch (cause) {
-            const detail = cause instanceof Error ? cause.message : String(cause)
+            const detail =
+              cause instanceof Error ? cause.message : String(cause)
             return err({ kind: "scrollback-io", detail })
           }
         },
@@ -248,7 +264,10 @@ export const createMemoryScrollbackStore = (): ScrollbackStore => {
     append: (id, chunk): Result<void, PtyError> => {
       const safe = safeId(id)
       if (!safe.ok) return safe
-      bufs.set(safe.value, concatBytes(bufs.get(safe.value) ?? new Uint8Array(0), chunk))
+      bufs.set(
+        safe.value,
+        concatBytes(bufs.get(safe.value) ?? new Uint8Array(0), chunk),
+      )
       return ok(undefined)
     },
     read: (id): Result<Uint8Array, PtyError> => {
