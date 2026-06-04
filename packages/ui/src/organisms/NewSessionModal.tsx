@@ -5,7 +5,7 @@ import type {
   ModelAlias,
   Profile,
 } from "@launchkit/types"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { ReactElement } from "react"
 import { Button } from "../atoms/Button"
 import { Modal } from "../atoms/Modal"
@@ -67,6 +67,27 @@ export const NewSessionModal = ({
     save: false,
     saveName: "",
   })
+
+  // Fix 1: sync cwd field whenever the folder prop changes (Browse flow)
+  useEffect(() => {
+    setState((prev) => ({ ...prev, cwd: folder }))
+  }, [folder])
+
+  // Fix 3: reset form when the modal is reopened
+  useEffect(() => {
+    if (open) {
+      setState({
+        name: "",
+        cwd: folder,
+        profileId: "",
+        harnessId: firstHarness,
+        alias: firstAlias,
+        env: {},
+        save: false,
+        saveName: "",
+      })
+    }
+  }, [open, folder, firstHarness, firstAlias])
 
   const update = <K extends keyof FormState>(
     key: K,

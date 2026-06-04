@@ -18,10 +18,13 @@ export const ProfileList = ({
 }: ProfileListProps): ReactElement => {
   if (profiles.length === 0) {
     return (
-      <EmptyState
-        title="No profiles yet"
-        hint="Save a launch configuration as a profile to reuse it."
-      />
+      <div>
+        <Button onClick={() => onAdd()}>Add profile</Button>
+        <EmptyState
+          title="No profiles yet"
+          hint="Save a launch configuration as a profile to reuse it."
+        />
+      </div>
     )
   }
   return (

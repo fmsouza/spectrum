@@ -113,4 +113,21 @@ describe("NewSessionModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /cancel/i }))
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
+
+  it("syncs folder input when folder prop changes (Fix 1)", () => {
+    const { rerender } = render(<NewSessionModal {...baseProps} folder="/a" />)
+    expect(screen.getByRole("textbox", { name: /folder/i })).toHaveValue("/a")
+    rerender(<NewSessionModal {...baseProps} folder="/b" />)
+    expect(screen.getByRole("textbox", { name: /folder/i })).toHaveValue("/b")
+  })
+
+  it("resets form state when modal is reopened (Fix 3)", () => {
+    const { rerender } = render(<NewSessionModal {...baseProps} open />)
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Old name" },
+    })
+    rerender(<NewSessionModal {...baseProps} open={false} />)
+    rerender(<NewSessionModal {...baseProps} open />)
+    expect(screen.getByLabelText("Name")).toHaveValue("")
+  })
 })

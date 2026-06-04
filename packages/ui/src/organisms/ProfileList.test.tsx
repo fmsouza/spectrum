@@ -72,6 +72,22 @@ describe("ProfileList", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /edit/i })[0])
     expect(onEdit).toHaveBeenCalledWith(profiles[0])
   })
+  it("shows Add profile button in the empty state (Fix 2)", () => {
+    const onAdd = mock(() => {})
+    render(
+      <ProfileList
+        profiles={[]}
+        onAdd={onAdd}
+        onEdit={() => {}}
+        onDelete={() => {}}
+      />,
+    )
+    const btn = screen.getByRole("button", { name: /add profile/i })
+    expect(btn).toBeInTheDocument()
+    fireEvent.click(btn)
+    expect(onAdd).toHaveBeenCalledTimes(1)
+  })
+
   it("calls onDelete with the profile id when its delete button is clicked", () => {
     const onDelete = mock((_id: ProfileId) => {})
     render(

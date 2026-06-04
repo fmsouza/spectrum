@@ -26,6 +26,17 @@ export type ProfileFormProps = {
   readonly onCancel: () => void
 }
 
+/**
+ * Form for creating or editing a profile.
+ *
+ * IMPORTANT: callers MUST render this component with a React `key` tied to the
+ * profile id so that switching the edited profile re-initialises the form (it
+ * reads `initialValues` only on mount). For example:
+ *   `<ProfileForm key={profile.id} initialValues={...} ... />`
+ *
+ * This matches the HarnessForm convention. Do NOT add a useEffect([initialValues])
+ * — it would reset the form on every parent re-render.
+ */
 export const ProfileForm = ({
   initialValues,
   harnesses,

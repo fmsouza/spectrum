@@ -32,9 +32,11 @@ export const SessionRow = ({
         <span>{session.name ?? session.id}</span>
         {isRunning ? (
           <Badge tone="info">running</Badge>
+        ) : session.exitCode === undefined ? (
+          <Badge tone="neutral">ended</Badge>
         ) : (
           <Badge tone={session.exitCode === 0 ? "success" : "danger"}>
-            {`exit ${session.exitCode ?? "?"}`}
+            {`exit ${session.exitCode}`}
           </Badge>
         )}
       </span>

@@ -45,7 +45,9 @@ export const AppShell = ({
         label={proxyRunning ? "proxy running" : "proxy stopped"}
       />
     </nav>
-    <aside>{master}</aside>
+    <nav aria-label={mode === "sessions" ? "Sessions" : "Settings"}>
+      {master}
+    </nav>
     <main>{detail}</main>
   </div>
 )

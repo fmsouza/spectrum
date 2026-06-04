@@ -113,6 +113,28 @@ describe("SessionRow", () => {
     )
     expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true")
   })
+  it("shows a neutral-tone ended badge when exitCode is undefined (Fix 6)", () => {
+    const ended = {
+      id: "s_3",
+      harnessId: "claude",
+      alias: "default",
+      startedAt: "2026-06-04T10:00:00.000Z",
+      endedAt: "2026-06-04T10:05:00.000Z",
+      cwd: "/tmp",
+    } as unknown as Session
+    render(
+      <SessionRow
+        session={ended}
+        harnessName="Claude Code"
+        model="sonnet"
+        selected={false}
+        onSelect={() => {}}
+      />,
+    )
+    const badge = screen.getByText("ended")
+    expect(badge).toHaveAttribute("data-tone", "neutral")
+  })
+
   it("calls onSelect when the row is clicked", () => {
     const onSelect = mock(() => {})
     render(

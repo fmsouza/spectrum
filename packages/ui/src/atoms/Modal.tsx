@@ -39,6 +39,7 @@ export const Modal = ({
       <dialog
         ref={dialogRef}
         aria-label={title}
+        aria-modal="true"
         tabIndex={-1}
         open
         onClick={(e) => e.stopPropagation()}
