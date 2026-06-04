@@ -43,10 +43,10 @@ const parseView = (raw: string): View => {
  * Uses the typed `detail` (the only message-bearing field — no stack/secrets),
  * falling back to the `kind` when a handler returned no detail.
  */
-const ipcErrorMessage = (error: IpcError): string =>
+const ipcErrorMessage = (prefix: string, error: IpcError): string =>
   error.detail.trim() === ""
-    ? `Could not launch session (${error.kind}).`
-    : `Could not launch session: ${error.detail}`
+    ? `${prefix} (${error.kind}).`
+    : `${prefix}: ${error.detail}`
 
 /** Encode a `View` back to its hash representation. */
 const encodeView = (view: View): string =>
@@ -144,7 +144,9 @@ const AppInner = ({
   const onBrowse = async (): Promise<void> => {
     const r = await client.pickFolder({})
     if (!r.ok) {
-      setLaunchError(ipcErrorMessage(r.error))
+      setLaunchError(
+        ipcErrorMessage("Couldn't open the folder picker", r.error),
+      )
       return
     }
     if (r.value.path !== undefined && r.value.path !== "")
@@ -164,7 +166,7 @@ const AppInner = ({
     })
     if (!r.ok) {
       // Surface the failure in the modal (keep it open) instead of swallowing it.
-      setLaunchError(ipcErrorMessage(r.error))
+      setLaunchError(ipcErrorMessage("Could not launch session", r.error))
       return
     }
     setLaunchError(undefined)

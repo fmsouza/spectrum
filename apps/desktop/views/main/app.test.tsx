@@ -707,4 +707,52 @@ describe("App view model", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(/dialog failed/i),
     )
   })
+
+  it("uses a folder-picker error label (not 'Could not launch session') when pickFolder fails", async () => {
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getHarnesses: async () => ({
+        ok: true as const,
+        value: [
+          {
+            id: "claude",
+            name: "Claude Code",
+            command: "claude",
+            apiFormat: "anthropic",
+            envTemplate: {},
+            defaultAlias: "fast",
+            builtIn: true,
+          },
+        ],
+      }),
+      getAliases: async () => ({
+        ok: true as const,
+        value: [
+          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
+        ],
+      }),
+      pickFolder: async () => ({
+        ok: false as const,
+        error: { kind: "handler-failed" as const, detail: "access denied" },
+      }),
+    })
+    render(
+      <App
+        client={client}
+        terminalClient={fakeTerminalClient}
+        createTerminal={fakeXterm}
+        initialView="sessions"
+      />,
+    )
+    fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
+    await screen.findByRole("button", { name: /launch/i })
+    fireEvent.click(screen.getByRole("button", { name: /browse/i }))
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/folder picker/i),
+    )
+    // Must NOT use the session-launch label for a folder-picker failure
+    expect(screen.getByRole("alert")).not.toHaveTextContent(
+      /could not launch session/i,
+    )
+  })
 })
