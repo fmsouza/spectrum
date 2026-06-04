@@ -1,5 +1,6 @@
 export * from "./AliasRow"
 export * from "./EmptyState"
+export * from "./FolderField"
 export * from "./FormField"
 export * from "./ProviderCard"
 export * from "./RailItem"
