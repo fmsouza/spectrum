@@ -100,6 +100,8 @@ describe("createSessionStore.create", () => {
       "claude",
       "default",
       "2026-05-23T10:00:00.000Z",
+      null,
+      null,
     ])
   })
 
@@ -357,5 +359,97 @@ describe("SessionInput and SessionFilter shapes", () => {
     expect(filter.running).toBe(true)
     expect(filter.limit).toBe(10)
     expect(filter.offset).toBe(5)
+  })
+})
+
+describe("createSessionStore.create with name and cwd", () => {
+  it("returns a Session carrying name and cwd when create() is given them", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    const r = store.create({
+      harnessId: "claude" as never,
+      alias: "default" as never,
+      name: "nightly",
+      cwd: "/work/app",
+    })
+    expect(isOk(r) && r.value).toEqual<
+      | false
+      | {
+          id: string
+          harnessId: string
+          alias: string
+          startedAt: string
+          name: string
+          cwd: string
+        }
+    >({
+      id: "s_1",
+      harnessId: "claude",
+      alias: "default",
+      startedAt: "2026-05-23T10:00:00.000Z",
+      name: "nightly",
+      cwd: "/work/app",
+    })
+  })
+
+  it("omits name and cwd from the returned Session when create() is not given them", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    const r = store.create({
+      harnessId: "claude" as never,
+      alias: "default" as never,
+    })
+    expect(isOk(r) && r.value).toEqual<
+      | false
+      | { id: string; harnessId: string; alias: string; startedAt: string }
+    >({
+      id: "s_1",
+      harnessId: "claude",
+      alias: "default",
+      startedAt: "2026-05-23T10:00:00.000Z",
+    })
+  })
+
+  it("binds name and cwd in params and never interpolates them when create() runs", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.create({
+      harnessId: "claude" as never,
+      alias: "default" as never,
+      name: "nightly",
+      cwd: "/work/app",
+    })
+    const insert = deps.db.statements().find((s) => /^\s*INSERT/i.test(s.sql))
+    expect(insert?.sql).toContain("name")
+    expect(insert?.sql).toContain("cwd")
+    expect(insert?.sql).not.toContain("nightly")
+    expect(insert?.sql).not.toContain("/work/app")
+    expect(insert?.params).toEqual([
+      "s_1",
+      "claude",
+      "default",
+      "2026-05-23T10:00:00.000Z",
+      "nightly",
+      "/work/app",
+    ])
+  })
+
+  it("binds null for an omitted name and cwd when create() runs without them", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.create({ harnessId: "claude" as never, alias: "default" as never })
+    const insert = deps.db.statements().find((s) => /^\s*INSERT/i.test(s.sql))
+    expect(insert?.params).toEqual([
+      "s_1",
+      "claude",
+      "default",
+      "2026-05-23T10:00:00.000Z",
+      null,
+      null,
+    ])
   })
 })

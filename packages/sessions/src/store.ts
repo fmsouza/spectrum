@@ -55,14 +55,14 @@ const PRAGMA_COLUMNS = "PRAGMA table_info(sessions)"
 const ADD_COLUMN_NAME = "ALTER TABLE sessions ADD COLUMN name TEXT"
 const ADD_COLUMN_CWD = "ALTER TABLE sessions ADD COLUMN cwd TEXT"
 const INSERT_SESSION =
-  "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)"
+  "INSERT INTO sessions (id, harnessId, alias, startedAt, name, cwd) VALUES (?, ?, ?, ?, ?, ?)"
 const UPDATE_CLOSE =
   "UPDATE sessions SET endedAt = ?, exitCode = ? WHERE id = ?"
 const SELECT_COLUMNS =
   "SELECT id, harnessId, alias, startedAt, endedAt, exitCode FROM sessions"
 const SELECT_BY_ID = `${SELECT_COLUMNS} WHERE id = ?`
 
-/** Map a raw sqlite row into a Session, dropping NULL endedAt/exitCode. */
+/** Map a raw sqlite row into a Session, dropping NULL endedAt/exitCode/name/cwd. */
 const toSession = (row: Record<string, unknown>): Session => {
   const base: Session = {
     id: row.id as SessionId,
@@ -72,10 +72,14 @@ const toSession = (row: Record<string, unknown>): Session => {
   }
   const endedAt = row.endedAt
   const exitCode = row.exitCode
+  const name = row.name
+  const cwd = row.cwd
   return {
     ...base,
     ...(typeof endedAt === "string" ? { endedAt } : {}),
     ...(typeof exitCode === "number" ? { exitCode } : {}),
+    ...(typeof name === "string" ? { name } : {}),
+    ...(typeof cwd === "string" ? { cwd } : {}),
   }
 }
 
@@ -142,6 +146,8 @@ export const createSessionStore = (deps: {
         input.harnessId,
         input.alias,
         startedAt,
+        input.name ?? null,
+        input.cwd ?? null,
       ])
       if (isErr(written)) return written
       return ok({
@@ -149,6 +155,8 @@ export const createSessionStore = (deps: {
         harnessId: input.harnessId,
         alias: input.alias,
         startedAt,
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
       })
     },
     close: (id: SessionId, exitCode: number): Result<Session, SessionError> => {
