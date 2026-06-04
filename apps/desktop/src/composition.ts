@@ -35,7 +35,9 @@ import {
   resolveHarnessLaunch,
 } from "@launchkit/harnesses"
 import {
+  createFetchHttpGet,
   createFileRuntimeState,
+  createModelLister,
   createProviderFactory,
   createProviderTester,
   createRealGateway,
@@ -115,6 +117,15 @@ export interface AppContext {
   readonly testProvider: (
     providerId: string,
   ) => Promise<Result<ProviderTestResult, unknown>>
+  /**
+   * Discover the live model list for a provider: look up the provider in config, resolve its apiKey
+   * from the keychain (keyless providers such as ollama pass apiKey=undefined), then call the proxy
+   * ModelLister. SECURITY: the apiKey is resolved server-side and used only for the outbound request;
+   * it never crosses to the view.
+   */
+  readonly listProviderModels: (
+    providerId: string,
+  ) => Promise<Result<readonly string[], unknown>>
   /** The configured proxy port (from `config.settings.proxyPort`), surfaced for `getProxyStatus`. */
   readonly proxyPort: number
   /** The loopback proxy base URL (`http://127.0.0.1:<port>`), used by `proxy.isRunning`. */
@@ -256,6 +267,46 @@ const createTestProvider = (
 }
 
 /**
+ * Build the `listProviderModels` function that delegates to `@launchkit/proxy`'s
+ * `createModelLister`. Resolves the provider from the live config, resolves its apiKey
+ * from the keychain (keyless providers like ollama have no secrets — apiKey stays undefined),
+ * then calls the lister. The ModelLister is constructed once and closed over.
+ * SECURITY: apiKey is resolved from the keychain and passed only to the outbound HTTP request;
+ * it is never returned to the view.
+ */
+const createListProviderModels = (
+  config: ConfigStore,
+  secrets: import("@launchkit/secrets").SecretStore,
+): AppContext["listProviderModels"] => {
+  const lister = createModelLister({ httpGet: createFetchHttpGet() })
+  return async (providerId) => {
+    const loaded = await config.load()
+    if (!loaded.ok) return loaded
+    const provider = loaded.value.providers.find(
+      (p) => String(p.id) === providerId,
+    )
+    if (provider === undefined)
+      return err({ kind: "unknown-provider", providerId })
+
+    // Resolve the apiKey from the keychain. Providers without secrets (e.g. ollama) have an
+    // empty secrets record, so apiKey stays undefined — the lister handles that gracefully.
+    let apiKey: string | undefined
+    const apiKeyRef = provider.secrets.apiKey
+    if (apiKeyRef !== undefined) {
+      const got = await secrets.get(apiKeyRef)
+      if (!got.ok) return got
+      apiKey = got.value
+    }
+
+    return lister({
+      sdkProvider: provider.sdkProvider,
+      config: provider.config,
+      ...(apiKey !== undefined ? { apiKey } : {}),
+    })
+  }
+}
+
+/**
  * Construct the real adapters and inject them into the wired `AppContext`. FLAT and logic-free:
  * every line is a `create*` call wiring one dependency into the next — no branching, no IO logic
  * (that lives in the injected, separately-tested functions). All paths sit under
@@ -392,6 +443,7 @@ export const createAppContext = (
     testProvider: createTestProvider(config, factory, gateway, () =>
       deps.createSystemClock(),
     ),
+    listProviderModels: createListProviderModels(config, secrets),
     proxyPort,
     proxyBaseUrl,
     genProxyKey: deps.genProxyKey,

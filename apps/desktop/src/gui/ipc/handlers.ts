@@ -321,9 +321,11 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return { bytesBase64: bytesToBase64(read.value) }
     },
 
-    // ── Model discovery (stub — real handler lands in the next dispatch) ──────
-    listProviderModels: async () => {
-      return fail("listProviderModels: not yet implemented")
+    // ── Model discovery ────────────────────────────────────────────────────────
+    listProviderModels: async ({ providerId }) => {
+      const result = await ctx.listProviderModels(String(providerId))
+      if (!isOk(result)) return fail("could not list provider models")
+      return { models: [...result.value] }
     },
   }
 }

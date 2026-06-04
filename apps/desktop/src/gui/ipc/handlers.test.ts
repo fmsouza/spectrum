@@ -741,6 +741,48 @@ describe("createIpcHandlers.launchHarness (session metadata)", () => {
   })
 })
 
+// ── D.6 listProviderModels ────────────────────────────────────────────────────
+
+describe("createIpcHandlers.listProviderModels", () => {
+  it("returns { models } when ctx.listProviderModels resolves ok", async () => {
+    const { ctx } = makeCtx()
+    ;(ctx as { listProviderModels: unknown }).listProviderModels = async () =>
+      ok(["gpt-4o", "gpt-4o-mini"])
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.listProviderModels({ providerId: "p_openai" as never })
+
+    expect(result).toEqual({ models: ["gpt-4o", "gpt-4o-mini"] })
+  })
+
+  it("throws so the server surfaces handler-failed when ctx.listProviderModels returns err", async () => {
+    const { ctx } = makeCtx()
+    ;(ctx as { listProviderModels: unknown }).listProviderModels = async () =>
+      err({ kind: "unknown-provider", providerId: "p_ghost" })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.listProviderModels({ providerId: "p_ghost" as never }),
+    ).rejects.toThrow()
+  })
+
+  it("passes the providerId string to ctx.listProviderModels", async () => {
+    const calls: string[] = []
+    const { ctx } = makeCtx()
+    ;(ctx as { listProviderModels: unknown }).listProviderModels = async (
+      id: string,
+    ) => {
+      calls.push(id)
+      return ok(["llama3"])
+    }
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.listProviderModels({ providerId: "p_ollama" as never })
+
+    expect(calls).toEqual(["p_ollama"])
+  })
+})
+
 describe("createIpcHandlers.getSessions (running + pagination)", () => {
   it("passes running, limit, and offset through to sessions.query", async () => {
     const queries: unknown[] = []

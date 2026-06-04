@@ -71,6 +71,33 @@ const makeFakeDeps = (): {
   return { deps, calls }
 }
 
+describe("createAppContext listProviderModels wiring", () => {
+  it("exposes ctx.listProviderModels as a function on the context", () => {
+    const { deps } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+    expect(typeof ctx.listProviderModels).toBe("function")
+  })
+
+  it("returns err when the provider id is not found in the config", async () => {
+    const { deps } = makeFakeDeps()
+    // Override the fake config store to return a config with no providers.
+    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore = () => ({
+      load: async () =>
+        ok({
+          version: 2,
+          providers: [],
+          aliases: [],
+          profiles: [],
+          settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+        }),
+      save: async () => ok(undefined),
+    })
+    const ctx = createAppContext(deps)
+    const result = await ctx.listProviderModels("p_ghost")
+    expect(result.ok).toBe(false)
+  })
+})
+
 describe("createAppContext wiring", () => {
   it("builds the config store as a cached store wrapping a file store over an fs config file", () => {
     const { deps, calls } = makeFakeDeps()
