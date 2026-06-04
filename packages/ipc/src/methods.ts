@@ -5,6 +5,7 @@ import {
   ModelAliasSchema,
   ProviderIdSchema,
   SdkProviderSchema,
+  SessionIdSchema,
   SessionSchema,
 } from "@launchkit/types"
 import { z } from "zod"
@@ -124,7 +125,13 @@ export const LaunchHarnessParamsSchema = z
     alias: AliasNameSchema.optional(),
   })
   .strict()
-export const LaunchHarnessResultSchema = SessionSchema
+/**
+ * Launching now opens an embedded terminal session via the TerminalManager (which creates the
+ * Session internally), so the GUI only needs the new session's id back — not the full Session.
+ */
+export const LaunchHarnessResultSchema = z
+  .object({ sessionId: SessionIdSchema })
+  .strict()
 
 // ── Sessions & proxy ──────────────────────────────────────────────────────────
 
@@ -143,6 +150,13 @@ export const GetProxyStatusResultSchema = z
     running: z.boolean(),
     port: z.number().int().nonnegative(),
   })
+  .strict()
+
+// The webview asks for the dedicated terminal WebSocket URL (a loopback ws the bun side serves for
+// the PTY byte stream — see apps/desktop/src/gui/terminal-socket.ts) and connects to it directly.
+export const GetTerminalSocketUrlParamsSchema = z.undefined()
+export const GetTerminalSocketUrlResultSchema = z
+  .object({ url: z.string() })
   .strict()
 
 // ── The method → {params, result} schema map ──────────────────────────────────
@@ -213,6 +227,10 @@ export const IpcMethodSchemas = {
   getProxyStatus: {
     params: GetProxyStatusParamsSchema,
     result: GetProxyStatusResultSchema,
+  },
+  getTerminalSocketUrl: {
+    params: GetTerminalSocketUrlParamsSchema,
+    result: GetTerminalSocketUrlResultSchema,
   },
 } as const
 

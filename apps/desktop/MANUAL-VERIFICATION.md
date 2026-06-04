@@ -18,6 +18,19 @@ the native window, the native tray, and click-through behavior. Check each box o
 - [ ] **Open LaunchKit** focuses/opens the main window.
 - [ ] **Quit** exits the app (window + tray disappear).
 
+## Embedded terminal (terminal feature)
+- [ ] Clicking **Launch Claude Code** (Dashboard quick-launch) opens the **Terminal** tab with the
+      Claude Code TUI rendered and **interactive** — you can type and see the agent respond (routed
+      through the loopback proxy, so a provider + the `default` alias must be configured first).
+- [ ] Resizing the window reflows the terminal (the TUI uses the new width/height).
+- [ ] Launching a **second** harness opens a **second tab**; both run concurrently and you can switch
+      between them (each preserves its own scrollback).
+- [ ] Navigating to another page (Providers/etc.) and back to **Terminal** keeps the session live and
+      its scrollback intact.
+- [ ] **Closing a tab** (×) terminates that harness; the **Sessions** page shows it closed with an
+      exit code (no longer "running").
+- [ ] The tray **Launch** also opens the window to a new terminal tab.
+
 ## CLI mode
 - [ ] `launchkit list harnesses` prints the built-in harness ids (no window opens).
 - [ ] `launchkit list providers` prints provider ids/names and **never** prints a secret value or ref.

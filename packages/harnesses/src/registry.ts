@@ -10,6 +10,8 @@ import { validateEnvTemplate } from "./validate-env-template"
 
 export interface HarnessRegistry {
   list(): Promise<Result<readonly HarnessDefinition[], HarnessError>>
+  add(definition: unknown): Promise<Result<void, HarnessError>>
+  remove(id: string): Promise<Result<void, HarnessError>>
 }
 
 export const createRegistry = (deps: {
@@ -48,5 +50,40 @@ export const createRegistry = (deps: {
     }
 
     return ok([...builtinHarnesses, ...userDefs])
+  },
+
+  add: async (definition: unknown): Promise<Result<void, HarnessError>> => {
+    // Force builtIn:false so a user file can never masquerade as a built-in,
+    // then validate the resulting shape against the strict schema.
+    const candidate =
+      typeof definition === "object" && definition !== null
+        ? { ...(definition as Record<string, unknown>), builtIn: false }
+        : definition
+
+    const parsed = HarnessDefinitionSchema.safeParse(candidate)
+    if (!parsed.success) {
+      return err({ kind: "invalid-definition", detail: parsed.error.message })
+    }
+    const def = parsed.data
+
+    const builtInIds = new Set(builtinHarnesses.map((h) => h.id))
+    if (builtInIds.has(def.id)) {
+      return err({ kind: "duplicate-id", id: def.id })
+    }
+
+    const env = validateEnvTemplate(def.envTemplate)
+    if (isErr(env)) return env
+
+    return deps.fileSource.writeDefinition(def)
+  },
+
+  remove: async (id: string): Promise<Result<void, HarnessError>> => {
+    // Built-ins are not files on disk and can never be removed.
+    const builtInIds = new Set(builtinHarnesses.map((h) => h.id))
+    if (builtInIds.has(id as HarnessDefinition["id"])) {
+      // built-ins are not files; reuse duplicate-id to signal "id belongs to a built-in, not removable"
+      return err({ kind: "duplicate-id", id: id as HarnessDefinition["id"] })
+    }
+    return deps.fileSource.deleteDefinition(id)
   },
 })

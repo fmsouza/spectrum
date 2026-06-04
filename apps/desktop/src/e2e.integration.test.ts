@@ -88,7 +88,10 @@ describe("LaunchKit end-to-end", () => {
       registry: {
         list: async () => ({ ok: true as const, value: builtinHarnesses }),
       },
-      launch: () => ({ ok: true as const, value: { pid: 1 } }),
+      launch: () => ({
+        ok: true as const,
+        value: { pid: 1, exited: Promise.resolve(0) },
+      }),
       proxy: {
         isRunning: async () => false,
         start: () => ({

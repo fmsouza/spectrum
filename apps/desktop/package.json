@@ -3,27 +3,36 @@
   "type": "module",
   "private": true,
   "version": "0.1.0",
-  "bin": { "launchkit": "./src/cli.ts" },
+  "bin": {
+    "launchkit": "./src/cli.ts"
+  },
   "scripts": {
     "build": "electrobun build",
+    "start": "electrobun dev",
+    "dev": "electrobun dev --watch",
     "compile": "bun build --compile --minify --outfile dist/launchkit-cli ./src/cli.ts",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "bun test"
   },
   "dependencies": {
-    "react": "^19",
-    "react-dom": "^19",
     "@launchkit/cli": "workspace:*",
     "@launchkit/config": "workspace:*",
     "@launchkit/harnesses": "workspace:*",
     "@launchkit/ipc": "workspace:*",
     "@launchkit/proxy": "workspace:*",
+    "@launchkit/pty": "workspace:*",
     "@launchkit/secrets": "workspace:*",
     "@launchkit/sessions": "workspace:*",
     "@launchkit/types": "workspace:*",
     "@launchkit/ui": "workspace:*",
     "@launchkit/utils": "workspace:*",
-    "electrobun": "^1.18.1"
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-webgl": "^0.19.0",
+    "@xterm/headless": "^6.0.0",
+    "@xterm/xterm": "^6.0.0",
+    "electrobun": "^1.18.1",
+    "react": "^19",
+    "react-dom": "^19"
   },
   "devDependencies": {
     "bun-types": "latest"

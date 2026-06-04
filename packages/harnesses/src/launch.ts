@@ -1,8 +1,8 @@
 import type { AliasName, HarnessDefinition } from "@launchkit/types"
-import { type Result, err, isErr, renderTemplate } from "@launchkit/utils"
+import { type Result, err, isErr, ok, renderTemplate } from "@launchkit/utils"
 import type { CommandResolver } from "./command-resolver"
 import type { HarnessError } from "./errors"
-import type { ProcessSpawner } from "./process-spawner"
+import type { ProcessSpawner, SpawnedProcess } from "./process-spawner"
 import { validateEnvTemplate } from "./validate-env-template"
 
 export interface LaunchParams {
@@ -12,12 +12,15 @@ export interface LaunchParams {
   readonly model: AliasName
 }
 
-export const launchHarness =
-  (deps: {
-    readonly resolver: CommandResolver
-    readonly spawner: ProcessSpawner
-  }) =>
-  (params: LaunchParams): Result<{ readonly pid: number }, HarnessError> => {
+export interface ResolvedHarnessLaunch {
+  readonly command: string
+  readonly args: readonly string[]
+  readonly env: Record<string, string>
+}
+
+export const resolveHarnessLaunch =
+  (deps: { readonly resolver: CommandResolver }) =>
+  (params: LaunchParams): Result<ResolvedHarnessLaunch, HarnessError> => {
     const { harness, proxyUrl, proxyKey, model } = params
 
     // 1. Restrict env-template tokens to the allowed three.
@@ -43,6 +46,20 @@ export const launchHarness =
       env[key] = rendered.value
     }
 
-    // 4. Spawn with an EMPTY argument array — never a shell string.
-    return deps.spawner.spawn(resolved.value, [], env)
+    return ok({ command: resolved.value, args: [], env })
+  }
+
+export const launchHarness =
+  (deps: {
+    readonly resolver: CommandResolver
+    readonly spawner: ProcessSpawner
+  }) =>
+  (params: LaunchParams): Result<SpawnedProcess, HarnessError> => {
+    const resolved = resolveHarnessLaunch({ resolver: deps.resolver })(params)
+    if (isErr(resolved)) return resolved
+
+    const { command, args, env } = resolved.value
+
+    // Spawn with an EMPTY argument array — never a shell string.
+    return deps.spawner.spawn(command, [...args], env)
   }
