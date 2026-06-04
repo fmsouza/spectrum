@@ -35,3 +35,6 @@ coverage/
 
 # Claude Code session worktrees (local only)
 .claude/worktrees/
+
+# Superpowers brainstorm scratch (visual companion mockups, local only)
+.superpowers/
