@@ -11,9 +11,10 @@ import type {
   RunningProxy,
   RuntimeState,
 } from "@launchkit/proxy"
-import type { TerminalManager } from "@launchkit/pty"
+import type { PtyError, TerminalManager } from "@launchkit/pty"
 import type { SecretStore } from "@launchkit/secrets"
 import type { SessionStore } from "@launchkit/sessions"
+import type { SessionId } from "@launchkit/types"
 import type { Result } from "@launchkit/utils"
 
 import { mkdirSync } from "node:fs"
@@ -134,6 +135,22 @@ export interface AppContext {
     readonly dbFile: string
     readonly harnessDir: string
   }
+  /**
+   * Open the native folder picker (Electrobun `Utils.openFileDialog`, directories only). Reached via
+   * a LAZY dynamic import so `bun test` never loads native FFI; resolves the selected paths ([] if
+   * cancelled). The `pickFolder` IPC handler maps the first path to `{ path }` (or `{}`).
+   */
+  readonly pickFolder: (opts: {
+    readonly startingFolder?: string
+  }) => Promise<readonly string[]>
+  /**
+   * Read a session's captured terminal bytes from the file-backed scrollback store, for the
+   * read-only replay pane. Returns the raw bytes; the `getSessionScrollback` handler base64-encodes
+   * them.
+   */
+  readonly readScrollback: (
+    id: SessionId,
+  ) => Result<Uint8Array, PtyError>
 }
 
 /**
@@ -343,6 +360,19 @@ export const createAppContext = (
       listAliases: () => opts.config.aliases.map((a) => String(a.alias)),
     })
 
+  // Native folder picker — behind a LAZY dynamic import so bun test never loads native FFI.
+  const pickFolder: AppContext["pickFolder"] = async (opts) => {
+    const { Utils } = await import("electrobun/bun")
+    return Utils.openFileDialog({
+      canChooseDirectory: true,
+      canChooseFiles: false,
+      allowsMultipleSelection: false,
+      ...(opts.startingFolder === undefined
+        ? {}
+        : { startingFolder: opts.startingFolder }),
+    })
+  }
+
   return {
     config,
     secrets,
@@ -364,6 +394,8 @@ export const createAppContext = (
     genProxyKey: deps.genProxyKey,
     terminal,
     terminalSocketUrl,
+    pickFolder,
+    readScrollback: scrollback.read,
     paths: { configFile, dbFile, harnessDir },
   }
 }
