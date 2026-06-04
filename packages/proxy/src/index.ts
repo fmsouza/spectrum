@@ -22,6 +22,8 @@ export { serializeOpenAIStream } from "./adapters/openai-stream"
 export { validateProviderConfig } from "./providers/config-schemas"
 export { createProviderTester } from "./provider-tester"
 export type { ProviderTester, ProviderTestResult } from "./provider-tester"
+export { createModelLister, createFetchHttpGet } from "./model-lister"
+export type { ModelLister, ModelListerInput, HttpGet } from "./model-lister"
 export {
   createInMemoryRuntimeState,
   createFileRuntimeState,
