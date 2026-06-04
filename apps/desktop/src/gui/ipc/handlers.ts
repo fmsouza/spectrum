@@ -1,5 +1,6 @@
 import type { IpcHandlers, ProviderView } from "@launchkit/ipc"
-import type { Provider, SecretRef } from "@launchkit/types"
+import { bytesToBase64 } from "@launchkit/pty"
+import type { Profile, ProfileId, Provider, SecretRef } from "@launchkit/types"
 import { isOk } from "@launchkit/utils"
 import type { AppContext } from "../../composition"
 
@@ -193,7 +194,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return null
     },
 
-    launchHarness: async ({ id, alias }) => {
+    launchHarness: async ({ id, alias, name, cwd, env }) => {
       const config = await loadConfig()
       const listed = await ctx.registry.list()
       if (!isOk(listed)) return fail("could not list harnesses")
@@ -215,14 +216,16 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       })
       if (!isOk(resolved)) return fail("failed to resolve harness launch")
 
-      // ... then open an embedded terminal session. The TerminalManager creates the Session itself,
-      // so the handler must NOT call ctx.sessions.create (that would double-record the session).
+      // Merge caller-supplied env ON TOP of the rendered proxy env (caller may add tokens/flags),
+      // and thread the optional session metadata through. The manager owns Session creation.
       const opened = ctx.terminal.launch({
         harnessId: harness.id,
         alias: resolvedAlias,
         command: resolved.value.command,
         args: resolved.value.args,
-        env: resolved.value.env,
+        env: { ...resolved.value.env, ...(env ?? {}) },
+        ...(name === undefined ? {} : { name }),
+        ...(cwd === undefined ? {} : { cwd }),
       })
       if (!isOk(opened)) return fail("failed to launch harness")
       return { sessionId: opened.value.sessionId }
@@ -250,19 +253,65 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
     getTerminalSocketUrl: async () => ({ url: ctx.terminalSocketUrl }),
 
     // ── Profiles ──────────────────────────────────────────────────────────────
-    // Desktop implementations wired in Phase 5 (profile-handler phase).
-    getProfiles: async () => fail("getProfiles: not yet implemented"),
-    addProfile: async () => fail("addProfile: not yet implemented"),
-    updateProfile: async () => fail("updateProfile: not yet implemented"),
-    deleteProfile: async () => fail("deleteProfile: not yet implemented"),
+    getProfiles: async () => {
+      const config = await loadConfig()
+      return config.profiles
+    },
+
+    addProfile: async (input) => {
+      const config = await loadConfig()
+      // Mint the id the same way addProvider mints provider ids (crypto.randomUUID + typed prefix).
+      const profile: Profile = {
+        id: `pr_${crypto.randomUUID()}` as ProfileId,
+        name: input.name,
+        harnessId: input.harnessId,
+        alias: input.alias,
+        env: input.env,
+      }
+      const saved = await ctx.config.save({
+        ...config,
+        profiles: [...config.profiles, profile],
+      })
+      if (!isOk(saved)) return fail("could not save profile")
+      return profile
+    },
+
+    updateProfile: async (profile) => {
+      const config = await loadConfig()
+      const existing = config.profiles.find((p) => p.id === profile.id)
+      if (existing === undefined)
+        return fail(`unknown profile: ${String(profile.id)}`)
+      const profiles = config.profiles.map((p) =>
+        p.id === profile.id ? profile : p,
+      )
+      const saved = await ctx.config.save({ ...config, profiles })
+      if (!isOk(saved)) return fail("could not save profile")
+      return profile
+    },
+
+    deleteProfile: async ({ id }) => {
+      const config = await loadConfig()
+      const profiles = config.profiles.filter((p) => p.id !== id)
+      const saved = await ctx.config.save({ ...config, profiles })
+      if (!isOk(saved)) return fail("could not delete profile")
+      return null
+    },
 
     // ── Dialogs ───────────────────────────────────────────────────────────────
-    // Native folder picker wired in Phase 5.
-    pickFolder: async () => fail("pickFolder: not yet implemented"),
+    pickFolder: async (params) => {
+      const startingFolder = params?.startingFolder
+      const selected = await ctx.pickFolder(
+        startingFolder === undefined ? {} : { startingFolder },
+      )
+      const first = selected[0]
+      return first === undefined ? {} : { path: first }
+    },
 
     // ── Session scrollback ────────────────────────────────────────────────────
-    // Scrollback retrieval wired in Phase 5.
-    getSessionScrollback: async () =>
-      fail("getSessionScrollback: not yet implemented"),
+    getSessionScrollback: async ({ id }) => {
+      const read = ctx.readScrollback(id)
+      if (!isOk(read)) return fail("could not read session scrollback")
+      return { bytesBase64: bytesToBase64(read.value) }
+    },
   }
 }
