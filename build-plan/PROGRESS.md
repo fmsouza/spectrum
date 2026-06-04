@@ -215,7 +215,17 @@ Executed via `subagent-driven-development` (implementer + spec review + code-qua
 | C.1–C.6 | cli: profiles CRUD + `launch --profile/--name/--cwd` | done | 5f7279e…6055db6 |
 | U.1–U.12 | ui: Modal/SessionRow/SessionList/NewSessionModal/ProfileForm/AppShell… (+review: empty-state add, folder-sync, modal reset, a11y) | done | bc7a7fc…0ac4c17, 3ae20a3, aa204fe |
 | D.1–D.12 | desktop: handlers, composition, replay, app.tsx master/detail (+review: live→replay lifecycle, refetch on launch/exit, dead-page cleanup) | done | bdd565a…93a49b9, 553e906, 441d61e, 3565dcc |
-| FINAL | whole-repo gate + runtime verification | todo | |
+| FINAL | whole-repo gate + runtime verification | done | 7f96014 |
+
+**Status: complete.** Gate green end-to-end — `bun run typecheck` (12/12) + `bun run lint` (353 files,
+clean) + `bun test` (**737 pass, 0 fail**); `bunx electrobun build` exit 0; `apps/desktop/scripts/smoke.sh`
+PASS (app launches, proxy bound to loopback, `/health` ok). Built subagent-driven via TDD (implementer +
+spec-compliance review + code-quality review per phase; review found + fixed real bugs incl. an
+offset-without-LIMIT SQL error, a non-append scrollback writer + missing scrollback dir, a NewSessionModal
+Browse-wipes-form bug, and the live→replay session-lifecycle reconciliation). The eyes-on items (live xterm
+round-trip, native folder dialog, replay rendering) remain in `apps/desktop/MANUAL-VERIFICATION.md` for a real
+macOS GUI run. Follow-ups (non-blocking): surface launch/profile/dialog `Result` errors in the UI; bidirectional
+hash↔view (back/forward); Settings → General config import/export; global scrollback retention sweep.
 
 ## Status legend
 `todo` · `in-progress` · `done` · `blocked`
