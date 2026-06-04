@@ -724,6 +724,21 @@ describe("createIpcHandlers.launchHarness (session metadata)", () => {
     expect("name" in input).toBe(false)
     expect("cwd" in input).toBe(false)
   })
+
+  it("coerces empty/blank name and cwd to omitted (never creates a session named '')", async () => {
+    const { ctx, terminalInputs } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({
+      id: "claude" as never,
+      name: "",
+      cwd: "   ",
+    })
+
+    const input = terminalInputs[0] as Record<string, unknown>
+    expect("name" in input).toBe(false)
+    expect("cwd" in input).toBe(false)
+  })
 })
 
 describe("createIpcHandlers.getSessions (running + pagination)", () => {

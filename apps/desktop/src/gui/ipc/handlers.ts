@@ -216,6 +216,13 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       })
       if (!isOk(resolved)) return fail("failed to resolve harness launch")
 
+      // Defense in depth: coerce empty/blank name & cwd to undefined so no path
+      // ever creates a session with name:"" (which fails SessionSchema's min(1)
+      // on the next getSessions) or an empty cwd. The webview already omits them,
+      // but a future caller — or the tray — must not be able to slip a "" through.
+      const safeName = name?.trim() ? name : undefined
+      const safeCwd = cwd?.trim() ? cwd : undefined
+
       // Merge caller-supplied env ON TOP of the rendered proxy env (caller may add tokens/flags),
       // and thread the optional session metadata through. The manager owns Session creation.
       const opened = ctx.terminal.launch({
@@ -224,8 +231,8 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         command: resolved.value.command,
         args: resolved.value.args,
         env: { ...resolved.value.env, ...(env ?? {}) },
-        ...(name === undefined ? {} : { name }),
-        ...(cwd === undefined ? {} : { cwd }),
+        ...(safeName === undefined ? {} : { name: safeName }),
+        ...(safeCwd === undefined ? {} : { cwd: safeCwd }),
       })
       if (!isOk(opened)) return fail("failed to launch harness")
       return { sessionId: opened.value.sessionId }
