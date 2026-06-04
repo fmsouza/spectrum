@@ -14,7 +14,7 @@ export const Modal = ({
   onClose,
   children,
 }: ModalProps): ReactElement | null => {
-  const dialogRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
     if (open) dialogRef.current?.focus()
@@ -36,12 +36,11 @@ export const Modal = ({
         justifyContent: "center",
       }}
     >
-      <div
+      <dialog
         ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
         aria-label={title}
         tabIndex={-1}
+        open
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === "Escape") onClose()
@@ -54,7 +53,7 @@ export const Modal = ({
           </button>
         </header>
         <div>{children}</div>
-      </div>
+      </dialog>
     </div>
   )
 }
