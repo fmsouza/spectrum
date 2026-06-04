@@ -144,3 +144,54 @@ describe("createSessionStore.init column migration against real bun:sqlite", () 
     expect(cols).toContain("cwd")
   })
 })
+
+describe("createSessionStore.query running filter against real bun:sqlite", () => {
+  it("returns only open sessions when query() filters running true", () => {
+    const db = createBunSqliteDatabase(":memory:")
+    const store = createSessionStore({
+      db,
+      clock: createFixedClock(new Date("2026-05-23T10:00:00.000Z")),
+      idGen: createSequentialIdGen(),
+    })
+    store.init()
+    store.create({ harnessId: "claude" as never, alias: "default" as never })
+    store.create({ harnessId: "codex" as never, alias: "fast" as never })
+    store.close("s_1" as never, 0)
+
+    const open = store.query({ running: true })
+    expect(isOk(open) && open.value.map((s) => s.id)).toEqual<false | string[]>([
+      "s_2",
+    ])
+
+    const closed = store.query({ running: false })
+    expect(isOk(closed) && closed.value.map((s) => s.id)).toEqual<
+      false | string[]
+    >(["s_1"])
+  })
+
+  it("limits and offsets the startedAt DESC result when query() paginates against real bun:sqlite", () => {
+    const db = createBunSqliteDatabase(":memory:")
+    const store = createSessionStore({
+      db,
+      clock: createFixedClock(new Date("2026-05-23T10:00:00.000Z")),
+      idGen: createSequentialIdGen(),
+    })
+    store.init()
+    db.run(
+      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_a", "claude", "default", "2026-05-23T09:00:00.000Z"],
+    )
+    db.run(
+      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_b", "claude", "default", "2026-05-23T10:00:00.000Z"],
+    )
+    db.run(
+      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_c", "claude", "default", "2026-05-23T11:00:00.000Z"],
+    )
+    const page = store.query({ limit: 1, offset: 1 })
+    expect(isOk(page) && page.value.map((s) => s.id)).toEqual<false | string[]>([
+      "s_b",
+    ])
+  })
+})

@@ -453,3 +453,80 @@ describe("createSessionStore.create with name and cwd", () => {
     ])
   })
 })
+
+describe("createSessionStore.query with running, limit and offset", () => {
+  it("adds an endedAt IS NULL predicate with no extra param when query() filters running true", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query({ running: true })
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).toMatch(/WHERE endedAt IS NULL/i)
+    expect(select?.sql).toMatch(/ORDER BY startedAt DESC/i)
+    expect(select?.params).toEqual([])
+  })
+
+  it("adds an endedAt IS NOT NULL predicate when query() filters running false", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query({ running: false })
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).toMatch(/WHERE endedAt IS NOT NULL/i)
+    expect(select?.params).toEqual([])
+  })
+
+  it("combines a value filter and running with AND, binding only the value param, when query() filters both", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query({ harnessId: "claude" as never, running: true })
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).toMatch(/WHERE harnessId = \? AND endedAt IS NULL/i)
+    expect(select?.params).toEqual(["claude"])
+  })
+
+  it("appends LIMIT and OFFSET as bound params after ORDER BY when query() paginates", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query({ limit: 10, offset: 5 })
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).toMatch(/ORDER BY startedAt DESC LIMIT \? OFFSET \?/i)
+    expect(select?.sql).not.toContain("10")
+    expect(select?.sql).not.toContain("5")
+    expect(select?.params).toEqual([10, 5])
+  })
+
+  it("orders WHERE params before LIMIT and OFFSET params when query() filters and paginates", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query({
+      harnessId: "claude" as never,
+      since: "2026-05-23T00:00:00.000Z",
+      limit: 2,
+      offset: 4,
+    })
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).toMatch(
+      /WHERE harnessId = \? AND startedAt >= \? ORDER BY startedAt DESC LIMIT \? OFFSET \?/i,
+    )
+    expect(select?.params).toEqual([
+      "claude",
+      "2026-05-23T00:00:00.000Z",
+      2,
+      4,
+    ])
+  })
+
+  it("omits LIMIT and OFFSET from the sql when query() does not paginate", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.query()
+    const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
+    expect(select?.sql).not.toMatch(/LIMIT/i)
+    expect(select?.sql).not.toMatch(/OFFSET/i)
+  })
+})

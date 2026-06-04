@@ -59,7 +59,7 @@ const INSERT_SESSION =
 const UPDATE_CLOSE =
   "UPDATE sessions SET endedAt = ?, exitCode = ? WHERE id = ?"
 const SELECT_COLUMNS =
-  "SELECT id, harnessId, alias, startedAt, endedAt, exitCode FROM sessions"
+  "SELECT id, harnessId, alias, startedAt, endedAt, exitCode, name, cwd FROM sessions"
 const SELECT_BY_ID = `${SELECT_COLUMNS} WHERE id = ?`
 
 /** Map a raw sqlite row into a Session, dropping NULL endedAt/exitCode/name/cwd. */
@@ -100,6 +100,11 @@ const buildWhere = (
   if (filter.since !== undefined) {
     conditions.push("startedAt >= ?")
     params.push(filter.since)
+  }
+  if (filter.running === true) {
+    conditions.push("endedAt IS NULL")
+  } else if (filter.running === false) {
+    conditions.push("endedAt IS NOT NULL")
   }
   const clause =
     conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : ""
@@ -171,8 +176,18 @@ export const createSessionStore = (deps: {
     query: (
       filter?: SessionFilter,
     ): Result<readonly Session[], SessionError> => {
-      const { clause, params } = buildWhere(filter ?? {})
-      const sql = `${SELECT_COLUMNS}${clause} ORDER BY startedAt DESC`
+      const active = filter ?? {}
+      const { clause, params: whereParams } = buildWhere(active)
+      const params: unknown[] = [...whereParams]
+      let sql = `${SELECT_COLUMNS}${clause} ORDER BY startedAt DESC`
+      if (active.limit !== undefined) {
+        sql += " LIMIT ?"
+        params.push(active.limit)
+      }
+      if (active.offset !== undefined) {
+        sql += " OFFSET ?"
+        params.push(active.offset)
+      }
       const rows = db.all(sql, params)
       if (isErr(rows)) return rows
       return ok(rows.value.map(toSession))
