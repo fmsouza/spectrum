@@ -15,8 +15,12 @@ import type { ElectrobunConfig } from "electrobun"
  *   resolves to local, bundled assets only (the `<link rel="stylesheet" href="./app.css">`
  *   loads same-origin under `style-src 'self'`).
  * - `build.mac.createDmg: false` → a local app-bundle build needs no DMG/codesign tooling.
+ * - `build.watch`/`build.watchIgnore` → extra paths for `electrobun dev --watch` (rebuild + relaunch
+ *   on change). The default watch only covers this app's `src/` + `views/`; we add the workspace
+ *   `packages/` so editing a `@launchkit/*` package (proxy, pty, harnesses, …) also live-reloads.
+ *   Test files are ignored so running/saving tests doesn't trigger app rebuilds.
  */
-export default {
+const config = {
   app: {
     name: "LaunchKit",
     identifier: "dev.launchkit.app",
@@ -35,3 +39,15 @@ export default {
     mac: { createDmg: false },
   },
 } satisfies ElectrobunConfig
+
+// `build.watch`/`build.watchIgnore` drive `electrobun dev --watch` but are absent from the v1.18.1
+// `ElectrobunConfig` type (the CLI reads them at runtime). Attach them AFTER the `satisfies` check so
+// the core config is still type-validated while these extra, runtime-only keys pass through.
+export default {
+  ...config,
+  build: {
+    ...config.build,
+    watch: ["../../packages"],
+    watchIgnore: ["**/*.test.ts", "**/*.test.tsx", "**/*.test.js"],
+  },
+}
