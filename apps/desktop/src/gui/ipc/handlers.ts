@@ -248,5 +248,21 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
     },
 
     getTerminalSocketUrl: async () => ({ url: ctx.terminalSocketUrl }),
+
+    // ── Profiles ──────────────────────────────────────────────────────────────
+    // Desktop implementations wired in Phase 5 (profile-handler phase).
+    getProfiles: async () => fail("getProfiles: not yet implemented"),
+    addProfile: async () => fail("addProfile: not yet implemented"),
+    updateProfile: async () => fail("updateProfile: not yet implemented"),
+    deleteProfile: async () => fail("deleteProfile: not yet implemented"),
+
+    // ── Dialogs ───────────────────────────────────────────────────────────────
+    // Native folder picker wired in Phase 5.
+    pickFolder: async () => fail("pickFolder: not yet implemented"),
+
+    // ── Session scrollback ────────────────────────────────────────────────────
+    // Scrollback retrieval wired in Phase 5.
+    getSessionScrollback: async () =>
+      fail("getSessionScrollback: not yet implemented"),
   }
 }
