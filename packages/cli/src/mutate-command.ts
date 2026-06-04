@@ -2,6 +2,8 @@ import type { Config } from "@launchkit/config"
 import {
   type ModelAlias,
   ModelAliasSchema,
+  type Profile,
+  ProfileSchema,
   type Provider,
   ProviderSchema,
   SdkProviderSchema,
@@ -137,7 +139,48 @@ const addAlias = async (
   return saveOrFail(deps, { ...config, aliases: [...config.aliases, alias] })
 }
 
-/** `add provider …` / `add alias …`. */
+const addProfile = async (
+  deps: CliDeps,
+  config: Config,
+  flags: Readonly<Record<string, string | boolean>>,
+): Promise<Result<void, CliError>> => {
+  const id = requireFlag(flags, "id")
+  if (isErr(id)) return id
+  const name = requireFlag(flags, "name")
+  if (isErr(name)) return name
+  const harness = requireFlag(flags, "harness")
+  if (isErr(harness)) return harness
+  const model = requireFlag(flags, "model")
+  if (isErr(model)) return model
+
+  if (config.profiles.some((p) => p.id === id.value)) {
+    return err({
+      kind: "failed",
+      detail: `profile already exists: ${id.value}`,
+    })
+  }
+
+  // Validate through ProfileSchema so the branded ids are constructed from one source
+  // of truth and a bad shape is rejected before save. `--env K=V,…` parses via splitEnv.
+  const candidate = ProfileSchema.safeParse({
+    id: id.value,
+    name: name.value,
+    harnessId: harness.value,
+    alias: model.value,
+    env: splitEnv(flags),
+  })
+  if (!candidate.success) {
+    return err({ kind: "usage", detail: candidate.error.message })
+  }
+  const profile: Profile = candidate.data
+
+  return saveOrFail(deps, {
+    ...config,
+    profiles: [...config.profiles, profile],
+  })
+}
+
+/** `add provider …` / `add alias …` / `add profile …`. */
 export const add = async (
   deps: CliDeps,
   rest: readonly string[],
@@ -153,8 +196,10 @@ export const add = async (
       return addProvider(deps, loaded.value, flags)
     case "alias":
       return addAlias(deps, loaded.value, flags)
+    case "profile":
+      return addProfile(deps, loaded.value, flags)
     default:
-      return err({ kind: "usage", detail: "add <provider|alias> --…" })
+      return err({ kind: "usage", detail: "add <provider|alias|profile> --…" })
   }
 }
 
