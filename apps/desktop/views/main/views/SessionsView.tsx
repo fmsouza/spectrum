@@ -90,16 +90,50 @@ const ReplayDetail = ({
   readonly createTerminal: CreateTerminal
 }): ReactElement => {
   const scrollback = useSessionScrollback(sessionId)
-  if (scrollback.data === undefined) return <Spinner label="Loading session" />
   const ended = formatEndedAt(session?.endedAt)
+  // The exit banner is shown above whatever the body resolves to (replay,
+  // empty-state, or error), once we have the session row to read its code from.
+  const banner =
+    session === undefined ? null : (
+      <div className="replay-exit-banner">
+        {`exited · code ${session.exitCode ?? "?"}`}
+        {ended === "" ? null : ` · ended ${ended}`}
+      </div>
+    )
+
+  // Defense in depth: if the scrollback read failed, say so instead of spinning
+  // forever (the store normally returns empty bytes rather than erroring).
+  if (scrollback.error !== undefined)
+    return (
+      <>
+        {banner}
+        <EmptyState
+          title="Could not load output"
+          hint="Reading this session's captured terminal output failed. Try selecting it again."
+        />
+      </>
+    )
+
+  // Still loading: undefined data, no error yet.
+  if (scrollback.data === undefined) return <Spinner label="Loading session" />
+
+  // Ended sessions that predate output capture (or produced none) have no
+  // scrollback file → empty bytes. Render a clear empty-state instead of a blank
+  // terminal, which previously looked like "no information" (Bug 2).
+  if (scrollback.data.length === 0)
+    return (
+      <>
+        {banner}
+        <EmptyState
+          title="No recorded output"
+          hint="This session has no captured terminal output (it predates output capture, or produced none)."
+        />
+      </>
+    )
+
   return (
     <>
-      {session === undefined ? null : (
-        <div className="replay-exit-banner">
-          {`exited · code ${session.exitCode ?? "?"}`}
-          {ended === "" ? null : ` · ended ${ended}`}
-        </div>
-      )}
+      {banner}
       <TerminalPane
         // Key by session id so switching between two ended sessions remounts the
         // pane — otherwise it would briefly show the previous session's
