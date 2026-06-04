@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test"
 import { SessionIdSchema } from "@launchkit/types"
-import { createFileScrollbackStore, createMemoryScrollbackFs } from "./scrollback-store"
+import {
+  createFileScrollbackStore,
+  createMemoryScrollbackFs,
+  createMemoryScrollbackStore,
+} from "./scrollback-store"
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s)
 const dec = (u: Uint8Array): string => new TextDecoder().decode(u)
@@ -115,5 +119,29 @@ describe("createFileScrollbackStore", () => {
     const r = store.read(id)
     // The first generation ("AABB") is gone; only the latest rotated file + current remain.
     expect(r.ok && dec(r.value)).toBe("CCDDEE")
+  })
+})
+
+describe("createMemoryScrollbackStore", () => {
+  it("accumulates appended chunks per session and reads them back", () => {
+    const store = createMemoryScrollbackStore()
+    store.append(id, enc("one"))
+    store.append(id, enc("two"))
+    const r = store.read(id)
+    expect(r.ok && dec(r.value)).toBe("onetwo")
+  })
+
+  it("returns an empty buffer for an unknown session", () => {
+    const store = createMemoryScrollbackStore()
+    const r = store.read(id)
+    expect(r.ok && r.value.length).toBe(0)
+  })
+
+  it("keeps data readable after close (durable until the process ends)", () => {
+    const store = createMemoryScrollbackStore()
+    store.append(id, enc("keep"))
+    expect(store.close(id).ok).toBe(true)
+    const r = store.read(id)
+    expect(r.ok && dec(r.value)).toBe("keep")
   })
 })

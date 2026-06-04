@@ -169,4 +169,23 @@ export const createFileScrollbackStore = (deps: {
   }
 }
 
+/** In-memory `ScrollbackStore` fake: per-session byte buffer, no disk. Durable until process exit. */
+export const createMemoryScrollbackStore = (): ScrollbackStore => {
+  const bufs = new Map<string, Uint8Array>()
+  return {
+    append: (id, chunk): Result<void, PtyError> => {
+      const safe = safeId(id)
+      if (!safe.ok) return safe
+      bufs.set(safe.value, concatBytes(bufs.get(safe.value) ?? new Uint8Array(0), chunk))
+      return ok(undefined)
+    },
+    read: (id): Result<Uint8Array, PtyError> => {
+      const safe = safeId(id)
+      if (!safe.ok) return safe
+      return ok(bufs.get(safe.value) ?? new Uint8Array(0))
+    },
+    close: (): Result<void, PtyError> => ok(undefined),
+  }
+}
+
 export type { SessionId }
