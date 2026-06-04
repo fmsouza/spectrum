@@ -180,6 +180,8 @@ export interface CreateAppContextDeps {
   readonly loadSdk: typeof loadSdk
   readonly createRealGateway: typeof createRealGateway
   readonly createFileRuntimeState: typeof createFileRuntimeState
+  readonly createBunScrollbackFs: typeof createBunScrollbackFs
+  readonly createFileScrollbackStore: typeof createFileScrollbackStore
   readonly createFfiPty: typeof createFfiPty
   readonly createTerminalManager: typeof createTerminalManager
   readonly startTerminalSocket: typeof startTerminalSocket
@@ -216,6 +218,8 @@ const realDeps: CreateAppContextDeps = {
   loadSdk,
   createRealGateway,
   createFileRuntimeState,
+  createBunScrollbackFs,
+  createFileScrollbackStore,
   createFfiPty,
   createTerminalManager,
   startTerminalSocket,
@@ -317,14 +321,15 @@ export const createAppContext = (
   // terminal: the GUI embedded-terminal engine over a real FFI pty + the session store. Its `send`
   // sink is a no-op until window.ts binds the real Electrobun `messages` channel via `bindSend`.
   deps.mkdirSync(scrollbackDir, { recursive: true })
-  const scrollback = createFileScrollbackStore({
+  // Persisted per-session scrollback (read-only replay reads from here after a session ends).
+  const scrollbackStore = deps.createFileScrollbackStore({
     dir: scrollbackDir,
-    fs: createBunScrollbackFs(),
+    fs: deps.createBunScrollbackFs(),
   })
   const terminal = deps.createTerminalManager({
     pty: deps.createFfiPty(),
     sessions: { create: sessions.create, close: sessions.close },
-    scrollback,
+    scrollback: scrollbackStore,
     send: () => {},
     capBytes: 1_000_000,
     defaultSize: { cols: 80, rows: 24 },
@@ -395,7 +400,7 @@ export const createAppContext = (
     terminal,
     terminalSocketUrl,
     pickFolder,
-    readScrollback: scrollback.read,
+    readScrollback: scrollbackStore.read,
     paths: { configFile, dbFile, harnessDir },
   }
 }

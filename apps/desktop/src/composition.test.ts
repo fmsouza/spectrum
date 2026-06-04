@@ -49,6 +49,11 @@ const makeFakeDeps = (): {
     createRealGateway: record("createRealGateway") as never,
     createFileRuntimeState: record("createFileRuntimeState") as never,
     genProxyKey: () => "fixed-test-key",
+    createBunScrollbackFs: record("createBunScrollbackFs") as never,
+    createFileScrollbackStore: ((..._a: unknown[]) => {
+      calls.createFileScrollbackStore = _a
+      return { read: () => ok(new Uint8Array()) }
+    }) as never,
     createFfiPty: (() => ({ open: () => ok({}) })) as never,
     createTerminalManager: ((..._a: unknown[]) => {
       calls.createTerminalManager = _a
@@ -204,5 +209,29 @@ describe("createAppContext wiring", () => {
       "/home/tester/.config/launchkit/scrollback",
     )
     expect(calls.mkdirSync?.[1]).toEqual({ recursive: true })
+  })
+
+  it("builds the file scrollback store under the config dir and injects it into the terminal manager", () => {
+    const { deps, calls } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+
+    expect(
+      (calls.createFileScrollbackStore?.[0] as { dir: string }).dir,
+    ).toContain("/home/tester/.config/launchkit/scrollback")
+    expect(
+      (calls.createFileScrollbackStore?.[0] as { fs: unknown }).fs,
+    ).toEqual({ __stub: "createBunScrollbackFs" })
+    const managerArgs = calls.createTerminalManager?.[0] as {
+      scrollback: unknown
+    }
+    expect(managerArgs.scrollback).toEqual({ read: expect.any(Function) })
+    // The store's read is exposed for the scrollback handler.
+    expect(typeof ctx.readScrollback).toBe("function")
+  })
+
+  it("exposes a pickFolder function on the context", () => {
+    const { deps } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+    expect(typeof ctx.pickFolder).toBe("function")
   })
 })
