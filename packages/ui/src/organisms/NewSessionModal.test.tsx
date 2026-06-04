@@ -48,12 +48,9 @@ describe("NewSessionModal", () => {
     })
     expect(screen.getByLabelText("Harness")).toHaveValue("claude")
     expect(screen.getByLabelText("Alias")).toHaveValue("default")
-    fireEvent.change(screen.getByLabelText("Name"), {
-      target: { value: "Run 1" },
-    })
     fireEvent.click(screen.getByRole("button", { name: /launch/i }))
     expect(onSubmit).toHaveBeenCalledWith({
-      name: "Run 1",
+      name: "Untitled",
       cwd: "/Users/fred/app",
       harnessId: "claude",
       alias: "default",
@@ -69,12 +66,9 @@ describe("NewSessionModal", () => {
     fireEvent.change(screen.getByLabelText("Alias"), {
       target: { value: "fast" },
     })
-    fireEvent.change(screen.getByLabelText("Name"), {
-      target: { value: "Run 2" },
-    })
     fireEvent.click(screen.getByRole("button", { name: /launch/i }))
     expect(onSubmit).toHaveBeenCalledWith({
-      name: "Run 2",
+      name: "Untitled",
       cwd: "/Users/fred/app",
       harnessId: "claude",
       alias: "fast",
@@ -84,16 +78,13 @@ describe("NewSessionModal", () => {
   it("includes saveAsProfile when the save checkbox is checked", () => {
     const onSubmit = mock((_v: NewSessionValues) => {})
     render(<NewSessionModal {...baseProps} onSubmit={onSubmit} />)
-    fireEvent.change(screen.getByLabelText("Name"), {
-      target: { value: "Run 3" },
-    })
     fireEvent.click(screen.getByLabelText(/save edits as new profile/i))
     fireEvent.change(screen.getByLabelText("Profile name"), {
       target: { value: "My profile" },
     })
     fireEvent.click(screen.getByRole("button", { name: /launch/i }))
     expect(onSubmit).toHaveBeenCalledWith({
-      name: "Run 3",
+      name: "Untitled",
       cwd: "/Users/fred/app",
       harnessId: "claude",
       alias: "default",
@@ -121,26 +112,26 @@ describe("NewSessionModal", () => {
     expect(screen.getByRole("textbox", { name: /folder/i })).toHaveValue("/b")
   })
 
-  it("resets form state when modal is reopened (Fix 3)", () => {
-    const { rerender } = render(<NewSessionModal {...baseProps} open />)
-    fireEvent.change(screen.getByLabelText("Name"), {
-      target: { value: "Old name" },
+  it("resets the folder when modal is reopened (Fix 3)", () => {
+    const { rerender } = render(
+      <NewSessionModal {...baseProps} folder="/initial" open />,
+    )
+    fireEvent.change(screen.getByRole("textbox", { name: /folder/i }), {
+      target: { value: "/changed" },
     })
-    rerender(<NewSessionModal {...baseProps} open={false} />)
-    rerender(<NewSessionModal {...baseProps} open />)
-    expect(screen.getByLabelText("Name")).toHaveValue("")
+    rerender(<NewSessionModal {...baseProps} folder="/initial" open={false} />)
+    rerender(<NewSessionModal {...baseProps} folder="/initial" open />)
+    expect(screen.getByRole("textbox", { name: /folder/i })).toHaveValue(
+      "/initial",
+    )
   })
 
-  it("preserves typed fields when the folder prop changes (Browse) while open", () => {
+  it("preserves typed folder when the folder prop changes (Browse) while open", () => {
     const { rerender } = render(
       <NewSessionModal {...baseProps} folder="/a" open />,
     )
-    fireEvent.change(screen.getByLabelText("Name"), {
-      target: { value: "auth-refactor" },
-    })
     // Simulate Browse updating the parent's folder while modal stays open
     rerender(<NewSessionModal {...baseProps} folder="/b" open />)
-    expect(screen.getByLabelText("Name")).toHaveValue("auth-refactor")
     expect(screen.getByRole("textbox", { name: /folder/i })).toHaveValue("/b")
   })
 
@@ -161,6 +152,20 @@ describe("NewSessionModal", () => {
     render(<NewSessionModal {...baseProps} error="failed to launch: boom" />)
     expect(screen.getByRole("alert")).toHaveTextContent(
       /failed to launch: boom/i,
+    )
+  })
+
+  it("does not render a Name field (Fix #3)", () => {
+    render(<NewSessionModal {...baseProps} />)
+    expect(screen.queryByLabelText("Name")).toBeNull()
+  })
+
+  it("submits name as 'Untitled' regardless of any prior input (Fix #3)", () => {
+    const onSubmit = mock((_v: NewSessionValues) => {})
+    render(<NewSessionModal {...baseProps} onSubmit={onSubmit} />)
+    fireEvent.click(screen.getByRole("button", { name: /launch/i }))
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Untitled" }),
     )
   })
 })

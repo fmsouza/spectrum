@@ -37,7 +37,6 @@ export type NewSessionModalProps = {
 }
 
 type FormState = {
-  readonly name: string
   readonly cwd: string
   readonly profileId: string
   readonly harnessId: HarnessId
@@ -61,7 +60,6 @@ export const NewSessionModal = ({
   const firstHarness = (harnesses[0]?.id ?? "") as HarnessId
   const firstAlias = (aliases[0]?.alias ?? "") as AliasName
   const [state, setState] = useState<FormState>({
-    name: "",
     cwd: folder,
     profileId: "",
     harnessId: firstHarness,
@@ -81,7 +79,6 @@ export const NewSessionModal = ({
   useEffect(() => {
     if (open && !wasOpen.current) {
       setState({
-        name: "",
         cwd: folder,
         profileId: "",
         harnessId: firstHarness,
@@ -116,7 +113,7 @@ export const NewSessionModal = ({
 
   const submit = (): void => {
     const values: NewSessionValues = {
-      name: state.name,
+      name: "Untitled",
       cwd: state.cwd,
       harnessId: state.harnessId,
       alias: state.alias,
@@ -152,13 +149,6 @@ export const NewSessionModal = ({
             value={state.profileId}
             options={profileOptions}
             onChange={selectProfile}
-          />
-        </FormField>
-        <FormField id="session-name" label="Name">
-          <TextInput
-            id="session-name"
-            value={state.name}
-            onChange={(v) => update("name", v)}
           />
         </FormField>
         <FormField id="session-folder" label="Folder">
