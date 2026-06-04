@@ -186,6 +186,37 @@ PASS; headless-xterm replay of real `claude` output renders its clean TUI at the
   (spawn at the webview's true size, no startup churn). CSP allows `ws://localhost:*`; added a webview
   `ErrorBoundary` and the hand-written `app.css` theme + vendored `xterm.css`.
 
+### Session-centric master/detail redesign (2026-06-04) — `[session-redesign]`
+
+Spec: `docs/superpowers/specs/2026-06-04-session-master-detail-redesign-design.md`.
+Plan: `docs/superpowers/plans/2026-06-04-session-master-detail-redesign.md`.
+Reworks the GUI into a session-first master/detail workspace (vertical paginated session
+list + click-to-open terminal detail), moves config behind a Settings toggle, and adds
+launch presets (profiles), session name/cwd, file-based scrollback persistence, and CLI parity.
+Executed via `subagent-driven-development` (implementer + spec review + code-quality review per task).
+
+| ID | Task | Status | Commit |
+|---|---|---|---|
+| T.1 | types: `ProfileId` branded id | todo | |
+| T.2 | types: `Profile` schema + type | todo | |
+| T.3 | types: `Session` optional `name`/`cwd` | todo | |
+| T.4 | types: barrel exports | todo | |
+| CS.1 | config: `profiles[]` schema + version 3 + defaults | todo | |
+| CS.2 | config: `v2→v3` migration | todo | |
+| CS.3 | sessions: `SessionInput`/`SessionFilter` shapes | todo | |
+| CS.4 | sessions: idempotent `name`/`cwd` column add | todo | |
+| CS.5 | sessions: `create` writes `name`/`cwd` | todo | |
+| CS.6 | sessions: `query` running/limit/offset | todo | |
+| CS.7 | config/sessions barrel guards | todo | |
+| PH.1–PH.6 | pty: file `ScrollbackStore` (+ fakes, rotation, real fs) | todo | |
+| PH.7–PH.9 | pty: `cwd`/`name` threading + scrollback tap | todo | |
+| PH.10–PH.11 | harnesses: `ProcessSpawner` cwd + `LaunchParams` cwd/env | todo | |
+| I.1–I.7 | ipc: profiles/pickFolder/scrollback + launch/getSessions params | todo | |
+| C.1–C.6 | cli: profiles CRUD + `launch --profile/--name/--cwd` | todo | |
+| U.1–U.12 | ui: Modal/SessionRow/SessionList/NewSessionModal/ProfileForm/AppShell… | todo | |
+| D.1–D.12 | desktop: handlers, composition, replay, app.tsx master/detail | todo | |
+| FINAL | whole-repo gate + runtime verification | todo | |
+
 ## Status legend
 `todo` · `in-progress` · `done` · `blocked`
 
