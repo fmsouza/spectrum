@@ -166,6 +166,12 @@ export const RoutingPage = (): ReactElement => {
       providerModel: "",
     }))
 
+  const draftIncomplete =
+    draft === undefined ||
+    draft.alias.trim() === "" ||
+    draft.providerId.trim() === "" ||
+    draft.providerModel.trim() === ""
+
   return (
     <SettingsLayout title="Routing">
       {aliases.loading || providers.loading ? (
@@ -180,7 +186,14 @@ export const RoutingPage = (): ReactElement => {
 
       {aliases.data !== undefined ? (
         <>
-          <Button onClick={() => setDraft({ ...EMPTY_DRAFT })}>
+          <Button
+            onClick={() =>
+              setDraft({
+                ...EMPTY_DRAFT,
+                providerId: providers.data?.[0]?.id ?? "",
+              })
+            }
+          >
             Add alias
           </Button>
           <AliasTable
@@ -216,7 +229,10 @@ export const RoutingPage = (): ReactElement => {
             <Select
               id="alias-provider"
               value={draft.providerId}
-              options={providerOptions}
+              options={[
+                { value: "", label: "Select a provider…" },
+                ...providerOptions,
+              ]}
               onChange={updateProvider}
             />
           </FormField>
@@ -225,7 +241,9 @@ export const RoutingPage = (): ReactElement => {
             value={draft.providerModel}
             onChange={(v) => update("providerModel", v)}
           />
-          <Button onClick={() => void submitDraft()}>Save alias</Button>
+          <Button onClick={() => void submitDraft()} disabled={draftIncomplete}>
+            Save alias
+          </Button>
           <Button variant="secondary" onClick={() => setDraft(undefined)}>
             Cancel
           </Button>

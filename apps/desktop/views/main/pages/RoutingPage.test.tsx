@@ -236,6 +236,84 @@ describe("RoutingPage", () => {
     })
   })
 
+  // ── Bug-fix tests: placeholder, defaulting, and save-disabled ─────────────
+
+  it("includes a 'Select a provider…' placeholder option in the Provider select", async () => {
+    renderPage({})
+    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole("button", { name: /add alias/i }))
+
+    const providerSelect = screen.getByLabelText(
+      "Provider",
+    ) as HTMLSelectElement
+    const optionValues = Array.from(providerSelect.options).map((o) => o.value)
+    expect(optionValues).toContain("")
+    const placeholderOption = Array.from(providerSelect.options).find(
+      (o) => o.value === "",
+    )
+    expect(placeholderOption?.text).toMatch(/select a provider/i)
+  })
+
+  it("defaults providerId to the first provider when 'Add alias' is clicked and fires model discovery immediately", async () => {
+    const client = renderPage({
+      listProviderModels: async () => ({
+        ok: true,
+        value: { models: ["llama3.2"] },
+      }),
+    })
+    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole("button", { name: /add alias/i }))
+
+    // listProviderModels should be called with the first provider's id immediately
+    await waitFor(() =>
+      expect(client.calls.listProviderModels.length).toBeGreaterThan(0),
+    )
+    expect(client.calls.listProviderModels[0]).toEqual({
+      providerId: "p_openai",
+    })
+
+    // The Model field should render a <Select> with the discovered model
+    await waitFor(() => {
+      const el = screen.getByLabelText("Model") as HTMLSelectElement
+      expect(el.tagName).toBe("SELECT")
+      const values = Array.from(el.options).map((o) => o.value)
+      expect(values).toContain("llama3.2")
+    })
+  })
+
+  it("disables 'Save alias' when alias name, provider, or model is missing", async () => {
+    renderPage({
+      listProviderModels: async () => ({ ok: true, value: { models: [] } }),
+    })
+    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole("button", { name: /add alias/i }))
+
+    // Initially incomplete (alias is empty even though provider defaults)
+    const saveBtn = screen.getByRole("button", { name: /save alias/i })
+    expect(saveBtn).toBeDisabled()
+
+    // Fill alias name
+    fireEvent.change(screen.getByLabelText("Alias name"), {
+      target: { value: "smart" },
+    })
+    // Still disabled — model is still empty
+    expect(saveBtn).toBeDisabled()
+
+    // Wait for model field to appear and fill it
+    await waitFor(() =>
+      expect(screen.getByLabelText("Model")).toBeInTheDocument(),
+    )
+    fireEvent.change(screen.getByLabelText("Model"), {
+      target: { value: "gpt-4o" },
+    })
+
+    // Now all three fields are filled → Save should be enabled
+    await waitFor(() => expect(saveBtn).not.toBeDisabled())
+  })
+
   it("clears providerModel when the provider changes", async () => {
     const ollamaView = {
       id: "p_ollama",
