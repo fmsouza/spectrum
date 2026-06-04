@@ -750,7 +750,9 @@ describe("createIpcHandlers.listProviderModels", () => {
       ok(["gpt-4o", "gpt-4o-mini"])
     const handlers = createIpcHandlers(ctx)
 
-    const result = await handlers.listProviderModels({ providerId: "p_openai" as never })
+    const result = await handlers.listProviderModels({
+      providerId: "p_openai" as never,
+    })
 
     expect(result).toEqual({ models: ["gpt-4o", "gpt-4o-mini"] })
   })

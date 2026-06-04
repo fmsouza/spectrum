@@ -81,17 +81,18 @@ describe("createAppContext listProviderModels wiring", () => {
   it("returns err when the provider id is not found in the config", async () => {
     const { deps } = makeFakeDeps()
     // Override the fake config store to return a config with no providers.
-    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore = () => ({
-      load: async () =>
-        ok({
-          version: 2,
-          providers: [],
-          aliases: [],
-          profiles: [],
-          settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
-        }),
-      save: async () => ok(undefined),
-    })
+    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
+      () => ({
+        load: async () =>
+          ok({
+            version: 2,
+            providers: [],
+            aliases: [],
+            profiles: [],
+            settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+          }),
+        save: async () => ok(undefined),
+      })
     const ctx = createAppContext(deps)
     const result = await ctx.listProviderModels("p_ghost")
     expect(result.ok).toBe(false)

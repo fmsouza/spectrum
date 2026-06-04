@@ -12,6 +12,7 @@ import {
 import { type ReactElement, useState } from "react"
 import { useIpcClient } from "../IpcClientContext"
 import { useAliases } from "../hooks/useAliases"
+import { useProviderModels } from "../hooks/useProviderModels"
 import { useProviders } from "../hooks/useProviders"
 
 type AliasDraft = {
@@ -27,6 +28,65 @@ const EMPTY_DRAFT: AliasDraft = {
   providerId: "",
   providerModel: "",
   editingOf: undefined,
+}
+
+/** Renders the Model form field: loading / discovered-select / free-text fallback. */
+const ModelField = ({
+  providerId,
+  value,
+  onChange,
+}: {
+  readonly providerId: string
+  readonly value: string
+  readonly onChange: (v: string) => void
+}): ReactElement => {
+  const { data: models, loading, error } = useProviderModels(providerId)
+
+  if (loading && providerId !== "") {
+    return (
+      <FormField id="alias-model" label="Model">
+        <Select
+          id="alias-model"
+          value=""
+          options={[]}
+          onChange={() => {}}
+          disabled
+        />
+        <Spinner label="Loading models…" />
+      </FormField>
+    )
+  }
+
+  const discovered = models ?? []
+  if (error === undefined && discovered.length > 0) {
+    // Primary path: a picker of the discovered models.
+    const options = [
+      { value: "", label: "Select a model…" },
+      ...discovered.map((m) => ({ value: m, label: m })),
+    ]
+    return (
+      <FormField id="alias-model" label="Model">
+        <Select
+          id="alias-model"
+          value={value}
+          options={options}
+          onChange={onChange}
+        />
+      </FormField>
+    )
+  }
+
+  // Empty list or error (incl. unsupported SDKs) → free-text fallback.
+  return (
+    <FormField id="alias-model" label="Model">
+      <TextInput id="alias-model" value={value} onChange={onChange} />
+      {providerId !== "" ? (
+        <span>
+          {"Couldn't list models for this provider — enter one manually."}
+        </span>
+      ) : null}
+    </FormField>
+  )
 }
 
 export const RoutingPage = (): ReactElement => {
@@ -98,6 +158,14 @@ export const RoutingPage = (): ReactElement => {
     value: AliasDraft[K],
   ): void => setDraft((prev) => ({ ...(prev ?? EMPTY_DRAFT), [key]: value }))
 
+  /** When the provider changes, clear providerModel — the previous model may not be valid. */
+  const updateProvider = (newProviderId: string): void =>
+    setDraft((prev) => ({
+      ...(prev ?? EMPTY_DRAFT),
+      providerId: newProviderId,
+      providerModel: "",
+    }))
+
   return (
     <SettingsLayout title="Routing">
       {aliases.loading || providers.loading ? (
@@ -149,16 +217,14 @@ export const RoutingPage = (): ReactElement => {
               id="alias-provider"
               value={draft.providerId}
               options={providerOptions}
-              onChange={(v) => update("providerId", v)}
+              onChange={updateProvider}
             />
           </FormField>
-          <FormField id="alias-model" label="Model">
-            <TextInput
-              id="alias-model"
-              value={draft.providerModel}
-              onChange={(v) => update("providerModel", v)}
-            />
-          </FormField>
+          <ModelField
+            providerId={draft.providerId}
+            value={draft.providerModel}
+            onChange={(v) => update("providerModel", v)}
+          />
           <Button onClick={() => void submitDraft()}>Save alias</Button>
           <Button variant="secondary" onClick={() => setDraft(undefined)}>
             Cancel
