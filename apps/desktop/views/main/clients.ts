@@ -58,7 +58,7 @@ export const createRealClients = async (): Promise<{
   terminalClient: TerminalClient
 }> => {
   const rpc = Electroview.defineRPC<EmptySchema>({
-    maxRequestTime: 5000,
+    maxRequestTime: Number.POSITIVE_INFINITY, // transport owns per-method timeouts
     handlers: { requests: {}, messages: {} },
   })
   const view = new Electroview({ rpc })
