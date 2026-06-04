@@ -1,8 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import type {
-  HarnessDefinition,
-  ModelAlias,
-} from "@launchkit/types"
+import type { HarnessDefinition, ModelAlias } from "@launchkit/types"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { ProfileForm } from "./ProfileForm"
 import type { ProfileFormValues } from "./ProfileForm"

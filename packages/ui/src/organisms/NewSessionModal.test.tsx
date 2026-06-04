@@ -1,9 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import type {
-  HarnessDefinition,
-  ModelAlias,
-  Profile,
-} from "@launchkit/types"
+import type { HarnessDefinition, ModelAlias, Profile } from "@launchkit/types"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { NewSessionModal } from "./NewSessionModal"
 import type { NewSessionValues } from "./NewSessionModal"

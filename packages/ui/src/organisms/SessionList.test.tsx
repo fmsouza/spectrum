@@ -61,7 +61,9 @@ describe("SessionList", () => {
         onNew={() => {}}
       />,
     )
-    expect(screen.getByRole("heading", { name: /running/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole("heading", { name: /running/i }),
+    ).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: /recent/i })).toBeInTheDocument()
   })
   it("renders a row for each running and recent session", () => {

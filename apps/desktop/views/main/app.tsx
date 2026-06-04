@@ -114,12 +114,31 @@ export const App = ({
   return (
     <IpcClientProvider client={client}>
       <AppShell
-        navItems={NAV_ITEMS}
-        activeRoute={route}
-        onNavigate={(next) => setRoute(normalizeRoute(next))}
-      >
-        <ErrorBoundary key={route}>{renderPage()}</ErrorBoundary>
-      </AppShell>
+        mode="sessions"
+        onModeChange={() => {}}
+        proxyRunning={false}
+        master={
+          <nav aria-label="Primary">
+            <ul>
+              {NAV_ITEMS.map((item) => (
+                <li key={item.route}>
+                  <a
+                    href={`#${item.route}`}
+                    aria-current={item.route === route ? "page" : undefined}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setRoute(normalizeRoute(item.route))
+                    }}
+                  >
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        }
+        detail={<ErrorBoundary key={route}>{renderPage()}</ErrorBoundary>}
+      />
     </IpcClientProvider>
   )
 }

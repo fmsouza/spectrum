@@ -11,7 +11,11 @@ const sections = [
 describe("SettingsNav", () => {
   it("renders a link per section", () => {
     render(
-      <SettingsNav sections={sections} active="providers" onSelect={() => {}} />,
+      <SettingsNav
+        sections={sections}
+        active="providers"
+        onSelect={() => {}}
+      />,
     )
     expect(screen.getByRole("link", { name: "Providers" })).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Harnesses" })).toBeInTheDocument()
@@ -19,7 +23,11 @@ describe("SettingsNav", () => {
   })
   it("marks the active section as current", () => {
     render(
-      <SettingsNav sections={sections} active="harnesses" onSelect={() => {}} />,
+      <SettingsNav
+        sections={sections}
+        active="harnesses"
+        onSelect={() => {}}
+      />,
     )
     expect(screen.getByRole("link", { name: "Harnesses" })).toHaveAttribute(
       "aria-current",
