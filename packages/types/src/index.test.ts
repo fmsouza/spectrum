@@ -10,11 +10,13 @@ describe("@launchkit/types barrel", () => {
       "AliasNameSchema",
       "HarnessIdSchema",
       "SessionIdSchema",
+      "ProfileIdSchema",
       "SecretRefSchema",
       "ProviderSchema",
       "ModelAliasSchema",
       "HarnessDefinitionSchema",
       "SessionSchema",
+      "ProfileSchema",
     ]) {
       expect(types).toHaveProperty(name)
     }
