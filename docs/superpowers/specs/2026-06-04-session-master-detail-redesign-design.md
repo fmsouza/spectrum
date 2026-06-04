@@ -38,12 +38,16 @@ This redesign makes **the session the primary object** and reorganizes the app i
 - New **Profile** concept: type, config-backed storage, CRUD, IPC.
 - Session model gains `name` and `cwd`.
 - File-based per-session scrollback persistence.
+- **CLI parity**: `list/add/remove profile`, and `launch` gaining `--profile`/`--name`/`--cwd`
+  (recording `name`/`cwd` on the session and starting the harness in `cwd`).
 - All supporting IPC methods and backend wiring.
 - TDD throughout; gate (`typecheck && lint && test`) green per task.
 
 **Out of scope (documented follow-ups)**
 
-- CLI parity for profiles / `cwd` (the modal is GUI-only for now).
+- Scrollback *capture* for CLI-launched sessions — the CLI inherits the real terminal
+  (inherit-stdio), so there is no PTY byte stream to persist; CLI sessions appear in the GUI
+  list but replay empty (exit banner only).
 - Reconnecting to a *live* harness process after an app restart — children die with the app;
   impossible without a background daemon.
 - Global disk-retention sweep for old scrollback files (per-session bound only for now).
@@ -63,6 +67,7 @@ This redesign makes **the session the primary object** and reorganizes the app i
 | New-session modal layout? | **Grouped**: "This session" (name, folder) vs "Launch config — prefilled · editable" (harness, model, env). |
 | Folder input? | **Native folder picker.** |
 | Scrollback storage medium? | **Stream chunks → flat file** (2-file rotation for bounding). |
+| CLI parity? | **In scope** — profiles CRUD + `launch --profile/--name/--cwd`; scrollback N/A for CLI (inherit-stdio). |
 
 ## 4. UX architecture
 
@@ -206,11 +211,14 @@ which continues to serve live sessions).
 
 ## 6. Backend wiring
 
-- **`cwd`/`name` threading**: `TerminalLaunchInput` (`@launchkit/pty`) gains `name?`, `cwd?`.
-  `manager.launch` passes them to `sessions.create(...)`; `spawnPty` passes `cwd` to
-  `pty.open({ ..., cwd })`; the FFI pty's `Bun.spawn` receives `{ cwd }`. The CLI's
-  `ProcessSpawner` / `launchHarness` (`@launchkit/harnesses`) are left unchanged (CLI parity
-  is a follow-up).
+- **`cwd`/`name` threading (GUI/PTY path)**: `TerminalLaunchInput` (`@launchkit/pty`) gains
+  `name?`, `cwd?`. `manager.launch` passes them to `sessions.create(...)`; `spawnPty` passes
+  `cwd` to `pty.open({ ..., cwd })`; the FFI pty's `Bun.spawn` receives `{ cwd }`.
+- **`cwd`/`env` threading (CLI/harnesses path)**: the shared launch path in
+  `@launchkit/harnesses` also gains these — `ProcessSpawner.spawn` takes an optional `cwd`,
+  `LaunchParams` gains `cwd?`/`env?`, and `resolveHarnessLaunch`/`launchHarness` forward them
+  (see §8). Same `cwd`/`env` semantics as the GUI, but a different spawn backend
+  (inherit-stdio rather than a PTY).
 - **Scrollback tap**: the manager already does
   `pty.onData(chunk) → registry.appendData(id, chunk)`. Add a parallel
   `scrollback.append(id, chunk)`; on `pty.onExit`, call `scrollback.close(id)` alongside
@@ -250,11 +258,56 @@ New IPC methods follow the standard end-to-end path: schema in `methods.ts` →
 auto-generated client method (`createIpcClient`) → handler in
 `apps/desktop/src/gui/ipc/handlers.ts` via `AppContext`.
 
-## 8. Frontend component architecture (atomic design)
+## 8. CLI parity (`@launchkit/cli`, `@launchkit/harnesses`)
+
+The CLI already records a session on launch (`deps.sessions.create({ harnessId, alias })` in
+`launch-command.ts`), so CLI-launched sessions already appear in the GUI list. The CLI reaches
+parity for **profiles** and **session `name`/`cwd`**. Scrollback capture does **not** apply —
+the CLI inherits the user's real terminal (inherit-stdio), so there is no PTY byte stream to
+persist; such sessions replay empty in the GUI with just the exit banner (see §2).
+
+### 8.1 Shared launch-path changes (`@launchkit/harnesses`)
+
+- `ProcessSpawner.spawn(command, args, env)` → `spawn(command, args, env, cwd?)`; the real
+  `createBunProcessSpawner` passes `cwd` to `Bun.spawn({ cwd })` (alongside the existing
+  `{ ...process.env, ...env }` merge). The fake spawner records `cwd` for assertions.
+- `LaunchParams` gains `cwd?: string` and `env?: Record<string, string>` (profile overrides).
+  `resolveHarnessLaunch` merges `env` overrides on top of the rendered template;
+  `launchHarness` forwards `cwd` to the spawner.
+
+### 8.2 New & changed CLI commands (`@launchkit/cli`)
+
+`parseArgs` already collects arbitrary `--flags` into a record, so the tokenizer is unchanged —
+only the command handlers consume the new flags. (`--env K=V,K2=V2` is split by a small helper,
+like the existing `splitModels`.)
+
+- `list profiles` — tab-separated, mirroring `list harnesses`:
+  `${profile.id}\t${profile.name}\t[${profile.harnessId} · ${profile.alias}]`.
+- `add profile --id <id> --name <name> --harness <harnessId> --model <alias> [--env K=V,…]`
+  — follows the `add provider`/`add alias` pattern: load config → `requireFlag` → zod-validate a
+  `Profile` candidate → conflict check → `saveOrFail` appending to `config.profiles`.
+- `remove profile <id>` — immutable filter + not-found check + save (the `remove provider`
+  pattern).
+- `launch [<harnessId>] [--model <alias>] [--profile <id>] [--name <n>] [--cwd <path>]`:
+  - `--profile <id>` loads the profile and seeds harness / alias / env. A positional
+    `<harnessId>` and `--model <alias>` **override** the profile (prefill-but-editable, matching
+    the GUI). Without `--profile`, the positional `harnessId` stays required (current behavior).
+  - `--name` / `--cwd` are per-session: both are passed to `sessions.create({ harnessId, alias,
+    name, cwd })` (extended `SessionInput`), and `--cwd` is forwarded via `LaunchParams.cwd` so
+    the harness starts in that directory. Profile `env` flows through `LaunchParams.env`.
+
+### 8.3 CLI tests
+
+Extend the suite (`makeFakeDeps` + `runCli(deps)(argv)`): `list/add/remove profile` round-trips
+via `deps.config.load()`; `launch --profile` resolution + positional/`--model` overrides via the
+launch spy; `--name`/`--cwd` recorded via `deps.sessions.query()` and forwarded to the spawner.
+Add `cwd` to the `ProcessSpawner` fake and to the real-adapter integration test.
+
+## 9. Frontend component architecture (atomic design)
 
 Rule honored: **dumb components never fetch; data enters at the page level.**
 
-### 8.1 `@launchkit/ui` (pure, presentational)
+### 9.1 `@launchkit/ui` (pure, presentational)
 
 - **atoms**: `Modal` (overlay, focus trap, Esc/backdrop close), `IconButton` (rail). Reuse
   existing `Button` / `TextInput` / `Select` / `Badge` / `StatusDot` / `Label` / `Spinner`.
@@ -275,7 +328,7 @@ Rule honored: **dumb components never fetch; data enters at the page level.**
   `onModeChange`, `proxyRunning`, `master`, `detail`). `SettingsLayout` reused for section
   panes.
 
-### 8.2 `apps/desktop/views/main` (data-aware)
+### 9.2 `apps/desktop/views/main` (data-aware)
 
 - **`app.tsx`** owns the `View` model, hash sync, and master+detail composition per mode. It
   holds the set of open live panes (mounted-but-hidden) keyed by session id — the vertical
@@ -288,7 +341,7 @@ Rule honored: **dumb components never fetch; data enters at the page level.**
   / `HarnessesPage` slot into Settings sections largely unchanged. `DashboardPage` is retired
   (quick-launch → modal; proxy status → rail + General).
 
-## 9. Launch flow (end-to-end)
+## 10. Launch flow (end-to-end)
 
 1. Click **+ New session** → `NewSessionModal` opens (profiles/harnesses/aliases already
    loaded at page level).
@@ -306,7 +359,7 @@ Rule honored: **dumb components never fetch; data enters at the page level.**
 7. Click an **ended** session → `getSessionScrollback(id)` → read-only
    `TerminalPane mode="replay"` shows the output + exit banner.
 
-## 10. Testing strategy (TDD — RED → GREEN → REFACTOR)
+## 11. Testing strategy (TDD — RED → GREEN → REFACTOR)
 
 - **types/config**: schema + `v2ToV3` migration round-trip; `defaultConfig` shape.
 - **sessions**: idempotent column-add on a pre-existing column-less DB; `create`/`query`
@@ -316,6 +369,9 @@ Rule honored: **dumb components never fetch; data enters at the page level.**
   threads `cwd`/`name`; replay path.
 - **ipc**: new method schemas validate; client/server round-trip on the in-memory transport
   pair for profiles / `pickFolder` / scrollback / extended launch.
+- **cli / harnesses**: `ProcessSpawner` `cwd` (fake assertion + real-adapter integration);
+  `list/add/remove profile` round-trips; `launch --profile` resolution with positional/`--model`
+  overrides; `--name`/`--cwd` recorded and forwarded (see §8.3).
 - **ui**: `SessionList` grouping/pagination; `NewSessionModal` prefill + save-as-profile;
   `Modal` accessibility; `TerminalPane` replay mode (headless `XtermInstance`).
 - **desktop**: handlers wire `AppContext`; `pickFolder` handler with the Electrobun seam
@@ -325,7 +381,7 @@ Rule honored: **dumb components never fetch; data enters at the page level.**
   `apps/desktop/MANUAL-VERIFICATION.md`; `apps/desktop/scripts/smoke.sh` continues to guard
   the build-vs-runs gap.
 
-## 11. Build-plan integration
+## 12. Build-plan integration
 
 This is a feature on top of a completed build plan, so:
 
@@ -334,11 +390,12 @@ This is a feature on top of a completed build plan, so:
   skill).
 - A new section in `build-plan/PROGRESS.md` will track these tasks with commit SHAs.
 - Package boundaries respected (`@launchkit/<pkg>` imports only; no deep imports/cycles).
-  Change order flows: `types` → {`config`, `sessions`, `pty`, `ipc`} → `ui` → `apps/desktop`.
+  Change order flows: `types` → {`config`, `sessions`, `pty`, `harnesses`, `ipc`} →
+  {`ui`, `cli`} → `apps/desktop`.
 - Project skills inform the work: the provider/harness CRUD patterns guide Profiles CRUD;
   `launchkit-atomic-component` for new UI atoms/molecules/organisms.
 
-## 12. Risks & mitigations
+## 13. Risks & mitigations
 
 - **Native dialog in tests / headless runs**: keep `pickFolder` behind a lazy import like the
   existing window/tray seams; unit-test the handler with the seam mocked.
@@ -349,3 +406,6 @@ This is a feature on top of a completed build plan, so:
 - **Large UI refactor (`app.tsx`)**: stage behind the new `View` model and section renderers;
   keep `TerminalPane` (the riskiest piece) backward-compatible by adding a `mode` prop rather
   than rewriting it.
+- **Shared `ProcessSpawner` / `LaunchParams` signature change** touches both the CLI and the
+  harnesses integration tests; keep `cwd`/`env` **optional** so existing call sites (and the GUI
+  PTY path, which spawns separately) compile and behave unchanged.
