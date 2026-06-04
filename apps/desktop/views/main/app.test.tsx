@@ -171,6 +171,100 @@ describe("App view model", () => {
     await waitFor(() => expect(window.location.hash).toBe("#sessions/s_new"))
   })
 
+  it("keeps the modal open and shows the error when launchHarness fails (Bug 1)", async () => {
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getHarnesses: async () => ({
+        ok: true as const,
+        value: [
+          {
+            id: "claude",
+            name: "Claude Code",
+            command: "claude",
+            apiFormat: "anthropic",
+            envTemplate: {},
+            defaultAlias: "fast",
+            builtIn: true,
+          },
+        ],
+      }),
+      getAliases: async () => ({
+        ok: true as const,
+        value: [
+          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
+        ],
+      }),
+      launchHarness: async () => ({
+        ok: false as const,
+        error: { kind: "handler-failed" as const, detail: "boom: no key" },
+      }),
+    })
+    render(
+      <App
+        client={client}
+        terminalClient={fakeTerminalClient}
+        createTerminal={fakeXterm}
+        initialView="sessions"
+      />,
+    )
+    fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
+    fireEvent.click(await screen.findByRole("button", { name: /launch/i }))
+    await waitFor(() => expect(client.calls.launchHarness.length).toBe(1))
+    // The error surfaces in the modal's alert ...
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/boom: no key/i),
+    )
+    // ... the modal stays open (Launch still on screen) and the view is NOT
+    // switched to the (nonexistent) session.
+    expect(screen.getByRole("button", { name: /launch/i })).toBeInTheDocument()
+    expect(window.location.hash).not.toContain("/")
+  })
+
+  it("omits an empty name from the launchHarness params (Bug 1)", async () => {
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getHarnesses: async () => ({
+        ok: true as const,
+        value: [
+          {
+            id: "claude",
+            name: "Claude Code",
+            command: "claude",
+            apiFormat: "anthropic",
+            envTemplate: {},
+            defaultAlias: "fast",
+            builtIn: true,
+          },
+        ],
+      }),
+      getAliases: async () => ({
+        ok: true as const,
+        value: [
+          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
+        ],
+      }),
+      launchHarness: async () => ({
+        ok: true as const,
+        value: { sessionId: "s_new" },
+      }),
+    })
+    render(
+      <App
+        client={client}
+        terminalClient={fakeTerminalClient}
+        createTerminal={fakeXterm}
+        initialView="sessions"
+      />,
+    )
+    fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
+    // Leave Name empty (the default). Launch with the defaulted harness/alias.
+    fireEvent.click(await screen.findByRole("button", { name: /launch/i }))
+    await waitFor(() => expect(client.calls.launchHarness.length).toBe(1))
+    const params = client.calls.launchHarness[0] as Record<string, unknown>
+    expect("name" in params).toBe(false)
+    expect("cwd" in params).toBe(false)
+  })
+
   it("also calls addProfile when 'Save edits as new profile' is checked", async () => {
     const client = createFakeIpcClient({
       ...baseStubs,
@@ -399,7 +493,9 @@ describe("App view model", () => {
       }),
       getSessionScrollback: async () => ({
         ok: true as const,
-        value: { bytesBase64: "" },
+        // Non-empty bytes so the replay pane (not the new empty-state) renders;
+        // this test asserts the live→replay pane transition, see Bug 2.
+        value: { bytesBase64: "aGk=" },
       }),
       getHarnesses: async () => ({
         ok: true as const,

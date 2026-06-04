@@ -1,4 +1,4 @@
-import type { IpcClient } from "@launchkit/ipc"
+import type { IpcClient, IpcError } from "@launchkit/ipc"
 import type { SessionId } from "@launchkit/types"
 import { type AppMode, AppShell, NewSessionModal } from "@launchkit/ui"
 import type { NewSessionValues } from "@launchkit/ui"
@@ -37,6 +37,16 @@ const parseView = (raw: string): View => {
   // Anything else (incl. the retired #dashboard) collapses to the default sessions view.
   return { kind: "sessions" }
 }
+
+/**
+ * Derive a readable, message-safe string from an `IpcError` for the modal alert.
+ * Uses the typed `detail` (the only message-bearing field — no stack/secrets),
+ * falling back to the `kind` when a handler returned no detail.
+ */
+const ipcErrorMessage = (error: IpcError): string =>
+  error.detail.trim() === ""
+    ? `Could not launch session (${error.kind}).`
+    : `Could not launch session: ${error.detail}`
 
 /** Encode a `View` back to its hash representation. */
 const encodeView = (view: View): string =>
@@ -85,6 +95,10 @@ const AppInner = ({
   // survives selection changes; never auto-removed (the old tab behaviour).
   const [openSessionIds, setOpenSessionIds] = useState<readonly SessionId[]>([])
   const [modalOpen, setModalOpen] = useState<boolean>(false)
+  // A launch failure to surface inside the modal (so the user isn't left staring
+  // at a silently-failed "New session"). Cleared when the modal (re)opens, on
+  // cancel, and on a successful launch.
+  const [launchError, setLaunchError] = useState<string | undefined>(undefined)
   // The cwd picked via the native folder dialog (fed into NewSessionModal).
   const [folder, setFolder] = useState<string>("")
   const proxy = useProxyStatus()
@@ -133,14 +147,22 @@ const AppInner = ({
   }
 
   const onSubmitNewSession = async (v: NewSessionValues): Promise<void> => {
+    // Omit empty name/cwd so they're never sent as "" — the IPC `name` schema
+    // accepts "" but a session created with name:"" then fails SessionSchema's
+    // min(1) on the next getSessions, and an empty cwd is meaningless.
     const r = await client.launchHarness({
       id: v.harnessId,
       alias: v.alias,
-      name: v.name,
-      cwd: v.cwd,
+      ...(v.name.trim() ? { name: v.name } : {}),
+      ...(v.cwd.trim() ? { cwd: v.cwd } : {}),
       env: v.env,
     })
-    if (!r.ok) return
+    if (!r.ok) {
+      // Surface the failure in the modal (keep it open) instead of swallowing it.
+      setLaunchError(ipcErrorMessage(r.error))
+      return
+    }
+    setLaunchError(undefined)
     if (v.saveAsProfile !== undefined) {
       await client.addProfile({
         name: v.saveAsProfile.name,
@@ -185,7 +207,10 @@ const AppInner = ({
           onMore: () => setRecentLimit((l) => l + 20),
           onSelect: (id) =>
             setView({ kind: "sessions", selectedSessionId: id }),
-          onNew: () => setModalOpen(true),
+          onNew: () => {
+            setLaunchError(undefined)
+            setModalOpen(true)
+          },
           onExit: onSessionExit,
           terminalClient,
           createTerminal,
@@ -206,9 +231,13 @@ const AppInner = ({
         harnesses={harnesses.data ?? []}
         aliases={aliases.data ?? []}
         folder={folder}
+        {...(launchError === undefined ? {} : { error: launchError })}
         onBrowse={() => void onBrowse()}
         onSubmit={(v) => void onSubmitNewSession(v)}
-        onCancel={() => setModalOpen(false)}
+        onCancel={() => {
+          setLaunchError(undefined)
+          setModalOpen(false)
+        }}
       />
     </>
   )
