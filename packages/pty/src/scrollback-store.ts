@@ -68,5 +68,93 @@ export const createMemoryScrollbackFs = (): ScrollbackFs => {
   }
 }
 
-// (createFileScrollbackStore / createMemoryScrollbackStore / createBunScrollbackFs land in PH.3–PH.6.)
+export interface ScrollbackStore {
+  append(id: SessionId, chunk: Uint8Array): Result<void, PtyError>
+  read(id: SessionId): Result<Uint8Array, PtyError>
+  close(id: SessionId): Result<void, PtyError>
+}
+
+const DEFAULT_CAP_BYTES = 1024 * 1024
+
+/** Reject ids that are empty or could escape `dir` (separators / parent refs). */
+const safeId = (id: SessionId): Result<string, PtyError> => {
+  const s = String(id)
+  if (s.length === 0 || s.includes("/") || s.includes("\\") || s.includes("..")) {
+    return err({ kind: "scrollback-io", detail: `unsafe session id: ${s}` })
+  }
+  return ok(s)
+}
+
+export const createFileScrollbackStore = (deps: {
+  dir: string
+  fs: ScrollbackFs
+  capBytes?: number
+}): ScrollbackStore => {
+  const capBytes = deps.capBytes ?? DEFAULT_CAP_BYTES
+  // Per-session open append writer + the byte count written to the CURRENT <id>.bin (reset on rotate).
+  const open = new Map<string, { writer: ScrollbackAppendWriter; bytes: number }>()
+
+  const mainPath = (safe: string): string => `${deps.dir}/${safe}.bin`
+  const rotatedPath = (safe: string): string => `${deps.dir}/${safe}.1.bin`
+
+  const writerFor = (
+    safe: string,
+  ): Result<{ writer: ScrollbackAppendWriter; bytes: number }, PtyError> => {
+    const existing = open.get(safe)
+    if (existing !== undefined) return ok(existing)
+    const opened = deps.fs.openAppend(mainPath(safe))
+    if (!opened.ok) return opened
+    const entry = { writer: opened.value, bytes: 0 }
+    open.set(safe, entry)
+    return ok(entry)
+  }
+
+  return {
+    append: (id, chunk): Result<void, PtyError> => {
+      const safe = safeId(id)
+      if (!safe.ok) return safe
+      const entry = writerFor(safe.value)
+      if (!entry.ok) return entry
+      const written = entry.value.writer.write(chunk)
+      if (!written.ok) return written
+      entry.value.bytes += chunk.length
+      // Rotation trigger added in PH.4.
+      return ok(undefined)
+    },
+
+    read: (id): Result<Uint8Array, PtyError> => {
+      const safe = safeId(id)
+      if (!safe.ok) return safe
+      const out: Uint8Array[] = []
+      if (deps.fs.exists(rotatedPath(safe.value))) {
+        const prev = deps.fs.readWhole(rotatedPath(safe.value))
+        if (!prev.ok) return prev
+        out.push(prev.value)
+      }
+      if (deps.fs.exists(mainPath(safe.value))) {
+        const cur = deps.fs.readWhole(mainPath(safe.value))
+        if (!cur.ok) return cur
+        out.push(cur.value)
+      }
+      const total = out.reduce((n, b) => n + b.length, 0)
+      const merged = new Uint8Array(total)
+      let off = 0
+      for (const b of out) {
+        merged.set(b, off)
+        off += b.length
+      }
+      return ok(merged)
+    },
+
+    close: (id): Result<void, PtyError> => {
+      const safe = safeId(id)
+      if (!safe.ok) return safe
+      const entry = open.get(safe.value)
+      if (entry === undefined) return ok(undefined)
+      open.delete(safe.value)
+      return entry.writer.close()
+    },
+  }
+}
+
 export type { SessionId }

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "bun:test"
-import { createMemoryScrollbackFs } from "./scrollback-store"
+import { SessionIdSchema } from "@launchkit/types"
+import { createFileScrollbackStore, createMemoryScrollbackFs } from "./scrollback-store"
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s)
 const dec = (u: Uint8Array): string => new TextDecoder().decode(u)
+
+const id = SessionIdSchema.parse("s_00000000-0000-4000-8000-000000000000")
 
 describe("createMemoryScrollbackFs", () => {
   it("appends bytes through an open writer and reads them back when the file is read whole", () => {
@@ -43,6 +46,49 @@ describe("createMemoryScrollbackFs", () => {
   it("returns a scrollback-io error when reading a path that does not exist", () => {
     const fs = createMemoryScrollbackFs()
     const r = fs.readWhole("/d/missing.bin")
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error.kind).toBe("scrollback-io")
+  })
+})
+
+describe("createFileScrollbackStore", () => {
+  it("appends chunks for a session and reads them back concatenated", () => {
+    const fs = createMemoryScrollbackFs()
+    const store = createFileScrollbackStore({ dir: "/scroll", fs })
+    expect(store.append(id, enc("foo")).ok).toBe(true)
+    expect(store.append(id, enc("bar")).ok).toBe(true)
+    const r = store.read(id)
+    expect(r.ok && dec(r.value)).toBe("foobar")
+  })
+
+  it("writes to <dir>/<id>.bin", () => {
+    const fs = createMemoryScrollbackFs()
+    const store = createFileScrollbackStore({ dir: "/scroll", fs })
+    store.append(id, enc("hi"))
+    expect(fs.exists("/scroll/s_00000000-0000-4000-8000-000000000000.bin")).toBe(true)
+  })
+
+  it("returns an empty buffer when reading a session that has no data yet", () => {
+    const fs = createMemoryScrollbackFs()
+    const store = createFileScrollbackStore({ dir: "/scroll", fs })
+    const r = store.read(id)
+    expect(r.ok && r.value.length).toBe(0)
+  })
+
+  it("rejects an id containing a path separator with a scrollback-io error", () => {
+    const fs = createMemoryScrollbackFs()
+    const store = createFileScrollbackStore({ dir: "/scroll", fs })
+    const bad = "../escape" as unknown as typeof id
+    const r = store.append(bad, enc("x"))
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error.kind).toBe("scrollback-io")
+  })
+
+  it("rejects a read for an id with a backslash without touching the fs", () => {
+    const fs = createMemoryScrollbackFs()
+    const store = createFileScrollbackStore({ dir: "/scroll", fs })
+    const bad = "a\\b" as unknown as typeof id
+    const r = store.read(bad)
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.error.kind).toBe("scrollback-io")
   })
