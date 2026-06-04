@@ -3,6 +3,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs"
@@ -88,6 +89,24 @@ describe("createBunProcessSpawner (real)", () => {
         process.env.LK_SPAWN_MARKER = priorMarker
       }
     }
+  })
+
+  it("spawns the child process in the given cwd", async () => {
+    const dir = makeTempDir()
+    const out = join(dir, "where.txt")
+    const spawner = createBunProcessSpawner()
+    // Write the child's cwd to a file (stdio is inherited, so assert via the filesystem).
+    const r = spawner.spawn(
+      "/bin/sh",
+      ["-c", `pwd -P > ${out}`],
+      { ...process.env } as Record<string, string>,
+      dir,
+    )
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    await r.value.exited
+    const written = readFileSync(out, "utf8").trim()
+    expect(written).toBe(realpathSync(dir))
   })
 })
 

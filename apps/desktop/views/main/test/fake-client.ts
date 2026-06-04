@@ -32,6 +32,13 @@ const METHOD_NAMES = [
   "launchHarness",
   "getSessions",
   "getProxyStatus",
+  "getProfiles",
+  "addProfile",
+  "updateProfile",
+  "deleteProfile",
+  "pickFolder",
+  "getSessionScrollback",
+  "listProviderModels",
 ] as const satisfies ReadonlyArray<keyof IpcClient>
 
 /**

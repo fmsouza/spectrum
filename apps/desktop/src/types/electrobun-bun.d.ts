@@ -79,3 +79,17 @@ export class Tray {
   on(name: "tray-clicked", handler: (event: unknown) => void): void
   remove(): void
 }
+
+/** Options for the native open dialog. `exactOptionalPropertyTypes`-safe (no `| undefined`). */
+export interface OpenFileDialogOptions {
+  canChooseDirectory?: boolean
+  canChooseFiles?: boolean
+  allowsMultipleSelection?: boolean
+  startingFolder?: string
+}
+
+/** Subset of the Electrobun bun-side `Utils` namespace we consume. */
+export const Utils: {
+  /** Native open panel; resolves the selected paths (empty array if cancelled). */
+  openFileDialog(options?: OpenFileDialogOptions): Promise<string[]>
+}

@@ -4,7 +4,8 @@ import {
   createFakeCommandResolver,
   resolveHarnessLaunch,
 } from "@launchkit/harnesses"
-import type { Provider, Session } from "@launchkit/types"
+import { bytesToBase64 } from "@launchkit/pty"
+import type { Profile, Provider, Session } from "@launchkit/types"
 import { type Result, err, ok } from "@launchkit/utils"
 import type { AppContext } from "../../composition"
 import { createIpcHandlers } from "./handlers"
@@ -27,6 +28,7 @@ const baseConfig = (providers: readonly Provider[]): Config =>
     version: 2,
     providers,
     aliases: [],
+    profiles: [],
     settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
   }) as Config
 
@@ -43,6 +45,8 @@ const makeCtx = (
     proxyKeyStored?: string | null
     registryAddOk?: boolean
     registryRemoveOk?: boolean
+    pickFolderResult?: readonly string[]
+    scrollback?: Result<Uint8Array, { readonly kind: string }>
   } = {},
 ): {
   ctx: AppContext
@@ -53,6 +57,8 @@ const makeCtx = (
   terminalInputs: unknown[]
   registryAdds: unknown[]
   registryRemoves: string[]
+  pickFolderCalls: unknown[]
+  readScrollbackIds: string[]
 } => {
   const saves: Config[] = []
   const secretSets: string[] = []
@@ -61,6 +67,8 @@ const makeCtx = (
   const terminalInputs: unknown[] = []
   const registryAdds: unknown[] = []
   const registryRemoves: string[] = []
+  const pickFolderCalls: unknown[] = []
+  const readScrollbackIds: string[] = []
   let current = baseConfig(over.providers ?? [provider()])
 
   // The handler resolves the harness command+env via ctx.resolveLaunch — use the REAL renderer
@@ -167,6 +175,14 @@ const makeCtx = (
       dbFile: "/tmp/launchkit.db",
       harnessDir: "/tmp/harnesses",
     },
+    pickFolder: async (opts: unknown) => {
+      pickFolderCalls.push(opts)
+      return over.pickFolderResult ?? []
+    },
+    readScrollback: (id: unknown) => {
+      readScrollbackIds.push(id as string)
+      return over.scrollback ?? ok(new Uint8Array())
+    },
   } as unknown as AppContext
 
   return {
@@ -178,6 +194,8 @@ const makeCtx = (
     terminalInputs,
     registryAdds,
     registryRemoves,
+    pickFolderCalls,
+    readScrollbackIds,
   }
 }
 
@@ -490,5 +508,309 @@ describe("createIpcHandlers.getProxyStatus", () => {
       running: false,
       port: 4000,
     })
+  })
+})
+
+// ── D.1 Profiles CRUD ─────────────────────────────────────────────────────────
+
+const sampleProfile: Profile = {
+  id: "pr_default" as Profile["id"],
+  name: "Default",
+  harnessId: "claude" as Profile["harnessId"],
+  alias: "fast" as Profile["alias"],
+  env: {},
+}
+
+describe("createIpcHandlers.getProfiles", () => {
+  it("returns the profiles from the loaded config when listing", async () => {
+    const { ctx } = makeCtx()
+    await ctx.config.save({
+      ...(await ctx.config.load()).value,
+      profiles: [sampleProfile],
+    } as Config)
+    const handlers = createIpcHandlers(ctx)
+
+    expect(await handlers.getProfiles(undefined)).toEqual([sampleProfile])
+  })
+
+  it("returns an empty list when the config has no profiles", async () => {
+    const { ctx } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+    expect(await handlers.getProfiles(undefined)).toEqual([])
+  })
+})
+
+describe("createIpcHandlers.addProfile", () => {
+  it("mints a pr_-prefixed id and persists the new profile when adding", async () => {
+    const original = crypto.randomUUID
+    ;(crypto as { randomUUID: () => string }).randomUUID = () => "fixed-uuid"
+    try {
+      const { ctx, saves } = makeCtx()
+      const handlers = createIpcHandlers(ctx)
+
+      const created = await handlers.addProfile({
+        name: "Work",
+        harnessId: "claude" as Profile["harnessId"],
+        alias: "fast" as Profile["alias"],
+        env: { EXTRA: "1" },
+      })
+
+      expect(created.id).toBe("pr_fixed-uuid")
+      expect(created.name).toBe("Work")
+      expect(created.harnessId).toBe("claude")
+      expect(created.alias).toBe("fast")
+      expect(created.env).toEqual({ EXTRA: "1" })
+      expect(saves).toHaveLength(1)
+      expect(saves[0]?.profiles).toEqual([created])
+    } finally {
+      ;(crypto as { randomUUID: () => string }).randomUUID = original
+    }
+  })
+
+  it("throws so the server surfaces handler-failed when the save fails", async () => {
+    const { ctx } = makeCtx()
+    ;(ctx.config as { save: unknown }).save = async () =>
+      err({ kind: "write-failed" })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.addProfile({
+        name: "X",
+        harnessId: "claude" as Profile["harnessId"],
+        alias: "fast" as Profile["alias"],
+        env: {},
+      }),
+    ).rejects.toThrow()
+  })
+})
+
+describe("createIpcHandlers.updateProfile", () => {
+  it("replaces the matching profile and returns the full updated record", async () => {
+    const { ctx, saves } = makeCtx()
+    await ctx.config.save({
+      ...(await ctx.config.load()).value,
+      profiles: [sampleProfile],
+    } as Config)
+    const handlers = createIpcHandlers(ctx)
+
+    const next: Profile = {
+      id: sampleProfile.id,
+      name: "Renamed",
+      harnessId: "codex" as Profile["harnessId"],
+      alias: "smart" as Profile["alias"],
+      env: { TOKEN: "z" },
+    }
+    const updated = await handlers.updateProfile(next)
+
+    expect(updated).toEqual(next)
+    const saved = saves.at(-1)?.profiles.find((p) => p.id === sampleProfile.id)
+    expect(saved).toEqual(next)
+  })
+
+  it("throws when updateProfile targets an id that does not exist", async () => {
+    const { ctx } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.updateProfile({
+        id: "pr_ghost" as Profile["id"],
+        name: "X",
+        harnessId: "claude" as Profile["harnessId"],
+        alias: "fast" as Profile["alias"],
+        env: {},
+      }),
+    ).rejects.toThrow()
+  })
+})
+
+describe("createIpcHandlers.deleteProfile", () => {
+  it("removes the profile and returns null on success", async () => {
+    const { ctx, saves } = makeCtx()
+    await ctx.config.save({
+      ...(await ctx.config.load()).value,
+      profiles: [sampleProfile],
+    } as Config)
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.deleteProfile({ id: sampleProfile.id })
+
+    expect(result).toBeNull()
+    expect(saves.at(-1)?.profiles).toEqual([])
+  })
+})
+
+// ── D.2 pickFolder ─────────────────────────────────────────────────────────────
+
+describe("createIpcHandlers.pickFolder", () => {
+  it("returns the first selected path when the dialog resolves a folder", async () => {
+    const { ctx, pickFolderCalls } = makeCtx({
+      pickFolderResult: ["/Users/me/project"],
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.pickFolder({ startingFolder: "/Users/me" })
+
+    expect(result).toEqual({ path: "/Users/me/project" })
+    expect(pickFolderCalls).toEqual([{ startingFolder: "/Users/me" }])
+  })
+
+  it("returns an empty object when the dialog is cancelled (no selection)", async () => {
+    const { ctx } = makeCtx({ pickFolderResult: [] })
+    const handlers = createIpcHandlers(ctx)
+    expect(await handlers.pickFolder({})).toEqual({})
+  })
+
+  it("returns an empty object when params are undefined", async () => {
+    const { ctx } = makeCtx({ pickFolderResult: [] })
+    const handlers = createIpcHandlers(ctx)
+    expect(await handlers.pickFolder(undefined)).toEqual({})
+  })
+})
+
+// ── D.4 getSessionScrollback ──────────────────────────────────────────────────
+
+describe("createIpcHandlers.getSessionScrollback", () => {
+  it("base64-encodes the session's captured bytes into bytesBase64 when reading scrollback", async () => {
+    const bytes = new Uint8Array([0, 65, 200, 255])
+    const { ctx, readScrollbackIds } = makeCtx({ scrollback: ok(bytes) })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.getSessionScrollback({ id: "s_1" as never })
+
+    expect(result).toEqual({ bytesBase64: bytesToBase64(bytes) })
+    expect(readScrollbackIds).toEqual(["s_1"])
+  })
+
+  it("throws so the server surfaces handler-failed when the read fails", async () => {
+    const { ctx } = makeCtx({ scrollback: err({ kind: "not-found" }) })
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.getSessionScrollback({ id: "s_x" as never }),
+    ).rejects.toThrow()
+  })
+})
+
+// ── D.5 launchHarness session metadata + getSessions pagination ───────────────
+
+describe("createIpcHandlers.launchHarness (session metadata)", () => {
+  it("threads name, cwd, and extra env into terminal.launch", async () => {
+    const { ctx, terminalInputs } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({
+      id: "claude" as never,
+      name: "refactor run",
+      cwd: "/work/repo",
+      env: { EXTRA: "1" },
+    })
+
+    const input = terminalInputs[0] as {
+      name?: string
+      cwd?: string
+      env: Record<string, string>
+    }
+    expect(input.name).toBe("refactor run")
+    expect(input.cwd).toBe("/work/repo")
+    expect(input.env.EXTRA).toBe("1")
+    expect(input.env.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:4000")
+  })
+
+  it("omits name/cwd when not supplied (exactOptionalPropertyTypes safe)", async () => {
+    const { ctx, terminalInputs } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({ id: "claude" as never })
+
+    const input = terminalInputs[0] as Record<string, unknown>
+    expect("name" in input).toBe(false)
+    expect("cwd" in input).toBe(false)
+  })
+
+  it("coerces empty/blank name and cwd to omitted (never creates a session named '')", async () => {
+    const { ctx, terminalInputs } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({
+      id: "claude" as never,
+      name: "",
+      cwd: "   ",
+    })
+
+    const input = terminalInputs[0] as Record<string, unknown>
+    expect("name" in input).toBe(false)
+    expect("cwd" in input).toBe(false)
+  })
+})
+
+// ── D.6 listProviderModels ────────────────────────────────────────────────────
+
+describe("createIpcHandlers.listProviderModels", () => {
+  it("returns { models } when ctx.listProviderModels resolves ok", async () => {
+    const { ctx } = makeCtx()
+    ;(ctx as { listProviderModels: unknown }).listProviderModels = async () =>
+      ok(["gpt-4o", "gpt-4o-mini"])
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.listProviderModels({
+      providerId: "p_openai" as never,
+    })
+
+    expect(result).toEqual({ models: ["gpt-4o", "gpt-4o-mini"] })
+  })
+
+  it("throws so the server surfaces handler-failed when ctx.listProviderModels returns err", async () => {
+    const { ctx } = makeCtx()
+    ;(ctx as { listProviderModels: unknown }).listProviderModels = async () =>
+      err({ kind: "unknown-provider", providerId: "p_ghost" })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.listProviderModels({ providerId: "p_ghost" as never }),
+    ).rejects.toThrow()
+  })
+
+  it("passes the providerId string to ctx.listProviderModels", async () => {
+    const calls: string[] = []
+    const { ctx } = makeCtx()
+    ;(ctx as { listProviderModels: unknown }).listProviderModels = async (
+      id: string,
+    ) => {
+      calls.push(id)
+      return ok(["llama3"])
+    }
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.listProviderModels({ providerId: "p_ollama" as never })
+
+    expect(calls).toEqual(["p_ollama"])
+  })
+})
+
+describe("createIpcHandlers.getSessions (running + pagination)", () => {
+  it("passes running, limit, and offset through to sessions.query", async () => {
+    const queries: unknown[] = []
+    const { ctx } = makeCtx()
+    ;(ctx.sessions as { query: unknown }).query = (filter: unknown) => {
+      queries.push(filter)
+      return ok([sampleSession])
+    }
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.getSessions({ running: true, limit: 20, offset: 40 })
+
+    expect(queries[0]).toEqual({ running: true, limit: 20, offset: 40 })
+  })
+
+  it("drops undefined keys from the filter", async () => {
+    const queries: unknown[] = []
+    const { ctx } = makeCtx()
+    ;(ctx.sessions as { query: unknown }).query = (filter: unknown) => {
+      queries.push(filter)
+      return ok([])
+    }
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.getSessions({ running: undefined })
+
+    expect(queries[0]).toEqual({})
   })
 })

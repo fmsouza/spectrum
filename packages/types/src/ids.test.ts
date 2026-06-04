@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { ProviderIdSchema, SecretRefSchema } from "./ids"
+import { ProfileIdSchema, ProviderIdSchema, SecretRefSchema } from "./ids"
 
 describe("ProviderIdSchema", () => {
   it("parses a non-empty string into a branded ProviderId", () => {
@@ -18,5 +18,14 @@ describe("SecretRefSchema", () => {
     expect(
       SecretRefSchema.safeParse({ ref: "kc_abc", value: "sk-xxx" }).success,
     ).toBe(false)
+  })
+})
+
+describe("ProfileIdSchema", () => {
+  it("parses a non-empty string into a branded ProfileId", () => {
+    expect(ProfileIdSchema.parse("prof_123")).toBe<string>("prof_123")
+  })
+  it("rejects an empty string", () => {
+    expect(ProfileIdSchema.safeParse("").success).toBe(false)
   })
 })

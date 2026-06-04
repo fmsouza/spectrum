@@ -58,10 +58,13 @@ const parseUpdateColumns = (sql: string): readonly string[] => {
     .filter((c) => c.length > 0)
 }
 
-/** A WHERE predicate parsed from `col OP ?` (OP is `=` or `>=`). */
-type WhereTerm = { readonly column: string; readonly op: "=" | ">=" }
+/** A WHERE predicate parsed from the SQL clause. */
+type WhereTerm =
+  | { readonly column: string; readonly op: "=" | ">=" }
+  | { readonly column: string; readonly op: "IS NULL" }
+  | { readonly column: string; readonly op: "IS NOT NULL" }
 
-/** Parse `WHERE x = ? AND y >= ?` into ordered terms; returns [] when there is no WHERE. */
+/** Parse `WHERE x = ? AND y >= ? AND z IS NULL` into ordered terms; returns [] when there is no WHERE. */
 const parseWhereTerms = (sql: string): readonly WhereTerm[] => {
   const match = /WHERE\s+(.*?)(?:\s+ORDER\s+BY|\s*$)/i.exec(sql)
   if (match === null || match[1] === undefined) return []
@@ -72,18 +75,28 @@ const parseWhereTerms = (sql: string): readonly WhereTerm[] => {
       if (ge !== null && ge[1] !== undefined) return { column: ge[1], op: ">=" }
       const eq = /^(\w+)\s*=\s*\?$/.exec(clause.trim())
       if (eq !== null && eq[1] !== undefined) return { column: eq[1], op: "=" }
+      const isNull = /^(\w+)\s+IS\s+NULL$/i.exec(clause.trim())
+      if (isNull !== null && isNull[1] !== undefined)
+        return { column: isNull[1], op: "IS NULL" }
+      const isNotNull = /^(\w+)\s+IS\s+NOT\s+NULL$/i.exec(clause.trim())
+      if (isNotNull !== null && isNotNull[1] !== undefined)
+        return { column: isNotNull[1], op: "IS NOT NULL" }
       return undefined
     })
     .filter((t): t is WhereTerm => t !== undefined)
 }
 
+/** Consume one positional param per `=`/`>=` term; `IS NULL`/`IS NOT NULL` terms have no param. */
 const matchesWhere = (
   row: Row,
   terms: readonly WhereTerm[],
   params: readonly unknown[],
-): boolean =>
-  terms.every((term, i) => {
-    const value = params[i]
+): boolean => {
+  let paramIdx = 0
+  return terms.every((term) => {
+    if (term.op === "IS NULL") return row[term.column] == null
+    if (term.op === "IS NOT NULL") return row[term.column] != null
+    const value = params[paramIdx++]
     const cell = row[term.column]
     if (term.op === ">=")
       return (
@@ -91,6 +104,7 @@ const matchesWhere = (
       )
     return cell === value
   })
+}
 
 const compareDesc = (a: Row, b: Row): number => {
   const av = typeof a.startedAt === "string" ? (a.startedAt as string) : ""
@@ -129,15 +143,26 @@ export const createInMemoryDatabase = (): InMemoryDatabase => {
       }
       if (keyword === "UPDATE") {
         const columns = parseUpdateColumns(sql)
-        const id = params[params.length - 1]
-        if (typeof id !== "string") return ok(undefined)
-        const existing = rows.get(id)
-        if (existing === undefined) return ok(undefined)
-        const next: Row = { ...existing }
-        columns.forEach((col, i) => {
-          next[col] = params[i]
+        const whereTerms = parseWhereTerms(sql)
+        // Count how many SET params there are (one per column in SET clause).
+        const setParamCount = columns.length
+        const setParams = params.slice(0, setParamCount)
+        const whereParams = params.slice(setParamCount)
+        // If the WHERE clause uses parameterized columns (`id = ?`), apply to a single row.
+        // If the WHERE clause is param-free (e.g. `endedAt IS NULL`), apply to all matching rows.
+        const matchingIds = [...rows.keys()].filter((id) => {
+          const row = rows.get(id)
+          return row !== undefined && matchesWhere(row, whereTerms, whereParams)
         })
-        rows.set(id, next)
+        for (const id of matchingIds) {
+          const existing = rows.get(id)
+          if (existing === undefined) continue
+          const next: Row = { ...existing }
+          columns.forEach((col, i) => {
+            next[col] = setParams[i]
+          })
+          rows.set(id, next)
+        }
         return ok(undefined)
       }
       return ok(undefined)
