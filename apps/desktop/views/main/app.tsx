@@ -1,22 +1,15 @@
 import type { IpcClient } from "@launchkit/ipc"
-import type { HarnessId, SessionId } from "@launchkit/types"
-import { AppShell } from "@launchkit/ui"
+import type { SessionId } from "@launchkit/types"
+import { type AppMode, AppShell } from "@launchkit/ui"
 import { type ReactElement, StrictMode, useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
-import { ErrorBoundary } from "./ErrorBoundary"
 import { IpcClientProvider } from "./IpcClientContext"
 import { createRealClients } from "./clients"
-import {
-  DashboardPage,
-  HarnessesPage,
-  ProvidersPage,
-  RoutingPage,
-  SessionsPage,
-} from "./pages"
-import { TerminalPage } from "./terminal/TerminalPage"
+import { useProxyStatus } from "./hooks/useProxyStatus"
 import type { CreateTerminal } from "./terminal/TerminalPane"
 import type { TerminalClient } from "./terminal/terminalClient"
-import { useTerminals } from "./terminal/useTerminals"
+import { SessionsView } from "./views/SessionsView"
+import { SettingsView } from "./views/SettingsView"
 
 /**
  * The top-level app view. `sessions` carries the optionally-selected session id;
@@ -64,83 +57,88 @@ export type AppProps = {
   readonly createTerminal: CreateTerminal
 }
 
-export const App = ({
-  client,
-  initialView = "sessions",
+/** Props for the data-aware inner shell (rendered inside `IpcClientProvider`). */
+type AppInnerProps = {
+  readonly initialView: string
+  readonly terminalClient: TerminalClient
+  readonly createTerminal: CreateTerminal
+}
+
+/**
+ * The stateful app body. Split out from `App` so its IPC hooks (e.g.
+ * `useProxyStatus`) and the view factories' hooks all run INSIDE the
+ * `IpcClientProvider` that `App` mounts.
+ */
+const AppInner = ({
+  initialView,
   terminalClient,
   createTerminal,
-}: AppProps): ReactElement => {
+}: AppInnerProps): ReactElement => {
   const [view, setView] = useState<View>(parseView(initialView))
-
-  const { tabs, openTab, closeTab } = useTerminals(terminalClient)
-  const [labels, setLabels] = useState<
-    Readonly<Partial<Record<SessionId, string>>>
-  >({})
+  // Open live sessions stay mounted (hidden) keyed by id so xterm scrollback
+  // survives selection changes; never auto-removed (the old tab behaviour). The
+  // launch flow that populates this set is wired in D.12.
+  const [openSessionIds] = useState<readonly SessionId[]>([])
+  const proxy = useProxyStatus()
 
   // Keep the URL hash in sync so reloads land on the same view (no remote nav).
   useEffect(() => {
     window.location.hash = encodeView(view)
   }, [view])
 
-  const onLaunched = (sessionId: SessionId, harnessId: HarnessId): void => {
-    setLabels((prev) => ({ ...prev, [sessionId]: harnessId }))
-    openTab(sessionId)
-    setView({ kind: "sessions", selectedSessionId: sessionId })
-  }
+  const mode: AppMode = view.kind === "settings" ? "settings" : "sessions"
 
-  // TEMPORARY (rewritten in D.11): map a settings section onto the existing
-  // settings-ish pages and the sessions view onto the current terminal page so
-  // the app stays green between the D.9/D.11/D.12 sub-steps.
-  const renderSettings = (section: string): ReactElement => {
-    switch (section) {
-      case "providers":
-        return <ProvidersPage />
-      case "routing":
-        return <RoutingPage />
-      case "harnesses":
-        return <HarnessesPage />
-      case "sessions":
-        return <SessionsPage />
-      default:
-        return <DashboardPage onLaunched={onLaunched} />
-    }
-  }
-
-  const renderDetail = (): ReactElement =>
-    view.kind === "settings" ? (
-      renderSettings(view.section)
-    ) : (
-      <TerminalPage
-        client={terminalClient}
-        tabs={tabs}
-        closeTab={closeTab}
-        labels={labels}
-        createTerminal={createTerminal}
-      />
+  const onModeChange = (next: AppMode): void =>
+    setView(
+      next === "settings"
+        ? { kind: "settings", section: "general" }
+        : { kind: "sessions" },
     )
 
-  const mode = view.kind === "settings" ? "settings" : "sessions"
+  const { master, detail } =
+    view.kind === "settings"
+      ? SettingsView({
+          section: view.section,
+          onSection: (key) => setView({ kind: "settings", section: key }),
+        })
+      : SessionsView({
+          ...(view.selectedSessionId === undefined
+            ? {}
+            : { selectedSessionId: view.selectedSessionId }),
+          openSessionIds,
+          onSelect: (id) =>
+            setView({ kind: "sessions", selectedSessionId: id }),
+          // The new-session modal is wired in D.12; a no-op is fine here.
+          onNew: () => {},
+          terminalClient,
+          createTerminal,
+        })
 
   return (
-    <IpcClientProvider client={client}>
-      <AppShell
-        mode={mode}
-        onModeChange={(next) =>
-          setView(
-            next === "settings"
-              ? { kind: "settings", section: "general" }
-              : { kind: "sessions" },
-          )
-        }
-        proxyRunning={false}
-        master={null}
-        detail={
-          <ErrorBoundary key={encodeView(view)}>{renderDetail()}</ErrorBoundary>
-        }
-      />
-    </IpcClientProvider>
+    <AppShell
+      mode={mode}
+      onModeChange={onModeChange}
+      proxyRunning={proxy.data?.running ?? false}
+      master={master}
+      detail={detail}
+    />
   )
 }
+
+export const App = ({
+  client,
+  initialView = "sessions",
+  terminalClient,
+  createTerminal,
+}: AppProps): ReactElement => (
+  <IpcClientProvider client={client}>
+    <AppInner
+      initialView={initialView}
+      terminalClient={terminalClient}
+      createTerminal={createTerminal}
+    />
+  </IpcClientProvider>
+)
 
 /** Production entry: build the Electrobun-backed client and mount into #root. */
 export const mount = async (): Promise<void> => {

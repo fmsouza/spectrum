@@ -77,4 +77,16 @@ describe("App view model", () => {
     )
     await waitFor(() => expect(window.location.hash).toBe("#sessions"))
   })
+
+  it("renders the AppShell in sessions mode by default", async () => {
+    const client = createFakeIpcClient(baseStubs)
+    render(
+      <App
+        client={client}
+        terminalClient={fakeTerminalClient}
+        createTerminal={fakeXterm}
+      />,
+    )
+    await waitFor(() => expect(window.location.hash).toBe("#sessions"))
+  })
 })
