@@ -6,6 +6,14 @@ import {
   defaultConfig,
 } from "./schema"
 
+const validProfile = {
+  id: "pr_default",
+  name: "Default",
+  harnessId: "claude",
+  alias: "fast",
+  env: {},
+}
+
 const validProvider = {
   id: "p_openai",
   name: "OpenAI",
@@ -33,16 +41,29 @@ describe("SettingsSchema", () => {
 })
 
 describe("ConfigSchema", () => {
-  it("parses a valid config with one provider, one alias, and settings", () => {
+  it("parses a valid config with one provider, one alias, profiles, and settings", () => {
     const config = {
       version: CURRENT_CONFIG_VERSION,
       providers: [validProvider],
       aliases: [
         { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o-mini" },
       ],
+      profiles: [validProfile],
       settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
     }
     expect(ConfigSchema.parse(config)).toEqual(config)
+  })
+
+  it("defaults profiles to an empty array shape and rejects a non-array profiles", () => {
+    expect(
+      ConfigSchema.safeParse({
+        version: CURRENT_CONFIG_VERSION,
+        providers: [],
+        aliases: [],
+        profiles: "nope",
+        settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+      }).success,
+    ).toBe(false)
   })
   it("rejects a provider whose secret is an inline raw string instead of a SecretRef", () => {
     const config = {
@@ -69,15 +90,19 @@ describe("ConfigSchema", () => {
 })
 
 describe("defaultConfig", () => {
-  it("returns the current version, empty providers/aliases, and loopback defaults", () => {
+  it("returns the current version, empty providers/aliases/profiles, and loopback defaults", () => {
     expect(defaultConfig()).toEqual({
       version: CURRENT_CONFIG_VERSION,
       providers: [],
       aliases: [],
+      profiles: [],
       settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
     })
   })
   it("produces a config that satisfies ConfigSchema", () => {
     expect(ConfigSchema.safeParse(defaultConfig()).success).toBe(true)
+  })
+  it("uses the bumped CURRENT_CONFIG_VERSION of 3", () => {
+    expect(CURRENT_CONFIG_VERSION).toBe(3)
   })
 })
