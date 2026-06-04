@@ -23,6 +23,34 @@ afterEach(() => {
     rmSync(dir, { recursive: true, force: true })
 })
 
+describe("createBunScrollbackFs openAppend — true O_APPEND semantics", () => {
+  it("appends to an existing file (not overwrites) when a second writer is opened on the same path", () => {
+    const dir = makeTempDir()
+    const path = join(dir, "append-test.bin")
+    const fs = createBunScrollbackFs()
+
+    // First writer: write "AAA" and close
+    const w1Result = fs.openAppend(path)
+    expect(w1Result.ok).toBe(true)
+    if (!w1Result.ok) return
+    expect(w1Result.value.write(enc("AAA")).ok).toBe(true)
+    expect(w1Result.value.close().ok).toBe(true)
+
+    // Second writer on the SAME path: write "BBB" and close
+    const w2Result = fs.openAppend(path)
+    expect(w2Result.ok).toBe(true)
+    if (!w2Result.ok) return
+    expect(w2Result.value.write(enc("BBB")).ok).toBe(true)
+    expect(w2Result.value.close().ok).toBe(true)
+
+    // readWhole must return "AAABBB" — not "BBB" (overwrite) or corrupted bytes
+    const readResult = fs.readWhole(path)
+    expect(readResult.ok).toBe(true)
+    if (!readResult.ok) return
+    expect(dec(readResult.value)).toBe("AAABBB")
+  })
+})
+
 describe("createBunScrollbackFs + createFileScrollbackStore (real fs)", () => {
   it("persists appended bytes to disk and reads them back through a fresh store", async () => {
     const dir = makeTempDir()

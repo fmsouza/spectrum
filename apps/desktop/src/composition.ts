@@ -16,6 +16,7 @@ import type { SecretStore } from "@launchkit/secrets"
 import type { SessionStore } from "@launchkit/sessions"
 import type { Result } from "@launchkit/utils"
 
+import { mkdirSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import {
@@ -142,6 +143,7 @@ export interface AppContext {
  */
 export interface CreateAppContextDeps {
   readonly homeDir: typeof homedir
+  readonly mkdirSync: typeof mkdirSync
   readonly createFsConfigFile: typeof createFsConfigFile
   readonly createFileConfigStore: typeof createFileConfigStore
   readonly createCachedConfigStore: typeof createCachedConfigStore
@@ -177,6 +179,7 @@ const defaultGenProxyKey = (): string => {
 /** The real constructors, used when `createAppContext()` is called with no argument. */
 const realDeps: CreateAppContextDeps = {
   homeDir: homedir,
+  mkdirSync,
   createFsConfigFile,
   createFileConfigStore,
   createCachedConfigStore,
@@ -296,6 +299,7 @@ export const createAppContext = (
 
   // terminal: the GUI embedded-terminal engine over a real FFI pty + the session store. Its `send`
   // sink is a no-op until window.ts binds the real Electrobun `messages` channel via `bindSend`.
+  deps.mkdirSync(scrollbackDir, { recursive: true })
   const scrollback = createFileScrollbackStore({
     dir: scrollbackDir,
     fs: createBunScrollbackFs(),

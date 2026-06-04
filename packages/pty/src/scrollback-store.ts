@@ -1,4 +1,13 @@
-import { existsSync, readFileSync, renameSync, unlinkSync } from "node:fs"
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeSync,
+} from "node:fs"
+import { join } from "node:path"
 import type { SessionId } from "@launchkit/types"
 import { type Result, err, ok } from "@launchkit/utils"
 import type { PtyError } from "./pty"
@@ -106,8 +115,8 @@ export const createFileScrollbackStore = (deps: {
     { writer: ScrollbackAppendWriter; bytes: number }
   >()
 
-  const mainPath = (safe: string): string => `${deps.dir}/${safe}.bin`
-  const rotatedPath = (safe: string): string => `${deps.dir}/${safe}.1.bin`
+  const mainPath = (safe: string): string => join(deps.dir, `${safe}.bin`)
+  const rotatedPath = (safe: string): string => join(deps.dir, `${safe}.1.bin`)
 
   const writerFor = (
     safe: string,
@@ -185,24 +194,23 @@ export const createFileScrollbackStore = (deps: {
 }
 
 /**
- * Real `ScrollbackFs`: Bun FileSink for appends, node:fs readFileSync for reads, node:fs for
+ * Real `ScrollbackFs`: node:fs O_APPEND fd for appends, node:fs readFileSync for reads, node:fs for
  * rename/unlink/exists.
  *
- * Note: the contract names `Bun.file().arrayBuffer()` for reads, but that API is async and cannot
- * satisfy the synchronous `Result` interface. The real adapter uses `node:fs` `readFileSync` for the
- * whole-file read while keeping Bun's `FileSink` for the append path.
+ * openAppend opens the file with O_APPEND (flag "a") via openSync so every writeSync call atomically
+ * appends to the existing file — opening the same path a second time does NOT truncate it.
+ * readWhole uses readFileSync (synchronous, satisfies the Result interface).
  */
 export const createBunScrollbackFs = (): ScrollbackFs => ({
   openAppend: (path): Result<ScrollbackAppendWriter, PtyError> => {
     try {
-      // FileSink in append mode keeps adding to the existing file rather than truncating it.
-      const sink = Bun.file(path).writer()
+      // O_APPEND: the kernel positions the write pointer at end-of-file for every write,
+      // so a second openAppend on the same path continues from where the first left off.
+      const fd = openSync(path, "a")
       return ok({
         write: (chunk): Result<void, PtyError> => {
           try {
-            sink.write(chunk)
-            // flush() makes the bytes durable promptly so a concurrent read sees recent output.
-            sink.flush()
+            writeSync(fd, chunk)
             return ok(undefined)
           } catch (cause) {
             const detail =
@@ -212,7 +220,7 @@ export const createBunScrollbackFs = (): ScrollbackFs => ({
         },
         close: (): Result<void, PtyError> => {
           try {
-            sink.end()
+            closeSync(fd)
             return ok(undefined)
           } catch (cause) {
             const detail =
@@ -275,7 +283,7 @@ export const createMemoryScrollbackStore = (): ScrollbackStore => {
       if (!safe.ok) return safe
       return ok(bufs.get(safe.value) ?? new Uint8Array(0))
     },
-    close: (): Result<void, PtyError> => ok(undefined),
+    close: (_id): Result<void, PtyError> => ok(undefined),
   }
 }
 

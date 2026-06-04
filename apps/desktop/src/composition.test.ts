@@ -17,6 +17,7 @@ const makeFakeDeps = (): {
     }
   const deps: CreateAppContextDeps = {
     homeDir: () => "/home/tester",
+    mkdirSync: record("mkdirSync") as never,
     createFsConfigFile: record("createFsConfigFile") as never,
     createFileConfigStore: record("createFileConfigStore") as never,
     createCachedConfigStore: record("createCachedConfigStore") as never,
@@ -180,6 +181,7 @@ describe("createAppContext wiring", () => {
     const managerArgs = calls.createTerminalManager?.[0] as {
       pty: unknown
       sessions: { create: unknown; close: unknown }
+      scrollback: unknown
       send: unknown
       capBytes: number
       defaultSize: { cols: number; rows: number }
@@ -187,6 +189,7 @@ describe("createAppContext wiring", () => {
     expect(typeof managerArgs.pty).toBe("object")
     expect(typeof managerArgs.sessions.create).toBe("function")
     expect(typeof managerArgs.sessions.close).toBe("function")
+    expect(typeof managerArgs.scrollback).toBe("object")
     expect(typeof managerArgs.send).toBe("function")
     expect(managerArgs.capBytes).toBe(1_000_000)
     expect(managerArgs.defaultSize).toEqual({ cols: 80, rows: 24 })
@@ -195,5 +198,11 @@ describe("createAppContext wiring", () => {
     expect(typeof ctx.terminal.launch).toBe("function")
     expect(typeof ctx.terminal.handleInbound).toBe("function")
     expect(typeof ctx.terminal.bindSend).toBe("function")
+
+    // mkdirSync was called to ensure the scrollback dir exists before first use
+    expect(calls.mkdirSync?.[0] as string).toContain(
+      "/home/tester/.config/launchkit/scrollback",
+    )
+    expect(calls.mkdirSync?.[1]).toEqual({ recursive: true })
   })
 })
