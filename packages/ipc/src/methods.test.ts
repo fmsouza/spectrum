@@ -331,6 +331,7 @@ describe("IpcMethodSchemas", () => {
       "deleteProfile",
       "pickFolder",
       "getSessionScrollback",
+      "listProviderModels",
     ] as const
     for (const name of expected) {
       expect(IpcMethodSchemas[name]).toBeDefined()

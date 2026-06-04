@@ -18,40 +18,38 @@ export type HttpGet = (
  * Real `HttpGet` adapter built on the global `fetch`. Non-2xx responses and
  * JSON parse failures are mapped to `{ kind: "provider-failed", detail }`.
  */
-export const createFetchHttpGet = (): HttpGet =>
-  async (url, headers) => {
-    let res: Response
-    try {
-      res = await fetch(url, {
-        method: "GET",
-        headers: headers as Record<string, string> | undefined,
-      })
-    } catch (e) {
-      return err({
-        kind: "provider-failed",
-        detail: `network error fetching ${url}: ${e instanceof Error ? e.message : String(e)}`,
-      })
-    }
-
-    if (!res.ok) {
-      return err({
-        kind: "provider-failed",
-        detail: `HTTP ${res.status} from ${url}`,
-      })
-    }
-
-    let body: unknown
-    try {
-      body = await res.json()
-    } catch (e) {
-      return err({
-        kind: "provider-failed",
-        detail: `failed to parse JSON from ${url}: ${e instanceof Error ? e.message : String(e)}`,
-      })
-    }
-
-    return ok(body)
+export const createFetchHttpGet = (): HttpGet => async (url, headers) => {
+  let res: Response
+  try {
+    const init: RequestInit = { method: "GET" }
+    if (headers !== undefined) init.headers = headers as Record<string, string>
+    res = await fetch(url, init)
+  } catch (e) {
+    return err({
+      kind: "provider-failed",
+      detail: `network error fetching ${url}: ${e instanceof Error ? e.message : String(e)}`,
+    })
   }
+
+  if (!res.ok) {
+    return err({
+      kind: "provider-failed",
+      detail: `HTTP ${res.status} from ${url}`,
+    })
+  }
+
+  let body: unknown
+  try {
+    body = await res.json()
+  } catch (e) {
+    return err({
+      kind: "provider-failed",
+      detail: `failed to parse JSON from ${url}: ${e instanceof Error ? e.message : String(e)}`,
+    })
+  }
+
+  return ok(body)
+}
 
 // ── Provider classification ───────────────────────────────────────────────────
 
@@ -99,7 +97,8 @@ const parseOllamaTags = (
   ) {
     return err({
       kind: "provider-failed",
-      detail: "unexpected response shape from ollama /api/tags: missing .models array",
+      detail:
+        "unexpected response shape from ollama /api/tags: missing .models array",
     })
   }
 
@@ -114,7 +113,8 @@ const parseOllamaTags = (
     ) {
       return err({
         kind: "provider-failed",
-        detail: "unexpected item shape in ollama /api/tags .models: missing .name string",
+        detail:
+          "unexpected item shape in ollama /api/tags .models: missing .name string",
       })
     }
     names.push((item as { name: string }).name)
@@ -186,7 +186,8 @@ export type ModelLister = (
  * factory); discovery is an on-demand call, not a persistent connection.
  * SECURITY: the apiKey is used only for outbound headers, never returned.
  */
-export const createModelLister = (deps: { readonly httpGet: HttpGet }): ModelLister =>
+export const createModelLister =
+  (deps: { readonly httpGet: HttpGet }): ModelLister =>
   async ({ sdkProvider, config, apiKey }) => {
     // ── Unsupported ────────────────────────────────────────────────────────────
     if (UNSUPPORTED_PROVIDERS.has(sdkProvider)) {
@@ -198,7 +199,7 @@ export const createModelLister = (deps: { readonly httpGet: HttpGet }): ModelLis
 
     // ── Ollama ─────────────────────────────────────────────────────────────────
     if (sdkProvider === "ollama") {
-      const base = config["baseUrl"] ?? "http://localhost:11434"
+      const base = config.baseUrl ?? "http://localhost:11434"
       const url = `${base}/api/tags`
       const response = await deps.httpGet(url)
       if (!response.ok) return response
@@ -208,21 +209,22 @@ export const createModelLister = (deps: { readonly httpGet: HttpGet }): ModelLis
     // ── OpenAI-compatible ──────────────────────────────────────────────────────
     if (OPENAI_COMPATIBLE_PROVIDERS.has(sdkProvider)) {
       const defaultBase = DEFAULT_BASE_URLS[sdkProvider]
-      const base = config["baseUrl"] ?? defaultBase ?? ""
+      const base = config.baseUrl ?? defaultBase ?? ""
       const url = `${base}/v1/models`
       const headers: Record<string, string> = {}
       if (apiKey !== undefined && apiKey.length > 0) {
-        headers["Authorization"] = `Bearer ${apiKey}`
+        headers.Authorization = `Bearer ${apiKey}`
       }
       const response = await deps.httpGet(url, headers)
       if (!response.ok) return response
       return parseOpenAIModels(response.value)
     }
 
-    // Should not be reachable given the full SdkProvider union, but TypeScript
-    // exhaustiveness requires a fallback.
+    // Should not be reachable given the full SdkProvider union — every value is
+    // covered by the branches above. TypeScript cannot narrow Set.has() to never,
+    // so this fallback is required for compilation.
     return err({
       kind: "unsupported-model-discovery",
-      sdkProvider: sdkProvider satisfies never,
+      sdkProvider,
     })
   }

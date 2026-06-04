@@ -192,6 +192,15 @@ export const DeleteProfileParamsSchema = z
   .strict()
 export const DeleteProfileResultSchema = VoidSchema
 
+// ── Model discovery ───────────────────────────────────────────────────────
+
+export const ListProviderModelsParamsSchema = z
+  .object({ providerId: ProviderIdSchema })
+  .strict()
+export const ListProviderModelsResultSchema = z
+  .object({ models: z.array(z.string()) })
+  .strict()
+
 // ── Dialogs ────────────────────────────────────────────────────────────────
 
 // Native folder picker. Params (and the starting hint) are optional; a cancelled
@@ -300,6 +309,10 @@ export const IpcMethodSchemas = {
   pickFolder: {
     params: PickFolderParamsSchema,
     result: PickFolderResultSchema,
+  },
+  listProviderModels: {
+    params: ListProviderModelsParamsSchema,
+    result: ListProviderModelsResultSchema,
   },
 } as const
 

@@ -320,5 +320,10 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       if (!isOk(read)) return fail("could not read session scrollback")
       return { bytesBase64: bytesToBase64(read.value) }
     },
+
+    // ── Model discovery (stub — real handler lands in the next dispatch) ──────
+    listProviderModels: async () => {
+      return fail("listProviderModels: not yet implemented")
+    },
   }
 }

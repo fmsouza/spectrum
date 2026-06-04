@@ -8,10 +8,13 @@ import type { ProxyError } from "./types"
 // ── Fake HttpGet ─────────────────────────────────────────────────────────────
 
 /** Builds an HttpGet fake that returns the canned body for any URL. */
-const fakeHttpGet = (
-  body: Result<unknown, ProxyError>,
-  captureHeaders?: (headers: Readonly<Record<string, string>> | undefined) => void,
-): HttpGet =>
+const fakeHttpGet =
+  (
+    body: Result<unknown, ProxyError>,
+    captureHeaders?: (
+      headers: Readonly<Record<string, string>> | undefined,
+    ) => void,
+  ): HttpGet =>
   async (
     _url: string,
     headers?: Readonly<Record<string, string>>,
@@ -25,9 +28,15 @@ const capturingHttpGet = (
   body: Result<unknown, ProxyError>,
 ): {
   httpGet: HttpGet
-  calls: Array<{ url: string; headers: Readonly<Record<string, string>> | undefined }>
+  calls: Array<{
+    url: string
+    headers: Readonly<Record<string, string>> | undefined
+  }>
 } => {
-  const calls: Array<{ url: string; headers: Readonly<Record<string, string>> | undefined }> = []
+  const calls: Array<{
+    url: string
+    headers: Readonly<Record<string, string>> | undefined
+  }> = []
   const httpGet: HttpGet = async (url, headers) => {
     calls.push({ url, headers })
     return body
@@ -80,7 +89,8 @@ describe("createModelLister – ollama", () => {
   })
 
   it("sends NO Authorization header for ollama", async () => {
-    const capturedHeaders: Array<Readonly<Record<string, string>> | undefined> = []
+    const capturedHeaders: Array<Readonly<Record<string, string>> | undefined> =
+      []
     const lister = createModelLister({
       httpGet: fakeHttpGet(ok({ models: [] }), (h) => capturedHeaders.push(h)),
     })
@@ -93,15 +103,20 @@ describe("createModelLister – ollama", () => {
 
     // headers should be undefined or not contain Authorization
     const h = capturedHeaders[0]
-    expect(h?.["Authorization"]).toBeUndefined()
+    expect(h?.Authorization).toBeUndefined()
   })
 
   it("returns err on http error for ollama", async () => {
     const lister = createModelLister({
-      httpGet: fakeHttpGet(err({ kind: "provider-failed", detail: "connection refused" })),
+      httpGet: fakeHttpGet(
+        err({ kind: "provider-failed", detail: "connection refused" }),
+      ),
     })
 
-    const result = await lister({ sdkProvider: "ollama" as SdkProvider, config: {} })
+    const result = await lister({
+      sdkProvider: "ollama" as SdkProvider,
+      config: {},
+    })
 
     expect(result.ok).toBe(false)
   })
@@ -111,7 +126,10 @@ describe("createModelLister – ollama", () => {
       httpGet: fakeHttpGet(ok({ wrong: "shape" })),
     })
 
-    const result = await lister({ sdkProvider: "ollama" as SdkProvider, config: {} })
+    const result = await lister({
+      sdkProvider: "ollama" as SdkProvider,
+      config: {},
+    })
 
     expect(result.ok).toBe(false)
   })
@@ -121,7 +139,10 @@ describe("createModelLister – ollama", () => {
       httpGet: fakeHttpGet(ok({ models: [{ digest: "abc" }] })),
     })
 
-    const result = await lister({ sdkProvider: "ollama" as SdkProvider, config: {} })
+    const result = await lister({
+      sdkProvider: "ollama" as SdkProvider,
+      config: {},
+    })
 
     expect(result.ok).toBe(false)
   })
@@ -148,7 +169,8 @@ describe("createModelLister – openai", () => {
   })
 
   it("sends Bearer token in Authorization header", async () => {
-    const capturedHeaders: Array<Readonly<Record<string, string>> | undefined> = []
+    const capturedHeaders: Array<Readonly<Record<string, string>> | undefined> =
+      []
     const lister = createModelLister({
       httpGet: fakeHttpGet(ok({ data: [] }), (h) => capturedHeaders.push(h)),
     })
@@ -159,7 +181,7 @@ describe("createModelLister – openai", () => {
       apiKey: "sk-my-key",
     })
 
-    expect(capturedHeaders[0]?.["Authorization"]).toBe("Bearer sk-my-key")
+    expect(capturedHeaders[0]?.Authorization).toBe("Bearer sk-my-key")
   })
 
   it("uses the default openai base URL when config has no baseUrl", async () => {
@@ -190,7 +212,9 @@ describe("createModelLister – openai", () => {
 
   it("returns err on http error for openai", async () => {
     const lister = createModelLister({
-      httpGet: fakeHttpGet(err({ kind: "provider-failed", detail: "401 Unauthorized" })),
+      httpGet: fakeHttpGet(
+        err({ kind: "provider-failed", detail: "401 Unauthorized" }),
+      ),
     })
 
     const result = await lister({
@@ -268,24 +292,21 @@ describe.each([
   "vertex",
   "bedrock",
   "azure",
-] as SdkProvider[])(
-  "createModelLister – %s (unsupported)",
-  (sdkProvider) => {
-    it(`returns unsupported-model-discovery err for ${sdkProvider}`, async () => {
-      const lister = createModelLister({
-        httpGet: fakeHttpGet(ok({})),
-      })
-
-      const result = await lister({
-        sdkProvider,
-        config: {},
-        apiKey: "key",
-      })
-
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error.kind).toBe("unsupported-model-discovery")
-      }
+] as SdkProvider[])("createModelLister – %s (unsupported)", (sdkProvider) => {
+  it(`returns unsupported-model-discovery err for ${sdkProvider}`, async () => {
+    const lister = createModelLister({
+      httpGet: fakeHttpGet(ok({})),
     })
-  },
-)
+
+    const result = await lister({
+      sdkProvider,
+      config: {},
+      apiKey: "key",
+    })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error.kind).toBe("unsupported-model-discovery")
+    }
+  })
+})
