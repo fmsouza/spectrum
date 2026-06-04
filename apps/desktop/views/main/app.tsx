@@ -18,34 +18,40 @@ import type { CreateTerminal } from "./terminal/TerminalPane"
 import type { TerminalClient } from "./terminal/terminalClient"
 import { useTerminals } from "./terminal/useTerminals"
 
-const ROUTES = [
-  "dashboard",
-  "providers",
-  "routing",
-  "harnesses",
-  "sessions",
-  "terminal",
-] as const
-export type Route = (typeof ROUTES)[number]
+/**
+ * The top-level app view. `sessions` carries the optionally-selected session id;
+ * `settings` carries the active section key. Serialized to the URL hash so a
+ * reload lands on the same place (no remote navigation).
+ */
+export type View =
+  | { readonly kind: "sessions"; readonly selectedSessionId?: SessionId }
+  | { readonly kind: "settings"; readonly section: string }
 
-const NAV_ITEMS = [
-  { route: "dashboard", label: "Dashboard" },
-  { route: "providers", label: "Providers" },
-  { route: "routing", label: "Routing" },
-  { route: "harnesses", label: "Harnesses" },
-  { route: "sessions", label: "Sessions" },
-  { route: "terminal", label: "Terminal" },
-] as const
+/** Parse a raw hash (e.g. `#settings/providers`) into a `View`. */
+const parseView = (raw: string): View => {
+  const [kind, rest] = raw.replace(/^#/, "").split("/", 2)
+  if (kind === "settings")
+    return { kind: "settings", section: rest ?? "general" }
+  if (kind === "sessions")
+    return rest === undefined || rest === ""
+      ? { kind: "sessions" }
+      : { kind: "sessions", selectedSessionId: rest as SessionId }
+  // Anything else (incl. the retired #dashboard) collapses to the default sessions view.
+  return { kind: "sessions" }
+}
 
-const isRoute = (value: string): value is Route =>
-  (ROUTES as readonly string[]).includes(value)
-
-const normalizeRoute = (value: string): Route =>
-  isRoute(value) ? value : "dashboard"
+/** Encode a `View` back to its hash representation. */
+const encodeView = (view: View): string =>
+  view.kind === "settings"
+    ? `#settings/${view.section}`
+    : view.selectedSessionId === undefined
+      ? "#sessions"
+      : `#sessions/${view.selectedSessionId}`
 
 export type AppProps = {
   readonly client: IpcClient
-  readonly initialRoute?: string
+  /** The initial view, as a raw hash string (e.g. `settings/providers`). */
+  readonly initialView?: string
   /**
    * The terminal transport client. Injected so tests run without an Electroview;
    * production builds the real one via `createRealClients` in `clients.ts`.
@@ -60,32 +66,33 @@ export type AppProps = {
 
 export const App = ({
   client,
-  initialRoute = "dashboard",
+  initialView = "sessions",
   terminalClient,
   createTerminal,
 }: AppProps): ReactElement => {
-  const [route, setRoute] = useState<Route>(normalizeRoute(initialRoute))
+  const [view, setView] = useState<View>(parseView(initialView))
 
   const { tabs, openTab, closeTab } = useTerminals(terminalClient)
   const [labels, setLabels] = useState<
     Readonly<Partial<Record<SessionId, string>>>
   >({})
 
-  // Keep the URL hash in sync so reloads land on the same page (no remote nav).
+  // Keep the URL hash in sync so reloads land on the same view (no remote nav).
   useEffect(() => {
-    window.location.hash = `#${route}`
-  }, [route])
+    window.location.hash = encodeView(view)
+  }, [view])
 
   const onLaunched = (sessionId: SessionId, harnessId: HarnessId): void => {
     setLabels((prev) => ({ ...prev, [sessionId]: harnessId }))
     openTab(sessionId)
-    setRoute("terminal")
+    setView({ kind: "sessions", selectedSessionId: sessionId })
   }
 
-  const renderPage = (): ReactElement => {
-    switch (route) {
-      case "dashboard":
-        return <DashboardPage onLaunched={onLaunched} />
+  // TEMPORARY (rewritten in D.11): map a settings section onto the existing
+  // settings-ish pages and the sessions view onto the current terminal page so
+  // the app stays green between the D.9/D.11/D.12 sub-steps.
+  const renderSettings = (section: string): ReactElement => {
+    switch (section) {
       case "providers":
         return <ProvidersPage />
       case "routing":
@@ -94,50 +101,42 @@ export const App = ({
         return <HarnessesPage />
       case "sessions":
         return <SessionsPage />
-      case "terminal":
-        return (
-          <TerminalPage
-            client={terminalClient}
-            tabs={tabs}
-            closeTab={closeTab}
-            labels={labels}
-            createTerminal={createTerminal}
-          />
-        )
-      default: {
-        const _exhaustive: never = route
-        return _exhaustive
-      }
+      default:
+        return <DashboardPage onLaunched={onLaunched} />
     }
   }
+
+  const renderDetail = (): ReactElement =>
+    view.kind === "settings" ? (
+      renderSettings(view.section)
+    ) : (
+      <TerminalPage
+        client={terminalClient}
+        tabs={tabs}
+        closeTab={closeTab}
+        labels={labels}
+        createTerminal={createTerminal}
+      />
+    )
+
+  const mode = view.kind === "settings" ? "settings" : "sessions"
 
   return (
     <IpcClientProvider client={client}>
       <AppShell
-        mode="sessions"
-        onModeChange={() => {}}
-        proxyRunning={false}
-        master={
-          <nav aria-label="Primary">
-            <ul>
-              {NAV_ITEMS.map((item) => (
-                <li key={item.route}>
-                  <a
-                    href={`#${item.route}`}
-                    aria-current={item.route === route ? "page" : undefined}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setRoute(normalizeRoute(item.route))
-                    }}
-                  >
-                    {item.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
+        mode={mode}
+        onModeChange={(next) =>
+          setView(
+            next === "settings"
+              ? { kind: "settings", section: "general" }
+              : { kind: "sessions" },
+          )
         }
-        detail={<ErrorBoundary key={route}>{renderPage()}</ErrorBoundary>}
+        proxyRunning={false}
+        master={null}
+        detail={
+          <ErrorBoundary key={encodeView(view)}>{renderDetail()}</ErrorBoundary>
+        }
       />
     </IpcClientProvider>
   )
@@ -147,7 +146,7 @@ export const App = ({
 export const mount = async (): Promise<void> => {
   const container = document.getElementById("root")
   if (container === null) throw new Error("missing #root element")
-  const startRoute = window.location.hash.replace(/^#/, "")
+  const startView = window.location.hash.replace(/^#/, "")
   // Dynamic import keeps xterm (and its CSS) out of the test module graph: the
   // test runner imports `App` directly and never calls `mount`.
   const { createXterm } = await import("./terminal/createXterm")
@@ -160,7 +159,7 @@ export const mount = async (): Promise<void> => {
         client={ipcClient}
         terminalClient={terminalClient}
         createTerminal={createXterm}
-        initialRoute={startRoute}
+        initialView={startView}
       />
     </StrictMode>,
   )
