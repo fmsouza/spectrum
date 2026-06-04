@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import type { SessionId } from "@launchkit/types"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { App } from "./app"
 import type { XtermInstance } from "./terminal/TerminalPane"
 import type { TerminalClient } from "./terminal/terminalClient"
@@ -14,6 +15,29 @@ const fakeTerminalClient: TerminalClient = {
   kill: () => {},
   dispatch: () => {},
 } as unknown as TerminalClient
+
+/**
+ * A terminal client whose `onExit` registrations are captured so a test can fire
+ * the exit for a given session id and drive the live→replay transition.
+ */
+const controllableTerminalClient = (): {
+  readonly client: TerminalClient
+  readonly fireExit: (id: SessionId, code: number) => void
+} => {
+  const exits = new Map<SessionId, (code: number) => void>()
+  const client = {
+    onData: () => {},
+    onExit: (id: SessionId, cb: (code: number) => void) => {
+      exits.set(id, cb)
+    },
+    sendInput: () => {},
+    sendResize: () => {},
+    attach: () => {},
+    kill: () => {},
+    dispatch: () => {},
+  } as unknown as TerminalClient
+  return { client, fireExit: (id, code) => exits.get(id)?.(code) }
+}
 
 const fakeXterm = (): XtermInstance => ({
   open: () => {},
@@ -215,5 +239,144 @@ describe("App view model", () => {
       harnessId: "claude",
       alias: "fast",
     })
+  })
+
+  it("refetches sessions after a successful launch", async () => {
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getHarnesses: async () => ({
+        ok: true as const,
+        value: [
+          {
+            id: "claude",
+            name: "Claude Code",
+            command: "claude",
+            apiFormat: "anthropic",
+            envTemplate: {},
+            defaultAlias: "fast",
+            builtIn: true,
+          },
+        ],
+      }),
+      getAliases: async () => ({
+        ok: true as const,
+        value: [
+          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
+        ],
+      }),
+      launchHarness: async () => ({
+        ok: true as const,
+        value: { sessionId: "s_new" },
+      }),
+    })
+    render(
+      <App
+        client={client}
+        terminalClient={fakeTerminalClient}
+        createTerminal={fakeXterm}
+        initialView="sessions"
+      />,
+    )
+    // The master fetches sessions once on mount.
+    await waitFor(() => expect(client.calls.getSessions.length).toBe(1))
+    fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
+    fireEvent.click(await screen.findByRole("button", { name: /launch/i }))
+    await waitFor(() => expect(client.calls.launchHarness.length).toBe(1))
+    // After a successful launch the master must refetch so the new running
+    // session appears (the deleted DashboardPage used to do this).
+    await waitFor(() =>
+      expect(client.calls.getSessions.length).toBeGreaterThan(1),
+    )
+  })
+
+  it("transitions an open live session to replay when it exits", async () => {
+    const live = {
+      id: "s_new",
+      harnessId: "claude",
+      alias: "fast",
+      startedAt: "2026-05-23T10:00:00.000Z",
+    }
+    const ended = { ...live, endedAt: "2026-05-23T10:05:00.000Z" }
+    // Before launch the session does not exist; after the exit refetch it is
+    // reported as ended so the master moves it to Recent.
+    let exited = false
+    const { client: terminalClient, fireExit } = controllableTerminalClient()
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getSessions: async () => ({
+        ok: true as const,
+        value: exited ? [ended] : [live],
+      }),
+      getSessionScrollback: async () => ({
+        ok: true as const,
+        value: { bytesBase64: "" },
+      }),
+      getHarnesses: async () => ({
+        ok: true as const,
+        value: [
+          {
+            id: "claude",
+            name: "Claude Code",
+            command: "claude",
+            apiFormat: "anthropic",
+            envTemplate: {},
+            defaultAlias: "fast",
+            builtIn: true,
+          },
+        ],
+      }),
+      getAliases: async () => ({
+        ok: true as const,
+        value: [
+          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
+        ],
+      }),
+      launchHarness: async () => ({
+        ok: true as const,
+        value: { sessionId: "s_new" },
+      }),
+    })
+    const { container } = render(
+      <App
+        client={client}
+        terminalClient={terminalClient}
+        createTerminal={fakeXterm}
+        initialView="sessions"
+      />,
+    )
+    // Launch + select the live session: a live pane host (the wrapper that keeps
+    // the pane mounted/hidden) mounts for it.
+    fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
+    fireEvent.click(await screen.findByRole("button", { name: /launch/i }))
+    await waitFor(() => expect(window.location.hash).toBe("#sessions/s_new"))
+    await waitFor(() =>
+      expect(container.querySelector(".terminal-pane-host")).not.toBeNull(),
+    )
+    // Sanity: no replay pane yet — the live pane is wrapped in a host, so a
+    // direct `.sessions-detail > .terminal-pane` child only appears for replay.
+    expect(
+      container.querySelector(".sessions-detail > .terminal-pane"),
+    ).toBeNull()
+
+    // The session exits: its dead live pane host must unmount and the read-only
+    // replay pane must render instead (it is no longer in the open set). Wrap in
+    // act because firing the exit synchronously drives React state updates.
+    exited = true
+    act(() => fireExit("s_new" as SessionId, 0))
+    await waitFor(() =>
+      expect(container.querySelector(".terminal-pane-host")).toBeNull(),
+    )
+    await waitFor(() =>
+      expect(client.calls.getSessionScrollback.length).toBeGreaterThan(0),
+    )
+    // The replay pane is an unwrapped `.terminal-pane` directly under
+    // `.sessions-detail`; it renders once the scrollback resolves into state.
+    await waitFor(() =>
+      expect(
+        container.querySelector(
+          '.sessions-detail > .terminal-pane[data-session="s_new"]',
+        ),
+      ).not.toBeNull(),
+    )
   })
 })

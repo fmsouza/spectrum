@@ -34,14 +34,16 @@ const fakeTerminalClient = {
 
 describe("SessionsView", () => {
   it("renders an empty state in the detail when nothing is selected", () => {
-    const client = createFakeIpcClient({
-      getSessions: async () => ({ ok: true, value: [running] }),
-    })
+    const client = createFakeIpcClient({})
     const { detail } = SessionsView({
       selectedSessionId: undefined,
       openSessionIds: [],
+      running: [running],
+      recent: [],
+      hasMore: false,
       onSelect: () => {},
       onNew: () => {},
+      onExit: () => {},
       terminalClient: fakeTerminalClient,
       createTerminal: fakeXterm,
     })
@@ -53,15 +55,41 @@ describe("SessionsView", () => {
     expect(screen.getByText(/no session selected/i)).toBeInTheDocument()
   })
 
-  it("keeps an open live pane mounted (hidden) keyed by session id", () => {
-    const client = createFakeIpcClient({
-      getSessions: async () => ({ ok: true, value: [running] }),
+  it("renders the running sessions handed in via props in the master", () => {
+    const client = createFakeIpcClient({})
+    const { master } = SessionsView({
+      selectedSessionId: undefined,
+      openSessionIds: [],
+      running: [running],
+      recent: [],
+      hasMore: false,
+      onSelect: () => {},
+      onNew: () => {},
+      onExit: () => {},
+      terminalClient: fakeTerminalClient,
+      createTerminal: fakeXterm,
     })
+    render(
+      <IpcClientProvider client={client}>
+        <div>{master}</div>
+      </IpcClientProvider>,
+    )
+    // The master no longer fetches — it renders the lists it is handed.
+    expect(screen.getByText(/claude · fast/)).toBeInTheDocument()
+    expect(client.calls.getSessions.length).toBe(0)
+  })
+
+  it("keeps an open live pane mounted (hidden) keyed by session id", () => {
+    const client = createFakeIpcClient({})
     const { detail } = SessionsView({
       selectedSessionId: "s_live" as SessionId,
       openSessionIds: ["s_live" as SessionId],
+      running: [running],
+      recent: [],
+      hasMore: false,
       onSelect: () => {},
       onNew: () => {},
+      onExit: () => {},
       terminalClient: fakeTerminalClient,
       createTerminal: fakeXterm,
     })

@@ -33,6 +33,13 @@ export type TerminalPaneProps =
       readonly client: TerminalClient
       /** Injected so the pane (and its consumers' tests) never load real xterm. */
       readonly createTerminal: CreateTerminal
+      /**
+       * Called when the live session's pty exits. The shell uses this to drop
+       * the id from the open set (unmounting this dead pane) and refetch the
+       * session list so it moves from Running to Recent. Optional: omit for
+       * panes that don't need the lifecycle transition.
+       */
+      readonly onExit?: () => void
     }
   | {
       readonly mode: "replay"
@@ -58,7 +65,14 @@ export type TerminalPaneProps =
 export const TerminalPane = (props: TerminalPaneProps): ReactElement => {
   const { sessionId, client, createTerminal } = props
   const replayBytes = props.mode === "replay" ? props.bytes : undefined
+  const onExit = props.mode === "replay" ? undefined : props.onExit
   const containerRef = useRef<HTMLDivElement>(null)
+  // Hold the latest onExit in a ref so a new closure identity each render (the
+  // parent passes an inline `() => onExit(id)`) does NOT re-run the live effect
+  // below — re-running would re-attach the pty and replay scrollback. The exit
+  // handler fires at most once per session, so reading the latest via ref is safe.
+  const onExitRef = useRef(onExit)
+  onExitRef.current = onExit
 
   useEffect(() => {
     const container = containerRef.current
@@ -79,7 +93,10 @@ export const TerminalPane = (props: TerminalPaneProps): ReactElement => {
     // ── live (existing behaviour) ──
     // Register stream handlers up front so no early output is missed.
     client.onData(sessionId, (bytes) => term.write(bytes))
-    client.onExit(sessionId, (code) => term.write(`\r\n[exited ${code}]\r\n`))
+    client.onExit(sessionId, (code) => {
+      term.write(`\r\n[exited ${code}]\r\n`)
+      onExitRef.current?.()
+    })
     term.onData((data) =>
       client.sendInput(sessionId, new TextEncoder().encode(data)),
     )

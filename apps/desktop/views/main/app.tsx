@@ -10,6 +10,7 @@ import { useAliases } from "./hooks/useAliases"
 import { useHarnesses } from "./hooks/useHarnesses"
 import { useProfiles } from "./hooks/useProfiles"
 import { useProxyStatus } from "./hooks/useProxyStatus"
+import { useSessions } from "./hooks/useSessions"
 import type { CreateTerminal } from "./terminal/TerminalPane"
 import type { TerminalClient } from "./terminal/terminalClient"
 import { SessionsView } from "./views/SessionsView"
@@ -88,6 +89,15 @@ const AppInner = ({
   const [folder, setFolder] = useState<string>("")
   const proxy = useProxyStatus()
 
+  // The session list lives here (not inside SessionsView) so a launch or an exit
+  // can refetch it: a new running session must appear and an exited one must
+  // move from Running to Recent. Split into running (still live) vs recent.
+  const sessions = useSessions()
+  const refetchSessions = sessions.refetch
+  const allSessions = sessions.data ?? []
+  const running = allSessions.filter((s) => s.endedAt === undefined)
+  const recent = allSessions.filter((s) => s.endedAt !== undefined)
+
   // Feed the new-session modal. These hooks load lazily and stay cheap when the
   // modal is closed (the data is just handed to a dumb component).
   const profiles = useProfiles()
@@ -134,6 +144,19 @@ const AppInner = ({
     setOpenSessionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
     setView({ kind: "sessions", selectedSessionId: id })
     setModalOpen(false)
+    // Refetch so the freshly launched session shows up under "Running" in the
+    // master (the deleted DashboardPage used to do this after a launch).
+    refetchSessions()
+  }
+
+  /**
+   * A live session's pty exited: drop it from the open set so its dead live pane
+   * unmounts (selecting it now renders the read-only replay), and refetch so the
+   * master moves it from Running to Recent.
+   */
+  const onSessionExit = (id: SessionId): void => {
+    setOpenSessionIds((prev) => prev.filter((x) => x !== id))
+    refetchSessions()
   }
 
   const { master, detail } =
@@ -147,9 +170,13 @@ const AppInner = ({
             ? {}
             : { selectedSessionId: view.selectedSessionId }),
           openSessionIds,
+          running,
+          recent,
+          hasMore: false,
           onSelect: (id) =>
             setView({ kind: "sessions", selectedSessionId: id }),
           onNew: () => setModalOpen(true),
+          onExit: onSessionExit,
           terminalClient,
           createTerminal,
         })

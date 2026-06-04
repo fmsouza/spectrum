@@ -71,4 +71,44 @@ describe("TerminalPane replay mode", () => {
     )
     expect(calls).toContain("onData")
   })
+
+  it("calls onExit when the live pty exits", () => {
+    const term: XtermInstance = {
+      open: () => {},
+      write: () => {},
+      onData: () => {},
+      fit: () => ({ cols: 80, rows: 24 }),
+      cols: 80,
+      rows: 24,
+      dispose: () => {},
+    }
+    // Capture the exit callback the pane registers so we can fire it.
+    let exitCb: ((code: number) => void) | undefined
+    const client = {
+      onData: () => {},
+      onExit: (_id: SessionId, cb: (code: number) => void) => {
+        exitCb = cb
+      },
+      sendInput: () => {},
+      sendResize: () => {},
+      attach: () => {},
+      kill: () => {},
+      dispatch: () => {},
+    } as unknown as TerminalClient
+    let exited = false
+    render(
+      <TerminalPane
+        mode="live"
+        sessionId={"s_1" as SessionId}
+        client={client}
+        createTerminal={() => term}
+        onExit={() => {
+          exited = true
+        }}
+      />,
+    )
+    expect(exitCb).toBeDefined()
+    exitCb?.(0)
+    expect(exited).toBe(true)
+  })
 })
