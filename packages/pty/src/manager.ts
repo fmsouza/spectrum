@@ -10,6 +10,7 @@ import {
 } from "./protocol"
 import type { PtyAdapter, PtyError } from "./pty"
 import { createTerminalRegistry } from "./registry"
+import type { ScrollbackStore } from "./scrollback-store"
 
 export interface TerminalLaunchInput {
   readonly harnessId: HarnessId
@@ -17,6 +18,8 @@ export interface TerminalLaunchInput {
   readonly command: string
   readonly args: readonly string[]
   readonly env: Readonly<Record<string, string>>
+  readonly name?: string
+  readonly cwd?: string
 }
 
 /** Subset of SessionStore the manager needs. */
@@ -24,6 +27,8 @@ export interface SessionSink {
   create(input: {
     harnessId: HarnessId
     alias: AliasName
+    name?: string
+    cwd?: string
   }): Result<Session, SessionError>
   close(id: SessionId, exitCode: number): Result<Session, SessionError>
 }
@@ -31,6 +36,7 @@ export interface SessionSink {
 export interface TerminalManagerDeps {
   readonly pty: PtyAdapter
   readonly sessions: SessionSink
+  readonly scrollback: ScrollbackStore
   send(message: PtyOutbound): void
   readonly capBytes: number
   readonly defaultSize: { readonly cols: number; readonly rows: number }
@@ -69,6 +75,7 @@ export const createTerminalManager = (
       env: input.env,
       cols,
       rows,
+      cwd: input.cwd,
     })
     if (isErr(handle)) {
       const note = new TextEncoder().encode(
@@ -83,11 +90,13 @@ export const createTerminalManager = (
     registry.add(id, pty)
     pty.onData((chunk) => {
       registry.appendData(id, chunk)
+      deps.scrollback.append(id, chunk)
       send(encodeData(id, chunk))
     })
     pty.onExit((code) => {
       registry.markExited(id, code)
       deps.sessions.close(id, code)
+      deps.scrollback.close(id)
       send(encodeExit(id, code))
     })
   }
@@ -98,6 +107,8 @@ export const createTerminalManager = (
     const session = deps.sessions.create({
       harnessId: input.harnessId,
       alias: input.alias,
+      name: input.name,
+      cwd: input.cwd,
     })
     if (isErr(session)) return session
     const id = session.value.id

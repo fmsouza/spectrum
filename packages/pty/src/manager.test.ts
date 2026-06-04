@@ -11,6 +11,7 @@ import type { PtyOutbound } from "./protocol"
 import { bytesToBase64 } from "./protocol"
 import { createFakePty } from "./pty"
 import type { FakePty } from "./pty"
+import { createMemoryScrollbackStore } from "./scrollback-store"
 
 const sessionId = SessionIdSchema.parse(
   "s_00000000-0000-4000-8000-000000000000",
@@ -40,24 +41,34 @@ const makeDeps = (): {
   sent: PtyOutbound[]
   closed: { id: string; code: number }[]
   pty: FakePty
+  created: { name?: string; cwd?: string }[]
+  scrollback: ReturnType<typeof createMemoryScrollbackStore>
   deps: Parameters<typeof createTerminalManager>[0]
 } => {
   const sent: PtyOutbound[] = []
   const closed: { id: string; code: number }[] = []
+  const created: { name?: string; cwd?: string }[] = []
   const pty = createFakePty()
+  const scrollback = createMemoryScrollbackStore()
   return {
     sent,
     closed,
     pty,
+    created,
+    scrollback,
     deps: {
       pty: { open: () => ok(pty) },
       sessions: {
-        create: () => ok(fakeSession),
+        create: (input) => {
+          created.push({ name: input.name, cwd: input.cwd })
+          return ok(fakeSession)
+        },
         close: (id, code) => {
           closed.push({ id, code })
           return ok({ ...fakeSession, exitCode: code })
         },
       },
+      scrollback,
       send: (m) => {
         sent.push(m)
       },
@@ -178,5 +189,57 @@ describe("createTerminalManager", () => {
     expect(() =>
       manager.handleInbound({ type: "pty-kill", id: otherId }),
     ).not.toThrow()
+  })
+
+  it("forwards name and cwd to sessions.create on launch", () => {
+    const { deps, created } = makeDeps()
+    const manager = createTerminalManager(deps)
+    manager.launch({ ...launchInput, name: "my run", cwd: "/work/dir" })
+    expect(created).toContainEqual({ name: "my run", cwd: "/work/dir" })
+  })
+
+  it("passes cwd to pty.open when the harness is spawned", () => {
+    const opened: { cwd?: string }[] = []
+    const { deps, pty } = makeDeps()
+    const manager = createTerminalManager({
+      ...deps,
+      pty: {
+        open: (opts) => {
+          opened.push({ cwd: opts.cwd })
+          return ok(pty)
+        },
+      },
+    })
+    manager.launch({ ...launchInput, cwd: "/work/dir" })
+    resize(manager)
+    expect(opened).toEqual([{ cwd: "/work/dir" }])
+  })
+
+  it("taps pty output into the scrollback store alongside the registry", () => {
+    const { deps, pty, scrollback } = makeDeps()
+    const manager = createTerminalManager(deps)
+    manager.launch(launchInput)
+    resize(manager)
+    pty.emit("durable")
+    const r = scrollback.read(sessionId)
+    expect(r.ok && decode(r.value)).toBe("durable")
+  })
+
+  it("closes the scrollback store when the harness exits", () => {
+    const closes: string[] = []
+    const { deps, pty } = makeDeps()
+    const tracking = {
+      append: deps.scrollback.append,
+      read: deps.scrollback.read,
+      close: (id: typeof sessionId) => {
+        closes.push(id)
+        return deps.scrollback.close(id)
+      },
+    }
+    const manager = createTerminalManager({ ...deps, scrollback: tracking })
+    manager.launch(launchInput)
+    resize(manager)
+    pty.triggerExit(0)
+    expect(closes).toContain(sessionId)
   })
 })
