@@ -525,3 +525,108 @@ describe("createSessionStore.query with running, limit and offset", () => {
     expect(select?.sql).not.toMatch(/OFFSET/i)
   })
 })
+
+describe("createSessionStore.reconcileOrphaned", () => {
+  it("marks 2 open sessions as ended and returns ok(2) when reconcileOrphaned() is called with orphans", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.create({ harnessId: "claude" as never, alias: "default" as never })
+    store.create({ harnessId: "codex" as never, alias: "fast" as never })
+
+    const r = store.reconcileOrphaned()
+    expect(isOk(r) && r.value).toBe(2)
+
+    // all sessions should now be closed (not running)
+    const running = store.query({ running: true })
+    expect(isOk(running) && running.value).toHaveLength(0)
+
+    // both sessions appear in ended list with endedAt set
+    const ended = store.query({ running: false })
+    expect(isOk(ended) && ended.value).toHaveLength(2)
+    if (isOk(ended)) {
+      for (const s of ended.value) {
+        expect(typeof s.endedAt).toBe("string")
+        // exitCode is NOT set — app was killed, code is unknown
+        expect(s.exitCode).toBeUndefined()
+      }
+    }
+  })
+
+  it("leaves a session already closed unchanged when reconcileOrphaned() is called", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    const created = store.create({
+      harnessId: "claude" as never,
+      alias: "default" as never,
+    })
+    const id = isOk(created) ? created.value.id : ("" as never)
+    // close it with a known exit code
+    store.close(id, 42)
+
+    const r = store.reconcileOrphaned()
+    expect(isOk(r) && r.value).toBe(0)
+
+    // the closed session should still have its original exitCode
+    const ended = store.query({ running: false })
+    expect(isOk(ended) && ended.value).toHaveLength(1)
+    if (isOk(ended) && ended.value[0] !== undefined) {
+      expect(ended.value[0].exitCode).toBe(42)
+      expect(typeof ended.value[0].endedAt).toBe("string")
+    }
+  })
+
+  it("returns ok(0) and is idempotent when reconcileOrphaned() is called with no orphans", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+
+    const first = store.reconcileOrphaned()
+    expect(isOk(first) && first.value).toBe(0)
+
+    const second = store.reconcileOrphaned()
+    expect(isOk(second) && second.value).toBe(0)
+  })
+
+  it("issues a parameterized UPDATE with endedAt bound in params and never interpolated when reconcileOrphaned() runs", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    store.create({ harnessId: "claude" as never, alias: "default" as never })
+
+    store.reconcileOrphaned()
+
+    const update = deps.db
+      .statements()
+      .filter((s) => /^\s*UPDATE/i.test(s.sql))
+      // find the reconcile UPDATE (WHERE endedAt IS NULL, not WHERE id = ?)
+      .find((s) => /WHERE endedAt IS NULL/i.test(s.sql))
+    expect(update?.sql).toContain("?")
+    expect(update?.sql).toMatch(/SET endedAt = \?/i)
+    // the timestamp value must be in params, not in the sql
+    expect(update?.sql).not.toContain("2026-05-23T10:00:00.000Z")
+    expect(update?.params).toEqual(["2026-05-23T10:00:00.000Z"])
+  })
+
+  it("propagates a db-failed error from the SELECT when reconcileOrphaned() is called", () => {
+    const failing = {
+      ...makeDeps(),
+      db: {
+        exec: () => ({ ok: true as const, value: undefined }),
+        run: () => ({ ok: true as const, value: undefined }),
+        all: () => ({
+          ok: false as const,
+          error: { kind: "db-failed" as const, detail: "io-error" },
+        }),
+        get: () => ({ ok: true as const, value: undefined }),
+      },
+    }
+    const store = createSessionStore(failing)
+    const r = store.reconcileOrphaned()
+    expect(r).toEqual({
+      ok: false,
+      error: { kind: "db-failed", detail: "io-error" },
+    })
+  })
+})

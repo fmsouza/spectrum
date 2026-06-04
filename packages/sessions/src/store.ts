@@ -36,7 +36,17 @@ export interface SessionStore {
   create(input: SessionInput): Result<Session, SessionError>
   close(id: SessionId, exitCode: number): Result<Session, SessionError>
   query(filter?: SessionFilter): Result<readonly Session[], SessionError>
+  /**
+   * Mark every session with `endedAt IS NULL` as ended using the injected clock timestamp.
+   * `exitCode` is left NULL — the app was killed and the true exit code is unknown.
+   * Returns `ok(count)` where count is the number of orphaned sessions reconciled.
+   * Safe to call with no orphans (returns `ok(0)`); idempotent.
+   */
+  reconcileOrphaned(): Result<number, SessionError>
 }
+
+const SELECT_ORPHAN_IDS = "SELECT id FROM sessions WHERE endedAt IS NULL"
+const UPDATE_RECONCILE = "UPDATE sessions SET endedAt = ? WHERE endedAt IS NULL"
 
 const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
@@ -172,6 +182,16 @@ export const createSessionStore = (deps: {
       if (isErr(fetched)) return fetched
       if (fetched.value === undefined) return err({ kind: "not-found" })
       return ok(toSession(fetched.value))
+    },
+    reconcileOrphaned: (): Result<number, SessionError> => {
+      const orphans = db.all(SELECT_ORPHAN_IDS, [])
+      if (isErr(orphans)) return orphans
+      const orphanCount = orphans.value.length
+      if (orphanCount === 0) return ok(0)
+      const endedAt = deps.clock.now().toISOString()
+      const updated = db.run(UPDATE_RECONCILE, [endedAt])
+      if (isErr(updated)) return updated
+      return ok(orphanCount)
     },
     query: (
       filter?: SessionFilter,
