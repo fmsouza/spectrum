@@ -3,7 +3,13 @@ import { execSync } from "node:child_process"
 import { readdirSync } from "node:fs"
 import { createFfiPty } from "./ffi-pty"
 
-describe("createFfiPty (real pty, macOS)", () => {
+// `createFfiPty` is macOS-only: it dlopens `libutil.dylib` and uses macOS ioctl request codes. On
+// other platforms (e.g. Linux CI) the dlopen fails and every open() returns an error, so these real-
+// pty assertions can't run — skip the whole suite off darwin. The adapter's logic is covered cross-
+// platform via `createFakePty` in the manager/registry unit tests.
+const describeMac = describe.skipIf(process.platform !== "darwin")
+
+describeMac("createFfiPty (real pty, macOS)", () => {
   it("stays non-blocking (event loop alive) while the harness idles between outputs", async () => {
     // Regression for the freeze bug: the master fd MUST be non-blocking, or the drain loop's
     // read() blocks the whole Bun event loop the moment the harness goes idle (no output) —
