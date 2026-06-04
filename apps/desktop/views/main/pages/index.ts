@@ -1,5 +1,5 @@
-export * from "./DashboardPage"
+export * from "./GeneralPage"
 export * from "./ProvidersPage"
 export * from "./RoutingPage"
 export * from "./HarnessesPage"
-export * from "./SessionsPage"
+export * from "./ProfilesPage"

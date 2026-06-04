@@ -24,6 +24,18 @@ export const buildRealDeps = (
     startProxy:
       overrides.startProxy ??
       ((): ProxyHandle => {
+        // GUI startup path only — mark any sessions that were still "running" when the app was
+        // previously killed as ended. The CLI must NOT call this: a live GUI proxy's sessions
+        // are genuinely running, and a CLI invocation running alongside the GUI must not close them.
+        const reconciled = ctx.sessions.reconcileOrphaned()
+        if (!reconciled.ok) {
+          // Non-fatal: log and continue rather than crashing GUI startup.
+          console.warn(
+            "[launchkit] reconcileOrphaned failed:",
+            reconciled.error,
+          )
+        }
+
         // Load the live config so the GUI proxy's router knows the real providers + aliases.
         // A fresh install loads defaults (empty providers/aliases) — still loopback + valid.
         let stop = (): void => {}

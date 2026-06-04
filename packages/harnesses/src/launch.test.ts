@@ -119,4 +119,41 @@ describe("launchHarness", () => {
     })
     expect(spawner.calls).toEqual([])
   })
+
+  it("merges params.env on top of the rendered template env (params.env wins)", () => {
+    const resolver = createFakeCommandResolver({
+      claude: "/usr/local/bin/claude",
+    })
+    const r = resolveHarnessLaunch({ resolver })({
+      ...params,
+      env: { ANTHROPIC_MODEL: "override-model", EXTRA: "1" },
+    })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.env.ANTHROPIC_MODEL).toBe("override-model") // params.env wins
+    expect(r.value.env.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:4000") // template kept
+    expect(r.value.env.EXTRA).toBe("1") // extra key added
+  })
+
+  it("passes cwd through to the spawner on launch", () => {
+    const resolver = createFakeCommandResolver({
+      claude: "/usr/local/bin/claude",
+    })
+    const spawner = createRecordingProcessSpawner(5)
+    const r = launchHarness({ resolver, spawner })({
+      ...params,
+      cwd: "/work/dir",
+    })
+    expect(r.ok).toBe(true)
+    expect(spawner.calls[0]?.cwd).toBe("/work/dir")
+  })
+
+  it("spawns with the merged env when params.env is given", () => {
+    const resolver = createFakeCommandResolver({
+      claude: "/usr/local/bin/claude",
+    })
+    const spawner = createRecordingProcessSpawner(5)
+    launchHarness({ resolver, spawner })({ ...params, env: { EXTRA: "yes" } })
+    expect(spawner.calls[0]?.env.EXTRA).toBe("yes")
+  })
 })

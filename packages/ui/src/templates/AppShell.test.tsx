@@ -2,52 +2,53 @@ import { describe, expect, it, mock } from "bun:test"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { AppShell } from "./AppShell"
 
-const items = [
-  { route: "dashboard", label: "Dashboard" },
-  { route: "providers", label: "Providers" },
-]
+const baseProps = {
+  mode: "sessions" as const,
+  onModeChange: () => {},
+  proxyRunning: true,
+  master: <p>master pane</p>,
+  detail: <p>detail pane</p>,
+}
 
 describe("AppShell", () => {
-  it("renders a nav item per route", () => {
-    render(
-      <AppShell navItems={items} activeRoute="dashboard" onNavigate={() => {}}>
-        <p>content</p>
-      </AppShell>,
-    )
-    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "Providers" })).toBeInTheDocument()
+  it("renders the master and detail slots", () => {
+    render(<AppShell {...baseProps} />)
+    expect(screen.getByText("master pane")).toBeInTheDocument()
+    expect(screen.getByText("detail pane")).toBeInTheDocument()
   })
-  it("marks the active route as current", () => {
-    render(
-      <AppShell navItems={items} activeRoute="providers" onNavigate={() => {}}>
-        <p>content</p>
-      </AppShell>,
-    )
-    expect(screen.getByRole("link", { name: "Providers" })).toHaveAttribute(
+  it("renders Sessions and Settings rail buttons", () => {
+    render(<AppShell {...baseProps} />)
+    expect(screen.getByRole("button", { name: "Sessions" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument()
+  })
+  it("marks the Sessions rail button current when mode is sessions", () => {
+    render(<AppShell {...baseProps} mode="sessions" />)
+    expect(screen.getByRole("button", { name: "Sessions" })).toHaveAttribute(
       "aria-current",
       "page",
     )
+    expect(
+      screen.getByRole("button", { name: "Settings" }),
+    ).not.toHaveAttribute("aria-current")
   })
-  it("renders the content slot", () => {
-    render(
-      <AppShell navItems={items} activeRoute="dashboard" onNavigate={() => {}}>
-        <p>hello content</p>
-      </AppShell>,
-    )
-    expect(screen.getByText("hello content")).toBeInTheDocument()
+  it("calls onModeChange with settings when the Settings button is clicked", () => {
+    const onModeChange = mock((_m: "sessions" | "settings") => {})
+    render(<AppShell {...baseProps} onModeChange={onModeChange} />)
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }))
+    expect(onModeChange).toHaveBeenCalledWith("settings")
   })
-  it("calls onNavigate with the route when a nav item is clicked", () => {
-    const onNavigate = mock((_r: string) => {})
-    render(
-      <AppShell
-        navItems={items}
-        activeRoute="dashboard"
-        onNavigate={onNavigate}
-      >
-        <p>content</p>
-      </AppShell>,
+  it("shows the proxy status as running when proxyRunning is true", () => {
+    render(<AppShell {...baseProps} proxyRunning />)
+    expect(screen.getByRole("img", { name: /proxy/i })).toHaveAttribute(
+      "data-color",
+      "green",
     )
-    fireEvent.click(screen.getByRole("link", { name: "Providers" }))
-    expect(onNavigate).toHaveBeenCalledWith("providers")
+  })
+  it("shows the proxy status as stopped when proxyRunning is false", () => {
+    render(<AppShell {...baseProps} proxyRunning={false} />)
+    expect(screen.getByRole("img", { name: /proxy/i })).toHaveAttribute(
+      "data-color",
+      "grey",
+    )
   })
 })

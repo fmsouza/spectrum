@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import { execSync } from "node:child_process"
-import { readdirSync } from "node:fs"
+import { mkdtempSync, readdirSync, realpathSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { createFfiPty } from "./ffi-pty"
 
 // `createFfiPty` is macOS-only: it dlopens `libutil.dylib` and uses macOS ioctl request codes. On
@@ -107,6 +109,31 @@ describeMac("createFfiPty (real pty, macOS)", () => {
     setTimeout(() => opened.value.resize(100, 40), 100)
     await exit
     expect(out.join("")).toContain("40 100")
+  })
+
+  it("spawns the child in the requested cwd when cwd is given", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "lk-pty-cwd-"))
+    try {
+      const adapter = createFfiPty()
+      const opened = adapter.open({
+        command: "/bin/sh",
+        args: ["-c", "pwd -P"],
+        env: { ...process.env } as Record<string, string>,
+        cols: 80,
+        rows: 24,
+        cwd: dir,
+      })
+      expect(opened.ok).toBe(true)
+      if (!opened.ok) return
+      const out: string[] = []
+      const exit = new Promise<number>((res) => opened.value.onExit(res))
+      opened.value.onData((c) => out.push(new TextDecoder().decode(c)))
+      await exit
+      // realpathSync collapses /var -> /private/var so the comparison matches `pwd -P`.
+      expect(out.join("")).toContain(realpathSync(dir))
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it("returns open-failed for an unspawnable command", () => {

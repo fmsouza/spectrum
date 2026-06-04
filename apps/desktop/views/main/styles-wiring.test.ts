@@ -44,4 +44,22 @@ describe("views/main global stylesheet wiring", () => {
     expect(appCss).toContain('nav[aria-label="Primary"]')
     expect(appCss).toContain("prefers-color-scheme")
   })
+
+  it("styles the post-redesign rail+master+detail shell (not the old 2-col one)", () => {
+    // The Phase-6 AppShell renders a 3-zone layout: rail (Primary nav) + master
+    // (Sessions/Settings nav) + detail (<main>). The shell grid must declare a
+    // master column token, the master navs must be targeted, and the sessions
+    // detail container must be styled. Guards against the CSS desyncing from the
+    // shell DOM again (the unstyled-master/detail regression).
+    expect(appCss).toContain("--master-w")
+    expect(appCss).toContain('nav[aria-label="Sessions"]')
+    expect(appCss).toContain(".sessions-detail")
+    // The rail no longer injects a "LaunchKit" ::before wordmark (the component
+    // renders its own [data-app-icon] "LK"); styling that text would double it.
+    expect(appCss).not.toContain('content: "LaunchKit"')
+    expect(appCss).toContain("[data-app-icon]")
+    // The deleted tabbed TerminalPage/TabStrip rules must be gone.
+    expect(appCss).not.toContain(".terminal-tab")
+    expect(appCss).not.toContain(".terminal-page")
+  })
 })

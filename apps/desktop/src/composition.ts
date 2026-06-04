@@ -11,11 +11,13 @@ import type {
   RunningProxy,
   RuntimeState,
 } from "@launchkit/proxy"
-import type { TerminalManager } from "@launchkit/pty"
+import type { PtyError, TerminalManager } from "@launchkit/pty"
 import type { SecretStore } from "@launchkit/secrets"
 import type { SessionStore } from "@launchkit/sessions"
+import type { SessionId } from "@launchkit/types"
 import type { Result } from "@launchkit/utils"
 
+import { mkdirSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import {
@@ -33,7 +35,9 @@ import {
   resolveHarnessLaunch,
 } from "@launchkit/harnesses"
 import {
+  createFetchHttpGet,
   createFileRuntimeState,
+  createModelLister,
   createProviderFactory,
   createProviderTester,
   createRealGateway,
@@ -42,7 +46,12 @@ import {
   loadSdk,
   startProxy,
 } from "@launchkit/proxy"
-import { createFfiPty, createTerminalManager } from "@launchkit/pty"
+import {
+  createBunScrollbackFs,
+  createFfiPty,
+  createFileScrollbackStore,
+  createTerminalManager,
+} from "@launchkit/pty"
 import {
   createBunProcessRunner,
   createMacosSecurityBackend,
@@ -108,6 +117,15 @@ export interface AppContext {
   readonly testProvider: (
     providerId: string,
   ) => Promise<Result<ProviderTestResult, unknown>>
+  /**
+   * Discover the live model list for a provider: look up the provider in config, resolve its apiKey
+   * from the keychain (keyless providers such as ollama pass apiKey=undefined), then call the proxy
+   * ModelLister. SECURITY: the apiKey is resolved server-side and used only for the outbound request;
+   * it never crosses to the view.
+   */
+  readonly listProviderModels: (
+    providerId: string,
+  ) => Promise<Result<readonly string[], unknown>>
   /** The configured proxy port (from `config.settings.proxyPort`), surfaced for `getProxyStatus`. */
   readonly proxyPort: number
   /** The loopback proxy base URL (`http://127.0.0.1:<port>`), used by `proxy.isRunning`. */
@@ -128,6 +146,20 @@ export interface AppContext {
     readonly dbFile: string
     readonly harnessDir: string
   }
+  /**
+   * Open the native folder picker (Electrobun `Utils.openFileDialog`, directories only). Reached via
+   * a LAZY dynamic import so `bun test` never loads native FFI; resolves the selected paths ([] if
+   * cancelled). The `pickFolder` IPC handler maps the first path to `{ path }` (or `{}`).
+   */
+  readonly pickFolder: (opts: {
+    readonly startingFolder?: string
+  }) => Promise<readonly string[]>
+  /**
+   * Read a session's captured terminal bytes from the file-backed scrollback store, for the
+   * read-only replay pane. Returns the raw bytes; the `getSessionScrollback` handler base64-encodes
+   * them.
+   */
+  readonly readScrollback: (id: SessionId) => Result<Uint8Array, PtyError>
 }
 
 /**
@@ -137,6 +169,7 @@ export interface AppContext {
  */
 export interface CreateAppContextDeps {
   readonly homeDir: typeof homedir
+  readonly mkdirSync: typeof mkdirSync
   readonly createFsConfigFile: typeof createFsConfigFile
   readonly createFileConfigStore: typeof createFileConfigStore
   readonly createCachedConfigStore: typeof createCachedConfigStore
@@ -156,6 +189,8 @@ export interface CreateAppContextDeps {
   readonly loadSdk: typeof loadSdk
   readonly createRealGateway: typeof createRealGateway
   readonly createFileRuntimeState: typeof createFileRuntimeState
+  readonly createBunScrollbackFs: typeof createBunScrollbackFs
+  readonly createFileScrollbackStore: typeof createFileScrollbackStore
   readonly createFfiPty: typeof createFfiPty
   readonly createTerminalManager: typeof createTerminalManager
   readonly startTerminalSocket: typeof startTerminalSocket
@@ -172,6 +207,7 @@ const defaultGenProxyKey = (): string => {
 /** The real constructors, used when `createAppContext()` is called with no argument. */
 const realDeps: CreateAppContextDeps = {
   homeDir: homedir,
+  mkdirSync,
   createFsConfigFile,
   createFileConfigStore,
   createCachedConfigStore,
@@ -191,6 +227,8 @@ const realDeps: CreateAppContextDeps = {
   loadSdk,
   createRealGateway,
   createFileRuntimeState,
+  createBunScrollbackFs,
+  createFileScrollbackStore,
   createFfiPty,
   createTerminalManager,
   startTerminalSocket,
@@ -229,6 +267,46 @@ const createTestProvider = (
 }
 
 /**
+ * Build the `listProviderModels` function that delegates to `@launchkit/proxy`'s
+ * `createModelLister`. Resolves the provider from the live config, resolves its apiKey
+ * from the keychain (keyless providers like ollama have no secrets — apiKey stays undefined),
+ * then calls the lister. The ModelLister is constructed once and closed over.
+ * SECURITY: apiKey is resolved from the keychain and passed only to the outbound HTTP request;
+ * it is never returned to the view.
+ */
+const createListProviderModels = (
+  config: ConfigStore,
+  secrets: import("@launchkit/secrets").SecretStore,
+): AppContext["listProviderModels"] => {
+  const lister = createModelLister({ httpGet: createFetchHttpGet() })
+  return async (providerId) => {
+    const loaded = await config.load()
+    if (!loaded.ok) return loaded
+    const provider = loaded.value.providers.find(
+      (p) => String(p.id) === providerId,
+    )
+    if (provider === undefined)
+      return err({ kind: "unknown-provider", providerId })
+
+    // Resolve the apiKey from the keychain. Providers without secrets (e.g. ollama) have an
+    // empty secrets record, so apiKey stays undefined — the lister handles that gracefully.
+    let apiKey: string | undefined
+    const apiKeyRef = provider.secrets.apiKey
+    if (apiKeyRef !== undefined) {
+      const got = await secrets.get(apiKeyRef)
+      if (!got.ok) return got
+      apiKey = got.value
+    }
+
+    return lister({
+      sdkProvider: provider.sdkProvider,
+      config: provider.config,
+      ...(apiKey !== undefined ? { apiKey } : {}),
+    })
+  }
+}
+
+/**
  * Construct the real adapters and inject them into the wired `AppContext`. FLAT and logic-free:
  * every line is a `create*` call wiring one dependency into the next — no branching, no IO logic
  * (that lives in the injected, separately-tested functions). All paths sit under
@@ -242,6 +320,7 @@ export const createAppContext = (
   const configFile = join(configDir, "config.json")
   const dbFile = join(configDir, "launchkit.db")
   const harnessDir = join(configDir, "harnesses")
+  const scrollbackDir = join(configDir, "scrollback")
   const runtimeFile = join(configDir, "runtime.json")
 
   // config: cached( file( fs(configFile) ) )
@@ -290,9 +369,16 @@ export const createAppContext = (
 
   // terminal: the GUI embedded-terminal engine over a real FFI pty + the session store. Its `send`
   // sink is a no-op until window.ts binds the real Electrobun `messages` channel via `bindSend`.
+  deps.mkdirSync(scrollbackDir, { recursive: true })
+  // Persisted per-session scrollback (read-only replay reads from here after a session ends).
+  const scrollbackStore = deps.createFileScrollbackStore({
+    dir: scrollbackDir,
+    fs: deps.createBunScrollbackFs(),
+  })
   const terminal = deps.createTerminalManager({
     pty: deps.createFfiPty(),
     sessions: { create: sessions.create, close: sessions.close },
+    scrollback: scrollbackStore,
     send: () => {},
     capBytes: 1_000_000,
     defaultSize: { cols: 80, rows: 24 },
@@ -328,6 +414,21 @@ export const createAppContext = (
       listAliases: () => opts.config.aliases.map((a) => String(a.alias)),
     })
 
+  // Native folder picker — behind a LAZY dynamic import so bun test never loads native FFI.
+  const pickFolder: AppContext["pickFolder"] = async (opts) => {
+    const { Utils } = await import("electrobun/bun")
+    const paths = await Utils.openFileDialog({
+      canChooseDirectory: true,
+      canChooseFiles: false,
+      allowsMultipleSelection: false,
+      ...(opts.startingFolder === undefined
+        ? {}
+        : { startingFolder: opts.startingFolder }),
+    })
+    // Empty/cancelled selection comes back as [""] from the comma-split; drop it.
+    return paths.filter((p) => p.trim() !== "")
+  }
+
   return {
     config,
     secrets,
@@ -344,11 +445,14 @@ export const createAppContext = (
     testProvider: createTestProvider(config, factory, gateway, () =>
       deps.createSystemClock(),
     ),
+    listProviderModels: createListProviderModels(config, secrets),
     proxyPort,
     proxyBaseUrl,
     genProxyKey: deps.genProxyKey,
     terminal,
     terminalSocketUrl,
+    pickFolder,
+    readScrollback: scrollbackStore.read,
     paths: { configFile, dbFile, harnessDir },
   }
 }

@@ -14,6 +14,7 @@ export interface ProcessSpawner {
     command: string,
     args: readonly string[],
     env: Readonly<Record<string, string>>,
+    cwd?: string,
   ): Result<SpawnedProcess, HarnessError>
 }
 
@@ -21,6 +22,7 @@ export interface SpawnCall {
   readonly command: string
   readonly args: readonly string[]
   readonly env: Readonly<Record<string, string>>
+  readonly cwd?: string
 }
 
 export interface RecordingProcessSpawner extends ProcessSpawner {
@@ -38,8 +40,8 @@ export const createRecordingProcessSpawner = (
   const calls: SpawnCall[] = []
   return {
     calls,
-    spawn: (command, args, env): Result<SpawnedProcess, HarnessError> => {
-      calls.push({ command, args, env })
+    spawn: (command, args, env, cwd): Result<SpawnedProcess, HarnessError> => {
+      calls.push({ command, args, env, ...(cwd !== undefined ? { cwd } : {}) })
       return ok({ pid, exited: Promise.resolve(exitCode) })
     },
   }

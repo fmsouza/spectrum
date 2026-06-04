@@ -35,4 +35,23 @@ describe("useSessions", () => {
     await waitFor(() => expect(getSessions).toHaveBeenCalled())
     expect(client.calls.getSessions[0]).toBeUndefined()
   })
+
+  it("passes a running:true filter through to getSessions", async () => {
+    const client = createFakeIpcClient({
+      getSessions: async () => ({ ok: true as const, value: [] }),
+    })
+    const RunningProbe = (): JSX.Element => {
+      useSessions({ running: true })
+      return <span>ok</span>
+    }
+    render(
+      <IpcClientProvider client={client}>
+        <RunningProbe />
+      </IpcClientProvider>,
+    )
+    await waitFor(() =>
+      expect(client.calls.getSessions.length).toBeGreaterThan(0),
+    )
+    expect(client.calls.getSessions[0]).toEqual({ running: true })
+  })
 })

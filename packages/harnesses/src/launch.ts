@@ -10,6 +10,8 @@ export interface LaunchParams {
   readonly proxyUrl: string
   readonly proxyKey: string
   readonly model: AliasName
+  readonly cwd?: string
+  readonly env?: Readonly<Record<string, string>>
 }
 
 export interface ResolvedHarnessLaunch {
@@ -46,7 +48,9 @@ export const resolveHarnessLaunch =
       env[key] = rendered.value
     }
 
-    return ok({ command: resolved.value, args: [], env })
+    // params.env WINS over the rendered template env (callers can override / add vars at launch).
+    const merged: Record<string, string> = { ...env, ...(params.env ?? {}) }
+    return ok({ command: resolved.value, args: [], env: merged })
   }
 
 export const launchHarness =
@@ -61,5 +65,5 @@ export const launchHarness =
     const { command, args, env } = resolved.value
 
     // Spawn with an EMPTY argument array — never a shell string.
-    return deps.spawner.spawn(command, [...args], env)
+    return deps.spawner.spawn(command, [...args], env, params.cwd)
   }
