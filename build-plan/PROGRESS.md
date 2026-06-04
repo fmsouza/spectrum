@@ -213,7 +213,7 @@ Executed via `subagent-driven-development` (implementer + spec review + code-qua
 | PH.10–PH.11 | harnesses: `ProcessSpawner` cwd + `LaunchParams` cwd/env merge | done | 424ebb6, cc00446 |
 | I.1–I.7 | ipc: profiles/pickFolder/scrollback + launch/getSessions params (desktop stubs throw; Phase 7 replaces) | done | 32c2c2d…dd4457c |
 | C.1–C.6 | cli: profiles CRUD + `launch --profile/--name/--cwd` | done | 5f7279e…6055db6 |
-| U.1–U.12 | ui: Modal/SessionRow/SessionList/NewSessionModal/ProfileForm/AppShell… | todo | |
+| U.1–U.12 | ui: Modal/SessionRow/SessionList/NewSessionModal/ProfileForm/AppShell… (+review: empty-state add, folder-sync, modal reset, a11y) | done | bc7a7fc…0ac4c17, 3ae20a3, aa204fe |
 | D.1–D.12 | desktop: handlers, composition, replay, app.tsx master/detail | todo | |
 | FINAL | whole-repo gate + runtime verification | todo | |
 
