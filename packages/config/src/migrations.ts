@@ -46,8 +46,23 @@ const v1ToV2: Migration = {
   },
 }
 
+/**
+ * v3 introduces top-level `profiles`. Older documents have no such field, so this seeds
+ * `profiles: []` when it is missing or not an array, and otherwise passes the existing
+ * array through untouched. Validation against `ConfigSchema` happens after all steps run.
+ */
+const v2ToV3: Migration = {
+  from: 2,
+  to: 3,
+  migrate: (raw) => ({
+    ...raw,
+    version: 3,
+    profiles: Array.isArray(raw.profiles) ? raw.profiles : [],
+  }),
+}
+
 /** Ordered list of forward migrations. Append a new step whenever `CURRENT_CONFIG_VERSION` bumps. */
-export const migrations: readonly Migration[] = [v1ToV2]
+export const migrations: readonly Migration[] = [v1ToV2, v2ToV3]
 
 /**
  * Read `raw.version`, apply ordered migrations up to `CURRENT_CONFIG_VERSION`, then validate
