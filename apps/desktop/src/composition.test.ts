@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { ok } from "@launchkit/utils"
+import { err, ok } from "@launchkit/utils"
 import { createAppContext } from "./composition"
 import type { CreateAppContextDeps } from "./composition"
 
@@ -96,6 +96,53 @@ describe("createAppContext listProviderModels wiring", () => {
     const ctx = createAppContext(deps)
     const result = await ctx.listProviderModels("p_ghost")
     expect(result.ok).toBe(false)
+  })
+
+  it("returns err and does NOT call the lister when the provider has an apiKey ref but secrets.get fails", async () => {
+    const { deps } = makeFakeDeps()
+
+    // Provider with an apiKey ref present in secrets.
+    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
+      () => ({
+        load: async () =>
+          ok({
+            version: 2,
+            providers: [
+              {
+                id: "p_groq",
+                sdkProvider: "groq",
+                label: "Groq",
+                models: ["llama3-8b-8192"],
+                config: {},
+                secrets: { apiKey: { ref: "kc_missing" } },
+              },
+            ],
+            aliases: [],
+            profiles: [],
+            settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+          }),
+        save: async () => ok(undefined),
+      })
+
+    // secrets.get always fails (keychain entry gone / corrupted).
+    ;(deps as { createSecretStore: unknown }).createSecretStore = () => ({
+      set: async () => ok({ ref: "kc_new" }),
+      get: async () => err({ kind: "not-found" } as { kind: "not-found" }),
+      delete: async () => ok(undefined),
+      has: async () => false,
+    })
+
+    const ctx = createAppContext(deps)
+    const result = await ctx.listProviderModels("p_groq")
+
+    // The error from secrets.get must be forwarded immediately — the lister
+    // (and any outbound HTTP call) must not be reached.
+    // We confirm "not reached" structurally: the error kind must be "not-found"
+    // (the secrets error), NOT "provider-failed" or "unsupported-model-discovery".
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect((result.error as { kind: string }).kind).toBe("not-found")
+    }
   })
 })
 
