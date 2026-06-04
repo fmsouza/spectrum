@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { Session, SessionId } from "@launchkit/types"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import { IpcClientProvider } from "../IpcClientContext"
 import type { XtermInstance } from "../terminal/TerminalPane"
 import type { TerminalClient } from "../terminal/terminalClient"
@@ -77,6 +77,53 @@ describe("SessionsView", () => {
     // The master no longer fetches — it renders the lists it is handed.
     expect(screen.getByText(/claude · fast/)).toBeInTheDocument()
     expect(client.calls.getSessions.length).toBe(0)
+  })
+
+  it("shows an exit banner above the replay for a selected ended session", async () => {
+    const ended = {
+      id: "s_done",
+      harnessId: "claude",
+      alias: "fast",
+      startedAt: "2026-05-23T10:00:00.000Z",
+      endedAt: "2026-05-23T10:05:00.000Z",
+      exitCode: 0,
+    } as unknown as Session
+    const client = createFakeIpcClient({
+      getSessionScrollback: async () => ({
+        ok: true as const,
+        value: { bytesBase64: "" },
+      }),
+    })
+    const { detail } = SessionsView({
+      selectedSessionId: "s_done" as SessionId,
+      // Not in the open set → renders the read-only replay (+ banner).
+      openSessionIds: [],
+      running: [],
+      recent: [ended],
+      hasMore: false,
+      onSelect: () => {},
+      onNew: () => {},
+      onExit: () => {},
+      terminalClient: fakeTerminalClient,
+      createTerminal: fakeXterm,
+    })
+    const { container } = render(
+      <IpcClientProvider client={client}>
+        <div>{detail}</div>
+      </IpcClientProvider>,
+    )
+    // The banner + replay pane render once the scrollback resolves (the replay
+    // is gated behind the scrollback fetch, like the live→replay transition).
+    await waitFor(() =>
+      expect(container.querySelector(".replay-exit-banner")).not.toBeNull(),
+    )
+    const banner = container.querySelector(".replay-exit-banner")
+    expect(banner?.textContent).toContain("exited")
+    expect(banner?.textContent).toContain("code 0")
+    // The read-only replay pane renders alongside the banner.
+    expect(
+      container.querySelector('.terminal-pane[data-session="s_done"]'),
+    ).not.toBeNull()
   })
 
   it("keeps an open live pane mounted (hidden) keyed by session id", () => {

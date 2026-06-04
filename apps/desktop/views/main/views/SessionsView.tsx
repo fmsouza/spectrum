@@ -66,35 +66,52 @@ const SessionsMaster = ({
   />
 )
 
+/** Format an ISO `endedAt` for the exit banner; guards the undefined case. */
+const formatEndedAt = (endedAt: string | undefined): string =>
+  endedAt === undefined ? "" : new Date(endedAt).toLocaleString()
+
 /**
  * Read-only replay for a SELECTED-but-not-open (ended) session: fetches its
  * scrollback unconditionally and renders a replay pane once ready (else a
- * spinner). Kept as its own component so `useSessionScrollback` is never behind
- * a branch.
+ * spinner), under a header banner reporting how the run ended. Kept as its own
+ * component so `useSessionScrollback` is never behind a branch. `session` may be
+ * undefined if the row hasn't loaded yet (e.g. deep-link reload), so the banner
+ * is only shown once we have it.
  */
 const ReplayDetail = ({
   sessionId,
+  session,
   client,
   createTerminal,
 }: {
   readonly sessionId: SessionId
+  readonly session?: Session
   readonly client: TerminalClient
   readonly createTerminal: CreateTerminal
 }): ReactElement => {
   const scrollback = useSessionScrollback(sessionId)
   if (scrollback.data === undefined) return <Spinner label="Loading session" />
+  const ended = formatEndedAt(session?.endedAt)
   return (
-    <TerminalPane
-      // Key by session id so switching between two ended sessions remounts the
-      // pane — otherwise it would briefly show the previous session's
-      // scrollback while the next one's bytes load.
-      key={sessionId}
-      mode="replay"
-      sessionId={sessionId}
-      client={client}
-      createTerminal={createTerminal}
-      bytes={scrollback.data}
-    />
+    <>
+      {session === undefined ? null : (
+        <div className="replay-exit-banner">
+          {`exited · code ${session.exitCode ?? "?"}`}
+          {ended === "" ? null : ` · ended ${ended}`}
+        </div>
+      )}
+      <TerminalPane
+        // Key by session id so switching between two ended sessions remounts the
+        // pane — otherwise it would briefly show the previous session's
+        // scrollback while the next one's bytes load.
+        key={sessionId}
+        mode="replay"
+        sessionId={sessionId}
+        client={client}
+        createTerminal={createTerminal}
+        bytes={scrollback.data}
+      />
+    </>
   )
 }
 
@@ -109,12 +126,16 @@ const ReplayDetail = ({
 const SessionsDetail = ({
   selectedSessionId,
   openSessionIds,
+  running,
+  recent,
   onExit,
   terminalClient,
   createTerminal,
 }: {
   readonly selectedSessionId?: SessionId
   readonly openSessionIds: readonly SessionId[]
+  readonly running: readonly Session[]
+  readonly recent: readonly Session[]
   readonly onExit: (id: SessionId) => void
   readonly terminalClient: TerminalClient
   readonly createTerminal: CreateTerminal
@@ -122,6 +143,10 @@ const SessionsDetail = ({
   const selectedIsOpen =
     selectedSessionId !== undefined &&
     openSessionIds.includes(selectedSessionId)
+  // Resolve the full selected session so the replay can show its exit banner.
+  const selectedSession = [...running, ...recent].find(
+    (s) => s.id === selectedSessionId,
+  )
 
   return (
     <div className="sessions-detail">
@@ -146,6 +171,9 @@ const SessionsDetail = ({
       {selectedSessionId !== undefined && !selectedIsOpen ? (
         <ReplayDetail
           sessionId={selectedSessionId}
+          {...(selectedSession === undefined
+            ? {}
+            : { session: selectedSession })}
           client={terminalClient}
           createTerminal={createTerminal}
         />
@@ -197,6 +225,8 @@ export const SessionsView = ({
     <SessionsDetail
       {...(selectedSessionId === undefined ? {} : { selectedSessionId })}
       openSessionIds={openSessionIds}
+      running={running}
+      recent={recent}
       onExit={onExit}
       terminalClient={terminalClient}
       createTerminal={createTerminal}
