@@ -159,6 +159,33 @@ section).
   switches; closing a tab kills the harness; xterm is loaded via dynamic import so `bun test` never
   pulls it.
 
+### Embedded terminal — runtime fixes (2026-06-04) — `[remediation/runtime-fixes]`
+
+Eyes-on GUI runs surfaced a garbled harness TUI; root-caused and fixed end-to-end (gate green:
+typecheck + lint + **540 tests**; new pty integration tests; `electrobun build` exit 0; `smoke.sh`
+PASS; headless-xterm replay of real `claude` output renders its clean TUI at the right width).
+
+- **PTY window size was garbage (the headline bug).** `ioctl(TIOCSWINSZ)`'s `struct winsize *` is a
+  **variadic** argument, and bun:ffi mis-passes varargs on arm64 (the same defect already noted for
+  `fcntl`): the pointer went in a register but the variadic callee reads it off the stack, so the
+  kernel stored an uninitialised winsize (`stty size` reported e.g. `45187×1786`). The harness then
+  rendered its Ink TUI for a ~1786-column terminal — stray accumulating `────` rules, content emitted
+  at impossible columns (`ESC[1778G`), right-edge wrapping. Fix: set the **initial** size via
+  `openpty`'s **fixed** `winp` parameter (reliable, and atomic before the child reads it), and do
+  **resize** through a second ioctl binding **padded with 6 dummy register args** so the real pointer
+  lands on the stack where the variadic call reads it. New integration tests assert the child's TTY
+  reports exactly the requested size on both open and resize. (Supersedes the `TIOCSWINSZ resize` note
+  above, which was silently writing garbage.)
+- **Dedicated loopback PTY WebSocket.** The high-frequency byte stream + the TUI's startup capability
+  queries (DA1, cursor reports) degraded over Electrobun's `messages` channel. Moved the pty stream to
+  a loopback `ws://localhost:<port>` (`gui/terminal-socket.ts`, fetched via a `getTerminalSocketUrl`
+  IPC method); IPC requests stay on Electrobun. Removed the `messages:{pty}` channel from `window.ts`.
+- **xterm robustness.** WebGL renderer promoted only **after** the first valid fit (a 0×0 container at
+  `open()` mis-measured the cell); `fit()` validates the proposed grid and refuses absurd dimensions
+  so a bad measurement can never resize the pty. Deferred the pty spawn to the first real resize
+  (spawn at the webview's true size, no startup churn). CSP allows `ws://localhost:*`; added a webview
+  `ErrorBoundary` and the hand-written `app.css` theme + vendored `xterm.css`.
+
 ## Status legend
 `todo` · `in-progress` · `done` · `blocked`
 

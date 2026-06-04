@@ -246,5 +246,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       const running = await ctx.proxy.isRunning(ctx.proxyBaseUrl)
       return { running, port: ctx.proxyPort }
     },
+
+    getTerminalSocketUrl: async () => ({ url: ctx.terminalSocketUrl }),
   }
 }

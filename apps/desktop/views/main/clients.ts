@@ -7,62 +7,68 @@ import {
   createTerminalClient,
 } from "./terminal/terminalClient"
 
-/**
- * Combined RPC schema carried by the ONE shared Electroview: the IPC requests
- * channel (the webview only *initiates* requests, so its own `requests` handler
- * set is empty) PLUS the terminal `messages.pty` channel. The webview *receives*
- * `PtyOutbound` (`webview.messages.pty`) and *sends* `PtyInbound`
- * (`bun.messages.pty`).
- *
- * `Electroview` is a singleton per webview — it owns
- * `window.__electrobun.receiveMessageFromBun` and the RPC socket — so building
- * two of them (one for IPC, one for the terminal) makes the second clobber the
- * first's receive handler, breaking IPC (empty harness list) and terminal
- * messaging. This file is the single place `new Electroview` is constructed.
- */
-type CombinedSchema = {
-  readonly bun: RPCSchema<{ readonly messages: { readonly pty: PtyInbound } }>
-  readonly webview: RPCSchema<{
-    readonly messages: { readonly pty: PtyOutbound }
-  }>
-}
-
-/** The fire-and-forget surface used to push `PtyInbound` over the shared view. */
-type PtyRpc = {
-  readonly send: (name: string, payload: PtyInbound) => void
+/** The Electroview only carries the IPC requests channel now (terminal runs over a WebSocket). */
+type EmptySchema = {
+  readonly bun: RPCSchema
+  readonly webview: RPCSchema
 }
 
 /**
- * Construct the ONE shared Electroview and return both clients built over it:
- * the typed `IpcClient` (over `view.rpc.request`) and the `TerminalClient` (over
- * `view.rpc.send("pty", ...)`), with inbound `messages.pty` routed into the
- * terminal client's `dispatch`. Called once by `app.tsx` for the real app.
+ * Build a `TerminalClient` over a dedicated loopback WebSocket (`ws://localhost:<port>/`, served by
+ * the bun side — see apps/desktop/src/gui/terminal-socket.ts). The PTY byte stream needs the low
+ * latency + lossless ordering of a direct socket (the harness TUI's startup capability queries and
+ * thousands of cursor-up/erase redraws degraded over Electrobun's message channel). Inbound
+ * `PtyOutbound` frames are dispatched to the client; outbound `PtyInbound` frames are JSON-sent
+ * (buffered until the socket opens). IPC requests stay on Electrobun.
  */
-export const createRealClients = (): {
+const createWsTerminalClient = (url: string): TerminalClient => {
+  const ws = new WebSocket(url)
+  const outbox: PtyInbound[] = []
+  const send = (message: PtyInbound): void => {
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message))
+    else outbox.push(message)
+  }
+  const client = createTerminalClient(send)
+  ws.addEventListener("open", () => {
+    while (outbox.length > 0) {
+      const next = outbox.shift()
+      if (next !== undefined) ws.send(JSON.stringify(next))
+    }
+  })
+  ws.addEventListener("message", (event: MessageEvent) => {
+    if (typeof event.data !== "string") return
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(event.data)
+    } catch {
+      return
+    }
+    client.dispatch(parsed as PtyOutbound)
+  })
+  return client
+}
+
+/**
+ * Construct the single Electroview (IPC requests only) and return both clients: the typed `IpcClient`
+ * over Electrobun, and a `TerminalClient` over the dedicated terminal WebSocket whose URL is fetched
+ * from the bun side via the `getTerminalSocketUrl` IPC method. Called once by `app.tsx`.
+ */
+export const createRealClients = async (): Promise<{
   ipcClient: IpcClient
   terminalClient: TerminalClient
-} => {
-  // Late-bound: the terminal client is built after the Electroview RPC exists,
-  // so the inbound handler closes over it.
-  let terminalClient: TerminalClient | null = null
-  const rpc = Electroview.defineRPC<CombinedSchema>({
+}> => {
+  const rpc = Electroview.defineRPC<EmptySchema>({
     maxRequestTime: 5000,
-    handlers: {
-      requests: {},
-      messages: {
-        pty: (payload: PtyOutbound): void => {
-          terminalClient?.dispatch(payload)
-        },
-      },
-    },
+    handlers: { requests: {}, messages: {} },
   })
   const view = new Electroview({ rpc })
   const ipcClient = createIpcClient(
     createElectrobunTransport(view.rpc as unknown as ElectrobunRpc),
   )
-  const send = (message: PtyInbound): void => {
-    ;(view.rpc as unknown as PtyRpc).send("pty", message)
-  }
-  terminalClient = createTerminalClient(send)
+  const res = await ipcClient.getTerminalSocketUrl(undefined)
+  const terminalClient = res.ok
+    ? createWsTerminalClient(res.value.url)
+    : // If the URL lookup fails the app still renders; the terminal just can't stream.
+      createTerminalClient(() => {})
   return { ipcClient, terminalClient }
 }

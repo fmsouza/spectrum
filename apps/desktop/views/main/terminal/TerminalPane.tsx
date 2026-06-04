@@ -12,7 +12,13 @@ export interface XtermInstance {
   open(container: HTMLElement): void
   write(data: string | Uint8Array): void
   onData(cb: (data: string) => void): void
-  fit(): void
+  /**
+   * Fit the grid to the container and return the applied size, or `null` if the measurement was
+   * rejected as invalid (e.g. the renderer's char-cell size wasn't ready, which yields an absurd
+   * column count). Callers must NOT resize the pty on a `null` — that bogus size would garble the
+   * harness TUI; wait for a later fit instead.
+   */
+  fit(): { readonly cols: number; readonly rows: number } | null
   readonly cols: number
   readonly rows: number
   dispose(): void
@@ -48,26 +54,53 @@ export const TerminalPane = ({
     const term = createTerminal()
     term.open(container)
 
-    const syncSize = (): void => {
-      term.fit()
-      client.sendResize(sessionId, term.cols, term.rows)
-    }
-    syncSize()
-
+    // Register stream handlers up front so no early output is missed.
     client.onData(sessionId, (bytes) => term.write(bytes))
     client.onExit(sessionId, (code) => term.write(`\r\n[exited ${code}]\r\n`))
     term.onData((data) =>
       client.sendInput(sessionId, new TextEncoder().encode(data)),
     )
-    client.attach(sessionId)
 
+    const syncSize = (): void => {
+      // Skip while the pane is hidden / zero-size (inactive tabs are display:none). Fitting then
+      // would compute xterm's minimum (~10x6) and resize the pty to it, making the harness reflow
+      // its TUI to a tiny grid — garbling the session until it's shown again. Only fit when visible.
+      if (container.clientWidth === 0 || container.clientHeight === 0) return
+      const dims = term.fit()
+      // A null fit means xterm measured a bad char-cell size and proposed an absurd grid; sending it
+      // would make the harness render its TUI for the wrong width (garbled). Skip — a later fit wins.
+      if (dims === null) return
+      client.sendResize(sessionId, dims.cols, dims.rows)
+    }
+
+    // Defer the first fit to AFTER the browser has laid out the container and xterm has measured
+    // its character cell. Calling fit() synchronously right after open() measures an unready grid
+    // and picks the wrong cols/rows, so the harness renders its TUI for the wrong width (garbled,
+    // wrapped lines). Fit on the next frame, then attach (replays scrollback at the correct size);
+    // a second fit shortly after catches any late layout/scrollbar settling.
+    const raf = requestAnimationFrame(() => {
+      syncSize()
+      client.attach(sessionId)
+    })
+    const settle = setTimeout(syncSize, 60)
+
+    // Debounce container resizes: a window drag fires a storm of ResizeObserver callbacks, and
+    // spamming the harness with SIGWINCH (one per pty-resize) leaves its TUI mid-redraw. Send only
+    // the final size once the drag pauses.
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null
     const observer =
       typeof ResizeObserver === "undefined"
         ? null
-        : new ResizeObserver(() => syncSize())
+        : new ResizeObserver(() => {
+            if (resizeTimer !== null) clearTimeout(resizeTimer)
+            resizeTimer = setTimeout(syncSize, 80)
+          })
     observer?.observe(container)
 
     return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(settle)
+      if (resizeTimer !== null) clearTimeout(resizeTimer)
       observer?.disconnect()
       term.dispose()
     }

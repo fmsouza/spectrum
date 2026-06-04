@@ -67,18 +67,46 @@ const makeDeps = (): {
   }
 }
 
+/** The webview's first resize is what actually spawns the harness (deferred-spawn). */
+const resize = (
+  manager: ReturnType<typeof createTerminalManager>,
+  cols = 80,
+  rows = 24,
+): void => {
+  manager.handleInbound({ type: "pty-resize", id: sessionId, cols, rows })
+}
+
 describe("createTerminalManager", () => {
-  it("creates a session and opens a pty on launch, returning the sessionId", () => {
+  it("creates a session on launch and returns the sessionId", () => {
     const { deps } = makeDeps()
     const manager = createTerminalManager(deps)
     const res = manager.launch(launchInput)
     expect(res.ok && res.value.sessionId === sessionId).toBe(true)
   })
 
+  it("does not spawn the harness until the first resize, then spawns at that size", () => {
+    const opened: { cols: number; rows: number }[] = []
+    const { deps, pty } = makeDeps()
+    const manager = createTerminalManager({
+      ...deps,
+      pty: {
+        open: (opts) => {
+          opened.push({ cols: opts.cols, rows: opts.rows })
+          return ok(pty)
+        },
+      },
+    })
+    manager.launch(launchInput)
+    expect(opened).toHaveLength(0) // deferred — no spawn yet
+    resize(manager, 100, 40)
+    expect(opened).toEqual([{ cols: 100, rows: 40 }]) // spawned at the webview's size
+  })
+
   it("streams pty output to the webview as base64 pty-data messages", () => {
     const { deps, sent, pty } = makeDeps()
     const manager = createTerminalManager(deps)
     manager.launch(launchInput)
+    resize(manager)
     pty.emit("xyz")
     expect(sent).toContainEqual({
       type: "pty-data",
@@ -91,6 +119,7 @@ describe("createTerminalManager", () => {
     const { deps, pty } = makeDeps()
     const manager = createTerminalManager(deps)
     manager.launch(launchInput)
+    resize(manager)
     manager.handleInbound({
       type: "pty-input",
       id: sessionId,
@@ -103,6 +132,7 @@ describe("createTerminalManager", () => {
     const { deps, sent, pty } = makeDeps()
     const manager = createTerminalManager(deps)
     manager.launch(launchInput)
+    resize(manager)
     pty.emit("history")
     sent.length = 0
     manager.handleInbound({ type: "pty-attach", id: sessionId })
@@ -117,6 +147,7 @@ describe("createTerminalManager", () => {
     const { deps, sent, closed, pty } = makeDeps()
     const manager = createTerminalManager(deps)
     manager.launch(launchInput)
+    resize(manager)
     pty.triggerExit(3)
     expect(closed).toEqual([{ id: sessionId, code: 3 }])
     expect(sent).toContainEqual({ type: "pty-exit", id: sessionId, code: 3 })
@@ -130,6 +161,7 @@ describe("createTerminalManager", () => {
       rebound.push(m)
     })
     manager.launch(launchInput)
+    resize(manager)
     pty.emit("zzz")
     expect(rebound).toContainEqual({
       type: "pty-data",

@@ -57,6 +57,10 @@ const makeFakeDeps = (): {
         bindSend: () => undefined,
       }
     }) as never,
+    startTerminalSocket: (() => ({
+      url: "ws://localhost:12345/",
+      stop: () => undefined,
+    })) as never,
   }
   return { deps, calls }
 }

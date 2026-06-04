@@ -13,7 +13,7 @@ const fakeTerminal = (): XtermInstance => ({
   open: () => {},
   write: () => {},
   onData: () => {},
-  fit: () => {},
+  fit: () => ({ cols: 80, rows: 24 }),
   cols: 80,
   rows: 24,
   dispose: () => {},

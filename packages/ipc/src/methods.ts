@@ -152,6 +152,13 @@ export const GetProxyStatusResultSchema = z
   })
   .strict()
 
+// The webview asks for the dedicated terminal WebSocket URL (a loopback ws the bun side serves for
+// the PTY byte stream — see apps/desktop/src/gui/terminal-socket.ts) and connects to it directly.
+export const GetTerminalSocketUrlParamsSchema = z.undefined()
+export const GetTerminalSocketUrlResultSchema = z
+  .object({ url: z.string() })
+  .strict()
+
 // ── The method → {params, result} schema map ──────────────────────────────────
 
 /** Maps each contract method to its on-the-wire param + result zod schemas. */
@@ -220,6 +227,10 @@ export const IpcMethodSchemas = {
   getProxyStatus: {
     params: GetProxyStatusParamsSchema,
     result: GetProxyStatusResultSchema,
+  },
+  getTerminalSocketUrl: {
+    params: GetTerminalSocketUrlParamsSchema,
+    result: GetTerminalSocketUrlResultSchema,
   },
 } as const
 

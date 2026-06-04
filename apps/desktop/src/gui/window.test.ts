@@ -1,8 +1,6 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { PtyInbound } from "@launchkit/pty"
-import { SessionIdSchema } from "@launchkit/types"
 import type { AppContext } from "../composition"
-import { openWindow, routeInboundMessage } from "./window"
+import { openWindow } from "./window"
 import type { OpenWindowDeps, WindowOptions } from "./window"
 
 const fakeCtx = {} as AppContext
@@ -51,42 +49,5 @@ describe("openWindow", () => {
     const { deps } = makeDeps({ wireServer })
     openWindow(fakeCtx, deps)
     expect(wireServer).toHaveBeenCalledTimes(1)
-  })
-})
-
-describe("routeInboundMessage", () => {
-  it("routes a valid inbound message to terminal.handleInbound", () => {
-    const received: PtyInbound[] = []
-    const terminal = {
-      handleInbound: (message: PtyInbound): void => {
-        received.push(message)
-      },
-    }
-    const raw = {
-      type: "pty-input",
-      id: SessionIdSchema.parse("s-1"),
-      data: btoa("hello"),
-    }
-
-    routeInboundMessage(raw, terminal)
-
-    expect(received).toHaveLength(1)
-    expect(received[0]).toEqual({
-      type: "pty-input",
-      id: SessionIdSchema.parse("s-1"),
-      data: btoa("hello"),
-    })
-  })
-
-  it("drops a malformed message without throwing", () => {
-    const received: PtyInbound[] = []
-    const terminal = {
-      handleInbound: (message: PtyInbound): void => {
-        received.push(message)
-      },
-    }
-
-    expect(() => routeInboundMessage({ type: "nope" }, terminal)).not.toThrow()
-    expect(received).toHaveLength(0)
   })
 })

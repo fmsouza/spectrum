@@ -3,6 +3,7 @@ import type { HarnessId, SessionId } from "@launchkit/types"
 import { AppShell } from "@launchkit/ui"
 import { type ReactElement, StrictMode, useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
+import { ErrorBoundary } from "./ErrorBoundary"
 import { IpcClientProvider } from "./IpcClientContext"
 import { createRealClients } from "./clients"
 import {
@@ -117,7 +118,7 @@ export const App = ({
         activeRoute={route}
         onNavigate={(next) => setRoute(normalizeRoute(next))}
       >
-        {renderPage()}
+        <ErrorBoundary key={route}>{renderPage()}</ErrorBoundary>
       </AppShell>
     </IpcClientProvider>
   )
@@ -133,7 +134,7 @@ export const mount = async (): Promise<void> => {
   const { createXterm } = await import("./terminal/createXterm")
   // Build the ONE shared Electroview (carries IPC requests + the terminal pty
   // channel) and get both clients from it. See `clients.ts`.
-  const { ipcClient, terminalClient } = createRealClients()
+  const { ipcClient, terminalClient } = await createRealClients()
   createRoot(container).render(
     <StrictMode>
       <App

@@ -900,3 +900,15 @@ main section li > button[data-variant] {
 .terminal-pane .xterm {
   height: 100%;
 }
+
+/* Hide the xterm viewport scrollbar so the full pane width is usable text. Otherwise the ~15px
+   scrollbar gutter makes FitAddon's column count overshoot the visible width and the harness TUI
+   wraps its right-edge content by a few columns. Scrolling still works via wheel/keyboard. */
+.terminal-pane .xterm-viewport {
+  scrollbar-width: none;
+}
+.terminal-pane .xterm-viewport::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}

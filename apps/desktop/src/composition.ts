@@ -54,6 +54,7 @@ import {
 } from "@launchkit/sessions"
 import { createCryptoIdGen, createSystemClock } from "@launchkit/utils"
 import { err } from "@launchkit/utils"
+import { startTerminalSocket } from "./gui/terminal-socket"
 
 /** Result of testing one provider's live connectivity (mirrors ipc TestProviderResult). */
 export type ProviderTestResult = {
@@ -115,10 +116,12 @@ export interface AppContext {
   readonly genProxyKey: () => string
   /**
    * The embedded-terminal engine for the GUI: allocates a real PTY per launched harness and streams
-   * its bytes over the Electrobun `messages` seam. Its `send` sink is a no-op until `window.ts` calls
-   * `terminal.bindSend(...)` with the real RPC. Unused by the CLI/`launch` headless path.
+   * its bytes over a dedicated loopback WebSocket (`terminalSocketUrl`). Its `send` sink is a no-op
+   * until the terminal socket binds it on connect. Unused by the CLI/`launch` headless path.
    */
   readonly terminal: TerminalManager
+  /** Loopback `ws://localhost:<port>/` the webview connects to for the PTY byte stream. */
+  readonly terminalSocketUrl: string
   /** Resolved settings paths (config + db + harness dir), surfaced for diagnostics/tests. */
   readonly paths: {
     readonly configFile: string
@@ -155,6 +158,7 @@ export interface CreateAppContextDeps {
   readonly createFileRuntimeState: typeof createFileRuntimeState
   readonly createFfiPty: typeof createFfiPty
   readonly createTerminalManager: typeof createTerminalManager
+  readonly startTerminalSocket: typeof startTerminalSocket
   readonly genProxyKey: () => string
 }
 
@@ -189,6 +193,7 @@ const realDeps: CreateAppContextDeps = {
   createFileRuntimeState,
   createFfiPty,
   createTerminalManager,
+  startTerminalSocket,
   genProxyKey: defaultGenProxyKey,
 }
 
@@ -292,6 +297,8 @@ export const createAppContext = (
     capBytes: 1_000_000,
     defaultSize: { cols: 80, rows: 24 },
   })
+  // The dedicated loopback WebSocket for the PTY byte stream binds `terminal`'s send sink on connect.
+  const terminalSocketUrl = deps.startTerminalSocket(terminal).url
 
   // proxy settings resolved from the default config shape (loopback only, security.md)
   const settings = defaultConfig().settings
@@ -341,6 +348,7 @@ export const createAppContext = (
     proxyBaseUrl,
     genProxyKey: deps.genProxyKey,
     terminal,
+    terminalSocketUrl,
     paths: { configFile, dbFile, harnessDir },
   }
 }
