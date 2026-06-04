@@ -52,6 +52,8 @@ This redesign makes **the session the primary object** and reorganizes the app i
   impossible without a background daemon.
 - Global disk-retention sweep for old scrollback files (per-session bound only for now).
 - Session rename / delete / search UI.
+- In-Settings config import/export UI — import/export stays available via the existing tray
+  menu; surfacing it in Settings → General is a follow-up (General shows proxy status for now).
 
 ## 3. Decisions captured (brainstorm)
 
