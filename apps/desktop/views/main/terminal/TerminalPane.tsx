@@ -26,12 +26,23 @@ export interface XtermInstance {
 
 export type CreateTerminal = () => XtermInstance
 
-export type TerminalPaneProps = {
-  readonly sessionId: SessionId
-  readonly client: TerminalClient
-  /** Injected so the pane (and its consumers' tests) never load real xterm. */
-  readonly createTerminal: CreateTerminal
-}
+export type TerminalPaneProps =
+  | {
+      readonly mode?: "live"
+      readonly sessionId: SessionId
+      readonly client: TerminalClient
+      /** Injected so the pane (and its consumers' tests) never load real xterm. */
+      readonly createTerminal: CreateTerminal
+    }
+  | {
+      readonly mode: "replay"
+      readonly sessionId: SessionId
+      readonly client: TerminalClient
+      /** Injected so the pane (and its consumers' tests) never load real xterm. */
+      readonly createTerminal: CreateTerminal
+      /** The decoded scrollback bytes to render once, read-only. */
+      readonly bytes: Uint8Array
+    }
 
 /**
  * Mounts a single xterm terminal for one session into a div. Wires the bun PTY
@@ -39,12 +50,14 @@ export type TerminalPaneProps = {
  * resize, and disposes only the xterm view on unmount (the bun session stays
  * alive). The xterm coupling is confined to the `createTerminal` factory so the
  * surrounding logic is testable without a real terminal.
+ *
+ * In `"replay"` mode the pane does NOT wire `term.onData` or any PTY
+ * input/attach/resize; it writes a provided `bytes: Uint8Array` once and is
+ * otherwise inert (read-only).
  */
-export const TerminalPane = ({
-  sessionId,
-  client,
-  createTerminal,
-}: TerminalPaneProps): ReactElement => {
+export const TerminalPane = (props: TerminalPaneProps): ReactElement => {
+  const { sessionId, client, createTerminal } = props
+  const replayBytes = props.mode === "replay" ? props.bytes : undefined
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -54,6 +67,16 @@ export const TerminalPane = ({
     const term = createTerminal()
     term.open(container)
 
+    if (replayBytes !== undefined) {
+      // Read-only: render the captured bytes once. No onData (no input), no attach, no resize
+      // wiring — the session has ended; we are just showing its final output.
+      term.write(replayBytes)
+      return () => {
+        term.dispose()
+      }
+    }
+
+    // ── live (existing behaviour) ──
     // Register stream handlers up front so no early output is missed.
     client.onData(sessionId, (bytes) => term.write(bytes))
     client.onExit(sessionId, (code) => term.write(`\r\n[exited ${code}]\r\n`))
@@ -104,7 +127,7 @@ export const TerminalPane = ({
       observer?.disconnect()
       term.dispose()
     }
-  }, [sessionId, client, createTerminal])
+  }, [sessionId, client, createTerminal, replayBytes])
 
   return (
     <div
