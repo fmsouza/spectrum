@@ -148,9 +148,7 @@ export interface AppContext {
    * read-only replay pane. Returns the raw bytes; the `getSessionScrollback` handler base64-encodes
    * them.
    */
-  readonly readScrollback: (
-    id: SessionId,
-  ) => Result<Uint8Array, PtyError>
+  readonly readScrollback: (id: SessionId) => Result<Uint8Array, PtyError>
 }
 
 /**
