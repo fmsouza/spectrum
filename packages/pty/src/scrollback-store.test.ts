@@ -92,4 +92,28 @@ describe("createFileScrollbackStore", () => {
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.error.kind).toBe("scrollback-io")
   })
+
+  it("rotates at the byte cap and read returns the most-recent bytes across the rotation", () => {
+    const fs = createMemoryScrollbackFs()
+    // capBytes = 4: each 2-byte append fills the cap after two writes, forcing a rotation.
+    const store = createFileScrollbackStore({ dir: "/scroll", fs, capBytes: 4 })
+    store.append(id, enc("AA")) // main = "AA"           (2 bytes)
+    store.append(id, enc("BB")) // main = "AABB" -> hits cap -> rotate: .1.bin="AABB", main=""
+    store.append(id, enc("CC")) // main = "CC"
+    const r = store.read(id)
+    // read = concat(.1.bin, main) = "AABB" + "CC"
+    expect(r.ok && dec(r.value)).toBe("AABBCC")
+    expect(fs.exists("/scroll/s_00000000-0000-4000-8000-000000000000.1.bin")).toBe(true)
+  })
+
+  it("keeps only one rotation generation, replacing a prior .1.bin on the next rotation", () => {
+    const fs = createMemoryScrollbackFs()
+    const store = createFileScrollbackStore({ dir: "/scroll", fs, capBytes: 4 })
+    store.append(id, enc("AABB")) // hits cap -> rotate gen1: .1.bin="AABB", main=""
+    store.append(id, enc("CCDD")) // hits cap -> rotate gen2: .1.bin="CCDD" (replaces), main=""
+    store.append(id, enc("EE"))
+    const r = store.read(id)
+    // The first generation ("AABB") is gone; only the latest rotated file + current remain.
+    expect(r.ok && dec(r.value)).toBe("CCDDEE")
+  })
 })

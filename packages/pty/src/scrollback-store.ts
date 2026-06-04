@@ -118,7 +118,19 @@ export const createFileScrollbackStore = (deps: {
       const written = entry.value.writer.write(chunk)
       if (!written.ok) return written
       entry.value.bytes += chunk.length
-      // Rotation trigger added in PH.4.
+      if (entry.value.bytes >= capBytes) {
+        const closed = entry.value.writer.close()
+        if (!closed.ok) return closed
+        open.delete(safe.value)
+        // Replace any prior rotated generation, then rotate the current file into the .1 slot.
+        if (deps.fs.exists(rotatedPath(safe.value))) {
+          const removed = deps.fs.unlink(rotatedPath(safe.value))
+          if (!removed.ok) return removed
+        }
+        const renamed = deps.fs.rename(mainPath(safe.value), rotatedPath(safe.value))
+        if (!renamed.ok) return renamed
+        // Next append re-opens a fresh <id>.bin via writerFor (map entry already deleted).
+      }
       return ok(undefined)
     },
 
