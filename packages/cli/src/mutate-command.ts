@@ -231,7 +231,21 @@ const removeAlias = async (
   return saveOrFail(deps, { ...config, aliases: next })
 }
 
-/** `remove provider <id>` / `remove alias <name>`. */
+const removeProfile = async (
+  deps: CliDeps,
+  config: Config,
+  id: string | undefined,
+): Promise<Result<void, CliError>> => {
+  if (id === undefined)
+    return err({ kind: "usage", detail: "remove profile <id>" })
+  const next = config.profiles.filter((p) => p.id !== id)
+  if (next.length === config.profiles.length) {
+    return err({ kind: "failed", detail: `unknown profile: ${id}` })
+  }
+  return saveOrFail(deps, { ...config, profiles: next })
+}
+
+/** `remove provider <id>` / `remove alias <name>` / `remove profile <id>`. */
 export const remove = async (
   deps: CliDeps,
   rest: readonly string[],
@@ -246,7 +260,12 @@ export const remove = async (
       return removeProvider(deps, loaded.value, rest[1])
     case "alias":
       return removeAlias(deps, loaded.value, rest[1])
+    case "profile":
+      return removeProfile(deps, loaded.value, rest[1])
     default:
-      return err({ kind: "usage", detail: "remove <provider|alias> <id>" })
+      return err({
+        kind: "usage",
+        detail: "remove <provider|alias|profile> <id>",
+      })
   }
 }
