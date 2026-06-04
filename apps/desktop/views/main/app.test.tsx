@@ -220,7 +220,7 @@ describe("App view model", () => {
     expect(window.location.hash).not.toContain("/")
   })
 
-  it("omits an empty name from the launchHarness params (Bug 1)", async () => {
+  it("sends name 'Untitled' to launchHarness (Fix #3, formerly Bug 1)", async () => {
     const client = createFakeIpcClient({
       ...baseStubs,
       getHarnesses: async () => ({
@@ -257,11 +257,11 @@ describe("App view model", () => {
       />,
     )
     fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
-    // Leave Name empty (the default). Launch with the defaulted harness/alias.
+    // Name field is removed (Fix #3); modal always submits name:"Untitled"
     fireEvent.click(await screen.findByRole("button", { name: /launch/i }))
     await waitFor(() => expect(client.calls.launchHarness.length).toBe(1))
     const params = client.calls.launchHarness[0] as Record<string, unknown>
-    expect("name" in params).toBe(false)
+    expect(params.name).toBe("Untitled")
     expect("cwd" in params).toBe(false)
   })
 
@@ -313,11 +313,7 @@ describe("App view model", () => {
       />,
     )
     fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
-    // Field labels are defined in Phase 6 / U.11: "Name", "Folder",
-    // "Save edits as new profile", "Profile name".
-    fireEvent.change(screen.getByLabelText("Name"), {
-      target: { value: "auth-refactor" },
-    })
+    // Name field removed (Fix #3); use Folder and "Save edits as new profile"
     fireEvent.change(screen.getByLabelText("Folder"), {
       target: { value: "/tmp/app" },
     })
@@ -563,6 +559,152 @@ describe("App view model", () => {
           '.sessions-detail > .terminal-pane[data-session="s_new"]',
         ),
       ).not.toBeNull(),
+    )
+  })
+
+  it("refetches getAliases (and getProfiles/getHarnesses) when the new-session modal is opened (Fix #1)", async () => {
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getHarnesses: async () => ({
+        ok: true as const,
+        value: [
+          {
+            id: "claude",
+            name: "Claude Code",
+            command: "claude",
+            apiFormat: "anthropic",
+            envTemplate: {},
+            defaultAlias: "fast",
+            builtIn: true,
+          },
+        ],
+      }),
+      getAliases: async () => ({
+        ok: true as const,
+        value: [
+          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
+        ],
+      }),
+    })
+    render(
+      <App
+        client={client}
+        terminalClient={fakeTerminalClient}
+        createTerminal={fakeXterm}
+        initialView="sessions"
+      />,
+    )
+    // Wait for initial render — hooks fire on mount for aliases, profiles, harnesses
+    await waitFor(() =>
+      expect(client.calls.getAliases.length).toBeGreaterThan(0),
+    )
+    const countBefore = client.calls.getAliases.length
+
+    // Open the modal via "+ New session" button — onNew should trigger refetch
+    fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
+
+    // After opening, getAliases should have been called again
+    await waitFor(() =>
+      expect(client.calls.getAliases.length).toBeGreaterThan(countBefore),
+    )
+    // Same for getProfiles and getHarnesses
+    const profilesCountAfterOpen = client.calls.getProfiles.length
+    const harnessCountAfterOpen = client.calls.getHarnesses.length
+    expect(profilesCountAfterOpen).toBeGreaterThan(0)
+    expect(harnessCountAfterOpen).toBeGreaterThan(0)
+  })
+
+  it("sets the folder field in the modal when pickFolder returns a real path (Fix #2)", async () => {
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getHarnesses: async () => ({
+        ok: true as const,
+        value: [
+          {
+            id: "claude",
+            name: "Claude Code",
+            command: "claude",
+            apiFormat: "anthropic",
+            envTemplate: {},
+            defaultAlias: "fast",
+            builtIn: true,
+          },
+        ],
+      }),
+      getAliases: async () => ({
+        ok: true as const,
+        value: [
+          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
+        ],
+      }),
+      pickFolder: async () => ({
+        ok: true as const,
+        value: { path: "/Users/me/myproject" },
+      }),
+    })
+    render(
+      <App
+        client={client}
+        terminalClient={fakeTerminalClient}
+        createTerminal={fakeXterm}
+        initialView="sessions"
+      />,
+    )
+    // Open modal then click Browse
+    fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
+    await screen.findByRole("button", { name: /launch/i })
+    fireEvent.click(screen.getByRole("button", { name: /browse/i }))
+    // After Browse resolves, the Folder field should show the returned path
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: /folder/i })).toHaveValue(
+        "/Users/me/myproject",
+      ),
+    )
+  })
+
+  it("surfaces a pickFolder error as an alert in the modal (Fix #2)", async () => {
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getHarnesses: async () => ({
+        ok: true as const,
+        value: [
+          {
+            id: "claude",
+            name: "Claude Code",
+            command: "claude",
+            apiFormat: "anthropic",
+            envTemplate: {},
+            defaultAlias: "fast",
+            builtIn: true,
+          },
+        ],
+      }),
+      getAliases: async () => ({
+        ok: true as const,
+        value: [
+          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
+        ],
+      }),
+      pickFolder: async () => ({
+        ok: false as const,
+        error: { kind: "handler-failed" as const, detail: "dialog failed" },
+      }),
+    })
+    render(
+      <App
+        client={client}
+        terminalClient={fakeTerminalClient}
+        createTerminal={fakeXterm}
+        initialView="sessions"
+      />,
+    )
+    // Open modal then click Browse (which will fail)
+    fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
+    await screen.findByRole("button", { name: /launch/i })
+    fireEvent.click(screen.getByRole("button", { name: /browse/i }))
+    // The error should be surfaced as an alert
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/dialog failed/i),
     )
   })
 })

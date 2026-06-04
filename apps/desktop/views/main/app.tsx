@@ -143,7 +143,12 @@ const AppInner = ({
 
   const onBrowse = async (): Promise<void> => {
     const r = await client.pickFolder({})
-    if (r.ok && r.value.path !== undefined) setFolder(r.value.path)
+    if (!r.ok) {
+      setLaunchError(ipcErrorMessage(r.error))
+      return
+    }
+    if (r.value.path !== undefined && r.value.path !== "")
+      setFolder(r.value.path)
   }
 
   const onSubmitNewSession = async (v: NewSessionValues): Promise<void> => {
@@ -208,6 +213,9 @@ const AppInner = ({
           onSelect: (id) =>
             setView({ kind: "sessions", selectedSessionId: id }),
           onNew: () => {
+            profiles.refetch()
+            harnesses.refetch()
+            aliases.refetch()
             setLaunchError(undefined)
             setModalOpen(true)
           },
