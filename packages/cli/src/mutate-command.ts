@@ -33,6 +33,27 @@ const splitModels = (
     .filter((m) => m.length > 0)
 }
 
+/**
+ * Parse `--env K=V,K2=V2` into a string map. Splits on `,`, then each entry on the
+ * FIRST `=` (values may contain `=`); trims the key; drops entries with an empty key
+ * or no `=`. Returns `{}` when the flag is absent or a bare boolean.
+ */
+export const splitEnv = (
+  flags: Readonly<Record<string, string | boolean>>,
+): Record<string, string> => {
+  const value = flags.env
+  if (typeof value !== "string") return {}
+  const out: Record<string, string> = {}
+  for (const entry of value.split(",")) {
+    const eq = entry.indexOf("=")
+    if (eq <= 0) continue
+    const key = entry.slice(0, eq).trim()
+    if (key.length === 0) continue
+    out[key] = entry.slice(eq + 1)
+  }
+  return out
+}
+
 const saveOrFail = async (
   deps: CliDeps,
   next: Config,
