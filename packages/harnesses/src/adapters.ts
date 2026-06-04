@@ -30,12 +30,14 @@ export const createBunProcessSpawner = (): ProcessSpawner => ({
     command: string,
     args: readonly string[],
     env: Readonly<Record<string, string>>,
+    cwd?: string,
   ): Result<SpawnedProcess, HarnessError> => {
     try {
       // MERGE the inherited environment with the rendered overrides: the child needs PATH/HOME/
       // TERM/etc. to function, while the rendered vars (proxy base-url + per-run key) WIN over any
       // pre-existing ones in the user's shell so the proxy stays authoritative.
       const child = Bun.spawn([command, ...args], {
+        cwd,
         env: { ...process.env, ...env },
         stdio: ["inherit", "inherit", "inherit"],
       })
