@@ -57,6 +57,59 @@ describe("launchHarness", () => {
     })
   })
 
+  it("renders argsTemplate tokens into the spawn args in proxied mode (codex provider flags)", () => {
+    const codexLike: HarnessDefinition = {
+      id: HarnessIdSchema.parse("codex"),
+      name: "Codex",
+      command: "codex",
+      apiFormat: "openai",
+      envTemplate: { OPENAI_API_KEY: "{{proxyKey}}" },
+      argsTemplate: [
+        "-c",
+        'model_providers.lk.base_url="{{proxyUrl}}/v1"',
+        "-m",
+        "{{model}}",
+      ],
+      builtIn: true,
+    }
+    const resolver = createFakeCommandResolver({
+      codex: "/usr/local/bin/codex",
+    })
+    const r = resolveHarnessLaunch({ resolver })({
+      harness: codexLike,
+      route: proxiedRoute,
+    })
+    expect(isOk(r)).toBe(true)
+    if (!isOk(r)) return
+    expect(r.value.args).toEqual([
+      "-c",
+      'model_providers.lk.base_url="http://127.0.0.1:4000/v1"',
+      "-m",
+      "mdl_x",
+    ])
+    expect(r.value.env).toEqual({ OPENAI_API_KEY: "k-secret" })
+  })
+
+  it("omits argsTemplate args in direct (bypass) mode", () => {
+    const codexLike: HarnessDefinition = {
+      id: HarnessIdSchema.parse("codex"),
+      name: "Codex",
+      command: "codex",
+      apiFormat: "openai",
+      envTemplate: { OPENAI_API_KEY: "{{proxyKey}}" },
+      argsTemplate: ["-c", "x={{proxyUrl}}"],
+      builtIn: true,
+    }
+    const resolver = createFakeCommandResolver({
+      codex: "/usr/local/bin/codex",
+    })
+    const r = resolveHarnessLaunch({ resolver })({
+      harness: codexLike,
+      route: { kind: "direct" },
+    })
+    expect(isOk(r) && r.value.args).toEqual([])
+  })
+
   it("renders no proxy env in direct (bypass) mode — only caller env reaches the harness", () => {
     const resolver = createFakeCommandResolver({
       claude: "/usr/local/bin/claude",
