@@ -18,7 +18,7 @@ const config = {
       models: [],
     },
   ],
-  aliases: [{ alias: "default", providerId: "p1", providerModel: "gpt-4o" }],
+  models: [{ id: "mdl_default", providerId: "p1", providerModel: "gpt-4o" }],
 } as unknown as Config
 
 let stop: (() => void) | undefined
@@ -35,7 +35,7 @@ describe("startProxy", () => {
       gateway: createScriptedGateway([
         { type: "finish", finishReason: "stop" },
       ]),
-      listAliases: () => ["default"],
+      listModels: () => ["mdl_default"],
     })
     stop = s.stop
     expect(s.hostname).toBe("127.0.0.1")
@@ -52,14 +52,14 @@ describe("startProxy", () => {
         { type: "text-delta", text: "Hi" },
         { type: "finish", finishReason: "stop" },
       ]),
-      listAliases: () => ["default"],
+      listModels: () => ["mdl_default"],
     })
     stop = s.stop
     const res = await fetch(`http://127.0.0.1:${s.port}/v1/messages`, {
       method: "POST",
       headers: { "x-api-key": "k" },
       body: JSON.stringify({
-        model: "default",
+        model: "mdl_default",
         max_tokens: 1,
         stream: true,
         messages: [{ role: "user", content: "hi" }],

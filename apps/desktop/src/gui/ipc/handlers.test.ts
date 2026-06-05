@@ -5,7 +5,14 @@ import {
   resolveHarnessLaunch,
 } from "@launchkit/harnesses"
 import { bytesToBase64 } from "@launchkit/pty"
-import type { Profile, Provider, Session } from "@launchkit/types"
+import type {
+  HarnessId,
+  ModelId,
+  Profile,
+  Provider,
+  ProviderId,
+  Session,
+} from "@launchkit/types"
 import { type Result, err, ok } from "@launchkit/utils"
 import type { AppContext } from "../../composition"
 import { createIpcHandlers } from "./handlers"
@@ -27,7 +34,7 @@ const baseConfig = (providers: readonly Provider[]): Config =>
   ({
     version: 2,
     providers,
-    aliases: [],
+    models: [],
     profiles: [],
     settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
   }) as Config
@@ -150,7 +157,6 @@ const makeCtx = (
               ANTHROPIC_API_KEY: "{{proxyKey}}",
               ANTHROPIC_MODEL: "{{model}}",
             },
-            defaultAlias: "default",
             builtIn: true,
           },
         ]),
@@ -209,14 +215,13 @@ const sampleHarness = {
     OPENAI_API_KEY: "{{proxyKey}}",
     OPENAI_MODEL: "{{model}}",
   },
-  defaultAlias: "default",
   builtIn: false,
 } as const
 
 const sampleSession: Session = {
   id: "s_1",
   harnessId: "claude",
-  alias: "default",
+  modelId: "mdl_default",
   startedAt: "2026-05-23T10:00:00.000Z",
 } as Session
 
@@ -332,8 +337,87 @@ describe("createIpcHandlers.setProviderSecret", () => {
   })
 })
 
+describe("createIpcHandlers models CRUD", () => {
+  it("getModels returns the routes from the loaded config when listing", async () => {
+    const { ctx } = makeCtx()
+    const route = {
+      id: "mdl_a" as ModelId,
+      providerId: "p_openai" as ProviderId,
+      providerModel: "gpt-4o",
+    }
+    await ctx.config.save({
+      ...(await ctx.config.load()).value,
+      models: [route],
+    } as Config)
+    const handlers = createIpcHandlers(ctx)
+
+    expect(await handlers.getModels(undefined)).toEqual([route])
+  })
+
+  it("addModel mints an id and persists the model", async () => {
+    const { ctx, saves } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+
+    const created = await handlers.addModel({
+      providerId: "openai" as ProviderId,
+      providerModel: "gpt-4o",
+    })
+
+    expect(created.providerModel).toBe("gpt-4o")
+    expect(created.providerId).toBe("openai")
+    expect(String(created.id)).toMatch(/^mdl_/)
+    expect(saves).toHaveLength(1)
+    expect(saves[0]?.models).toEqual([created])
+  })
+
+  it("updateModel replaces the matching route by id, preserving the id", async () => {
+    const { ctx, saves } = makeCtx()
+    const route = {
+      id: "mdl_a" as ModelId,
+      providerId: "p_openai" as ProviderId,
+      providerModel: "gpt-4o",
+    }
+    await ctx.config.save({
+      ...(await ctx.config.load()).value,
+      models: [route],
+    } as Config)
+    const handlers = createIpcHandlers(ctx)
+
+    const updated = await handlers.updateModel({
+      id: "mdl_a" as ModelId,
+      input: { providerId: "p_anthropic" as ProviderId, providerModel: "opus" },
+    })
+
+    expect(updated).toEqual({
+      id: "mdl_a",
+      providerId: "p_anthropic",
+      providerModel: "opus",
+    })
+    expect(saves.at(-1)?.models).toEqual([updated])
+  })
+
+  it("deleteModel removes the route and returns null", async () => {
+    const { ctx, saves } = makeCtx()
+    const route = {
+      id: "mdl_a" as ModelId,
+      providerId: "p_openai" as ProviderId,
+      providerModel: "gpt-4o",
+    }
+    await ctx.config.save({
+      ...(await ctx.config.load()).value,
+      models: [route],
+    } as Config)
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.deleteModel({ id: "mdl_a" as ModelId })
+
+    expect(result).toBeNull()
+    expect(saves.at(-1)?.models).toEqual([])
+  })
+})
+
 describe("createIpcHandlers.launchHarness", () => {
-  it("resolves the harness env and opens a terminal session, returning the sessionId", async () => {
+  it("with a modelId resolves a proxied launch and threads the modelId to the terminal", async () => {
     const { ctx, terminalInputs } = makeCtx({
       providers: [provider()],
       proxyKeyStored: "stored-run-key",
@@ -342,8 +426,8 @@ describe("createIpcHandlers.launchHarness", () => {
     const handlers = createIpcHandlers(ctx)
 
     const result = await handlers.launchHarness({
-      id: "claude" as never,
-      alias: "fast" as never,
+      id: "claude" as HarnessId,
+      modelId: "mdl_x" as ModelId,
     })
 
     // The terminal manager owns session creation; the handler returns only the sessionId.
@@ -351,36 +435,64 @@ describe("createIpcHandlers.launchHarness", () => {
     expect(terminalInputs).toHaveLength(1)
     const input = terminalInputs[0] as {
       harnessId: string
-      alias: string
+      modelId?: string
       command: string
       env: Record<string, string>
     }
     expect(input.harnessId).toBe("claude")
-    expect(input.alias).toBe("fast")
+    // The session is stored against the routed modelId (no alias anymore).
+    expect(input.modelId).toBe("mdl_x")
     expect(input.command).toBe("/usr/local/bin/claude")
-    // The rendered proxy vars carry the loopback proxy URL + the stored per-run key + alias.
+    // The rendered proxy vars carry the loopback proxy URL + stored per-run key + modelId.
     expect(input.env.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:4000")
     expect(input.env.ANTHROPIC_API_KEY).toBe("stored-run-key")
-    expect(input.env.ANTHROPIC_MODEL).toBe("fast")
+    expect(input.env.ANTHROPIC_MODEL).toBe("mdl_x")
+  })
+
+  it("without a modelId launches direct (bypass) with no proxy env and no modelId on the session", async () => {
+    const { ctx, terminalInputs } = makeCtx({
+      providers: [provider()],
+      proxyKeyStored: "stored-run-key",
+      proxyPort: 4000,
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({ id: "claude" as HarnessId })
+
+    const input = terminalInputs[0] as Record<string, unknown> & {
+      env: Record<string, string>
+    }
+    // Bypass: the terminal must not carry a modelId ...
+    expect("modelId" in input).toBe(false)
+    // ... and the direct route renders NO proxy env (the harness uses native creds).
+    expect("ANTHROPIC_BASE_URL" in input.env).toBe(false)
+    expect("ANTHROPIC_API_KEY" in input.env).toBe(false)
+    expect("ANTHROPIC_MODEL" in input.env).toBe(false)
   })
 
   it("does NOT create a duplicate session directly — the terminal manager owns it", async () => {
     const { ctx, sessionInputs } = makeCtx({ providers: [provider()] })
     const handlers = createIpcHandlers(ctx)
 
-    await handlers.launchHarness({ id: "claude" as never })
+    await handlers.launchHarness({
+      id: "claude" as HarnessId,
+      modelId: "mdl_x" as ModelId,
+    })
 
     expect(sessionInputs).toEqual([])
   })
 
-  it("falls back to a freshly minted proxy key when none is stored", async () => {
+  it("falls back to a freshly minted proxy key when none is stored (routed launch)", async () => {
     const { ctx, terminalInputs } = makeCtx({
       providers: [provider()],
       proxyKeyStored: null,
     })
     const handlers = createIpcHandlers(ctx)
 
-    await handlers.launchHarness({ id: "claude" as never })
+    await handlers.launchHarness({
+      id: "claude" as HarnessId,
+      modelId: "mdl_x" as ModelId,
+    })
 
     const input = terminalInputs[0] as { env: Record<string, string> }
     expect(input.env.ANTHROPIC_API_KEY).toBe("test-key") // ctx.genProxyKey()
@@ -391,7 +503,7 @@ describe("createIpcHandlers.launchHarness", () => {
     const handlers = createIpcHandlers(ctx)
 
     await expect(
-      handlers.launchHarness({ id: "claude" as never }),
+      handlers.launchHarness({ id: "claude" as HarnessId }),
     ).rejects.toThrow()
   })
 })
@@ -517,7 +629,7 @@ const sampleProfile: Profile = {
   id: "pr_default" as Profile["id"],
   name: "Default",
   harnessId: "claude" as Profile["harnessId"],
-  alias: "fast" as Profile["alias"],
+  modelId: "mdl_fast" as ModelId,
   env: {},
 }
 
@@ -551,14 +663,14 @@ describe("createIpcHandlers.addProfile", () => {
       const created = await handlers.addProfile({
         name: "Work",
         harnessId: "claude" as Profile["harnessId"],
-        alias: "fast" as Profile["alias"],
+        modelId: "mdl_fast" as ModelId,
         env: { EXTRA: "1" },
       })
 
       expect(created.id).toBe("pr_fixed-uuid")
       expect(created.name).toBe("Work")
       expect(created.harnessId).toBe("claude")
-      expect(created.alias).toBe("fast")
+      expect(created.modelId).toBe("mdl_fast")
       expect(created.env).toEqual({ EXTRA: "1" })
       expect(saves).toHaveLength(1)
       expect(saves[0]?.profiles).toEqual([created])
@@ -577,7 +689,7 @@ describe("createIpcHandlers.addProfile", () => {
       handlers.addProfile({
         name: "X",
         harnessId: "claude" as Profile["harnessId"],
-        alias: "fast" as Profile["alias"],
+        modelId: "mdl_fast" as ModelId,
         env: {},
       }),
     ).rejects.toThrow()
@@ -597,7 +709,7 @@ describe("createIpcHandlers.updateProfile", () => {
       id: sampleProfile.id,
       name: "Renamed",
       harnessId: "codex" as Profile["harnessId"],
-      alias: "smart" as Profile["alias"],
+      modelId: "mdl_smart" as ModelId,
       env: { TOKEN: "z" },
     }
     const updated = await handlers.updateProfile(next)
@@ -615,7 +727,7 @@ describe("createIpcHandlers.updateProfile", () => {
         id: "pr_ghost" as Profile["id"],
         name: "X",
         harnessId: "claude" as Profile["harnessId"],
-        alias: "fast" as Profile["alias"],
+        modelId: "mdl_fast" as ModelId,
         env: {},
       }),
     ).rejects.toThrow()
@@ -698,6 +810,7 @@ describe("createIpcHandlers.launchHarness (session metadata)", () => {
 
     await handlers.launchHarness({
       id: "claude" as never,
+      modelId: "mdl_x" as ModelId,
       name: "refactor run",
       cwd: "/work/repo",
       env: { EXTRA: "1" },
@@ -711,6 +824,7 @@ describe("createIpcHandlers.launchHarness (session metadata)", () => {
     expect(input.name).toBe("refactor run")
     expect(input.cwd).toBe("/work/repo")
     expect(input.env.EXTRA).toBe("1")
+    // Routed launch (modelId present) renders the proxy env.
     expect(input.env.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:4000")
   })
 

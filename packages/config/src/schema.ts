@@ -1,12 +1,12 @@
 import {
-  ModelAliasSchema,
+  ModelRouteSchema,
   ProfileSchema,
   ProviderSchema,
 } from "@launchkit/types"
 import { z } from "zod"
 
 /** Bump on any breaking config shape change; add a matching `Migration` (see migrations.ts). */
-export const CURRENT_CONFIG_VERSION = 3
+export const CURRENT_CONFIG_VERSION = 4
 
 /**
  * Process-wide settings. `proxyHost` is the literal loopback address — the proxy
@@ -21,12 +21,12 @@ export const SettingsSchema = z
 
 export type Settings = z.infer<typeof SettingsSchema>
 
-/** The on-disk config document. `providers`/`aliases`/`profiles` reuse the locked `@launchkit/types` schemas. */
+/** The on-disk config document. `providers`/`models`/`profiles` reuse the locked `@launchkit/types` schemas. */
 export const ConfigSchema = z
   .object({
     version: z.number().int(),
     providers: z.array(ProviderSchema),
-    aliases: z.array(ModelAliasSchema),
+    models: z.array(ModelRouteSchema),
     profiles: z.array(ProfileSchema),
     settings: SettingsSchema,
   })
@@ -38,7 +38,7 @@ export type Config = z.infer<typeof ConfigSchema>
 export const defaultConfig = (): Config => ({
   version: CURRENT_CONFIG_VERSION,
   providers: [],
-  aliases: [],
+  models: [],
   profiles: [],
   settings: SettingsSchema.parse({}),
 })

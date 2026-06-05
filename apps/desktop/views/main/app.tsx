@@ -6,9 +6,10 @@ import { type ReactElement, StrictMode, useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
 import { IpcClientProvider, useIpcClient } from "./IpcClientContext"
 import { createRealClients } from "./clients"
-import { useAliases } from "./hooks/useAliases"
 import { useHarnesses } from "./hooks/useHarnesses"
+import { useModels } from "./hooks/useModels"
 import { useProfiles } from "./hooks/useProfiles"
+import { useProviders } from "./hooks/useProviders"
 import { useProxyStatus } from "./hooks/useProxyStatus"
 import { useSessions } from "./hooks/useSessions"
 import type { CreateTerminal } from "./terminal/TerminalPane"
@@ -125,7 +126,11 @@ const AppInner = ({
   // modal is closed (the data is just handed to a dumb component).
   const profiles = useProfiles()
   const harnesses = useHarnesses()
-  const aliases = useAliases()
+  const models = useModels()
+  const providers = useProviders()
+
+  const providerNames: Record<string, string> = {}
+  for (const p of providers.data ?? []) providerNames[p.id] = p.name
 
   // Keep the URL hash in sync so reloads land on the same view (no remote nav).
   useEffect(() => {
@@ -159,7 +164,7 @@ const AppInner = ({
     // min(1) on the next getSessions, and an empty cwd is meaningless.
     const r = await client.launchHarness({
       id: v.harnessId,
-      alias: v.alias,
+      ...(v.modelId !== undefined ? { modelId: v.modelId } : {}),
       ...(v.name.trim() ? { name: v.name } : {}),
       ...(v.cwd.trim() ? { cwd: v.cwd } : {}),
       env: v.env,
@@ -174,7 +179,7 @@ const AppInner = ({
       await client.addProfile({
         name: v.saveAsProfile.name,
         harnessId: v.harnessId,
-        alias: v.alias,
+        ...(v.modelId !== undefined ? { modelId: v.modelId } : {}),
         env: v.env,
       })
     }
@@ -217,7 +222,8 @@ const AppInner = ({
           onNew: () => {
             profiles.refetch()
             harnesses.refetch()
-            aliases.refetch()
+            models.refetch()
+            providers.refetch()
             setLaunchError(undefined)
             setModalOpen(true)
           },
@@ -239,7 +245,8 @@ const AppInner = ({
         open={modalOpen}
         profiles={profiles.data ?? []}
         harnesses={harnesses.data ?? []}
-        aliases={aliases.data ?? []}
+        models={models.data ?? []}
+        providerNames={providerNames}
         folder={folder}
         {...(launchError === undefined ? {} : { error: launchError })}
         onBrowse={() => void onBrowse()}

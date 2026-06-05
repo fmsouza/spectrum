@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { Config } from "@launchkit/config"
+import { isErr } from "@launchkit/utils"
 import { createRouter } from "./router"
 
 const config = {
@@ -7,7 +8,7 @@ const config = {
   settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
   providers: [
     {
-      id: "p1",
+      id: "openai",
       name: "OpenAI",
       sdkProvider: "openai",
       config: {},
@@ -15,27 +16,27 @@ const config = {
       models: ["gpt-4o"],
     },
   ],
-  aliases: [{ alias: "fast", providerId: "p1", providerModel: "gpt-4o-mini" }],
+  models: [{ id: "mdl_fast", providerId: "openai", providerModel: "gpt-4o" }],
 } as unknown as Config
 
 describe("createRouter", () => {
-  it("resolves an alias to its provider and provider model", () => {
-    const r = createRouter(config).resolve("fast")
-    expect(r.ok && r.value.providerModel).toBe("gpt-4o-mini")
-    expect(r.ok && r.value.provider.id).toBe<false | string>("p1")
+  it("resolves a model id to its provider and provider model", () => {
+    const r = createRouter(config).resolve("mdl_fast")
+    expect(r.ok && r.value.providerModel).toBe("gpt-4o")
+    expect(r.ok && r.value.provider.id).toBe<false | string>("openai")
   })
-  it("returns unknown-alias when the alias is not in the table", () => {
-    expect(createRouter(config).resolve("nope")).toEqual({
-      ok: false,
-      error: { kind: "unknown-alias", alias: "nope" },
-    })
+  it("returns unknown-model when the id is not in the table", () => {
+    const r2 = createRouter(config).resolve("nope")
+    expect(isErr(r2)).toBe(true)
+    if (isErr(r2))
+      expect(r2.error).toEqual({ kind: "unknown-model", id: "nope" })
   })
-  it("returns unknown-provider when an alias points at a missing provider", () => {
+  it("returns unknown-provider when a model points at a missing provider", () => {
     const bad = {
       ...config,
-      aliases: [{ alias: "x", providerId: "ghost", providerModel: "m" }],
+      models: [{ id: "mdl_x", providerId: "ghost", providerModel: "m" }],
     } as unknown as Config
-    expect(createRouter(bad).resolve("x")).toEqual({
+    expect(createRouter(bad).resolve("mdl_x")).toEqual({
       ok: false,
       error: { kind: "unknown-provider", providerId: "ghost" },
     })

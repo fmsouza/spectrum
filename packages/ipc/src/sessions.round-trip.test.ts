@@ -58,7 +58,6 @@ describe("getSessions round-trip with paging filter", () => {
     const session: Session = {
       id: "s_1" as SessionId,
       harnessId: "claude" as HarnessId,
-      alias: "default" as Session["alias"],
       startedAt: "2026-05-23T10:00:00.000Z",
     }
     let filter: unknown

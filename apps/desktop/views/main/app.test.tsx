@@ -57,7 +57,8 @@ const baseStubs = {
     value: { running: false, port: 4000 },
   }),
   getProfiles: async () => ({ ok: true as const, value: [] }),
-  getAliases: async () => ({ ok: true as const, value: [] }),
+  getModels: async () => ({ ok: true as const, value: [] }),
+  getProviders: async () => ({ ok: true as const, value: [] }),
 }
 
 describe("App view model", () => {
@@ -126,17 +127,14 @@ describe("App view model", () => {
             command: "claude",
             apiFormat: "anthropic",
             envTemplate: {},
-            defaultAlias: "fast",
             builtIn: true,
           },
         ],
       }),
       getProfiles: async () => ({ ok: true as const, value: [] }),
-      getAliases: async () => ({
+      getModels: async () => ({
         ok: true as const,
-        value: [
-          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
-        ],
+        value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
       }),
       launchHarness: async () => ({
         ok: true as const,
@@ -159,7 +157,7 @@ describe("App view model", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: /new session/i }))
     // NewSessionModal (Phase 6 / U.11) submit control is the "Launch" button;
-    // harness/alias default to the first option.
+    // harness/model default to the first option.
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: /launch/i }),
@@ -183,16 +181,13 @@ describe("App view model", () => {
             command: "claude",
             apiFormat: "anthropic",
             envTemplate: {},
-            defaultAlias: "fast",
             builtIn: true,
           },
         ],
       }),
-      getAliases: async () => ({
+      getModels: async () => ({
         ok: true as const,
-        value: [
-          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
-        ],
+        value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
       }),
       launchHarness: async () => ({
         ok: false as const,
@@ -232,16 +227,13 @@ describe("App view model", () => {
             command: "claude",
             apiFormat: "anthropic",
             envTemplate: {},
-            defaultAlias: "fast",
             builtIn: true,
           },
         ],
       }),
-      getAliases: async () => ({
+      getModels: async () => ({
         ok: true as const,
-        value: [
-          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
-        ],
+        value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
       }),
       launchHarness: async () => ({
         ok: true as const,
@@ -277,16 +269,13 @@ describe("App view model", () => {
             command: "claude",
             apiFormat: "anthropic",
             envTemplate: {},
-            defaultAlias: "fast",
             builtIn: true,
           },
         ],
       }),
-      getAliases: async () => ({
+      getModels: async () => ({
         ok: true as const,
-        value: [
-          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
-        ],
+        value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
       }),
       getProfiles: async () => ({ ok: true as const, value: [] }),
       addProfile: async () => ({
@@ -295,7 +284,6 @@ describe("App view model", () => {
           id: "pr_1",
           name: "Work",
           harnessId: "claude",
-          alias: "fast",
           env: {},
         },
       }),
@@ -327,7 +315,6 @@ describe("App view model", () => {
     expect(client.calls.addProfile[0]).toMatchObject({
       name: "Work",
       harnessId: "claude",
-      alias: "fast",
     })
   })
 
@@ -343,16 +330,13 @@ describe("App view model", () => {
             command: "claude",
             apiFormat: "anthropic",
             envTemplate: {},
-            defaultAlias: "fast",
             builtIn: true,
           },
         ],
       }),
-      getAliases: async () => ({
+      getModels: async () => ({
         ok: true as const,
-        value: [
-          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
-        ],
+        value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
       }),
       launchHarness: async () => ({
         ok: true as const,
@@ -406,7 +390,7 @@ describe("App view model", () => {
     const page = Array.from({ length: 20 }, (_, i) => ({
       id: `s_${i}`,
       harnessId: "claude",
-      alias: "fast",
+      modelId: "m_1",
       startedAt: "2026-05-23T10:00:00.000Z",
       endedAt: "2026-05-23T10:05:00.000Z",
       exitCode: 0,
@@ -442,7 +426,7 @@ describe("App view model", () => {
       {
         id: "s_0",
         harnessId: "claude",
-        alias: "fast",
+        modelId: "m_1",
         startedAt: "2026-05-23T10:00:00.000Z",
         endedAt: "2026-05-23T10:05:00.000Z",
         exitCode: 0,
@@ -464,7 +448,7 @@ describe("App view model", () => {
       />,
     )
     await waitFor(() =>
-      expect(screen.getByText(/claude · fast/)).toBeInTheDocument(),
+      expect(screen.getByText(/claude · m_1/)).toBeInTheDocument(),
     )
     expect(screen.queryByRole("button", { name: /view more/i })).toBeNull()
   })
@@ -473,7 +457,7 @@ describe("App view model", () => {
     const live = {
       id: "s_new",
       harnessId: "claude",
-      alias: "fast",
+      modelId: "m_1",
       startedAt: "2026-05-23T10:00:00.000Z",
     }
     const ended = { ...live, endedAt: "2026-05-23T10:05:00.000Z" }
@@ -502,16 +486,13 @@ describe("App view model", () => {
             command: "claude",
             apiFormat: "anthropic",
             envTemplate: {},
-            defaultAlias: "fast",
             builtIn: true,
           },
         ],
       }),
-      getAliases: async () => ({
+      getModels: async () => ({
         ok: true as const,
-        value: [
-          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
-        ],
+        value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
       }),
       launchHarness: async () => ({
         ok: true as const,
@@ -562,7 +543,7 @@ describe("App view model", () => {
     )
   })
 
-  it("refetches getAliases (and getProfiles/getHarnesses) when the new-session modal is opened (Fix #1)", async () => {
+  it("refetches getModels (and getProfiles/getHarnesses) when the new-session modal is opened (Fix #1)", async () => {
     const client = createFakeIpcClient({
       ...baseStubs,
       getHarnesses: async () => ({
@@ -574,16 +555,13 @@ describe("App view model", () => {
             command: "claude",
             apiFormat: "anthropic",
             envTemplate: {},
-            defaultAlias: "fast",
             builtIn: true,
           },
         ],
       }),
-      getAliases: async () => ({
+      getModels: async () => ({
         ok: true as const,
-        value: [
-          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
-        ],
+        value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
       }),
     })
     render(
@@ -594,18 +572,18 @@ describe("App view model", () => {
         initialView="sessions"
       />,
     )
-    // Wait for initial render — hooks fire on mount for aliases, profiles, harnesses
+    // Wait for initial render — hooks fire on mount for models, profiles, harnesses
     await waitFor(() =>
-      expect(client.calls.getAliases.length).toBeGreaterThan(0),
+      expect(client.calls.getModels.length).toBeGreaterThan(0),
     )
-    const countBefore = client.calls.getAliases.length
+    const countBefore = client.calls.getModels.length
 
     // Open the modal via "+ New session" button — onNew should trigger refetch
     fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
 
-    // After opening, getAliases should have been called again
+    // After opening, getModels should have been called again
     await waitFor(() =>
-      expect(client.calls.getAliases.length).toBeGreaterThan(countBefore),
+      expect(client.calls.getModels.length).toBeGreaterThan(countBefore),
     )
     // Same for getProfiles and getHarnesses
     const profilesCountAfterOpen = client.calls.getProfiles.length
@@ -626,16 +604,13 @@ describe("App view model", () => {
             command: "claude",
             apiFormat: "anthropic",
             envTemplate: {},
-            defaultAlias: "fast",
             builtIn: true,
           },
         ],
       }),
-      getAliases: async () => ({
+      getModels: async () => ({
         ok: true as const,
-        value: [
-          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
-        ],
+        value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
       }),
       pickFolder: async () => ({
         ok: true as const,
@@ -674,16 +649,13 @@ describe("App view model", () => {
             command: "claude",
             apiFormat: "anthropic",
             envTemplate: {},
-            defaultAlias: "fast",
             builtIn: true,
           },
         ],
       }),
-      getAliases: async () => ({
+      getModels: async () => ({
         ok: true as const,
-        value: [
-          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
-        ],
+        value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
       }),
       pickFolder: async () => ({
         ok: false as const,
@@ -720,16 +692,13 @@ describe("App view model", () => {
             command: "claude",
             apiFormat: "anthropic",
             envTemplate: {},
-            defaultAlias: "fast",
             builtIn: true,
           },
         ],
       }),
-      getAliases: async () => ({
+      getModels: async () => ({
         ok: true as const,
-        value: [
-          { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" },
-        ],
+        value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
       }),
       pickFolder: async () => ({
         ok: false as const,

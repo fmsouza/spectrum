@@ -1,15 +1,22 @@
-import type { AliasName, HarnessDefinition } from "@launchkit/types"
+import type { HarnessDefinition, ModelId } from "@launchkit/types"
 import { type Result, err, isErr, ok, renderTemplate } from "@launchkit/utils"
 import type { CommandResolver } from "./command-resolver"
 import type { HarnessError } from "./errors"
 import type { ProcessSpawner, SpawnedProcess } from "./process-spawner"
 import { validateEnvTemplate } from "./validate-env-template"
 
+export type LaunchRoute =
+  | {
+      readonly kind: "proxied"
+      readonly proxyUrl: string
+      readonly proxyKey: string
+      readonly modelId: ModelId
+    }
+  | { readonly kind: "direct" }
+
 export interface LaunchParams {
   readonly harness: HarnessDefinition
-  readonly proxyUrl: string
-  readonly proxyKey: string
-  readonly model: AliasName
+  readonly route: LaunchRoute
   readonly cwd?: string
   readonly env?: Readonly<Record<string, string>>
 }
@@ -23,21 +30,30 @@ export interface ResolvedHarnessLaunch {
 export const resolveHarnessLaunch =
   (deps: { readonly resolver: CommandResolver }) =>
   (params: LaunchParams): Result<ResolvedHarnessLaunch, HarnessError> => {
-    const { harness, proxyUrl, proxyKey, model } = params
+    const { harness, route } = params
 
-    // 1. Restrict env-template tokens to the allowed three.
-    const templateCheck = validateEnvTemplate(harness.envTemplate)
-    if (isErr(templateCheck)) return templateCheck
-
-    // 2. Resolve + validate the command (rejects relative / `..`).
+    // Resolve + validate the command in BOTH modes (rejects relative / `..`).
     const resolved = deps.resolver.resolve(harness.command)
     if (isErr(resolved)) return resolved
 
-    // 3. Render each env value with only the three allowed variables.
+    // Direct (bypass) mode: do NOT render the proxy envTemplate. The harness uses its own
+    // native credentials/model and the proxy is not involved. Only caller env is passed.
+    if (route.kind === "direct") {
+      return ok({
+        command: resolved.value,
+        args: [],
+        env: { ...(params.env ?? {}) },
+      })
+    }
+
+    // Proxied mode: restrict env-template tokens, then render with the three allowed vars.
+    const templateCheck = validateEnvTemplate(harness.envTemplate)
+    if (isErr(templateCheck)) return templateCheck
+
     const vars: Readonly<Record<string, string>> = {
-      proxyUrl,
-      proxyKey,
-      model: String(model),
+      proxyUrl: route.proxyUrl,
+      proxyKey: route.proxyKey,
+      model: String(route.modelId),
     }
     const env: Record<string, string> = {}
     for (const [key, template] of Object.entries(harness.envTemplate)) {
@@ -48,9 +64,12 @@ export const resolveHarnessLaunch =
       env[key] = rendered.value
     }
 
-    // params.env WINS over the rendered template env (callers can override / add vars at launch).
-    const merged: Record<string, string> = { ...env, ...(params.env ?? {}) }
-    return ok({ command: resolved.value, args: [], env: merged })
+    // params.env WINS over the rendered template env (callers can override / add vars).
+    return ok({
+      command: resolved.value,
+      args: [],
+      env: { ...env, ...(params.env ?? {}) },
+    })
   }
 
 export const launchHarness =
@@ -61,9 +80,6 @@ export const launchHarness =
   (params: LaunchParams): Result<SpawnedProcess, HarnessError> => {
     const resolved = resolveHarnessLaunch({ resolver: deps.resolver })(params)
     if (isErr(resolved)) return resolved
-
     const { command, args, env } = resolved.value
-
-    // Spawn with an EMPTY argument array — never a shell string.
     return deps.spawner.spawn(command, [...args], env, params.cwd)
   }

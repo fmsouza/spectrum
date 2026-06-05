@@ -87,7 +87,7 @@ describe("createAppContext listProviderModels wiring", () => {
           ok({
             version: 2,
             providers: [],
-            aliases: [],
+            models: [],
             profiles: [],
             settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
           }),
@@ -117,7 +117,7 @@ describe("createAppContext listProviderModels wiring", () => {
                 secrets: { apiKey: { ref: "kc_missing" } },
               },
             ],
-            aliases: [],
+            models: [],
             profiles: [],
             settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
           }),

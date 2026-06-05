@@ -35,7 +35,7 @@ export const ProfileList = ({
           <tr>
             <th>Name</th>
             <th>Harness</th>
-            <th>Alias</th>
+            <th>Model</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -44,7 +44,7 @@ export const ProfileList = ({
             <tr key={profile.id}>
               <td>{profile.name}</td>
               <td>{profile.harnessId}</td>
-              <td>{profile.alias}</td>
+              <td>{profile.modelId ?? "default"}</td>
               <td>
                 <Button variant="secondary" onClick={() => onEdit(profile)}>
                   Edit

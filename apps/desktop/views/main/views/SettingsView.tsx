@@ -4,15 +4,15 @@ import { ErrorBoundary } from "../ErrorBoundary"
 import {
   GeneralPage,
   HarnessesPage,
+  ModelsPage,
   ProfilesPage,
   ProvidersPage,
-  RoutingPage,
 } from "../pages"
 
 const SECTIONS = [
   { key: "general", label: "General" },
   { key: "providers", label: "Providers" },
-  { key: "routing", label: "Routing" },
+  { key: "models", label: "Models" },
   { key: "harnesses", label: "Harnesses" },
   { key: "profiles", label: "Profiles" },
 ] as const
@@ -21,8 +21,8 @@ const detailFor = (section: string): ReactNode => {
   switch (section) {
     case "providers":
       return <ProvidersPage />
-    case "routing":
-      return <RoutingPage />
+    case "models":
+      return <ModelsPage />
     case "harnesses":
       return <HarnessesPage />
     case "profiles":

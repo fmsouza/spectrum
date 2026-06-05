@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import type { HarnessId, ModelId } from "@launchkit/types"
 import { createFixedClock, createSequentialIdGen, isOk } from "@launchkit/utils"
 import { createInMemoryDatabase } from "./db"
 import {
@@ -55,7 +56,7 @@ describe("createSessionStore.init", () => {
     for (const column of [
       "id",
       "harnessId",
-      "alias",
+      "modelId",
       "startedAt",
       "endedAt",
       "exitCode",
@@ -72,24 +73,50 @@ describe("createSessionStore.create", () => {
     store.init()
     const r = store.create({
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
     })
     expect(isOk(r) && r.value).toEqual<
       | false
-      | { id: string; harnessId: string; alias: string; startedAt: string }
+      | { id: string; harnessId: string; modelId: string; startedAt: string }
     >({
       id: "s_1",
       harnessId: "claude",
-      alias: "default",
+      modelId: "mdl_default",
       startedAt: "2026-05-23T10:00:00.000Z",
     })
+  })
+
+  it("creates a session with a modelId and reads it back", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    const created = store.create({
+      harnessId: "claude" as HarnessId,
+      modelId: "mdl_fast" as ModelId,
+    })
+    expect(isOk(created)).toBe(true)
+    if (!isOk(created)) return
+    expect(String(created.value.modelId)).toBe("mdl_fast")
+  })
+
+  it("creates a default (bypass) session with no modelId", () => {
+    const deps = makeDeps()
+    const store = createSessionStore(deps)
+    store.init()
+    const created = store.create({ harnessId: "claude" as HarnessId })
+    expect(isOk(created)).toBe(true)
+    if (!isOk(created)) return
+    expect(created.value.modelId).toBeUndefined()
   })
 
   it("issues a parameterized INSERT whose values live in params, not in the sql, when create() is called", () => {
     const deps = makeDeps()
     const store = createSessionStore(deps)
     store.init()
-    store.create({ harnessId: "claude" as never, alias: "default" as never })
+    store.create({
+      harnessId: "claude" as never,
+      modelId: "mdl_default" as never,
+    })
     const insert = deps.db.statements().find((s) => /^\s*INSERT/i.test(s.sql))
     expect(insert?.sql).toContain("?")
     expect(insert?.sql).not.toContain("s_1")
@@ -98,7 +125,7 @@ describe("createSessionStore.create", () => {
     expect(insert?.params).toEqual([
       "s_1",
       "claude",
-      "default",
+      "mdl_default",
       "2026-05-23T10:00:00.000Z",
       null,
       null,
@@ -111,11 +138,11 @@ describe("createSessionStore.create", () => {
     store.init()
     const first = store.create({
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
     })
     const second = store.create({
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
     })
     expect(isOk(first) && first.value.id).toBe<false | string>("s_1")
     expect(isOk(second) && second.value.id).toBe<false | string>("s_2")
@@ -137,7 +164,7 @@ describe("createSessionStore.create", () => {
     const store = createSessionStore(failing)
     const r = store.create({
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
     })
     expect(r).toEqual({
       ok: false,
@@ -153,7 +180,7 @@ describe("createSessionStore.close", () => {
     store.init()
     const created = store.create({
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
     })
     const id = isOk(created) ? created.value.id : ("" as never)
     const r = store.close(id, 0)
@@ -162,7 +189,7 @@ describe("createSessionStore.close", () => {
       | {
           id: string
           harnessId: string
-          alias: string
+          modelId: string
           startedAt: string
           endedAt: string
           exitCode: number
@@ -170,7 +197,7 @@ describe("createSessionStore.close", () => {
     >({
       id: "s_1",
       harnessId: "claude",
-      alias: "default",
+      modelId: "mdl_default",
       startedAt: "2026-05-23T10:00:00.000Z",
       endedAt: "2026-05-23T10:00:00.000Z",
       exitCode: 0,
@@ -183,7 +210,7 @@ describe("createSessionStore.close", () => {
     store.init()
     const created = store.create({
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
     })
     const id = isOk(created) ? created.value.id : ("" as never)
     store.close(id, 137)
@@ -230,12 +257,12 @@ describe("createSessionStore.query", () => {
     const store = createSessionStore(deps)
     store.init()
     deps.db.run(
-      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
-      ["s_old", "claude", "default", "2026-05-23T09:00:00.000Z"],
+      "INSERT INTO sessions (id, harnessId, modelId, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_old", "claude", "mdl_default", "2026-05-23T09:00:00.000Z"],
     )
     deps.db.run(
-      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
-      ["s_new", "codex", "fast", "2026-05-23T11:00:00.000Z"],
+      "INSERT INTO sessions (id, harnessId, modelId, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_new", "codex", "mdl_fast", "2026-05-23T11:00:00.000Z"],
     )
     const r = store.query()
     expect(isOk(r) && r.value.map((s) => s.id)).toEqual<false | string[]>([
@@ -266,22 +293,22 @@ describe("createSessionStore.query", () => {
     expect(select?.params).toEqual(["claude"])
   })
 
-  it("combines harnessId, alias and since with AND and binds all three values when query() filters by all", () => {
+  it("combines harnessId, modelId and since with AND and binds all three values when query() filters by all", () => {
     const deps = makeDeps()
     const store = createSessionStore(deps)
     store.init()
     store.query({
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
       since: "2026-05-23T00:00:00.000Z",
     })
     const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
     expect(select?.sql).toMatch(
-      /WHERE harnessId = \? AND alias = \? AND startedAt >= \?/i,
+      /WHERE harnessId = \? AND modelId = \? AND startedAt >= \?/i,
     )
     expect(select?.params).toEqual([
       "claude",
-      "default",
+      "mdl_default",
       "2026-05-23T00:00:00.000Z",
     ])
   })
@@ -292,12 +319,12 @@ describe("createSessionStore.query", () => {
     store.init()
     store.query({
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
       since: "2026-05-23T00:00:00.000Z",
     })
     const select = deps.db.statements().find((s) => /^\s*SELECT/i.test(s.sql))
     expect(select?.sql).not.toContain("claude")
-    expect(select?.sql).not.toContain("default")
+    expect(select?.sql).not.toContain("mdl_default")
     expect(select?.sql).not.toContain("2026-05-23T00:00:00.000Z")
   })
 
@@ -306,12 +333,12 @@ describe("createSessionStore.query", () => {
     const store = createSessionStore(deps)
     store.init()
     deps.db.run(
-      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
-      ["s_old", "claude", "default", "2026-05-23T08:00:00.000Z"],
+      "INSERT INTO sessions (id, harnessId, modelId, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_old", "claude", "mdl_default", "2026-05-23T08:00:00.000Z"],
     )
     deps.db.run(
-      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
-      ["s_new", "claude", "default", "2026-05-23T12:00:00.000Z"],
+      "INSERT INTO sessions (id, harnessId, modelId, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_new", "claude", "mdl_default", "2026-05-23T12:00:00.000Z"],
     )
     const r = store.query({ since: "2026-05-23T10:00:00.000Z" })
     expect(isOk(r) && r.value.map((s) => s.id)).toEqual<false | string[]>([
@@ -342,7 +369,7 @@ describe("SessionInput and SessionFilter shapes", () => {
   it("accepts optional name and cwd on a SessionInput literal", () => {
     const input: SessionInput = {
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
       name: "my run",
       cwd: "/tmp/project",
     }
@@ -369,7 +396,7 @@ describe("createSessionStore.create with name and cwd", () => {
     store.init()
     const r = store.create({
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
       name: "nightly",
       cwd: "/work/app",
     })
@@ -378,7 +405,7 @@ describe("createSessionStore.create with name and cwd", () => {
       | {
           id: string
           harnessId: string
-          alias: string
+          modelId: string
           startedAt: string
           name: string
           cwd: string
@@ -386,7 +413,7 @@ describe("createSessionStore.create with name and cwd", () => {
     >({
       id: "s_1",
       harnessId: "claude",
-      alias: "default",
+      modelId: "mdl_default",
       startedAt: "2026-05-23T10:00:00.000Z",
       name: "nightly",
       cwd: "/work/app",
@@ -399,15 +426,15 @@ describe("createSessionStore.create with name and cwd", () => {
     store.init()
     const r = store.create({
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
     })
     expect(isOk(r) && r.value).toEqual<
       | false
-      | { id: string; harnessId: string; alias: string; startedAt: string }
+      | { id: string; harnessId: string; modelId: string; startedAt: string }
     >({
       id: "s_1",
       harnessId: "claude",
-      alias: "default",
+      modelId: "mdl_default",
       startedAt: "2026-05-23T10:00:00.000Z",
     })
   })
@@ -418,7 +445,7 @@ describe("createSessionStore.create with name and cwd", () => {
     store.init()
     store.create({
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
       name: "nightly",
       cwd: "/work/app",
     })
@@ -430,7 +457,7 @@ describe("createSessionStore.create with name and cwd", () => {
     expect(insert?.params).toEqual([
       "s_1",
       "claude",
-      "default",
+      "mdl_default",
       "2026-05-23T10:00:00.000Z",
       "nightly",
       "/work/app",
@@ -441,12 +468,15 @@ describe("createSessionStore.create with name and cwd", () => {
     const deps = makeDeps()
     const store = createSessionStore(deps)
     store.init()
-    store.create({ harnessId: "claude" as never, alias: "default" as never })
+    store.create({
+      harnessId: "claude" as never,
+      modelId: "mdl_default" as never,
+    })
     const insert = deps.db.statements().find((s) => /^\s*INSERT/i.test(s.sql))
     expect(insert?.params).toEqual([
       "s_1",
       "claude",
-      "default",
+      "mdl_default",
       "2026-05-23T10:00:00.000Z",
       null,
       null,
@@ -531,8 +561,11 @@ describe("createSessionStore.reconcileOrphaned", () => {
     const deps = makeDeps()
     const store = createSessionStore(deps)
     store.init()
-    store.create({ harnessId: "claude" as never, alias: "default" as never })
-    store.create({ harnessId: "codex" as never, alias: "fast" as never })
+    store.create({
+      harnessId: "claude" as never,
+      modelId: "mdl_default" as never,
+    })
+    store.create({ harnessId: "codex" as never, modelId: "mdl_fast" as never })
 
     const r = store.reconcileOrphaned()
     expect(isOk(r) && r.value).toBe(2)
@@ -559,7 +592,7 @@ describe("createSessionStore.reconcileOrphaned", () => {
     store.init()
     const created = store.create({
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
     })
     const id = isOk(created) ? created.value.id : ("" as never)
     // close it with a known exit code
@@ -593,7 +626,10 @@ describe("createSessionStore.reconcileOrphaned", () => {
     const deps = makeDeps()
     const store = createSessionStore(deps)
     store.init()
-    store.create({ harnessId: "claude" as never, alias: "default" as never })
+    store.create({
+      harnessId: "claude" as never,
+      modelId: "mdl_default" as never,
+    })
 
     store.reconcileOrphaned()
 

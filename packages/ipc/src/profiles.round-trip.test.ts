@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { Profile, ProfileId } from "@launchkit/types"
+import type { ModelId, Profile, ProfileId } from "@launchkit/types"
 import { createIpcClient } from "./client"
 import { createMemoryTransportPair } from "./fake-transport"
 import type { IpcHandlers } from "./server"
@@ -9,7 +9,7 @@ const sampleProfile: Profile = {
   id: "prof_default" as ProfileId,
   name: "Default",
   harnessId: "claude" as Profile["harnessId"],
-  alias: "default" as Profile["alias"],
+  modelId: "mdl_default" as ModelId,
   env: { ANTHROPIC_MODEL: "sonnet" },
 }
 
@@ -40,7 +40,7 @@ describe("addProfile round-trip", () => {
     const r = await client.addProfile({
       name: "Default",
       harnessId: "claude" as Profile["harnessId"],
-      alias: "default" as Profile["alias"],
+      modelId: "mdl_default" as ModelId,
       env: { ANTHROPIC_MODEL: "sonnet" },
     })
     expect(r).toEqual({
@@ -49,7 +49,7 @@ describe("addProfile round-trip", () => {
         id: "prof_minted" as ProfileId,
         name: "Default",
         harnessId: "claude" as Profile["harnessId"],
-        alias: "default" as Profile["alias"],
+        modelId: "mdl_default" as ModelId,
         env: { ANTHROPIC_MODEL: "sonnet" },
       },
     })

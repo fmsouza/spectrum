@@ -1,11 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { LaunchParams } from "@launchkit/harnesses"
 import type { SessionInput } from "@launchkit/sessions"
-import {
-  AliasNameSchema,
-  type HarnessDefinition,
-  HarnessIdSchema,
-} from "@launchkit/types"
+import { type HarnessDefinition, HarnessIdSchema } from "@launchkit/types"
 import type { CliDeps } from "./deps"
 import { runCli } from "./run"
 import { makeFakeDeps } from "./test-support"
@@ -16,7 +12,6 @@ const claude: HarnessDefinition = {
   command: "claude",
   apiFormat: "anthropic",
   envTemplate: { ANTHROPIC_BASE_URL: "{{proxyUrl}}" },
-  defaultAlias: AliasNameSchema.parse("default"),
   builtIn: true,
 }
 

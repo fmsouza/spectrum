@@ -6,7 +6,7 @@ import { SettingsView } from "./SettingsView"
 
 const stubs = {
   getProviders: async () => ({ ok: true as const, value: [] }),
-  getAliases: async () => ({ ok: true as const, value: [] }),
+  getModels: async () => ({ ok: true as const, value: [] }),
   getHarnesses: async () => ({ ok: true as const, value: [] }),
   getProfiles: async () => ({ ok: true as const, value: [] }),
   getProxyStatus: async () => ({

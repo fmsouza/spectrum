@@ -18,7 +18,7 @@ const config = {
       models: [],
     },
   ],
-  aliases: [{ alias: "default", providerId: "p1", providerModel: "gpt-4o" }],
+  models: [{ id: "mdl_default", providerId: "p1", providerModel: "gpt-4o" }],
 } as unknown as Config
 
 const deps = (key: string) => ({
@@ -29,7 +29,7 @@ const deps = (key: string) => ({
     { type: "text-delta", text: "Hi" },
     { type: "finish", finishReason: "stop" },
   ]),
-  listAliases: () => config.aliases.map((a) => a.alias as string),
+  listModels: () => config.models.map((m) => m.id as string),
 })
 
 const handler = (key = "k") => createHandler(deps(key))
@@ -56,7 +56,7 @@ describe("createHandler", () => {
       post(
         "/v1/messages",
         {
-          model: "default",
+          model: "mdl_default",
           max_tokens: 1,
           messages: [{ role: "user", content: "hi" }],
         },
@@ -68,7 +68,7 @@ describe("createHandler", () => {
   it("streams Anthropic SSE when a valid /v1/messages request is made", async () => {
     const res = await handler().fetch(
       post("/v1/messages", {
-        model: "default",
+        model: "mdl_default",
         max_tokens: 1,
         stream: true,
         messages: [{ role: "user", content: "hi" }],
@@ -79,7 +79,7 @@ describe("createHandler", () => {
     expect(body).toContain("content_block_delta")
     expect(body).toContain("message_stop")
   })
-  it("returns 400 when the alias is unknown", async () => {
+  it("returns 400 when the model is unknown", async () => {
     const res = await handler().fetch(
       post("/v1/messages", {
         model: "ghost",
@@ -89,13 +89,13 @@ describe("createHandler", () => {
     )
     expect(res.status).toBe(400)
   })
-  it("lists the configured aliases for GET /v1/models", async () => {
+  it("lists the configured models for GET /v1/models", async () => {
     const res = await handler().fetch(
       new Request("http://localhost:4000/v1/models", {
         headers: { "x-api-key": "k" },
       }),
     )
     const json = (await res.json()) as { data: { id: string }[] }
-    expect(json.data.map((m) => m.id)).toContain("default")
+    expect(json.data.map((m) => m.id)).toContain("mdl_default")
   })
 })

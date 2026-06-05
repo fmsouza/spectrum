@@ -1,11 +1,7 @@
 import type { Config } from "@launchkit/config"
+import type { LaunchRoute } from "@launchkit/harnesses"
 import type { RunningProxy } from "@launchkit/proxy"
-import {
-  type AliasName,
-  AliasNameSchema,
-  type HarnessDefinition,
-  type Profile,
-} from "@launchkit/types"
+import { type ModelId, ModelIdSchema, type Profile } from "@launchkit/types"
 import { type Result, err, isErr, ok } from "@launchkit/utils"
 import type { CliDeps } from "./deps"
 import type { CliError } from "./errors"
@@ -33,30 +29,66 @@ const resolveHarnessId = (
 ): Result<string, CliError> => {
   if (positional !== undefined) return ok(positional)
   if (profile !== undefined) return ok(String(profile.harnessId))
-  return err({ kind: "usage", detail: "launch <harnessId> [--model <alias>]" })
+  return err({ kind: "usage", detail: "launch <harnessId> [--model <id>]" })
 }
 
-/** Resolve the alias: `--model` wins, then the profile's alias, then the harness default. */
-const resolveAlias = (
-  harness: HarnessDefinition,
+/** Resolve the model id: `--model` wins, then the profile's modelId; absent ⇒ default (bypass). */
+const resolveModel = (
   profile: Profile | undefined,
   flags: Readonly<Record<string, string | boolean>>,
-): AliasName => {
+): ModelId | undefined => {
   const flag = flags.model
-  if (typeof flag === "string") return AliasNameSchema.parse(flag)
-  if (profile !== undefined) return profile.alias
-  return harness.defaultAlias
+  if (typeof flag === "string") return ModelIdSchema.parse(flag)
+  return profile?.modelId
 }
 
 /**
- * `launch [<harnessId>] [--profile <id>] [--model <alias>] [--name <name>] [--cwd <dir>]`.
+ * Ensure a proxy is up for a PROXIED launch and return the route plus the proxy this run OWNS
+ * (`null` when we reused an already-running one). Reuses a running proxy's persisted per-run key
+ * so the harness authenticates against it; otherwise mints a fresh key, starts an ephemeral proxy
+ * and persists the key. SECURITY: the key lives only in the returned route (→ `deps.launch`).
+ */
+const ensureProxiedRoute = async (
+  deps: CliDeps,
+  config: Config,
+  modelId: ModelId,
+): Promise<{ route: LaunchRoute; owned: RunningProxy | null }> => {
+  const { settings } = config
+  const proxyUrl = `http://${settings.proxyHost}:${settings.proxyPort}`
+  const alreadyRunning = await deps.proxy.isRunning(proxyUrl)
+  if (alreadyRunning) {
+    // Reuse the running proxy's key so auth succeeds; fall back to a fresh one only if the
+    // runtime file is missing (e.g. a proxy started outside this app).
+    const proxyKey = (await deps.runtime.readProxyKey()) ?? deps.genProxyKey()
+    return {
+      route: { kind: "proxied", proxyUrl, proxyKey, modelId },
+      owned: null,
+    }
+  }
+  const proxyKey = deps.genProxyKey()
+  const owned = deps.proxy.start({
+    host: settings.proxyHost,
+    port: settings.proxyPort,
+    proxyKey,
+    config,
+  })
+  await deps.runtime.writeProxyKey(proxyKey)
+  return { route: { kind: "proxied", proxyUrl, proxyKey, modelId }, owned }
+}
+
+/**
+ * `launch [<harnessId>] [--profile <id>] [--model <id>] [--name <name>] [--cwd <dir>]`.
  *
- * Loads config; if `--profile` is given, seeds the harness, alias, and env from it (a
+ * Loads config; if `--profile` is given, seeds the harness, model, and env from it (a
  * positional `<harnessId>` and `--model` override the profile, and `--profile` makes the
- * positional id optional). Ensures a proxy is up (reusing a running one, else starting an
- * ephemeral one with a freshly generated per-run key), launches the harness with the
- * profile's env + `--cwd`, and records a session with `--name`/`--cwd`. SECURITY: the
- * generated proxy key flows only into `deps.launch(...)` — never to `deps.out.write`.
+ * positional id optional). The resolved model id decides the route:
+ *  - no model (default) ⇒ a DIRECT route that bypasses the proxy entirely (none is started
+ *    or even probed), and the session is recorded without a model id;
+ *  - a model id ⇒ a PROXIED route: ensure a proxy is up (reuse a running one, else start an
+ *    ephemeral one with a freshly generated per-run key) and pass it to the harness.
+ * Launches the harness with the profile's env + `--cwd`, and records a session with
+ * `--name`/`--cwd`. SECURITY: the generated proxy key flows only into `deps.launch(...)` —
+ * never to `deps.out.write`.
  */
 export const launchCommand = async (
   deps: CliDeps,
@@ -66,7 +98,6 @@ export const launchCommand = async (
   const loaded = await deps.config.load()
   if (isErr(loaded))
     return err({ kind: "failed", detail: "could not load config" })
-  const { settings } = loaded.value
 
   const profileResult = resolveProfile(loaded.value, flags)
   if (isErr(profileResult)) return profileResult
@@ -85,39 +116,23 @@ export const launchCommand = async (
     return err({ kind: "usage", detail: `unknown harness: ${harnessId}` })
   }
 
-  const alias = resolveAlias(harness, profile, flags)
+  const modelId = resolveModel(profile, flags)
   const env = profile?.env ?? {}
   const cwd = typeof flags.cwd === "string" ? flags.cwd : undefined
   const name = typeof flags.name === "string" ? flags.name : undefined
-  const proxyUrl = `http://${settings.proxyHost}:${settings.proxyPort}`
 
-  // Ensure a proxy is up. Reuse a running one (reading its persisted per-run key so the
-  // harness authenticates against it); otherwise start an ephemeral one and persist its key.
-  const alreadyRunning = await deps.proxy.isRunning(proxyUrl)
-  let proxyKey: string
-  // The ephemeral proxy this run OWNS (started here) — null when reusing a running one. We keep
-  // the handle so we can stop it after the harness exits (a reused proxy is never ours to stop).
-  let owned: RunningProxy | null = null
-  if (alreadyRunning) {
-    // Reuse the running proxy's key so auth succeeds; fall back to a fresh one only if the
-    // runtime file is missing (e.g. a proxy started outside this app).
-    proxyKey = (await deps.runtime.readProxyKey()) ?? deps.genProxyKey()
-  } else {
-    proxyKey = deps.genProxyKey()
-    owned = deps.proxy.start({
-      host: settings.proxyHost,
-      port: settings.proxyPort,
-      proxyKey,
-      config: loaded.value,
-    })
-    await deps.runtime.writeProxyKey(proxyKey)
-  }
+  // Build the launch route from the resolved model. No model ⇒ DIRECT (bypass): never probe or
+  // start a proxy, and there is no proxy this run owns. A model id ⇒ PROXIED: ensure a proxy is
+  // up and keep the handle for any ephemeral one we OWN (so we can stop it after the harness
+  // exits — a reused, already-running proxy is never ours to stop).
+  const { route, owned } =
+    modelId === undefined
+      ? { route: { kind: "direct" } as LaunchRoute, owned: null }
+      : await ensureProxiedRoute(deps, loaded.value, modelId)
 
   const launched = deps.launch({
     harness,
-    proxyUrl,
-    proxyKey,
-    model: alias,
+    route,
     ...(cwd !== undefined ? { cwd } : {}),
     env,
   })
@@ -129,7 +144,7 @@ export const launchCommand = async (
 
   const session = deps.sessions.create({
     harnessId: harness.id,
-    alias,
+    ...(modelId !== undefined ? { modelId } : {}),
     ...(name !== undefined ? { name } : {}),
     ...(cwd !== undefined ? { cwd } : {}),
   })

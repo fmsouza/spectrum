@@ -14,7 +14,7 @@ export interface HandlerDeps {
   router: Router
   factory: ProviderFactory
   gateway: LanguageModelGateway
-  listAliases: () => readonly string[]
+  listModels: () => readonly string[]
 }
 
 const statusFor = (e: ProxyError): number =>
@@ -73,7 +73,7 @@ export const createHandler = (
       if (url.pathname === "/v1/models") {
         if (isErr(checkAuth(req.headers, deps.proxyKey)))
           return errorResponse({ kind: "unauthorized" })
-        const data = deps.listAliases().map((id) => ({ id, object: "model" }))
+        const data = deps.listModels().map((id) => ({ id, object: "model" }))
         return new Response(JSON.stringify({ object: "list", data }), {
           headers: { "content-type": "application/json" },
         })

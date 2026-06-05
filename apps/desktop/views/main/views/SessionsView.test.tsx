@@ -11,7 +11,7 @@ import { SessionsView } from "./SessionsView"
 const running = {
   id: "s_live",
   harnessId: "claude",
-  alias: "fast",
+  modelId: "m_1",
   startedAt: "2026-05-23T10:00:00.000Z",
 } as unknown as Session
 const fakeXterm = (): XtermInstance => ({
@@ -76,7 +76,7 @@ describe("SessionsView", () => {
       </IpcClientProvider>,
     )
     // The master no longer fetches — it renders the lists it is handed.
-    expect(screen.getByText(/claude · fast/)).toBeInTheDocument()
+    expect(screen.getByText(/claude · m_1/)).toBeInTheDocument()
     expect(client.calls.getSessions.length).toBe(0)
   })
 
@@ -84,7 +84,7 @@ describe("SessionsView", () => {
     const ended = {
       id: "s_done",
       harnessId: "claude",
-      alias: "fast",
+      modelId: "m_1",
       startedAt: "2026-05-23T10:00:00.000Z",
       endedAt: "2026-05-23T10:05:00.000Z",
       exitCode: 0,
@@ -133,7 +133,7 @@ describe("SessionsView", () => {
     const ended = {
       id: "s_blank",
       harnessId: "claude",
-      alias: "fast",
+      modelId: "m_1",
       startedAt: "2026-05-23T10:00:00.000Z",
       endedAt: "2026-05-23T10:05:00.000Z",
       exitCode: 0,

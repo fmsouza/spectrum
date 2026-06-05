@@ -14,7 +14,6 @@ const validUserDef = {
     OPENAI_API_KEY: "{{proxyKey}}",
     OPENAI_MODEL: "{{model}}",
   },
-  defaultAlias: "default",
   builtIn: true, // registry must force this to false; a sneaky true is overridden
 }
 

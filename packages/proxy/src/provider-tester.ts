@@ -17,8 +17,8 @@ export type ProviderTester = (
 ) => Promise<Result<ProviderTestResult, ProxyError>>
 
 /** The minimal probe request: a single short user turn capped at one output token (security/perf). */
-const pingRequest = (alias: string): NormalizedRequest => ({
-  model: alias,
+const pingRequest = (providerModel: string): NormalizedRequest => ({
+  model: providerModel,
   messages: [{ role: "user", content: "ping" }],
   maxTokens: 1,
   stream: true,

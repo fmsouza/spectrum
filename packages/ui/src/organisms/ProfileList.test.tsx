@@ -8,14 +8,13 @@ const profiles = [
     id: "prof_a",
     name: "Sonnet default",
     harnessId: "claude",
-    alias: "default",
     env: {},
   },
   {
     id: "prof_b",
     name: "Fast codex",
     harnessId: "codex",
-    alias: "fast",
+    modelId: "m_fast",
     env: {},
   },
 ] as unknown as readonly Profile[]
@@ -45,6 +44,24 @@ describe("ProfileList", () => {
     )
     expect(screen.getByText("Sonnet default")).toBeInTheDocument()
     expect(screen.getByText("Fast codex")).toBeInTheDocument()
+  })
+  it("shows a Model column and renders default when no modelId is set", () => {
+    render(
+      <ProfileList
+        profiles={profiles}
+        onAdd={() => {}}
+        onEdit={() => {}}
+        onDelete={() => {}}
+      />,
+    )
+    expect(
+      screen.getByRole("columnheader", { name: "Model" }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole("columnheader", { name: "Alias" }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText("default")).toBeInTheDocument()
+    expect(screen.getByText("m_fast")).toBeInTheDocument()
   })
   it("calls onAdd when the add button is clicked", () => {
     const onAdd = mock(() => {})

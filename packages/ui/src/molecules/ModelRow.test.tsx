@@ -1,44 +1,43 @@
 import { describe, expect, it, mock } from "bun:test"
 import { fireEvent, render, screen } from "@testing-library/react"
-import { AliasRow } from "./AliasRow"
+import { ModelRow } from "./ModelRow"
 
-const props = { alias: "fast", provider: "OpenAI", model: "gpt-4o-mini" }
+const props = { id: "mdl_fast", provider: "OpenAI", model: "gpt-4o-mini" }
 
-describe("AliasRow", () => {
-  it("renders the alias, provider, and model", () => {
+describe("ModelRow", () => {
+  it("renders the provider and model", () => {
     render(
       <table>
         <tbody>
-          <AliasRow {...props} onEdit={() => {}} onDelete={() => {}} />
+          <ModelRow {...props} onEdit={() => {}} onDelete={() => {}} />
         </tbody>
       </table>,
     )
-    expect(screen.getByText("fast")).toBeInTheDocument()
     expect(screen.getByText("OpenAI")).toBeInTheDocument()
     expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument()
   })
-  it("calls onEdit with the alias when the edit button is clicked", () => {
+  it("calls onEdit with the id when the edit button is clicked", () => {
     const onEdit = mock((_a: string) => {})
     render(
       <table>
         <tbody>
-          <AliasRow {...props} onEdit={onEdit} onDelete={() => {}} />
+          <ModelRow {...props} onEdit={onEdit} onDelete={() => {}} />
         </tbody>
       </table>,
     )
     fireEvent.click(screen.getByRole("button", { name: /edit/i }))
-    expect(onEdit).toHaveBeenCalledWith("fast")
+    expect(onEdit).toHaveBeenCalledWith("mdl_fast")
   })
-  it("calls onDelete with the alias when the delete button is clicked", () => {
+  it("calls onDelete with the id when the delete button is clicked", () => {
     const onDelete = mock((_a: string) => {})
     render(
       <table>
         <tbody>
-          <AliasRow {...props} onEdit={() => {}} onDelete={onDelete} />
+          <ModelRow {...props} onEdit={() => {}} onDelete={onDelete} />
         </tbody>
       </table>,
     )
     fireEvent.click(screen.getByRole("button", { name: /delete/i }))
-    expect(onDelete).toHaveBeenCalledWith("fast")
+    expect(onDelete).toHaveBeenCalledWith("mdl_fast")
   })
 })

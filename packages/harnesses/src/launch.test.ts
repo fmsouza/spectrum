@@ -1,14 +1,15 @@
 import { describe, expect, it } from "bun:test"
 import {
-  AliasNameSchema,
   type HarnessDefinition,
   HarnessIdSchema,
+  ModelIdSchema,
 } from "@launchkit/types"
+import { isOk } from "@launchkit/utils"
 import { createFakeCommandResolver } from "./command-resolver"
 import { launchHarness, resolveHarnessLaunch } from "./launch"
 import { createRecordingProcessSpawner } from "./process-spawner"
 
-const harness: HarnessDefinition = {
+const claude: HarnessDefinition = {
   id: HarnessIdSchema.parse("claude"),
   name: "Claude Code",
   command: "claude",
@@ -18,15 +19,19 @@ const harness: HarnessDefinition = {
     ANTHROPIC_API_KEY: "{{proxyKey}}",
     ANTHROPIC_MODEL: "{{model}}",
   },
-  defaultAlias: AliasNameSchema.parse("default"),
   builtIn: true,
 }
 
-const params = {
-  harness,
+const proxiedRoute = {
+  kind: "proxied",
   proxyUrl: "http://127.0.0.1:4000",
   proxyKey: "k-secret",
-  model: AliasNameSchema.parse("default"),
+  modelId: ModelIdSchema.parse("mdl_x"),
+} as const
+
+const params = {
+  harness: claude,
+  route: proxiedRoute,
 }
 
 describe("launchHarness", () => {
@@ -48,8 +53,27 @@ describe("launchHarness", () => {
     expect(call?.env).toEqual({
       ANTHROPIC_BASE_URL: "http://127.0.0.1:4000",
       ANTHROPIC_API_KEY: "k-secret",
-      ANTHROPIC_MODEL: "default",
+      ANTHROPIC_MODEL: "mdl_x",
     })
+  })
+
+  it("renders no proxy env in direct (bypass) mode — only caller env reaches the harness", () => {
+    const resolver = createFakeCommandResolver({
+      claude: "/usr/local/bin/claude",
+    })
+    const resolve = resolveHarnessLaunch({ resolver })
+    const result = resolve({
+      harness: claude,
+      route: { kind: "direct" },
+      env: { FOO: "bar" },
+    })
+    expect(isOk(result)).toBe(true)
+    if (!isOk(result)) return
+    expect(result.value.command).toBe("/usr/local/bin/claude")
+    expect(result.value.env.ANTHROPIC_BASE_URL).toBeUndefined()
+    expect(result.value.env.ANTHROPIC_API_KEY).toBeUndefined()
+    expect(result.value.env.ANTHROPIC_MODEL).toBeUndefined()
+    expect(result.value.env.FOO).toBe("bar")
   })
 
   it("surfaces the spawner's exited promise so callers can foreground the harness", async () => {
@@ -68,11 +92,26 @@ describe("launchHarness", () => {
   it("returns an invalid-command error and never spawns when the command is relative", () => {
     const resolver = createFakeCommandResolver({})
     const spawner = createRecordingProcessSpawner(1)
-    const relative: HarnessDefinition = { ...harness, command: "./claude" }
+    const relative: HarnessDefinition = { ...claude, command: "./claude" }
 
     const r = launchHarness({ resolver, spawner })({
       ...params,
       harness: relative,
+    })
+
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error.kind).toBe("invalid-command")
+    expect(spawner.calls).toEqual([])
+  })
+
+  it("returns an invalid-command error and never spawns for a relative command even in direct (bypass) mode", () => {
+    const resolver = createFakeCommandResolver({})
+    const spawner = createRecordingProcessSpawner(1)
+    const relative: HarnessDefinition = { ...claude, command: "./claude" }
+
+    const r = launchHarness({ resolver, spawner })({
+      harness: relative,
+      route: { kind: "direct" },
     })
 
     expect(r.ok).toBe(false)
@@ -94,7 +133,7 @@ describe("launchHarness", () => {
     expect(r.value.env).toEqual({
       ANTHROPIC_BASE_URL: "http://127.0.0.1:4000",
       ANTHROPIC_API_KEY: "k-secret",
-      ANTHROPIC_MODEL: "default",
+      ANTHROPIC_MODEL: "mdl_x",
     })
   })
 
@@ -104,7 +143,7 @@ describe("launchHarness", () => {
     })
     const spawner = createRecordingProcessSpawner(1)
     const leaky: HarnessDefinition = {
-      ...harness,
+      ...claude,
       envTemplate: { ANTHROPIC_API_KEY: "{{secret}}" },
     }
 

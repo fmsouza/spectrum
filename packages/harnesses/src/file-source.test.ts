@@ -9,7 +9,6 @@ const fixture = (id: string): HarnessDefinition =>
     command: "claude",
     apiFormat: "anthropic",
     envTemplate: { ANTHROPIC_BASE_URL: "{{baseUrl}}" },
-    defaultAlias: "default",
     description: "a test harness",
     builtIn: false,
   }) as unknown as HarnessDefinition

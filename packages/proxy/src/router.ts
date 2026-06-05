@@ -4,25 +4,26 @@ import { type Result, err, ok } from "@launchkit/utils"
 import type { ProxyError } from "./types"
 
 export interface Router {
+  /** Resolve a request's model id to its provider and provider-native model. */
   resolve(
-    alias: string,
+    id: string,
   ): Result<{ provider: Provider; providerModel: string }, ProxyError>
 }
 
 export const createRouter = (config: Config): Router => {
   const providers = new Map(config.providers.map((p) => [p.id as string, p]))
-  const aliases = new Map(config.aliases.map((a) => [a.alias as string, a]))
+  const models = new Map(config.models.map((m) => [m.id as string, m]))
   return {
-    resolve: (alias) => {
-      const a = aliases.get(alias)
-      if (a === undefined) return err({ kind: "unknown-alias", alias })
-      const provider = providers.get(a.providerId as string)
+    resolve: (id) => {
+      const m = models.get(id)
+      if (m === undefined) return err({ kind: "unknown-model", id })
+      const provider = providers.get(m.providerId as string)
       if (provider === undefined)
         return err({
           kind: "unknown-provider",
-          providerId: a.providerId as string,
+          providerId: m.providerId as string,
         })
-      return ok({ provider, providerModel: a.providerModel })
+      return ok({ provider, providerModel: m.providerModel })
     },
   }
 }

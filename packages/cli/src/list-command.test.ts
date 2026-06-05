@@ -11,21 +11,20 @@ const seededWithProfiles = () => ({
       id: "prof_default" as never,
       name: "Default" as const,
       harnessId: "claude" as never,
-      alias: "default" as never,
       env: {},
     },
     {
       id: "prof_fast" as never,
       name: "Fast" as const,
       harnessId: "codex" as never,
-      alias: "fast" as never,
+      modelId: "fast" as never,
       env: { OPENAI_BASE_URL: "x" },
     },
   ],
 })
 
 describe("list profiles", () => {
-  it("writes one tab-delimited line per profile with id, name and [harness · alias]", async () => {
+  it("writes one tab-delimited line per profile with id, name and [harness · modelId], defaulting a missing modelId to 'default'", async () => {
     const out = createMemoryWriter()
     const deps = makeFakeDeps({ out, initialConfig: seededWithProfiles() })
 

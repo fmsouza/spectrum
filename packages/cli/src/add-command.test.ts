@@ -107,8 +107,8 @@ describe("add provider", () => {
   })
 })
 
-describe("add alias", () => {
-  it("appends an alias mapping and saves the config", async () => {
+describe("add model", () => {
+  it("mints an id and appends a model route, requiring only --provider and --model", async () => {
     const seeded = {
       ...defaultConfig(),
       providers: [
@@ -118,37 +118,35 @@ describe("add alias", () => {
           sdkProvider: "openai" as const,
           config: {},
           secrets: {},
-          models: ["gpt-4o-mini"],
+          models: ["gpt-4o"],
         },
       ],
     }
     const deps = makeFakeDeps({ initialConfig: seeded })
     const result = await runCli(deps)([
       "add",
-      "alias",
-      "--name",
-      "fast",
+      "model",
       "--provider",
       "p_openai",
       "--model",
-      "gpt-4o-mini",
+      "gpt-4o",
     ])
     expect(result).toEqual({ ok: true, value: undefined })
 
     const loaded = await deps.config.load()
     expect(loaded.ok).toBe(true)
     if (!loaded.ok) return
-    const added = loaded.value.aliases.find((a) => a.alias === "fast")
+    expect(loaded.value.models).toHaveLength(1)
+    const added = loaded.value.models[0]
+    expect(added?.id).toMatch(/^mdl_/)
     expect(added?.providerId).toBe("p_openai")
-    expect(added?.providerModel).toBe("gpt-4o-mini")
+    expect(added?.providerModel).toBe("gpt-4o")
   })
 
-  it("returns a usage error when a required alias flag is missing", async () => {
+  it("returns a usage error when a required model flag is missing", async () => {
     const result = await runCli(makeFakeDeps())([
       "add",
-      "alias",
-      "--name",
-      "fast",
+      "model",
       "--provider",
       "p_openai",
     ])
