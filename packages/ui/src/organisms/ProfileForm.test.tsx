@@ -101,6 +101,9 @@ describe("ProfileForm", () => {
       harnessId: "claude",
       env: { ANTHROPIC_MODEL: "sonnet" },
     })
+    // The exactOptional invariant: "default" OMITS the key, never emits modelId: undefined
+    // (toHaveBeenCalledWith treats {modelId: undefined} as equal to {}, so assert key absence).
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("modelId")
   })
   it("does not submit when the name is empty", () => {
     const onSubmit = mock((_v: ProfileFormValues) => {})

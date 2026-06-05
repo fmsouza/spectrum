@@ -155,6 +155,8 @@ describe("NewSessionModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Launch" }))
     expect(onSubmit).toHaveBeenCalledTimes(1)
     expect(onSubmit.mock.calls[0][0].modelId).toBeUndefined()
+    // The exactOptional invariant: "default" OMITS the key, never emits modelId: undefined.
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("modelId")
   })
 
   it("lists each configured model as 'provider / model' and emits its id on launch", () => {
