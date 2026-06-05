@@ -12,6 +12,7 @@ import { type ModelsStore, createModelsStore } from "./modelsStore"
 import { type ProfilesStore, createProfilesStore } from "./profilesStore"
 import { type ProvidersStore, createProvidersStore } from "./providersStore"
 import { type ProxyStore, createProxyStore } from "./proxyStore"
+import { type SessionsStore, createSessionsStore } from "./sessionsStore"
 import type { StoreDeps } from "./types"
 
 /** The full bundle of domain stores. Grows as each domain is migrated. */
@@ -21,6 +22,7 @@ export type Stores = {
   readonly models: StoreApi<ModelsStore>
   readonly harnesses: StoreApi<HarnessesStore>
   readonly profiles: StoreApi<ProfilesStore>
+  readonly sessions: StoreApi<SessionsStore>
 }
 
 export type CreateStoresOptions = {
@@ -36,6 +38,7 @@ export const createStores = ({ client }: CreateStoresOptions): Stores => {
     models: createModelsStore(deps),
     harnesses: createHarnessesStore(deps),
     profiles: createProfilesStore(deps),
+    sessions: createSessionsStore(deps),
   }
 }
 

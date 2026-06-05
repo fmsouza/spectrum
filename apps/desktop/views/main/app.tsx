@@ -108,20 +108,12 @@ const AppInner = ({
   // The session list lives here (not inside SessionsView) so a launch or an exit
   // can refetch it: a new running session must appear and an exited one must
   // move from Running to Recent. Two server-side queries: all running sessions
-  // (pinned group) + a paginated page of ended sessions. `useSessions`
-  // auto-refetches when its filter changes (the filter is in the
-  // useCallback/useAsyncResource dep), so bumping `recentLimit` reloads `recent`.
-  const running = useSessions({ running: true })
-  const [recentLimit, setRecentLimit] = useState(20)
-  const recent = useSessions({ running: false, limit: recentLimit })
-  const refetchSessions = (): void => {
-    running.refetch()
-    recent.refetch()
-  }
-  const runningSessions = running.data ?? []
-  const recentSessions = recent.data ?? []
-  // A full page (returned length === requested limit) means there may be more.
-  const hasMore = recentSessions.length === recentLimit
+  // (pinned group) + a paginated page of ended sessions.
+  const sessions = useSessions()
+  const refetchSessions = sessions.refetch
+  const runningSessions = sessions.running
+  const recentSessions = sessions.recent
+  const hasMore = sessions.hasMore
 
   // Feed the new-session modal. These hooks load lazily and stay cheap when the
   // modal is closed (the data is just handed to a dumb component).
@@ -163,7 +155,7 @@ const AppInner = ({
     // Omit empty name/cwd so they're never sent as "" — the IPC `name` schema
     // accepts "" but a session created with name:"" then fails SessionSchema's
     // min(1) on the next getSessions, and an empty cwd is meaningless.
-    const r = await client.launchHarness({
+    const r = await sessions.launch({
       id: v.harnessId,
       ...(v.modelId !== undefined ? { modelId: v.modelId } : {}),
       ...(v.name.trim() ? { name: v.name } : {}),
@@ -188,9 +180,7 @@ const AppInner = ({
     setOpenSessionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
     setView({ kind: "sessions", selectedSessionId: id })
     setModalOpen(false)
-    // Refetch so the freshly launched session shows up under "Running" in the
-    // master (the deleted DashboardPage used to do this after a launch).
-    refetchSessions()
+    // sessions.launch already invalidates both groups on success.
   }
 
   /**
@@ -217,7 +207,7 @@ const AppInner = ({
           running: runningSessions,
           recent: recentSessions,
           hasMore,
-          onMore: () => setRecentLimit((l) => l + 20),
+          onMore: sessions.loadMore,
           onSelect: (id) =>
             setView({ kind: "sessions", selectedSessionId: id }),
           onNew: () => {
