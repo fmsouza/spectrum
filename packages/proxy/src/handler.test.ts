@@ -29,7 +29,7 @@ const deps = (key: string) => ({
     { type: "text-delta", text: "Hi" },
     { type: "finish", finishReason: "stop" },
   ]),
-  listAliases: () => config.models.map((m) => m.id as string),
+  listModels: () => config.models.map((m) => m.id as string),
 })
 
 const handler = (key = "k") => createHandler(deps(key))

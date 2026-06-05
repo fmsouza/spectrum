@@ -35,7 +35,7 @@ describe("startProxy", () => {
       gateway: createScriptedGateway([
         { type: "finish", finishReason: "stop" },
       ]),
-      listAliases: () => ["mdl_default"],
+      listModels: () => ["mdl_default"],
     })
     stop = s.stop
     expect(s.hostname).toBe("127.0.0.1")
@@ -52,7 +52,7 @@ describe("startProxy", () => {
         { type: "text-delta", text: "Hi" },
         { type: "finish", finishReason: "stop" },
       ]),
-      listAliases: () => ["mdl_default"],
+      listModels: () => ["mdl_default"],
     })
     stop = s.stop
     const res = await fetch(`http://127.0.0.1:${s.port}/v1/messages`, {
