@@ -76,4 +76,19 @@ describe("createResource", () => {
     await p
     expect(bag.loading).toBe(false)
   })
+
+  it("invalidate supersedes an in-flight fetch instead of joining it", async () => {
+    let calls = 0
+    const call = async (): Promise<Result<number, IpcError>> => {
+      calls += 1
+      const n = calls
+      return { ok: true, value: n }
+    }
+    const { bag, res } = harness(call)
+    const inflight = res.fetch() // call #1 in flight (value 1)
+    await res.invalidate() // must start a fresh call #2 (value 2), not join #1
+    await inflight
+    expect(calls).toBeGreaterThanOrEqual(2)
+    expect(bag.data).toBe(2)
+  })
 })

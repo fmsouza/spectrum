@@ -32,16 +32,22 @@ export const createResource = <T>(
   getData: () => T | undefined,
 ): ResourceState<T> => {
   let inflight: Promise<void> | undefined
+  // A generation counter lets a forced reload (invalidate) supersede an older
+  // in-flight request: the stale promise's resolution is ignored so it can't
+  // overwrite fresh data, and it won't clear the newer gate.
+  let gen = 0
   const load = (): Promise<void> => {
     if (inflight !== undefined) return inflight
+    const myGen = ++gen
     set({ loading: true })
     const p = call()
       .then((r) => {
+        if (myGen !== gen) return
         if (r.ok) set({ data: r.value, error: undefined, loading: false })
         else set({ error: r.error, loading: false })
       })
       .finally(() => {
-        inflight = undefined
+        if (myGen === gen) inflight = undefined
       })
     inflight = p
     return p
@@ -52,6 +58,11 @@ export const createResource = <T>(
     loading: false,
     error: undefined,
     fetch: () => (getData() !== undefined ? Promise.resolve() : load()),
-    invalidate: load,
+    invalidate: () => {
+      // Force a fresh load even if one is in flight: abandon the current gate so
+      // load() starts a new request; the superseded one is ignored via `gen`.
+      inflight = undefined
+      return load()
+    },
   }
 }
