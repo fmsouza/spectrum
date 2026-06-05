@@ -37,10 +37,10 @@ const makeFakeDeps = (): {
     createSessionStore: ((..._a: unknown[]) => {
       calls.createSessionStore = _a
       return {
-        init: () => ok(undefined),
         create: () => ok(undefined),
         close: () => ok(undefined),
         query: () => ok([]),
+        reconcileOrphaned: () => ok(0),
       }
     }) as never,
     createDirHarnessFileSource: record("createDirHarnessFileSource") as never,
@@ -211,10 +211,12 @@ describe("createAppContext wiring", () => {
     expect(ctx.runtime).toEqual({ __stub: "createFileRuntimeState" })
   })
 
-  it("runs migrations so the schema exists before first use", () => {
+  it("runs migrations against the opened client so the schema exists before first use", () => {
     const { deps, calls } = makeFakeDeps()
     createAppContext(deps)
-    expect(calls.runMigrations).toBeDefined()
+    // runMigrations must receive the client returned by createSqliteClient,
+    // proving open -> migrate -> build-store ordering.
+    expect(calls.runMigrations?.[0]).toEqual({ __stub: "dbClient" })
   })
 
   it("builds the harness registry from a directory file source at the resolved harness dir", () => {
