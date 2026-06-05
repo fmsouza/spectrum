@@ -4,7 +4,7 @@
 
 **Public API (barrel `src/index.ts`):** `SecretStore` + `createSecretStore({ backend, idGen })`; `KeychainBackend` + `createInMemoryKeychainBackend()` (test fake) + `createMacosSecurityBackend({ runner })`; `ProcessRunner` + `createBunProcessRunner()`; `SecretError`.
 
-**Depends on:** `@launchkit/types` (`SecretRef`), `@launchkit/utils` (`Result`, `redactSecrets`, `IdGen`) — see build-plan/02-monorepo/boundaries.md.
+**Depends on:** `@launchkit/types` (`SecretRef`), `@launchkit/utils` (`Result`, `redactSecrets`, `IdGen`)md.
 
 **Effects owned:** keychain (via the `KeychainBackend` interface) + process spawn (via the `ProcessRunner` interface) — exposed to consumers as injected interfaces; never reached around.
 

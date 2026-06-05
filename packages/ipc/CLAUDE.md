@@ -4,7 +4,7 @@
 
 **Public API (barrel `src/index.ts`):** `ProviderView` + `ProviderViewSchema`; the per-method `XParamsSchema`/`XResultSchema` + `IpcMethodSchemas` map + `IpcMethods`/`IpcMethodName` types; `IpcError`; `ClientTransport` + `createIpcClient` (+ `IpcClient`); `ServerTransport` + `IpcHandlers` + `createIpcServer` + `IpcRequestError`; `createMemoryTransportPair` (test fake).
 
-**Depends on:** `@launchkit/types`, `@launchkit/utils` (see build-plan/02-monorepo/boundaries.md).
+**Depends on:** `@launchkit/types`, `@launchkit/utils`
 
 **Effects owned:** none -- the message bus is an injected `ClientTransport`/`ServerTransport`; production wires Electrobun in `apps/desktop`, tests use `createMemoryTransportPair`.
 

@@ -38,3 +38,7 @@ coverage/
 
 # Superpowers brainstorm scratch (visual companion mockups, local only)
 .superpowers/
+
+# Local-only design / planning docs (never commit; superpowers writes specs+plans here)
+build-plan/
+docs/superpowers/
