@@ -229,6 +229,44 @@ round-trip, native folder dialog, replay rendering) remain in `apps/desktop/MANU
 macOS GUI run. Follow-ups (non-blocking): surface launch/profile/dialog `Result` errors in the UI; bidirectional
 hash↔view (back/forward); Settings → General config import/export; global scrollback retention sweep.
 
+### Routing/Alias → Models rename (2026-06-05) — `[models-rename]`
+
+Plan: `docs/superpowers/plans/2026-06-05-models-rename.md` (spec:
+`docs/superpowers/specs/2026-06-05-models-rename-design.md`). The confusing "Routing"/"Alias" concept
+is reframed as **Models**: a configured model is an opaque-id → (provider, providerModel) route with no
+user-facing name. The "Settings → Routing" page is now **"Models"** ("Add alias" → "Add model"), and the
+New Session **Model** picker always offers a **"default"** option that **bypasses the proxy entirely**
+(launches the harness with its own native credentials/model — no `envTemplate` injection).
+
+- **Types** (`994bb91`, `e8f5da1`): `ModelAlias`→`ModelRoute` (`{ id: ModelId, providerId, providerModel }`),
+  new `ModelId` brand, `AliasName` removed; `Session.modelId?`/`Profile.modelId?` now optional (absent =
+  default/bypass); `HarnessDefinition.defaultAlias` removed entirely.
+- **Config** (`84e3180`, `fd5036a`): `config.aliases`→`config.models`; forward migration **v3→v4** (each
+  alias → a model keyed by the old alias name; profile `alias`→`modelId`; `defaultAlias` dropped). `CURRENT_CONFIG_VERSION = 4`.
+- **Proxy** (`bfaef48`, `3a14b8c`, `c7311b1`): router resolves by model **id**; `unknown-alias`→`unknown-model`;
+  `HandlerDeps.listAliases`→`listModels` (`/v1/models`).
+- **Harnesses** (`ad99f14`, `06ae7fa`): `LaunchParams` now carries a discriminated `LaunchRoute`
+  (`proxied` renders the env template | `direct` bypasses it); builtins drop `defaultAlias`.
+- **Sessions** (`0a3d05b`): sqlite `alias` column → nullable `modelId`, with a guarded
+  `ALTER TABLE … RENAME COLUMN` migration so historical rows survive (shown as "default" when absent).
+- **IPC** (`f703cc9`): `getModels/addModel/updateModel/deleteModel` (server mints the id);
+  `launchHarness({ modelId? })`; `getSessions` filter by `modelId`.
+- **pty** (`40f52cb`): `TerminalLaunchInput`/`SessionSink` use optional `modelId`.
+- **Desktop main** (`e8dc891`): model CRUD handlers; `launchHarness` routes proxied vs direct(bypass);
+  tray quick-launch is a default/bypass launch; `listModels` wired from `config.models`.
+- **CLI** (`7c0797b`): `add/remove model`; `resolveModel` (flag → profile → default/bypass, no proxy started
+  on bypass); `list models`.
+- **UI** (`68524dc`, `bfa1fa7`, `52ae7ab`): `AliasRow`/`AliasTable`→`ModelRow`/`ModelTable`; `NewSessionModal`
+  + `ProfileForm` Model pickers with a "default" option; `ProfileList`/`SessionTable` Model column;
+  `HarnessForm` drops the default-alias field.
+- **Desktop views** (`a0b510d`): `RoutingPage`→`ModelsPage`, `useAliases`→`useModels`, Settings nav
+  "Routing"→"Models", New Session / Profiles / Sessions wired to `modelId`, `HarnessesPage` drops default-alias.
+
+Executed via subagent-driven TDD (RED→GREEN per package) with two-stage review (spec + code-quality) each task.
+Whole-repo gate green: `bun run typecheck` (12/12), `bun run lint` (biome clean), `bun test` (863 pass / 0 fail).
+GUI smoke (`apps/desktop/MANUAL-VERIFICATION.md` — Settings shows **Models**, "Add model" works, New Session
+**Model** picker shows **default** + configured models) remains a manual macOS-GUI step.
+
 ## Status legend
 `todo` · `in-progress` · `done` · `blocked`
 
