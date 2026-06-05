@@ -25,7 +25,14 @@ const makeFakeDeps = (): {
     createBunProcessRunner: record("createBunProcessRunner") as never,
     createCryptoIdGen: record("createCryptoIdGen") as never,
     createSecretStore: record("createSecretStore") as never,
-    createBunSqliteDatabase: record("createBunSqliteDatabase") as never,
+    createSqliteClient: ((path: string) => {
+      record("createSqliteClient")(path)
+      return { ok: true, value: { __stub: "dbClient" } }
+    }) as never,
+    runMigrations: ((client: unknown) => {
+      record("runMigrations")(client)
+      return { ok: true, value: undefined }
+    }) as never,
     createSystemClock: record("createSystemClock") as never,
     createSessionStore: ((..._a: unknown[]) => {
       calls.createSessionStore = _a
@@ -182,7 +189,7 @@ describe("createAppContext wiring", () => {
     const { deps, calls } = makeFakeDeps()
     createAppContext(deps)
 
-    expect(calls.createBunSqliteDatabase?.[0] as string).toContain(
+    expect(calls.createSqliteClient?.[0] as string).toContain(
       "/home/tester/.config/launchkit/launchkit.db",
     )
     const sessionArgs = calls.createSessionStore?.[0] as {
@@ -190,7 +197,7 @@ describe("createAppContext wiring", () => {
       clock: unknown
       idGen: unknown
     }
-    expect(sessionArgs.db).toEqual({ __stub: "createBunSqliteDatabase" })
+    expect(sessionArgs.db).toEqual({ __stub: "dbClient" })
     expect(sessionArgs.clock).toEqual({ __stub: "createSystemClock" })
   })
 
@@ -204,11 +211,10 @@ describe("createAppContext wiring", () => {
     expect(ctx.runtime).toEqual({ __stub: "createFileRuntimeState" })
   })
 
-  it("calls sessions.init() so the schema exists before first use", () => {
-    const { deps } = makeFakeDeps()
-    const ctx = createAppContext(deps)
-    // init returns ok(undefined); the context simply exposes a ready store
-    expect(typeof ctx.sessions.init).toBe("function")
+  it("runs migrations so the schema exists before first use", () => {
+    const { deps, calls } = makeFakeDeps()
+    createAppContext(deps)
+    expect(calls.runMigrations).toBeDefined()
   })
 
   it("builds the harness registry from a directory file source at the resolved harness dir", () => {
