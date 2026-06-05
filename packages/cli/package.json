@@ -8,6 +8,7 @@
   "dependencies": {
     "@launchkit/types": "workspace:*",
     "@launchkit/utils": "workspace:*",
+    "@launchkit/db": "workspace:*",
     "@launchkit/config": "workspace:*",
     "@launchkit/secrets": "workspace:*",
     "@launchkit/proxy": "workspace:*",

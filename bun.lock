@@ -55,6 +55,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@launchkit/config": "workspace:*",
+        "@launchkit/db": "workspace:*",
         "@launchkit/harnesses": "workspace:*",
         "@launchkit/proxy": "workspace:*",
         "@launchkit/secrets": "workspace:*",
