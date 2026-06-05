@@ -1,0 +1,65 @@
+import { describe, expect, it, mock } from "bun:test"
+import type { IpcError } from "@launchkit/ipc"
+import type { Result } from "@launchkit/utils"
+import { createResource } from "./resource"
+
+type Bag = {
+  data: number | undefined
+  loading: boolean
+  error: IpcError | undefined
+}
+
+/** Drive createResource with a plain mutable object standing in for a store. */
+const harness = (call: () => Promise<Result<number, IpcError>>) => {
+  const bag: Bag = { data: undefined, loading: false, error: undefined }
+  const res = createResource<number>(
+    call,
+    (patch) => Object.assign(bag, patch),
+    () => bag.data,
+  )
+  return { bag, res }
+}
+
+describe("createResource", () => {
+  it("populates data and clears loading when the call resolves Ok", async () => {
+    const { bag, res } = harness(async () => ({ ok: true, value: 42 }))
+    await res.fetch()
+    expect(bag.data).toBe(42)
+    expect(bag.loading).toBe(false)
+    expect(bag.error).toBeUndefined()
+  })
+
+  it("sets the error and leaves data undefined when the call resolves Err", async () => {
+    const { bag, res } = harness(async () => ({
+      ok: false,
+      error: { kind: "transport-failed", detail: "down" },
+    }))
+    await res.fetch()
+    expect(bag.data).toBeUndefined()
+    expect(bag.error?.kind).toBe("transport-failed")
+    expect(bag.loading).toBe(false)
+  })
+
+  it("dedupes concurrent fetch calls into one IPC request", async () => {
+    const call = mock(async () => ({ ok: true as const, value: 1 }))
+    const { res } = harness(call)
+    await Promise.all([res.fetch(), res.fetch()])
+    expect(call).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not refetch when data is already loaded (fetch-if-needed)", async () => {
+    const call = mock(async () => ({ ok: true as const, value: 1 }))
+    const { res } = harness(call)
+    await res.fetch()
+    await res.fetch()
+    expect(call).toHaveBeenCalledTimes(1)
+  })
+
+  it("forces a refetch via invalidate even when data is present", async () => {
+    const call = mock(async () => ({ ok: true as const, value: 1 }))
+    const { res } = harness(call)
+    await res.fetch()
+    await res.invalidate()
+    expect(call).toHaveBeenCalledTimes(2)
+  })
+})
