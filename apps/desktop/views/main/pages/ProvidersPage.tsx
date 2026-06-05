@@ -43,15 +43,17 @@ export const ProvidersPage = (): ReactElement => {
 
   const submitAdd = async (): Promise<void> => {
     if (newName.trim() === "") return
-    await add({
+    const r = await add({
       name: newName,
       sdkProvider: newSdk,
       config: {},
       secretFieldNames: ["apiKey"],
       models: [],
     })
-    setAddOpen(false)
-    setNewName("")
+    if (r.ok) {
+      setAddOpen(false)
+      setNewName("")
+    }
   }
 
   const submitSecret = async (): Promise<void> => {
@@ -61,15 +63,17 @@ export const ProvidersPage = (): ReactElement => {
       secretValue.trim() === ""
     )
       return
-    await setSecret({
+    const r = await setSecret({
       providerId: secretFor.id,
       field: secretField,
       value: secretValue,
     })
-    // Write-only: clear the value immediately; never echo it back.
-    setSecretValue("")
-    setSecretField("")
-    setSecretFor(undefined)
+    if (r.ok) {
+      // Write-only: clear the value immediately; never echo it back.
+      setSecretValue("")
+      setSecretField("")
+      setSecretFor(undefined)
+    }
   }
 
   return (

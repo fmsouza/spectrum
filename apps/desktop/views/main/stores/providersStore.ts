@@ -1,5 +1,6 @@
-import type { IpcMethods, ProviderView } from "@launchkit/ipc"
+import type { IpcError, IpcMethods, ProviderView } from "@launchkit/ipc"
 import type { ProviderId } from "@launchkit/types"
+import type { Result } from "@launchkit/utils"
 import { type StoreApi, createStore } from "zustand/vanilla"
 import { type ResourceState, createResource } from "./resource"
 import type { StoreDeps } from "./types"
@@ -9,10 +10,13 @@ type UpdateInput = IpcMethods["updateProvider"]["params"]["input"]
 type SetSecretInput = IpcMethods["setProviderSecret"]["params"]
 
 export type ProvidersStore = ResourceState<readonly ProviderView[]> & {
-  readonly add: (input: AddInput) => Promise<void>
-  readonly update: (id: ProviderId, input: UpdateInput) => Promise<void>
-  readonly remove: (id: ProviderId) => Promise<void>
-  readonly setSecret: (input: SetSecretInput) => Promise<void>
+  readonly add: (input: AddInput) => Promise<Result<void, IpcError>>
+  readonly update: (
+    id: ProviderId,
+    input: UpdateInput,
+  ) => Promise<Result<void, IpcError>>
+  readonly remove: (id: ProviderId) => Promise<Result<void, IpcError>>
+  readonly setSecret: (input: SetSecretInput) => Promise<Result<void, IpcError>>
 }
 
 export const createProvidersStore = (
@@ -24,20 +28,28 @@ export const createProvidersStore = (
       (patch) => set(patch),
       () => get().data,
     ),
-    add: async (input) => {
+    add: async (input): Promise<Result<void, IpcError>> => {
       const r = await deps.client.addProvider(input)
-      if (r.ok) await get().invalidate()
+      if (!r.ok) return r
+      await get().invalidate()
+      return { ok: true, value: undefined }
     },
-    update: async (id, input) => {
+    update: async (id, input): Promise<Result<void, IpcError>> => {
       const r = await deps.client.updateProvider({ id, input })
-      if (r.ok) await get().invalidate()
+      if (!r.ok) return r
+      await get().invalidate()
+      return { ok: true, value: undefined }
     },
-    remove: async (id) => {
+    remove: async (id): Promise<Result<void, IpcError>> => {
       const r = await deps.client.deleteProvider({ id })
-      if (r.ok) await get().invalidate()
+      if (!r.ok) return r
+      await get().invalidate()
+      return { ok: true, value: undefined }
     },
-    setSecret: async (input) => {
+    setSecret: async (input): Promise<Result<void, IpcError>> => {
       const r = await deps.client.setProviderSecret(input)
-      if (r.ok) await get().invalidate()
+      if (!r.ok) return r
+      await get().invalidate()
+      return { ok: true, value: undefined }
     },
   }))

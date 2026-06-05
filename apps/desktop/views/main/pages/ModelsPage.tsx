@@ -115,18 +115,17 @@ export const ModelsPage = (): ReactElement => {
     if (draft.providerId.trim() === "" || draft.providerModel.trim() === "")
       return
 
-    if (draft.editingOf === undefined) {
-      await models.add({
-        providerId: draft.providerId as ProviderId,
-        providerModel: draft.providerModel,
-      })
-    } else {
-      await models.update(draft.editingOf as ModelId, {
-        providerId: draft.providerId as ProviderId,
-        providerModel: draft.providerModel,
-      })
-    }
-    setDraft(undefined)
+    const r =
+      draft.editingOf === undefined
+        ? await models.add({
+            providerId: draft.providerId as ProviderId,
+            providerModel: draft.providerModel,
+          })
+        : await models.update(draft.editingOf as ModelId, {
+            providerId: draft.providerId as ProviderId,
+            providerModel: draft.providerModel,
+          })
+    if (r.ok) setDraft(undefined)
   }
 
   const deleteModel = async (id: string): Promise<void> => {

@@ -34,8 +34,8 @@ export const HarnessesPage = (): ReactElement => {
       envTemplate: {},
       builtIn: false,
     } as unknown as HarnessDefinition
-    await add(definition)
-    setAddOpen(false)
+    const r = await add(definition)
+    if (r.ok) setAddOpen(false)
   }
 
   const deleteHarness = async (id: string): Promise<void> => {
