@@ -35,7 +35,7 @@ export type StreamEvent =
 export type ProxyError =
   | { readonly kind: "unauthorized" }
   | { readonly kind: "bad-request"; readonly detail: string }
-  | { readonly kind: "unknown-alias"; readonly alias: string }
+  | { readonly kind: "unknown-model"; readonly id: string }
   | { readonly kind: "unknown-provider"; readonly providerId: string }
   | { readonly kind: "unsupported-provider"; readonly sdkProvider: string }
   | { readonly kind: "provider-failed"; readonly detail: string }
