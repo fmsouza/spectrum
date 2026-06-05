@@ -12,6 +12,7 @@ import { useProfiles } from "./hooks/useProfiles"
 import { useProviders } from "./hooks/useProviders"
 import { useProxyStatus } from "./hooks/useProxyStatus"
 import { useSessions } from "./hooks/useSessions"
+import { StoreProvider } from "./stores/createStores"
 import type { CreateTerminal } from "./terminal/TerminalPane"
 import type { TerminalClient } from "./terminal/terminalClient"
 import { SessionsView } from "./views/SessionsView"
@@ -267,11 +268,13 @@ export const App = ({
   createTerminal,
 }: AppProps): ReactElement => (
   <IpcClientProvider client={client}>
-    <AppInner
-      initialView={initialView}
-      terminalClient={terminalClient}
-      createTerminal={createTerminal}
-    />
+    <StoreProvider client={client}>
+      <AppInner
+        initialView={initialView}
+        terminalClient={terminalClient}
+        createTerminal={createTerminal}
+      />
+    </StoreProvider>
   </IpcClientProvider>
 )
 
