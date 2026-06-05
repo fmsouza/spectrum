@@ -9,7 +9,6 @@ const profile: Profile = {
   id: "pr_1" as Profile["id"],
   name: "Work",
   harnessId: "claude" as Profile["harnessId"],
-  alias: "fast" as Profile["alias"],
   env: {},
 }
 
@@ -24,7 +23,6 @@ const Probe = (): JSX.Element => {
           void add({
             name: "New",
             harnessId: "claude" as Profile["harnessId"],
-            alias: "fast" as Profile["alias"],
             env: {},
           })
         }

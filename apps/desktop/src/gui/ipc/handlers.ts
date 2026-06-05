@@ -1,6 +1,12 @@
 import type { IpcHandlers, ProviderView } from "@launchkit/ipc"
 import { bytesToBase64 } from "@launchkit/pty"
-import type { Profile, ProfileId, Provider, SecretRef } from "@launchkit/types"
+import type {
+  ModelRoute,
+  Profile,
+  ProfileId,
+  Provider,
+  SecretRef,
+} from "@launchkit/types"
 import { isOk } from "@launchkit/utils"
 import type { AppContext } from "../../composition"
 
@@ -125,40 +131,45 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return null
     },
 
-    // ── Aliases ────────────────────────────────────────────────────────────────────────
-    getAliases: async () => {
+    // ── Models ───────────────────────────────────────────────────────────────────────
+    getModels: async () => {
       const config = await loadConfig()
-      return config.aliases
+      return config.models
     },
 
-    addAlias: async (alias) => {
+    addModel: async (input) => {
       const config = await loadConfig()
-      const saved = await ctx.config.save({
-        ...config,
-        aliases: [...config.aliases, alias],
-      })
-      if (!isOk(saved)) return fail("could not save alias")
-      return alias
-    },
-
-    updateAlias: async ({ alias, input }) => {
-      const config = await loadConfig()
-      const next = {
-        alias,
+      const model: ModelRoute = {
+        id: `mdl_${crypto.randomUUID()}` as ModelRoute["id"],
         providerId: input.providerId,
         providerModel: input.providerModel,
       }
-      const aliases = config.aliases.map((a) => (a.alias === alias ? next : a))
-      const saved = await ctx.config.save({ ...config, aliases })
-      if (!isOk(saved)) return fail("could not update alias")
+      const saved = await ctx.config.save({
+        ...config,
+        models: [...config.models, model],
+      })
+      if (!isOk(saved)) return fail("could not save model")
+      return model
+    },
+
+    updateModel: async ({ id, input }) => {
+      const config = await loadConfig()
+      const next: ModelRoute = {
+        id,
+        providerId: input.providerId,
+        providerModel: input.providerModel,
+      }
+      const models = config.models.map((m) => (m.id === id ? next : m))
+      const saved = await ctx.config.save({ ...config, models })
+      if (!isOk(saved)) return fail("could not update model")
       return next
     },
 
-    deleteAlias: async ({ alias }) => {
+    deleteModel: async ({ id }) => {
       const config = await loadConfig()
-      const aliases = config.aliases.filter((a) => a.alias !== alias)
-      const saved = await ctx.config.save({ ...config, aliases })
-      if (!isOk(saved)) return fail("could not delete alias")
+      const models = config.models.filter((m) => m.id !== id)
+      const saved = await ctx.config.save({ ...config, models })
+      if (!isOk(saved)) return fail("could not delete model")
       return null
     },
 
@@ -194,26 +205,27 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return null
     },
 
-    launchHarness: async ({ id, alias, name, cwd, env }) => {
+    launchHarness: async ({ id, modelId, name, cwd, env }) => {
       const config = await loadConfig()
       const listed = await ctx.registry.list()
       if (!isOk(listed)) return fail("could not list harnesses")
       const harness = listed.value.find((h) => h.id === id)
       if (harness === undefined) return fail(`unknown harness: ${String(id)}`)
 
-      const resolvedAlias = alias ?? harness.defaultAlias
-      const proxyUrl = `http://${config.settings.proxyHost}:${config.settings.proxyPort}`
-      // The GUI proxy runs persistently and stored its per-run key in runtime state; reuse it so the
-      // running proxy accepts the harness's requests. If absent, mint a fresh key (security.md).
-      const proxyKey = (await ctx.runtime.readProxyKey()) ?? ctx.genProxyKey()
+      // modelId present → route through the proxy; absent → "default" = bypass the proxy.
+      let route: import("@launchkit/harnesses").LaunchRoute
+      if (modelId === undefined) {
+        route = { kind: "direct" }
+      } else {
+        const proxyUrl = `http://${config.settings.proxyHost}:${config.settings.proxyPort}`
+        // The GUI proxy runs persistently and stored its per-run key in runtime state; reuse it so
+        // the running proxy accepts the harness's requests. If absent, mint a fresh key (security.md).
+        const proxyKey = (await ctx.runtime.readProxyKey()) ?? ctx.genProxyKey()
+        route = { kind: "proxied", proxyUrl, proxyKey, modelId }
+      }
 
-      // Resolve the command + render the proxy env WITHOUT spawning ...
-      const resolved = ctx.resolveLaunch({
-        harness,
-        proxyUrl,
-        proxyKey,
-        model: resolvedAlias,
-      })
+      // Resolve the command (+ render the proxy env for a proxied route) WITHOUT spawning.
+      const resolved = ctx.resolveLaunch({ harness, route })
       if (!isOk(resolved)) return fail("failed to resolve harness launch")
 
       // Defense in depth: coerce empty/blank name & cwd to undefined so no path
@@ -223,11 +235,11 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       const safeName = name?.trim() ? name : undefined
       const safeCwd = cwd?.trim() ? cwd : undefined
 
-      // Merge caller-supplied env ON TOP of the rendered proxy env (caller may add tokens/flags),
+      // Merge caller-supplied env ON TOP of the resolved env (caller may add tokens/flags),
       // and thread the optional session metadata through. The manager owns Session creation.
       const opened = ctx.terminal.launch({
         harnessId: harness.id,
-        alias: resolvedAlias,
+        ...(modelId === undefined ? {} : { modelId }),
         command: resolved.value.command,
         args: resolved.value.args,
         env: { ...resolved.value.env, ...(env ?? {}) },
@@ -272,7 +284,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         id: `pr_${crypto.randomUUID()}` as ProfileId,
         name: input.name,
         harnessId: input.harnessId,
-        alias: input.alias,
+        ...(input.modelId !== undefined ? { modelId: input.modelId } : {}),
         env: input.env,
       }
       const saved = await ctx.config.save({

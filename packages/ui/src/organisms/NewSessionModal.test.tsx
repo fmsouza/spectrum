@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { HarnessDefinition, ModelAlias, Profile } from "@launchkit/types"
+import type { HarnessDefinition, ModelRoute, Profile } from "@launchkit/types"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { NewSessionModal } from "./NewSessionModal"
 import type { NewSessionValues } from "./NewSessionModal"
@@ -9,7 +9,7 @@ const profiles = [
     id: "prof_a",
     name: "Sonnet default",
     harnessId: "claude",
-    alias: "default",
+    modelId: "mdl_default",
     env: { ANTHROPIC_MODEL: "sonnet" },
   },
 ] as unknown as readonly Profile[]
@@ -19,16 +19,19 @@ const harnesses = [
   { id: "codex", name: "Codex" },
 ] as unknown as readonly HarnessDefinition[]
 
-const aliases = [
-  { alias: "default", providerId: "p1", providerModel: "sonnet" },
-  { alias: "fast", providerId: "p1", providerModel: "haiku" },
-] as unknown as readonly ModelAlias[]
+const models = [
+  { id: "mdl_default", providerId: "p1", providerModel: "sonnet" },
+  { id: "mdl_fast", providerId: "p1", providerModel: "haiku" },
+] as unknown as readonly ModelRoute[]
+
+const providerNames: Readonly<Record<string, string>> = { p1: "Anthropic" }
 
 const baseProps = {
   open: true,
   profiles,
   harnesses,
-  aliases,
+  models,
+  providerNames,
   folder: "/Users/fred/app",
   onBrowse: () => {},
   onSubmit: () => {},
@@ -40,20 +43,20 @@ describe("NewSessionModal", () => {
     render(<NewSessionModal {...baseProps} open={false} />)
     expect(screen.queryByRole("dialog")).toBeNull()
   })
-  it("prefills harness, alias, and env when a profile is selected", () => {
+  it("prefills harness, model, and env when a profile is selected", () => {
     const onSubmit = mock((_v: NewSessionValues) => {})
     render(<NewSessionModal {...baseProps} onSubmit={onSubmit} />)
     fireEvent.change(screen.getByLabelText("Profile"), {
       target: { value: "prof_a" },
     })
     expect(screen.getByLabelText("Harness")).toHaveValue("claude")
-    expect(screen.getByLabelText("Alias")).toHaveValue("default")
+    expect(screen.getByLabelText("Model")).toHaveValue("mdl_default")
     fireEvent.click(screen.getByRole("button", { name: /launch/i }))
     expect(onSubmit).toHaveBeenCalledWith({
       name: "Untitled",
       cwd: "/Users/fred/app",
       harnessId: "claude",
-      alias: "default",
+      modelId: "mdl_default",
       env: { ANTHROPIC_MODEL: "sonnet" },
     })
   })
@@ -63,15 +66,15 @@ describe("NewSessionModal", () => {
     fireEvent.change(screen.getByLabelText("Profile"), {
       target: { value: "prof_a" },
     })
-    fireEvent.change(screen.getByLabelText("Alias"), {
-      target: { value: "fast" },
+    fireEvent.change(screen.getByLabelText("Model"), {
+      target: { value: "mdl_fast" },
     })
     fireEvent.click(screen.getByRole("button", { name: /launch/i }))
     expect(onSubmit).toHaveBeenCalledWith({
       name: "Untitled",
       cwd: "/Users/fred/app",
       harnessId: "claude",
-      alias: "fast",
+      modelId: "mdl_fast",
       env: { ANTHROPIC_MODEL: "sonnet" },
     })
   })
@@ -87,7 +90,6 @@ describe("NewSessionModal", () => {
       name: "Untitled",
       cwd: "/Users/fred/app",
       harnessId: "claude",
-      alias: "default",
       env: {},
       saveAsProfile: { name: "My profile" },
     })
@@ -135,15 +137,57 @@ describe("NewSessionModal", () => {
     expect(screen.getByRole("textbox", { name: /folder/i })).toHaveValue("/b")
   })
 
-  it("disables Launch and shows guidance when no alias is configured (Bug 1)", () => {
-    render(<NewSessionModal {...baseProps} aliases={[]} />)
-    expect(screen.getByRole("button", { name: /launch/i })).toBeDisabled()
-    expect(
-      screen.getByText(/no model alias is configured/i),
-    ).toBeInTheDocument()
+  it("offers a 'default' model option and launches with it (no modelId) even when no models exist", () => {
+    const onSubmit = mock(() => {})
+    render(
+      <NewSessionModal
+        open
+        profiles={[]}
+        harnesses={[{ id: "claude", name: "Claude Code" } as HarnessDefinition]}
+        models={[]}
+        folder="/tmp"
+        onBrowse={() => {}}
+        onSubmit={onSubmit}
+        onCancel={() => {}}
+      />,
+    )
+    expect(screen.getByText("default")).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: "Launch" }))
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit.mock.calls[0][0].modelId).toBeUndefined()
+    // The exactOptional invariant: "default" OMITS the key, never emits modelId: undefined.
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("modelId")
   })
 
-  it("enables Launch when a harness and an alias are available (Bug 1)", () => {
+  it("lists each configured model as 'provider / model' and emits its id on launch", () => {
+    const onSubmit = mock(() => {})
+    render(
+      <NewSessionModal
+        open
+        profiles={[]}
+        harnesses={[{ id: "claude", name: "Claude Code" } as HarnessDefinition]}
+        models={[
+          {
+            id: "mdl_x",
+            providerId: "openai",
+            providerModel: "gpt-4o",
+          } as ModelRoute,
+        ]}
+        providerNames={{ openai: "OpenAI" }}
+        folder="/tmp"
+        onBrowse={() => {}}
+        onSubmit={onSubmit}
+        onCancel={() => {}}
+      />,
+    )
+    fireEvent.change(screen.getByLabelText("Model"), {
+      target: { value: "mdl_x" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Launch" }))
+    expect(onSubmit.mock.calls[0][0].modelId).toBe("mdl_x")
+  })
+
+  it("enables Launch when a harness is available", () => {
     render(<NewSessionModal {...baseProps} />)
     expect(screen.getByRole("button", { name: /launch/i })).not.toBeDisabled()
   })

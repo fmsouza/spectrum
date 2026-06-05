@@ -1,5 +1,5 @@
 import type { SessionError } from "@launchkit/sessions"
-import type { AliasName, HarnessId, Session, SessionId } from "@launchkit/types"
+import type { HarnessId, ModelId, Session, SessionId } from "@launchkit/types"
 import { type Result, isErr, ok } from "@launchkit/utils"
 import {
   type PtyInbound,
@@ -14,7 +14,7 @@ import type { ScrollbackStore } from "./scrollback-store"
 
 export interface TerminalLaunchInput {
   readonly harnessId: HarnessId
-  readonly alias: AliasName
+  readonly modelId?: ModelId
   readonly command: string
   readonly args: readonly string[]
   readonly env: Readonly<Record<string, string>>
@@ -26,7 +26,7 @@ export interface TerminalLaunchInput {
 export interface SessionSink {
   create(input: {
     harnessId: HarnessId
-    alias: AliasName
+    modelId?: ModelId
     name?: string
     cwd?: string
   }): Result<Session, SessionError>
@@ -106,7 +106,7 @@ export const createTerminalManager = (
   ): Result<{ readonly sessionId: SessionId }, PtyError | SessionError> => {
     const session = deps.sessions.create({
       harnessId: input.harnessId,
-      alias: input.alias,
+      ...(input.modelId !== undefined ? { modelId: input.modelId } : {}),
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
     })

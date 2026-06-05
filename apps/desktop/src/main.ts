@@ -36,8 +36,8 @@ export const buildRealDeps = (
           )
         }
 
-        // Load the live config so the GUI proxy's router knows the real providers + aliases.
-        // A fresh install loads defaults (empty providers/aliases) — still loopback + valid.
+        // Load the live config so the GUI proxy's router knows the real providers + models.
+        // A fresh install loads defaults (empty providers/models) — still loopback + valid.
         let stop = (): void => {}
         void ctx.config.load().then((loaded) => {
           if (!loaded.ok) return

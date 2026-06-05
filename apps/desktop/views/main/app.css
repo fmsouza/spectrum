@@ -984,7 +984,7 @@ tbody tr:hover {
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
-/* Alias / model cells read as code; the actions cell keeps buttons inline. */
+/* Model cells read as code; the actions cell keeps buttons inline. */
 td:has(> button) {
   display: flex;
   gap: var(--space-2);

@@ -1,16 +1,16 @@
 import { describe, expect, it } from "bun:test"
 import type { ProviderView } from "@launchkit/ipc"
-import type { ModelAlias } from "@launchkit/types"
+import type { ModelRoute } from "@launchkit/types"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { IpcClientProvider } from "../IpcClientContext"
 import { createFakeIpcClient } from "../test/fake-client"
-import { RoutingPage } from "./RoutingPage"
+import { ModelsPage } from "./ModelsPage"
 
-const alias = {
-  alias: "fast",
+const model = {
+  id: "m_1",
   providerId: "p_openai",
   providerModel: "gpt-4o-mini",
-} as unknown as ModelAlias
+} as unknown as ModelRoute
 const view = {
   id: "p_openai",
   name: "OpenAI",
@@ -22,7 +22,7 @@ const view = {
 
 const renderPage = (stubs: Parameters<typeof createFakeIpcClient>[0]) => {
   const client = createFakeIpcClient({
-    getAliases: async () => ({ ok: true, value: [alias] }),
+    getModels: async () => ({ ok: true, value: [model] }),
     getProviders: async () => ({ ok: true, value: [view] }),
     // Default: return empty models (no discovery) so existing tests don't break.
     listProviderModels: async () => ({ ok: true, value: { models: [] } }),
@@ -30,100 +30,125 @@ const renderPage = (stubs: Parameters<typeof createFakeIpcClient>[0]) => {
   })
   render(
     <IpcClientProvider client={client}>
-      <RoutingPage />
+      <ModelsPage />
     </IpcClientProvider>,
   )
   return client
 }
 
-describe("RoutingPage", () => {
-  it("renders each alias with its resolved provider name when loaded", async () => {
+describe("ModelsPage", () => {
+  it("renders the Models heading when loaded", async () => {
     renderPage({})
-    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
-    expect(screen.getByText("OpenAI")).toBeInTheDocument()
-    expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument()
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: /models/i }),
+      ).toBeInTheDocument(),
+    )
   })
 
-  it("calls addAlias with the new mapping when the add form is submitted", async () => {
-    // Provider discovery returns empty so the Model field stays a TextInput.
+  it("renders each model with its resolved provider name when loaded", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
+    expect(screen.getByText("OpenAI")).toBeInTheDocument()
+  })
+
+  it("does not render an 'Alias name' input in the add form", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
+    expect(screen.queryByLabelText(/alias name/i)).toBeNull()
+  })
+
+  it("calls addModel with the provider and model when the add form is submitted", async () => {
     const client = renderPage({
-      addAlias: async (p) => ({ ok: true, value: p }),
+      addModel: async (p) => ({
+        ok: true,
+        value: { id: "m_2", ...p } as unknown as ModelRoute,
+      }),
       listProviderModels: async () => ({ ok: true, value: { models: [] } }),
     })
-    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
 
-    fireEvent.click(screen.getByRole("button", { name: /add alias/i }))
-    fireEvent.change(screen.getByLabelText("Alias name"), {
-      target: { value: "smart" },
-    })
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
     fireEvent.change(screen.getByLabelText("Provider"), {
       target: { value: "p_openai" },
     })
-    // Wait for listProviderModels to complete (even though it returns empty → TextInput stays).
     await waitFor(() =>
       expect(screen.getByLabelText("Model")).toBeInTheDocument(),
     )
     fireEvent.change(screen.getByLabelText("Model"), {
       target: { value: "gpt-4o" },
     })
-    fireEvent.click(screen.getByRole("button", { name: /save alias/i }))
+    fireEvent.click(screen.getByRole("button", { name: /save model/i }))
 
-    await waitFor(() => expect(client.calls.addAlias.length).toBe(1))
-    expect(client.calls.addAlias[0]).toEqual({
-      alias: "smart",
+    await waitFor(() => expect(client.calls.addModel.length).toBe(1))
+    expect(client.calls.addModel[0]).toEqual({
       providerId: "p_openai",
       providerModel: "gpt-4o",
     })
   })
 
-  it("calls deleteAlias with the alias name when a row is deleted", async () => {
+  it("calls deleteModel with the model id when a row is deleted", async () => {
     const client = renderPage({
-      deleteAlias: async () => ({ ok: true, value: null }),
+      deleteModel: async () => ({ ok: true, value: null }),
     })
-    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
     fireEvent.click(screen.getByRole("button", { name: /delete/i }))
-    await waitFor(() => expect(client.calls.deleteAlias.length).toBe(1))
-    expect(client.calls.deleteAlias[0]).toEqual({ alias: "fast" })
+    await waitFor(() => expect(client.calls.deleteModel.length).toBe(1))
+    expect(client.calls.deleteModel[0]).toEqual({ id: "m_1" })
   })
 
-  it("seeds the edit form and calls updateAlias when an existing alias is edited", async () => {
+  it("seeds the edit form and calls updateModel when an existing model is edited", async () => {
     const client = renderPage({
-      updateAlias: async () => ({ ok: true, value: alias }),
-      // Discovery returns empty so the edit form keeps a text input.
+      updateModel: async () => ({ ok: true, value: model }),
       listProviderModels: async () => ({ ok: true, value: { models: [] } }),
     })
-    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
 
     fireEvent.click(screen.getByRole("button", { name: /edit/i }))
-    // Wait for listProviderModels to settle (even empty → TextInput).
     await waitFor(() =>
       expect(screen.getByLabelText("Model")).toHaveValue("gpt-4o-mini"),
     )
     fireEvent.change(screen.getByLabelText("Model"), {
       target: { value: "gpt-4o" },
     })
-    fireEvent.click(screen.getByRole("button", { name: /save alias/i }))
+    fireEvent.click(screen.getByRole("button", { name: /save model/i }))
 
-    await waitFor(() => expect(client.calls.updateAlias.length).toBe(1))
-    expect(client.calls.updateAlias[0]).toEqual({
-      alias: "fast",
+    await waitFor(() => expect(client.calls.updateModel.length).toBe(1))
+    expect(client.calls.updateModel[0]).toEqual({
+      id: "m_1",
       input: { providerId: "p_openai", providerModel: "gpt-4o" },
     })
   })
 
   // ── Model discovery tests ──────────────────────────────────────────────────
 
-  it("calls listProviderModels when a provider is selected in the add-alias form", async () => {
+  it("calls listProviderModels when a provider is selected in the add-model form", async () => {
     const client = renderPage({
-      addAlias: async (p) => ({ ok: true, value: p }),
+      addModel: async (p) => ({
+        ok: true,
+        value: { id: "m_2", ...p } as unknown as ModelRoute,
+      }),
       listProviderModels: async () => ({
         ok: true,
         value: { models: ["gpt-4o", "gpt-4o-mini"] },
       }),
     })
-    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
 
-    fireEvent.click(screen.getByRole("button", { name: /add alias/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
     fireEvent.change(screen.getByLabelText("Provider"), {
       target: { value: "p_openai" },
     })
@@ -143,18 +168,18 @@ describe("RoutingPage", () => {
         value: { models: ["gpt-4o", "gpt-4o-mini"] },
       }),
     })
-    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
 
-    fireEvent.click(screen.getByRole("button", { name: /add alias/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
     fireEvent.change(screen.getByLabelText("Provider"), {
       target: { value: "p_openai" },
     })
 
-    // Wait for the discovered-model select to appear with options.
     await waitFor(() => {
       const el = screen.getByLabelText("Model") as HTMLSelectElement
       expect(el.tagName).toBe("SELECT")
-      // The select has the discovered model options.
       const values = Array.from(el.options).map((o) => o.value)
       expect(values).toContain("gpt-4o")
       expect(values).toContain("gpt-4o-mini")
@@ -165,9 +190,11 @@ describe("RoutingPage", () => {
     renderPage({
       listProviderModels: async () => ({ ok: true, value: { models: [] } }),
     })
-    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
 
-    fireEvent.click(screen.getByRole("button", { name: /add alias/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
     fireEvent.change(screen.getByLabelText("Provider"), {
       target: { value: "p_openai" },
     })
@@ -186,9 +213,11 @@ describe("RoutingPage", () => {
         error: { kind: "handler-failed", detail: "unsupported" },
       }),
     })
-    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
 
-    fireEvent.click(screen.getByRole("button", { name: /add alias/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
     fireEvent.change(screen.getByLabelText("Provider"), {
       target: { value: "p_openai" },
     })
@@ -200,25 +229,26 @@ describe("RoutingPage", () => {
     expect(screen.getByText(/couldn't list models/i)).toBeInTheDocument()
   })
 
-  it("creating an alias with a model picked from the Select calls addAlias with that model", async () => {
+  it("creating a model with a model picked from the Select calls addModel with that model", async () => {
     const client = renderPage({
-      addAlias: async (p) => ({ ok: true, value: p }),
+      addModel: async (p) => ({
+        ok: true,
+        value: { id: "m_2", ...p } as unknown as ModelRoute,
+      }),
       listProviderModels: async () => ({
         ok: true,
         value: { models: ["gpt-4o", "gpt-4o-mini"] },
       }),
     })
-    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
 
-    fireEvent.click(screen.getByRole("button", { name: /add alias/i }))
-    fireEvent.change(screen.getByLabelText("Alias name"), {
-      target: { value: "smart" },
-    })
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
     fireEvent.change(screen.getByLabelText("Provider"), {
       target: { value: "p_openai" },
     })
 
-    // Wait for discovered-model Select to appear, then pick a model.
     await waitFor(() => {
       const el = screen.getByLabelText("Model")
       expect(el.tagName).toBe("SELECT")
@@ -226,11 +256,10 @@ describe("RoutingPage", () => {
     fireEvent.change(screen.getByLabelText("Model"), {
       target: { value: "gpt-4o" },
     })
-    fireEvent.click(screen.getByRole("button", { name: /save alias/i }))
+    fireEvent.click(screen.getByRole("button", { name: /save model/i }))
 
-    await waitFor(() => expect(client.calls.addAlias.length).toBe(1))
-    expect(client.calls.addAlias[0]).toEqual({
-      alias: "smart",
+    await waitFor(() => expect(client.calls.addModel.length).toBe(1))
+    expect(client.calls.addModel[0]).toEqual({
       providerId: "p_openai",
       providerModel: "gpt-4o",
     })
@@ -240,9 +269,11 @@ describe("RoutingPage", () => {
 
   it("includes a 'Select a provider…' placeholder option in the Provider select", async () => {
     renderPage({})
-    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
 
-    fireEvent.click(screen.getByRole("button", { name: /add alias/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
 
     const providerSelect = screen.getByLabelText(
       "Provider",
@@ -255,18 +286,19 @@ describe("RoutingPage", () => {
     expect(placeholderOption?.text).toMatch(/select a provider/i)
   })
 
-  it("defaults providerId to the first provider when 'Add alias' is clicked and fires model discovery immediately", async () => {
+  it("defaults providerId to the first provider when 'Add model' is clicked and fires model discovery immediately", async () => {
     const client = renderPage({
       listProviderModels: async () => ({
         ok: true,
         value: { models: ["llama3.2"] },
       }),
     })
-    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
 
-    fireEvent.click(screen.getByRole("button", { name: /add alias/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
 
-    // listProviderModels should be called with the first provider's id immediately
     await waitFor(() =>
       expect(client.calls.listProviderModels.length).toBeGreaterThan(0),
     )
@@ -274,7 +306,6 @@ describe("RoutingPage", () => {
       providerId: "p_openai",
     })
 
-    // The Model field should render a <Select> with the discovered model
     await waitFor(() => {
       const el = screen.getByLabelText("Model") as HTMLSelectElement
       expect(el.tagName).toBe("SELECT")
@@ -283,26 +314,20 @@ describe("RoutingPage", () => {
     })
   })
 
-  it("disables 'Save alias' when alias name, provider, or model is missing", async () => {
+  it("disables 'Save model' when provider or model is missing", async () => {
     renderPage({
       listProviderModels: async () => ({ ok: true, value: { models: [] } }),
     })
-    await waitFor(() => expect(screen.getByText("fast")).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
 
-    fireEvent.click(screen.getByRole("button", { name: /add alias/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
 
-    // Initially incomplete (alias is empty even though provider defaults)
-    const saveBtn = screen.getByRole("button", { name: /save alias/i })
+    const saveBtn = screen.getByRole("button", { name: /save model/i })
+    // Provider defaults to the first provider but model is still empty → disabled.
     expect(saveBtn).toBeDisabled()
 
-    // Fill alias name
-    fireEvent.change(screen.getByLabelText("Alias name"), {
-      target: { value: "smart" },
-    })
-    // Still disabled — model is still empty
-    expect(saveBtn).toBeDisabled()
-
-    // Wait for model field to appear and fill it
     await waitFor(() =>
       expect(screen.getByLabelText("Model")).toBeInTheDocument(),
     )
@@ -310,7 +335,6 @@ describe("RoutingPage", () => {
       target: { value: "gpt-4o" },
     })
 
-    // Now all three fields are filled → Save should be enabled
     await waitFor(() => expect(saveBtn).not.toBeDisabled())
   })
 
@@ -324,7 +348,7 @@ describe("RoutingPage", () => {
       models: [],
     } as unknown as ProviderView
     const client = createFakeIpcClient({
-      getAliases: async () => ({ ok: true, value: [] }),
+      getModels: async () => ({ ok: true, value: [] }),
       getProviders: async () => ({ ok: true, value: [view, ollamaView] }),
       listProviderModels: async ({ providerId }) => ({
         ok: true,
@@ -335,19 +359,17 @@ describe("RoutingPage", () => {
     })
     render(
       <IpcClientProvider client={client}>
-        <RoutingPage />
+        <ModelsPage />
       </IpcClientProvider>,
     )
-    // Wait for page to load.
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: /add alias/i }),
+        screen.getByRole("button", { name: /add model/i }),
       ).toBeInTheDocument(),
     )
 
-    fireEvent.click(screen.getByRole("button", { name: /add alias/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
 
-    // Pick OpenAI, wait for models, pick gpt-4o.
     fireEvent.change(screen.getByLabelText("Provider"), {
       target: { value: "p_openai" },
     })
@@ -362,12 +384,10 @@ describe("RoutingPage", () => {
       "gpt-4o",
     )
 
-    // Now switch to Ollama — providerModel should be cleared.
     fireEvent.change(screen.getByLabelText("Provider"), {
       target: { value: "p_ollama" },
     })
     await waitFor(() => {
-      // model field should have been cleared (value = "")
       expect(
         (screen.getByLabelText("Model") as HTMLInputElement | HTMLSelectElement)
           .value,

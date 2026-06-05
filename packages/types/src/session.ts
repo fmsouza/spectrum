@@ -1,11 +1,11 @@
 import { z } from "zod"
-import { AliasNameSchema, HarnessIdSchema, SessionIdSchema } from "./ids"
+import { HarnessIdSchema, ModelIdSchema, SessionIdSchema } from "./ids"
 
 export const SessionSchema = z
   .object({
     id: SessionIdSchema,
     harnessId: HarnessIdSchema,
-    alias: AliasNameSchema,
+    modelId: ModelIdSchema.optional(),
     startedAt: z.string().datetime(),
     endedAt: z.string().datetime().optional(),
     exitCode: z.number().int().optional(),

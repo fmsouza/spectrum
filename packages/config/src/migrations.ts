@@ -61,8 +61,39 @@ const v2ToV3: Migration = {
   }),
 }
 
+/**
+ * v4 reframes "aliases" as "models": each alias becomes a ModelRoute whose opaque `id` is the
+ * old alias name (already unique within a config, so profile references map without lookups).
+ * Profiles' `alias` becomes `modelId`. The harness-level `defaultAlias` is gone entirely; a
+ * "default" launch now bypasses the proxy and needs no stored handle.
+ */
+const v3ToV4: Migration = {
+  from: 3,
+  to: 4,
+  migrate: (raw) => {
+    const aliases = Array.isArray(raw.aliases) ? raw.aliases : []
+    const models = aliases.map((entry) => {
+      const a = asRecord(entry)
+      return {
+        id: a.alias,
+        providerId: a.providerId,
+        providerModel: a.providerModel,
+      }
+    })
+    const profiles = (Array.isArray(raw.profiles) ? raw.profiles : []).map(
+      (entry) => {
+        const { alias, ...rest } = asRecord(entry)
+        return alias === undefined ? rest : { ...rest, modelId: alias }
+      },
+    )
+    const { aliases: _drop, ...rest } = raw
+    void _drop
+    return { ...rest, version: 4, models, profiles }
+  },
+}
+
 /** Ordered list of forward migrations. Append a new step whenever `CURRENT_CONFIG_VERSION` bumps. */
-export const migrations: readonly Migration[] = [v1ToV2, v2ToV3]
+export const migrations: readonly Migration[] = [v1ToV2, v2ToV3, v3ToV4]
 
 /**
  * Read `raw.version`, apply ordered migrations up to `CURRENT_CONFIG_VERSION`, then validate

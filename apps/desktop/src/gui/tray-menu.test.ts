@@ -1,9 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import {
-  AliasNameSchema,
-  type HarnessDefinition,
-  HarnessIdSchema,
-} from "@launchkit/types"
+import { type HarnessDefinition, HarnessIdSchema } from "@launchkit/types"
 import { buildTrayMenu } from "./tray-menu"
 
 const harness = (id: string, name: string): HarnessDefinition => ({
@@ -16,7 +12,6 @@ const harness = (id: string, name: string): HarnessDefinition => ({
     ANTHROPIC_API_KEY: "{{proxyKey}}",
     ANTHROPIC_MODEL: "{{model}}",
   },
-  defaultAlias: AliasNameSchema.parse("default"),
   builtIn: true,
 })
 
