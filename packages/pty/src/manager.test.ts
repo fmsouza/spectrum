@@ -1,10 +1,10 @@
 import { describe, expect, it } from "bun:test"
 import {
-  AliasNameSchema,
   HarnessIdSchema,
+  ModelIdSchema,
   SessionIdSchema,
 } from "@launchkit/types"
-import type { Session } from "@launchkit/types"
+import type { ModelId, Session } from "@launchkit/types"
 import { ok } from "@launchkit/utils"
 import { createTerminalManager } from "./manager"
 import type { PtyOutbound } from "./protocol"
@@ -18,10 +18,10 @@ const sessionId = SessionIdSchema.parse(
 )
 const otherId = SessionIdSchema.parse("s_11111111-1111-4111-8111-111111111111")
 const harnessId = HarnessIdSchema.parse("claude")
-const alias = AliasNameSchema.parse("default")
+const modelId = ModelIdSchema.parse("default")
 const launchInput = {
   harnessId,
-  alias,
+  modelId,
   command: "/bin/claude",
   args: [] as readonly string[],
   env: { PATH: "/usr/bin" },
@@ -33,7 +33,7 @@ const decode = (b: Uint8Array): string => new TextDecoder().decode(b)
 const fakeSession: Session = {
   id: sessionId,
   harnessId,
-  alias,
+  modelId,
   startedAt: "2026-06-02T00:00:00.000Z",
 }
 
@@ -41,13 +41,13 @@ const makeDeps = (): {
   sent: PtyOutbound[]
   closed: { id: string; code: number }[]
   pty: FakePty
-  created: { name?: string; cwd?: string }[]
+  created: { modelId?: ModelId; name?: string; cwd?: string }[]
   scrollback: ReturnType<typeof createMemoryScrollbackStore>
   deps: Parameters<typeof createTerminalManager>[0]
 } => {
   const sent: PtyOutbound[] = []
   const closed: { id: string; code: number }[] = []
-  const created: { name?: string; cwd?: string }[] = []
+  const created: { modelId?: ModelId; name?: string; cwd?: string }[] = []
   const pty = createFakePty()
   const scrollback = createMemoryScrollbackStore()
   return {
@@ -61,6 +61,7 @@ const makeDeps = (): {
       sessions: {
         create: (input) => {
           created.push({
+            ...(input.modelId !== undefined ? { modelId: input.modelId } : {}),
             ...(input.name !== undefined ? { name: input.name } : {}),
             ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
           })
@@ -96,6 +97,21 @@ describe("createTerminalManager", () => {
     const manager = createTerminalManager(deps)
     const res = manager.launch(launchInput)
     expect(res.ok && res.value.sessionId === sessionId).toBe(true)
+  })
+
+  it("launches with no modelId (default/bypass) and still creates a session", () => {
+    const { deps, created } = makeDeps()
+    const manager = createTerminalManager(deps)
+    const result = manager.launch({
+      harnessId,
+      command: "/bin/echo",
+      args: [] as readonly string[],
+      env: {},
+    })
+    expect(result.ok).toBe(true)
+    expect(created).toHaveLength(1)
+    expect(created[0]?.modelId).toBeUndefined()
+    expect(created[0] && "modelId" in created[0]).toBe(false)
   })
 
   it("does not spawn the harness until the first resize, then spawns at that size", () => {
@@ -198,7 +214,11 @@ describe("createTerminalManager", () => {
     const { deps, created } = makeDeps()
     const manager = createTerminalManager(deps)
     manager.launch({ ...launchInput, name: "my run", cwd: "/work/dir" })
-    expect(created).toContainEqual({ name: "my run", cwd: "/work/dir" })
+    expect(created).toContainEqual({
+      modelId,
+      name: "my run",
+      cwd: "/work/dir",
+    })
   })
 
   it("passes cwd to pty.open when the harness is spawned", () => {
