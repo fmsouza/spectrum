@@ -7,12 +7,14 @@ import {
   useState,
 } from "react"
 import type { StoreApi } from "zustand/vanilla"
+import { type ProvidersStore, createProvidersStore } from "./providersStore"
 import { type ProxyStore, createProxyStore } from "./proxyStore"
 import type { StoreDeps } from "./types"
 
 /** The full bundle of domain stores. Grows as each domain is migrated. */
 export type Stores = {
   readonly proxy: StoreApi<ProxyStore>
+  readonly providers: StoreApi<ProvidersStore>
 }
 
 export type CreateStoresOptions = {
@@ -24,6 +26,7 @@ export const createStores = ({ client }: CreateStoresOptions): Stores => {
   const deps: StoreDeps = { client }
   return {
     proxy: createProxyStore(deps),
+    providers: createProvidersStore(deps),
   }
 }
 
