@@ -9,6 +9,7 @@ import {
 import type { StoreApi } from "zustand/vanilla"
 import { type HarnessesStore, createHarnessesStore } from "./harnessesStore"
 import { type ModelsStore, createModelsStore } from "./modelsStore"
+import { type ProfilesStore, createProfilesStore } from "./profilesStore"
 import { type ProvidersStore, createProvidersStore } from "./providersStore"
 import { type ProxyStore, createProxyStore } from "./proxyStore"
 import type { StoreDeps } from "./types"
@@ -19,6 +20,7 @@ export type Stores = {
   readonly providers: StoreApi<ProvidersStore>
   readonly models: StoreApi<ModelsStore>
   readonly harnesses: StoreApi<HarnessesStore>
+  readonly profiles: StoreApi<ProfilesStore>
 }
 
 export type CreateStoresOptions = {
@@ -33,6 +35,7 @@ export const createStores = ({ client }: CreateStoresOptions): Stores => {
     providers: createProvidersStore(deps),
     models: createModelsStore(deps),
     harnesses: createHarnessesStore(deps),
+    profiles: createProfilesStore(deps),
   }
 }
 
