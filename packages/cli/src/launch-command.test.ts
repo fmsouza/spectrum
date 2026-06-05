@@ -1,11 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { LaunchParams } from "@launchkit/harnesses"
 import { createInMemoryRuntimeState } from "@launchkit/proxy"
-import {
-  AliasNameSchema,
-  type HarnessDefinition,
-  HarnessIdSchema,
-} from "@launchkit/types"
+import { type HarnessDefinition, HarnessIdSchema } from "@launchkit/types"
 import type { StartProxyDeps } from "./deps"
 import { runCli } from "./run"
 import { makeFakeDeps } from "./test-support"
@@ -21,7 +17,6 @@ const claude: HarnessDefinition = {
     ANTHROPIC_API_KEY: "{{proxyKey}}",
     ANTHROPIC_MODEL: "{{model}}",
   },
-  defaultAlias: AliasNameSchema.parse("default"),
   builtIn: true,
 }
 
@@ -45,7 +40,7 @@ describe("launch", () => {
     expect(result.error.kind).toBe("usage")
   })
 
-  it("reuses the running proxy when one is already up", async () => {
+  it("reuses the running proxy when one is already up (proxied launch)", async () => {
     let started = false
     const result = await runCli(
       makeFakeDeps({
@@ -55,7 +50,7 @@ describe("launch", () => {
           started = true
         },
       }),
-    )(["launch", "claude"])
+    )(["launch", "claude", "--model", "fast"])
     expect(result).toEqual({ ok: true, value: undefined })
     expect(started).toBe(false) // proxy.start MUST NOT be called when one is already running
   })
@@ -75,10 +70,14 @@ describe("launch", () => {
       launchSpy: (p) => launchCalls.push(p),
     })
 
-    const result = await runCli(deps)(["launch", "claude"])
+    const result = await runCli(deps)(["launch", "claude", "--model", "fast"])
 
     expect(result).toEqual({ ok: true, value: undefined })
-    expect(launchCalls[0]?.proxyKey).toBe("KEY-FROM-RUNNING")
+    const route = launchCalls[0]?.route
+    expect(route?.kind).toBe("proxied")
+    if (route?.kind === "proxied") {
+      expect(route.proxyKey).toBe("KEY-FROM-RUNNING")
+    }
   })
 
   it("mints and persists a key when starting a fresh proxy", async () => {
@@ -94,14 +93,14 @@ describe("launch", () => {
       },
     })
 
-    const result = await runCli(deps)(["launch", "claude"])
+    const result = await runCli(deps)(["launch", "claude", "--model", "fast"])
 
     expect(result).toEqual({ ok: true, value: undefined })
     expect(started).toBe(true)
     expect(await runtime.readProxyKey()).toBe("MINTED-KEY")
   })
 
-  it("starts an ephemeral proxy when none is running", async () => {
+  it("starts an ephemeral proxy when none is running (proxied launch)", async () => {
     const startCalls: StartProxyDeps[] = []
     const result = await runCli(
       makeFakeDeps({
@@ -111,7 +110,7 @@ describe("launch", () => {
           startCalls.push(opts)
         },
       }),
-    )(["launch", "claude"])
+    )(["launch", "claude", "--model", "fast"])
     expect(result).toEqual({ ok: true, value: undefined })
     expect(startCalls).toHaveLength(1)
     expect(startCalls[0]?.host).toBe("127.0.0.1")
@@ -127,7 +126,7 @@ describe("launch", () => {
     let commandReturned = false
     const promise = runCli(
       makeFakeDeps({ harnesses: [claude], launchExited: exited }),
-    )(["launch", "claude"]).then((r) => {
+    )(["launch", "claude", "--model", "fast"]).then((r) => {
       commandReturned = true
       return r
     })
@@ -160,7 +159,7 @@ describe("launch", () => {
         launchExited: exited,
         proxyStopSpy: () => stopOrder.push("stop"),
       }),
-    )(["launch", "claude"])
+    )(["launch", "claude", "--model", "fast"])
 
     await Promise.resolve()
     expect(stopOrder).toEqual([]) // not stopped while the harness is alive
@@ -183,13 +182,13 @@ describe("launch", () => {
           stopped = true
         },
       }),
-    )(["launch", "claude"])
+    )(["launch", "claude", "--model", "fast"])
 
     expect(result).toEqual({ ok: true, value: undefined })
     expect(stopped).toBe(false) // a reused proxy is NOT owned by this run, so never stopped
   })
 
-  it("launches the harness with the resolved alias and records a session", async () => {
+  it("launches the harness via a proxied route with the resolved model id and records a session", async () => {
     const launchCalls: LaunchParams[] = []
     const out = createMemoryWriter()
     const deps = makeFakeDeps({
@@ -209,33 +208,66 @@ describe("launch", () => {
     expect(result).toEqual({ ok: true, value: undefined })
     expect(launchCalls).toHaveLength(1)
     expect(launchCalls[0]?.harness.id).toBe("claude")
-    expect(String(launchCalls[0]?.model)).toBe("fast")
-    expect(launchCalls[0]?.proxyUrl).toBe("http://127.0.0.1:4000")
+    const route = launchCalls[0]?.route
+    expect(route?.kind).toBe("proxied")
+    if (route?.kind === "proxied") {
+      expect(String(route.modelId)).toBe("fast")
+      expect(route.proxyUrl).toBe("http://127.0.0.1:4000")
+    }
 
     // The pid and a session id are reported.
     const text = out.lines.join("\n")
     expect(text).toContain("4321")
     expect(text).toContain("s_1")
 
-    // A session row was persisted.
+    // A session row was persisted with the model id.
     const sessionsList = deps.sessions.query()
     expect(sessionsList.ok && sessionsList.value).toHaveLength(1)
     expect(sessionsList.ok && sessionsList.value[0]?.harnessId).toBe("claude")
-    expect(sessionsList.ok && String(sessionsList.value[0]?.alias)).toBe("fast")
+    expect(sessionsList.ok && String(sessionsList.value[0]?.modelId)).toBe(
+      "fast",
+    )
   })
 
-  it("falls back to the harness defaultAlias when no --model flag is given", async () => {
+  it("launches a DIRECT (bypass) route and starts NO proxy when no model is resolved", async () => {
     const launchCalls: LaunchParams[] = []
-    await runCli(
-      makeFakeDeps({
-        harnesses: [claude],
-        launchSpy: (p) => launchCalls.push(p),
-      }),
-    )(["launch", "claude"])
-    expect(String(launchCalls[0]?.model)).toBe("default")
+    let proxyStarted = false
+    let isRunningChecked = false
+    const out = createMemoryWriter()
+    const base = makeFakeDeps({
+      out,
+      harnesses: [claude],
+      launchSpy: (p) => launchCalls.push(p),
+      proxyStartSpy: () => {
+        proxyStarted = true
+      },
+    })
+    const deps = {
+      ...base,
+      proxy: {
+        ...base.proxy,
+        isRunning: async (): Promise<boolean> => {
+          isRunningChecked = true
+          return false
+        },
+      },
+    }
+
+    const result = await runCli(deps)(["launch", "claude"])
+
+    expect(result).toEqual({ ok: true, value: undefined })
+    // Direct route, no proxy fields.
+    expect(launchCalls[0]?.route.kind).toBe("direct")
+    // The proxy was never started, nor even probed, on the bypass path.
+    expect(proxyStarted).toBe(false)
+    expect(isRunningChecked).toBe(false)
+
+    // The session is recorded WITHOUT a model id.
+    const sessionsList = deps.sessions.query()
+    expect(sessionsList.ok && sessionsList.value[0]?.modelId).toBeUndefined()
   })
 
-  it("passes the generated proxy key to launch but never writes it to the output", async () => {
+  it("passes the generated proxy key to the proxied route but never writes it to the output", async () => {
     const launchCalls: LaunchParams[] = []
     const out = createMemoryWriter()
     const SECRET_KEY = "super-secret-proxy-key-deadbeef-deadbeef-32b"
@@ -247,10 +279,14 @@ describe("launch", () => {
         proxyKey: SECRET_KEY,
         launchSpy: (p) => launchCalls.push(p),
       }),
-    )(["launch", "claude"])
+    )(["launch", "claude", "--model", "fast"])
 
     // The key reaches the launcher (which puts it in the child env) ...
-    expect(launchCalls[0]?.proxyKey).toBe(SECRET_KEY)
+    const route = launchCalls[0]?.route
+    expect(route?.kind).toBe("proxied")
+    if (route?.kind === "proxied") {
+      expect(route.proxyKey).toBe(SECRET_KEY)
+    }
     // ... but is NEVER printed.
     expect(out.lines.join("\n")).not.toContain(SECRET_KEY)
   })
@@ -264,7 +300,7 @@ describe("launch", () => {
           error: { kind: "spawn-failed", detail: "ENOENT" },
         },
       }),
-    )(["launch", "claude"])
+    )(["launch", "claude", "--model", "fast"])
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error.kind).toBe("failed")

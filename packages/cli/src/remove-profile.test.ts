@@ -10,7 +10,7 @@ const seededWithProfile = () => ({
       id: "prof_fast" as never,
       name: "Fast" as const,
       harnessId: "claude" as never,
-      alias: "fast" as never,
+      modelId: "fast" as never,
       env: {},
     },
   ],
