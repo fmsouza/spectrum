@@ -21,12 +21,18 @@ const ToolUseBlock = z.object({
   input: z.unknown(),
 })
 
-// A tool result fed back by the harness. Anthropic omits the tool name here
-// (only tool_use_id is present); content is a string or an array of text blocks.
+// A tool result fed back by the harness. Anthropic omits the tool name here (only tool_use_id is
+// present); content is a string OR an array of blocks. We accept ANY block shape (not just text) so
+// a multimodal tool result — e.g. one carrying an image block — still parses as a tool_result rather
+// than falling through to the generic catch-all (which would drop tool_use_id and orphan the call).
+const ToolResultContentBlock = z.object({
+  type: z.string(),
+  text: z.string().optional(),
+})
 const ToolResultBlock = z.object({
   type: z.literal("tool_result"),
   tool_use_id: z.string(),
-  content: z.union([z.string(), z.array(TextBlock)]),
+  content: z.union([z.string(), z.array(ToolResultContentBlock)]),
 })
 
 const ContentBlock = z.union([
@@ -87,11 +93,17 @@ const flatten = (c: z.infer<typeof Content>): string =>
 const flattenSystem = (s: z.infer<typeof System>): string =>
   typeof s === "string" ? s : s.map((b) => b.text).join("")
 
-// Extract the text of a tool_result's content (string passes through; an array
-// of text blocks is concatenated).
+// Extract the text of a tool_result's content (string passes through; an array concatenates the
+// text of its text blocks, ignoring non-text blocks such as images).
 const flattenToolResult = (
   c: z.infer<typeof ToolResultBlock>["content"],
-): string => (typeof c === "string" ? c : c.map((b) => b.text).join(""))
+): string =>
+  typeof c === "string"
+    ? c
+    : c
+        .filter((b) => b.type === "text" && typeof b.text === "string")
+        .map((b) => b.text as string)
+        .join("")
 
 // Map top-level tool definitions, skipping entries without a string name and
 // defaulting a missing input_schema to an empty object schema.
@@ -182,10 +194,10 @@ export const parseAnthropicRequest = (
       messages.push({ role: "user", content: flatten(m.content) })
       continue
     }
-    // Mixed turn: preserve any plain text as a user message first, then emit
-    // the tool results as a separate tool-role message.
-    const text = flatten(m.content)
-    if (text.length > 0) messages.push({ role: "user", content: text })
+    // Mixed turn: the tool results MUST come first — directly after the assistant tool_use — so the
+    // AI SDK can pair each tool call with its result. An intervening user message (e.g. a same-turn
+    // <system-reminder> text block, which Claude Code routinely sends) orphans the tool call and
+    // triggers AI_MissingToolResultsError. Any such text follows as its own user message.
     const parts: NormalizedContentPart[] = toolResults.map((block) => ({
       type: "tool-result",
       toolCallId: block.tool_use_id,
@@ -193,6 +205,8 @@ export const parseAnthropicRequest = (
       output: flattenToolResult(block.content),
     }))
     messages.push({ role: "tool", content: parts })
+    const text = flatten(m.content)
+    if (text.length > 0) messages.push({ role: "user", content: text })
   }
 
   if (messages.length === 0)

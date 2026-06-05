@@ -77,7 +77,10 @@ describe("parseAnthropicRequest", () => {
           role: "user",
           content: [
             { type: "text", text: "hello" },
-            { type: "tool_result", tool_use_id: "t1", content: "ignored" },
+            {
+              type: "image",
+              source: { type: "base64", media_type: "image/png", data: "x" },
+            },
           ],
         },
       ],
@@ -305,7 +308,10 @@ describe("parseAnthropicRequest", () => {
       },
     ])
   })
-  it("emits both a user-text message and a tool-role message when a user turn mixes text and tool_result", () => {
+  it("places the tool-result immediately after the assistant tool_use, before same-turn user text", () => {
+    // Claude Code routinely puts a tool_result AND a <system-reminder> text block in the SAME user
+    // turn. The tool-result message MUST come directly after the assistant tool_use — an intervening
+    // user message orphans the tool call and the AI SDK throws MissingToolResultsError.
     const body = {
       model: "default",
       max_tokens: 10,
@@ -325,9 +331,8 @@ describe("parseAnthropicRequest", () => {
     }
     const r = parseAnthropicRequest(body)
     const roles = r.ok ? r.value.messages.map((m) => m.role) : []
-    expect(roles).toEqual(["assistant", "user", "tool"])
-    expect(r.ok && r.value.messages[1]?.content).toBe("also note this")
-    const toolMsg = r.ok ? r.value.messages[2] : undefined
+    expect(roles).toEqual(["assistant", "tool", "user"])
+    const toolMsg = r.ok ? r.value.messages[1] : undefined
     expect(toolMsg?.content).toEqual([
       {
         type: "tool-result",
@@ -336,5 +341,50 @@ describe("parseAnthropicRequest", () => {
         output: "BODY",
       },
     ])
+    expect(r.ok && r.value.messages[2]?.content).toBe("also note this")
+  })
+
+  it("parses a tool_result with non-text content blocks (e.g. an image) instead of dropping it", () => {
+    const r = parseAnthropicRequest({
+      model: "default",
+      max_tokens: 10,
+      messages: [
+        {
+          role: "assistant",
+          content: [
+            { type: "tool_use", id: "t1", name: "Screenshot", input: {} },
+          ],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "t1",
+              content: [
+                { type: "text", text: "captured" },
+                {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: "image/png",
+                    data: "x",
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    // Must still be a correlated tool-result (text extracted, id preserved) — not dropped/orphaned.
+    const tool = r.value.messages.find((m) => m.role === "tool")
+    expect(Array.isArray(tool?.content) && tool.content[0]).toMatchObject({
+      type: "tool-result",
+      toolCallId: "t1",
+      output: "captured",
+    })
   })
 })
