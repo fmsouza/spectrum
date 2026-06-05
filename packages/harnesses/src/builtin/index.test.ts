@@ -43,7 +43,7 @@ describe("builtinHarnesses", () => {
     expect(claude.command).toBe("claude")
     expect(claude.envTemplate).toEqual({
       ANTHROPIC_BASE_URL: "{{proxyUrl}}",
-      ANTHROPIC_API_KEY: "{{proxyKey}}",
+      ANTHROPIC_AUTH_TOKEN: "{{proxyKey}}",
       ANTHROPIC_MODEL: "{{model}}",
     })
   })

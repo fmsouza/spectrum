@@ -24,4 +24,21 @@ describe("parseOpenAIRequest", () => {
   it("returns bad-request when messages is not an array", () => {
     expect(parseOpenAIRequest({ model: "x", messages: "nope" }).ok).toBe(false)
   })
+  it("extracts text from an array content of text blocks", () => {
+    const body = {
+      model: "fast",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "a" },
+            { type: "text", text: "b" },
+          ],
+        },
+      ],
+    }
+    const r = parseOpenAIRequest(body)
+    expect(r.ok).toBe(true)
+    expect(r.ok && r.value.messages[0]?.content).toBe("ab")
+  })
 })
