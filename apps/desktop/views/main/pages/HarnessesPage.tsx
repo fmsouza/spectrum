@@ -16,7 +16,6 @@ const NEW_HARNESS_DEFAULTS: HarnessFormValues = {
   name: "",
   command: "",
   apiFormat: "anthropic",
-  defaultAlias: "default",
 }
 
 export const HarnessesPage = (): ReactElement => {
@@ -35,7 +34,6 @@ export const HarnessesPage = (): ReactElement => {
       command: values.command,
       apiFormat: values.apiFormat,
       envTemplate: {},
-      defaultAlias: values.defaultAlias,
       builtIn: false,
     } as unknown as HarnessDefinition
     const r = await client.addHarness(definition)

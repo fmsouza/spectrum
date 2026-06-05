@@ -11,7 +11,6 @@ const builtIn = {
   command: "claude",
   apiFormat: "anthropic",
   envTemplate: { ANTHROPIC_BASE_URL: "{{proxyUrl}}" },
-  defaultAlias: "default",
   builtIn: true,
 } as unknown as HarnessDefinition
 const custom = {
@@ -20,7 +19,6 @@ const custom = {
   command: "mytool",
   apiFormat: "openai",
   envTemplate: { OPENAI_BASE_URL: "{{proxyUrl}}" },
-  defaultAlias: "fast",
   builtIn: false,
 } as unknown as HarnessDefinition
 
@@ -65,9 +63,6 @@ describe("HarnessesPage", () => {
     fireEvent.change(screen.getByLabelText("Command"), {
       target: { value: "codex" },
     })
-    fireEvent.change(screen.getByLabelText("Default alias"), {
-      target: { value: "default" },
-    })
     fireEvent.click(screen.getByRole("button", { name: /save/i }))
 
     await waitFor(() => expect(client.calls.addHarness.length).toBe(1))
@@ -75,7 +70,6 @@ describe("HarnessesPage", () => {
       name: "Codex",
       command: "codex",
       apiFormat: "anthropic",
-      defaultAlias: "default",
       builtIn: false,
     })
   })
