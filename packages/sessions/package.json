@@ -6,7 +6,9 @@
   "exports": { ".": "./src/index.ts" },
   "scripts": { "typecheck": "tsc --noEmit", "test": "bun test" },
   "dependencies": {
+    "@launchkit/db": "workspace:*",
     "@launchkit/types": "workspace:*",
-    "@launchkit/utils": "workspace:*"
+    "@launchkit/utils": "workspace:*",
+    "drizzle-orm": "^0.45.2"
   }
 }

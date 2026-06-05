@@ -5,6 +5,7 @@ import {
   createInMemoryConfigFile,
   defaultConfig,
 } from "@launchkit/config"
+import { createSqliteClient, runMigrations } from "@launchkit/db"
 import type { LaunchParams } from "@launchkit/harnesses"
 import {
   type RunningProxy,
@@ -15,7 +16,7 @@ import {
   createInMemoryKeychainBackend,
   createSecretStore,
 } from "@launchkit/secrets"
-import { createInMemoryDatabase, createSessionStore } from "@launchkit/sessions"
+import { createSessionStore } from "@launchkit/sessions"
 import type { HarnessDefinition } from "@launchkit/types"
 import {
   type Result,
@@ -61,12 +62,16 @@ export const makeFakeDeps = (over: FakeDepsOverrides = {}): CliDeps => {
     idGen: createSequentialIdGen(),
   })
 
+  const opened = createSqliteClient(":memory:")
+  if (!opened.ok) throw new Error(`db open failed: ${opened.error.detail}`)
+  const client = opened.value
+  const migrated = runMigrations(client)
+  if (!migrated.ok) throw new Error(`migrate failed: ${migrated.error.detail}`)
   const sessions = createSessionStore({
-    db: createInMemoryDatabase(),
+    db: client,
     clock: createFixedClock(new Date("2026-05-23T10:00:00.000Z")),
     idGen: createSequentialIdGen(),
   })
-  sessions.init()
 
   const runningProxy: RunningProxy = {
     hostname: "127.0.0.1",

@@ -1,0 +1,20 @@
+{
+  "name": "@launchkit/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "db:generate": "drizzle-kit generate && bun scripts/bundle-migrations.ts",
+    "db:check": "drizzle-kit check"
+  },
+  "dependencies": {
+    "@launchkit/utils": "workspace:*",
+    "drizzle-orm": "^0.45.2"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.0"
+  }
+}

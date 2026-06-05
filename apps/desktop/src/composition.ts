@@ -26,6 +26,7 @@ import {
   createFsConfigFile,
   defaultConfig,
 } from "@launchkit/config"
+import { createSqliteClient, runMigrations } from "@launchkit/db"
 import {
   createBunProcessSpawner,
   createDirHarnessFileSource,
@@ -57,10 +58,7 @@ import {
   createMacosSecurityBackend,
   createSecretStore,
 } from "@launchkit/secrets"
-import {
-  createBunSqliteDatabase,
-  createSessionStore,
-} from "@launchkit/sessions"
+import { createSessionStore } from "@launchkit/sessions"
 import { createCryptoIdGen, createSystemClock } from "@launchkit/utils"
 import { err } from "@launchkit/utils"
 import { startTerminalSocket } from "./gui/terminal-socket"
@@ -177,7 +175,8 @@ export interface CreateAppContextDeps {
   readonly createBunProcessRunner: typeof createBunProcessRunner
   readonly createCryptoIdGen: typeof createCryptoIdGen
   readonly createSecretStore: typeof createSecretStore
-  readonly createBunSqliteDatabase: typeof createBunSqliteDatabase
+  readonly createSqliteClient: typeof createSqliteClient
+  readonly runMigrations: typeof runMigrations
   readonly createSystemClock: typeof createSystemClock
   readonly createSessionStore: typeof createSessionStore
   readonly createDirHarnessFileSource: typeof createDirHarnessFileSource
@@ -215,7 +214,8 @@ const realDeps: CreateAppContextDeps = {
   createBunProcessRunner,
   createCryptoIdGen,
   createSecretStore,
-  createBunSqliteDatabase,
+  createSqliteClient,
+  runMigrations,
   createSystemClock,
   createSessionStore,
   createDirHarnessFileSource,
@@ -352,13 +352,23 @@ export const createAppContext = (
     idGen: deps.createCryptoIdGen(),
   })
 
-  // sessions: store( bun:sqlite db at dbFile, system clock, crypto id gen ); ensure schema exists
+  // sessions: open sqlite at dbFile, apply migrations, then build the store.
+  const dbOpen = deps.createSqliteClient(dbFile)
+  if (!dbOpen.ok) {
+    throw new Error(
+      `failed to open database at ${dbFile}: ${dbOpen.error.detail}`,
+    )
+  }
+  const dbClient = dbOpen.value
+  const migrated = deps.runMigrations(dbClient)
+  if (!migrated.ok) {
+    throw new Error(`failed to migrate database: ${migrated.error.detail}`)
+  }
   const sessions = deps.createSessionStore({
-    db: deps.createBunSqliteDatabase(dbFile),
+    db: dbClient,
     clock: deps.createSystemClock(),
     idGen: deps.createCryptoIdGen(),
   })
-  sessions.init()
 
   // harnesses: registry from the user harness dir; launcher partially applied with real adapters
   const registry = deps.createRegistry({
