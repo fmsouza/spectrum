@@ -1,4 +1,5 @@
 {
   "extends": "../../tooling/tsconfig/lib.json",
-  "compilerOptions": { "rootDir": "src", "outDir": "dist" }
+  "compilerOptions": { "rootDir": "src", "outDir": "dist" },
+  "exclude": ["drizzle.config.ts"]
 }
