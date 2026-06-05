@@ -8,28 +8,28 @@ describe("ModelRouteSchema", () => {
       providerId: "openai",
       providerModel: "gpt-4o",
     })
-    expect(String(parsed.id)).toBe("mdl_123")
-    expect(String(parsed.providerId)).toBe("openai")
+    expect(parsed.id).toBe<string>("mdl_123")
+    expect(parsed.providerId).toBe<string>("openai")
     expect(parsed.providerModel).toBe("gpt-4o")
   })
 
   it("rejects an empty providerModel when parsing", () => {
-    expect(() =>
-      ModelRouteSchema.parse({
+    expect(
+      ModelRouteSchema.safeParse({
         id: "mdl_123",
         providerId: "openai",
         providerModel: "",
-      }),
-    ).toThrow()
+      }).success,
+    ).toBe(false)
   })
 
   it("rejects an empty id when parsing", () => {
-    expect(() =>
-      ModelRouteSchema.parse({
+    expect(
+      ModelRouteSchema.safeParse({
         id: "",
         providerId: "openai",
         providerModel: "gpt-4o",
-      }),
-    ).toThrow()
+      }).success,
+    ).toBe(false)
   })
 })
