@@ -9,7 +9,6 @@ import {
 } from "@launchkit/ui"
 import type { HarnessFormValues } from "@launchkit/ui"
 import { type ReactElement, useState } from "react"
-import { useIpcClient } from "../IpcClientContext"
 import { useHarnesses } from "../hooks/useHarnesses"
 
 const NEW_HARNESS_DEFAULTS: HarnessFormValues = {
@@ -19,8 +18,7 @@ const NEW_HARNESS_DEFAULTS: HarnessFormValues = {
 }
 
 export const HarnessesPage = (): ReactElement => {
-  const client = useIpcClient()
-  const { data, loading, error, refetch } = useHarnesses()
+  const { data, loading, error, add, remove } = useHarnesses()
   const [addOpen, setAddOpen] = useState<boolean>(false)
 
   const builtIns = (data ?? []).filter((h) => h.builtIn)
@@ -36,16 +34,12 @@ export const HarnessesPage = (): ReactElement => {
       envTemplate: {},
       builtIn: false,
     } as unknown as HarnessDefinition
-    const r = await client.addHarness(definition)
-    if (r.ok) {
-      setAddOpen(false)
-      refetch()
-    }
+    const r = await add(definition)
+    if (r.ok) setAddOpen(false)
   }
 
   const deleteHarness = async (id: string): Promise<void> => {
-    const r = await client.deleteHarness({ id: id as HarnessId })
-    if (r.ok) refetch()
+    await remove(id as HarnessId)
   }
 
   return (

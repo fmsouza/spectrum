@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import type { HarnessDefinition } from "@launchkit/types"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { IpcClientProvider } from "../IpcClientContext"
+import { fireEvent, screen, waitFor } from "@testing-library/react"
 import { createFakeIpcClient } from "../test/fake-client"
+import { renderWithProviders } from "../test/renderWithProviders"
 import { HarnessesPage } from "./HarnessesPage"
 
 const builtIn = {
@@ -27,11 +27,7 @@ const renderPage = (stubs: Parameters<typeof createFakeIpcClient>[0]) => {
     getHarnesses: async () => ({ ok: true, value: [builtIn, custom] }),
     ...stubs,
   })
-  render(
-    <IpcClientProvider client={client}>
-      <HarnessesPage />
-    </IpcClientProvider>,
-  )
+  renderWithProviders(<HarnessesPage />, client)
   return client
 }
 

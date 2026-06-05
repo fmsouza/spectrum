@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import type { ProviderView } from "@launchkit/ipc"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { IpcClientProvider } from "../IpcClientContext"
+import { fireEvent, screen, waitFor } from "@testing-library/react"
 import { createFakeIpcClient } from "../test/fake-client"
+import { renderWithProviders } from "../test/renderWithProviders"
 import { ProvidersPage } from "./ProvidersPage"
 
 const view: ProviderView = {
@@ -19,11 +19,7 @@ const renderPage = (stubs: Parameters<typeof createFakeIpcClient>[0]) => {
     getProviders: async () => ({ ok: true, value: [view] }),
     ...stubs,
   })
-  render(
-    <IpcClientProvider client={client}>
-      <ProvidersPage />
-    </IpcClientProvider>,
-  )
+  renderWithProviders(<ProvidersPage />, client)
   return client
 }
 

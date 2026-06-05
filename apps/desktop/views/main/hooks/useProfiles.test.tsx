@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import type { Profile } from "@launchkit/types"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { IpcClientProvider } from "../IpcClientContext"
+import { fireEvent, screen, waitFor } from "@testing-library/react"
 import { createFakeIpcClient } from "../test/fake-client"
+import { renderWithProviders } from "../test/renderWithProviders"
 import { useProfiles } from "./useProfiles"
 
 const profile: Profile = {
@@ -38,11 +38,7 @@ describe("useProfiles", () => {
     const client = createFakeIpcClient({
       getProfiles: async () => ({ ok: true, value: [profile] }),
     })
-    render(
-      <IpcClientProvider client={client}>
-        <Probe />
-      </IpcClientProvider>,
-    )
+    renderWithProviders(<Probe />, client)
     await waitFor(() => expect(screen.getByText("count:1")).toBeInTheDocument())
   })
 
@@ -51,11 +47,7 @@ describe("useProfiles", () => {
       getProfiles: async () => ({ ok: true, value: [] }),
       addProfile: async () => ({ ok: true, value: profile }),
     })
-    render(
-      <IpcClientProvider client={client}>
-        <Probe />
-      </IpcClientProvider>,
-    )
+    renderWithProviders(<Probe />, client)
     await waitFor(() => expect(screen.getByText("count:0")).toBeInTheDocument())
     fireEvent.click(screen.getByText("add"))
     await waitFor(() => expect(client.calls.addProfile.length).toBe(1))
