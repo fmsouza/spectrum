@@ -8,10 +8,6 @@ a model **alias** to a concrete provider + model, and streams the response back 
 and session history from the GUI; the CLI launches harnesses and edits config from the
 terminal.
 
-For the design and the implementation plan, see
-[`build-plan/00-overview.md`](build-plan/00-overview.md) and
-[`build-plan/README.md`](build-plan/README.md).
-
 ## Requirements
 
 - **macOS on Apple Silicon** — the build target is `dev-macos-arm64`.
@@ -73,9 +69,9 @@ The command surface:
 # list what's configured
 ./apps/desktop/dist/launchkit-cli list harnesses
 ./apps/desktop/dist/launchkit-cli list providers
-./apps/desktop/dist/launchkit-cli list aliases
+./apps/desktop/dist/launchkit-cli list models
 
-# launch a harness (uses its default alias unless --model overrides)
+# launch a harness (uses its default model unless --model overrides)
 ./apps/desktop/dist/launchkit-cli launch claude
 ./apps/desktop/dist/launchkit-cli launch claude --model fast
 
@@ -83,9 +79,9 @@ The command surface:
 ./apps/desktop/dist/launchkit-cli add provider --id openai --name OpenAI --sdk openai
 ./apps/desktop/dist/launchkit-cli remove provider openai
 
-# add / remove a routing alias
-./apps/desktop/dist/launchkit-cli add alias --name fast --provider openai --model gpt-4o-mini
-./apps/desktop/dist/launchkit-cli remove alias fast
+# add / remove a model
+./apps/desktop/dist/launchkit-cli add model --name fast --provider openai --model gpt-4o-mini
+./apps/desktop/dist/launchkit-cli remove model fast
 ```
 
 `launch` ensures a proxy is up: it reuses a proxy already running on `127.0.0.1:4000`
@@ -100,8 +96,9 @@ reference to each key, never the value. (`launchkit add provider` creates a prov
 empty secrets; you then set the key in the GUI.)
 
 Map your model **aliases** (`default`, `fast`, `smart`, `local`) to a provider + model on
-the GUI **Routing** page. Harnesses request an alias, and the proxy routes it to the
-configured provider/model.
+the GUI **Models** page. Harnesses request an alias, and the proxy routes it to the
+configured provider/model. The "default" option bypasses the proxy entirely and launches
+the harness with its own native credentials/model.
 
 ## Development
 
@@ -118,14 +115,32 @@ launches it, probes `/health` on loopback, then cleans up):
 bash apps/desktop/scripts/smoke.sh
 ```
 
-The build protocol and progress ledger live in
-[`build-plan/README.md`](build-plan/README.md) and
-[`build-plan/EXECUTION.md`](build-plan/EXECUTION.md).
+For the GUI-specific smoke checklist that can't be automated (window, tray, native
+folder dialog, live xterm round-trip), see
+[`apps/desktop/MANUAL-VERIFICATION.md`](apps/desktop/MANUAL-VERIFICATION.md).
 
 ## Project layout
 
 - `packages/*` — the functional backend: `proxy`, `harnesses`, `config`, `secrets`,
-  `sessions`, `cli`, `ipc`, `ui`, `types`, `utils`.
+  `sessions`, `cli`, `ipc`, `pty`, `ui`, `types`, `utils`.
 - `apps/desktop` — the Electrobun shell (window, tray, IPC) + the React UI; the one place
   real effects (fs, keychain, sqlite, process, server) are constructed and injected.
-- `build-plan/` — the design docs, per-package TDD plans, and the progress ledger.
+- `tooling/` — shared config presets (Biome, tsconfig).
+
+## Contributing / extending
+
+The rulebook for any agent working in this repo is the **root `CLAUDE.md`** — it
+covers TypeScript style, functional layering, TDD, atomic design for the React UI,
+security, performance, and package boundaries. For per-package context (responsibility,
+public API, owned effects, local invariants), read that package's `CLAUDE.md` (every
+package and `apps/desktop` has one).
+
+Workflow skills live under `.claude/skills/` and cover recurring LaunchKit-specific
+tasks:
+
+| Skill | When to use it |
+|---|---|
+| `launchkit-new-package` | Creating a new internal package under `packages/` |
+
+All other process (TDD, planning, review, debugging) is covered by the superpowers
+skills — invoke `using-superpowers` at the start of a session.

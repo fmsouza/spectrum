@@ -4,7 +4,7 @@
 
 **Public API (barrel `src/index.ts`):** startProxy, isProxyRunning, createHandler, createRouter, createProviderFactory, loadSdk, createRealGateway, the adapters, validateProviderConfig, and all public types.
 
-**Depends on:** @launchkit/types, @launchkit/utils, @launchkit/config, @launchkit/secrets (see build-plan/02-monorepo/boundaries.md)
+**Depends on:** @launchkit/types, @launchkit/utils, @launchkit/config, @launchkit/secrets
 
 **Effects owned:** http server + outbound network (AI SDK)
 — exposed to consumers as injected interfaces; never reached around.

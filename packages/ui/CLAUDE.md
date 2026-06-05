@@ -4,7 +4,7 @@
 
 **Public API (barrel `src/index.ts`):** atoms (`Button`, `TextInput`, `Select`, `Badge`, `StatusDot`, `Spinner`, `Label`), molecules (`FormField`, `ProviderCard`, `ModelRow`, `EmptyState`), organisms (`ProviderList`, `ModelTable`, `HarnessForm`, `SessionTable`), templates (`AppShell`, `SettingsLayout`) — each re-exported via its level barrel and the package barrel.
 
-**Depends on:** `@launchkit/types`, `@launchkit/utils` (prop shapes + pure formatting only; never `ipc`/`config`/`proxy`/`sessions`/`harnesses` — see build-plan/02-monorepo/boundaries.md).
+**Depends on:** `@launchkit/types`, `@launchkit/utils` (prop shapes + pure formatting only; never `ipc`/`config`/`proxy`/`sessions`/`harnesses`md).
 
 **Effects owned:** none. No data fetching, no IPC, no global state.
 
