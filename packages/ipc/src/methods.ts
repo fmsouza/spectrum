@@ -1,8 +1,8 @@
 import {
-  AliasNameSchema,
   HarnessDefinitionSchema,
   HarnessIdSchema,
-  ModelAliasSchema,
+  ModelIdSchema,
+  ModelRouteSchema,
   ProfileIdSchema,
   ProfileSchema,
   ProviderIdSchema,
@@ -76,28 +76,31 @@ export const SetProviderSecretParamsSchema = z
   .strict()
 export const SetProviderSecretResultSchema = VoidSchema
 
-// ── Aliases ──────────────────────────────────────────────────────────────────
+// ── Models ───────────────────────────────────────────────────────────────────
 
-export const GetAliasesParamsSchema = z.undefined()
-export const GetAliasesResultSchema = z.array(ModelAliasSchema)
+export const GetModelsParamsSchema = z.undefined()
+export const GetModelsResultSchema = z.array(ModelRouteSchema)
 
-/** Add accepts a full alias mapping; the alias name is part of the body. */
-export const AddAliasParamsSchema = ModelAliasSchema
-export const AddAliasResultSchema = ModelAliasSchema
-
-/** Update keys by alias name and carries the new mapping (sans the key). */
-export const UpdateAliasParamsSchema = z
+/** Add accepts provider + model only; the server mints the opaque id. */
+export const AddModelParamsSchema = z
   .object({
-    alias: AliasNameSchema,
-    input: ModelAliasSchema.omit({ alias: true }),
+    providerId: ProviderIdSchema,
+    providerModel: z.string().min(1),
   })
   .strict()
-export const UpdateAliasResultSchema = ModelAliasSchema
+export const AddModelResultSchema = ModelRouteSchema
 
-export const DeleteAliasParamsSchema = z
-  .object({ alias: AliasNameSchema })
+/** Update keys by id and carries the new provider + model. */
+export const UpdateModelParamsSchema = z
+  .object({
+    id: ModelIdSchema,
+    input: ModelRouteSchema.omit({ id: true }),
+  })
   .strict()
-export const DeleteAliasResultSchema = VoidSchema
+export const UpdateModelResultSchema = ModelRouteSchema
+
+export const DeleteModelParamsSchema = z.object({ id: ModelIdSchema }).strict()
+export const DeleteModelResultSchema = VoidSchema
 
 // ── Harnesses ─────────────────────────────────────────────────────────────────
 
@@ -124,7 +127,7 @@ export const DeleteHarnessResultSchema = VoidSchema
 export const LaunchHarnessParamsSchema = z
   .object({
     id: HarnessIdSchema,
-    alias: AliasNameSchema.optional(),
+    modelId: ModelIdSchema.optional(),
     name: z.string().optional(),
     cwd: z.string().optional(),
     env: z.record(z.string(), z.string()).optional(),
@@ -143,7 +146,7 @@ export const LaunchHarnessResultSchema = z
 export const GetSessionsParamsSchema = z
   .object({
     harnessId: HarnessIdSchema.optional(),
-    alias: AliasNameSchema.optional(),
+    modelId: ModelIdSchema.optional(),
     running: z.boolean().optional(),
     limit: z.number().int().positive().optional(),
     offset: z.number().int().nonnegative().optional(),
@@ -241,18 +244,18 @@ export const IpcMethodSchemas = {
     params: SetProviderSecretParamsSchema,
     result: SetProviderSecretResultSchema,
   },
-  getAliases: {
-    params: GetAliasesParamsSchema,
-    result: GetAliasesResultSchema,
+  getModels: {
+    params: GetModelsParamsSchema,
+    result: GetModelsResultSchema,
   },
-  addAlias: { params: AddAliasParamsSchema, result: AddAliasResultSchema },
-  updateAlias: {
-    params: UpdateAliasParamsSchema,
-    result: UpdateAliasResultSchema,
+  addModel: { params: AddModelParamsSchema, result: AddModelResultSchema },
+  updateModel: {
+    params: UpdateModelParamsSchema,
+    result: UpdateModelResultSchema,
   },
-  deleteAlias: {
-    params: DeleteAliasParamsSchema,
-    result: DeleteAliasResultSchema,
+  deleteModel: {
+    params: DeleteModelParamsSchema,
+    result: DeleteModelResultSchema,
   },
   getHarnesses: {
     params: GetHarnessesParamsSchema,
