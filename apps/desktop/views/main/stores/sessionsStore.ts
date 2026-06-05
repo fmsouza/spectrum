@@ -26,15 +26,23 @@ export type SessionsStore = {
 
 export const createSessionsStore = (deps: StoreDeps): StoreApi<SessionsStore> =>
   createStore<SessionsStore>()((set, get) => {
+    // Each loader dedupes via an in-flight promise. A generation counter lets a
+    // forced reload (invalidate/setRecentLimit) supersede an older in-flight
+    // request: the stale promise's resolution is ignored so it can't overwrite
+    // fresh data, and it won't clear the newer gate.
     let runInflight: Promise<void> | undefined
     let recInflight: Promise<void> | undefined
+    let runGen = 0
+    let recGen = 0
 
     const loadRunning = (): Promise<void> => {
       if (runInflight !== undefined) return runInflight
+      const gen = ++runGen
       set({ loadingRunning: true })
       const p = deps.client
         .getSessions({ running: true })
         .then((r) => {
+          if (gen !== runGen) return
           if (r.ok)
             set({
               running: r.value,
@@ -44,7 +52,7 @@ export const createSessionsStore = (deps: StoreDeps): StoreApi<SessionsStore> =>
           else set({ errorRunning: r.error, loadingRunning: false })
         })
         .finally(() => {
-          runInflight = undefined
+          if (gen === runGen) runInflight = undefined
         })
       runInflight = p
       return p
@@ -52,11 +60,13 @@ export const createSessionsStore = (deps: StoreDeps): StoreApi<SessionsStore> =>
 
     const loadRecent = (): Promise<void> => {
       if (recInflight !== undefined) return recInflight
+      const gen = ++recGen
       set({ loadingRecent: true })
       const limit = get().recentLimit
       const p = deps.client
         .getSessions({ running: false, limit })
         .then((r) => {
+          if (gen !== recGen) return
           if (r.ok)
             set({
               recent: r.value,
@@ -66,10 +76,20 @@ export const createSessionsStore = (deps: StoreDeps): StoreApi<SessionsStore> =>
           else set({ errorRecent: r.error, loadingRecent: false })
         })
         .finally(() => {
-          recInflight = undefined
+          if (gen === recGen) recInflight = undefined
         })
       recInflight = p
       return p
+    }
+
+    /** Abandon any in-flight running load so the next load starts fresh. */
+    const forceRunning = (): Promise<void> => {
+      runInflight = undefined
+      return loadRunning()
+    }
+    const forceRecent = (): Promise<void> => {
+      recInflight = undefined
+      return loadRecent()
     }
 
     return {
@@ -85,14 +105,15 @@ export const createSessionsStore = (deps: StoreDeps): StoreApi<SessionsStore> =>
       fetchRecent: () =>
         get().recent !== undefined ? Promise.resolve() : loadRecent(),
       setRecentLimit: (n) => {
-        // Drop the cached page so loadRecent re-queries with the new limit.
+        // Drop the cached page and abandon any in-flight load so the next fetch
+        // re-queries with the new limit.
         set({ recentLimit: n, recent: undefined })
-        void loadRecent()
+        void forceRecent()
       },
       invalidate: async () => {
-        // Force both: clear caches, then load.
+        // Force both: clear caches and abandon in-flight loads, then reload.
         set({ running: undefined, recent: undefined })
-        await Promise.all([loadRunning(), loadRecent()])
+        await Promise.all([forceRunning(), forceRecent()])
       },
       launch: async (input) => {
         const r = await deps.client.launchHarness(input)

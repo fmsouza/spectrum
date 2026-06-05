@@ -62,6 +62,25 @@ describe("createSessionsStore", () => {
     expect(getSessions.mock.calls.length).toBe(before + 2)
   })
 
+  it("invalidate forces a fresh running fetch even if one is already in flight", async () => {
+    let runningCalls = 0
+    const client = createFakeIpcClient({
+      getSessions: async (params) => {
+        if (params?.running === true) {
+          runningCalls += 1
+          return { ok: true, value: runningCalls === 1 ? [ended] : [running] }
+        }
+        return { ok: true, value: [] }
+      },
+    })
+    const store = createSessionsStore({ client })
+    const inflight = store.getState().fetchRunning() // call #1 (stale [ended]) in flight
+    await store.getState().invalidate() // must start a fresh call #2 ([running])
+    await inflight
+    expect(runningCalls).toBeGreaterThanOrEqual(2)
+    expect(store.getState().running).toEqual([running])
+  })
+
   it("launch calls launchHarness then invalidates and returns the result", async () => {
     const getSessions = mock(async () => ({ ok: true as const, value: [] }))
     const client = createFakeIpcClient({
