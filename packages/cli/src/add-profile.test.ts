@@ -28,7 +28,7 @@ describe("add profile", () => {
     const added = loaded.value.profiles.find((p) => p.id === "prof_fast")
     expect(added?.name).toBe("Fast")
     expect(added?.harnessId).toBe("claude")
-    expect(added?.alias).toBe("fast")
+    expect(added?.modelId).toBe("fast")
     expect(added?.env).toEqual({ ANTHROPIC_MODEL: "sonnet", FOO: "bar" })
   })
 
@@ -75,7 +75,7 @@ describe("add profile", () => {
           id: "prof_fast" as never,
           name: "Fast" as const,
           harnessId: "claude" as never,
-          alias: "fast" as never,
+          modelId: "fast" as never,
           env: {},
         },
       ],

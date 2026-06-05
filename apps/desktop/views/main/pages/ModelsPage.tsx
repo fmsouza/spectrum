@@ -1,9 +1,9 @@
-import type { ModelAlias, ProviderId } from "@launchkit/types"
+import type { ModelId, ProviderId } from "@launchkit/types"
 import {
-  AliasTable,
   Button,
   EmptyState,
   FormField,
+  ModelTable,
   Select,
   SettingsLayout,
   Spinner,
@@ -11,20 +11,18 @@ import {
 } from "@launchkit/ui"
 import { type ReactElement, useState } from "react"
 import { useIpcClient } from "../IpcClientContext"
-import { useAliases } from "../hooks/useAliases"
+import { useModels } from "../hooks/useModels"
 import { useProviderModels } from "../hooks/useProviderModels"
 import { useProviders } from "../hooks/useProviders"
 
-type AliasDraft = {
-  readonly alias: string
+type ModelDraft = {
   readonly providerId: string
   readonly providerModel: string
-  /** When editing, the original alias name being updated; absent for a new alias. */
+  /** When editing, the ModelId being updated; undefined for a new model. */
   readonly editingOf: string | undefined
 }
 
-const EMPTY_DRAFT: AliasDraft = {
-  alias: "",
+const EMPTY_DRAFT: ModelDraft = {
   providerId: "",
   providerModel: "",
   editingOf: undefined,
@@ -44,9 +42,9 @@ const ModelField = ({
 
   if (loading && providerId !== "") {
     return (
-      <FormField id="alias-model" label="Model">
+      <FormField id="model-model" label="Model">
         <Select
-          id="alias-model"
+          id="model-model"
           value=""
           options={[]}
           onChange={() => {}}
@@ -65,9 +63,9 @@ const ModelField = ({
       ...discovered.map((m) => ({ value: m, label: m })),
     ]
     return (
-      <FormField id="alias-model" label="Model">
+      <FormField id="model-model" label="Model">
         <Select
-          id="alias-model"
+          id="model-model"
           value={value}
           options={options}
           onChange={onChange}
@@ -78,8 +76,8 @@ const ModelField = ({
 
   // Empty list or error (incl. unsupported SDKs) → free-text fallback.
   return (
-    <FormField id="alias-model" label="Model">
-      <TextInput id="alias-model" value={value} onChange={onChange} />
+    <FormField id="model-model" label="Model">
+      <TextInput id="model-model" value={value} onChange={onChange} />
       {providerId !== "" ? (
         <span>
           {"Couldn't list models for this provider — enter one manually."}
@@ -89,12 +87,12 @@ const ModelField = ({
   )
 }
 
-export const RoutingPage = (): ReactElement => {
+export const ModelsPage = (): ReactElement => {
   const client = useIpcClient()
-  const aliases = useAliases()
+  const models = useModels()
   const providers = useProviders()
 
-  const [draft, setDraft] = useState<AliasDraft | undefined>(undefined)
+  const [draft, setDraft] = useState<ModelDraft | undefined>(undefined)
 
   const providerNames: Record<string, string> = {}
   for (const p of providers.data ?? []) providerNames[p.id] = p.name
@@ -104,58 +102,48 @@ export const RoutingPage = (): ReactElement => {
     label: p.name,
   }))
 
-  const startEdit = (aliasName: string): void => {
-    const found = (aliases.data ?? []).find((a) => a.alias === aliasName)
+  const startEdit = (id: string): void => {
+    const found = (models.data ?? []).find((m) => m.id === id)
     if (found === undefined) return
     setDraft({
-      alias: found.alias,
       providerId: found.providerId,
       providerModel: found.providerModel,
-      editingOf: found.alias,
+      editingOf: found.id,
     })
   }
 
   const submitDraft = async (): Promise<void> => {
     if (draft === undefined) return
-    if (
-      draft.alias.trim() === "" ||
-      draft.providerId.trim() === "" ||
-      draft.providerModel.trim() === ""
-    )
+    if (draft.providerId.trim() === "" || draft.providerModel.trim() === "")
       return
-
-    const mapping = {
-      alias: draft.alias,
-      providerId: draft.providerId as ProviderId,
-      providerModel: draft.providerModel,
-    } as unknown as ModelAlias
 
     const r =
       draft.editingOf === undefined
-        ? await client.addAlias(mapping)
-        : await client.updateAlias({
-            alias: draft.editingOf as ModelAlias["alias"],
+        ? await client.addModel({
+            providerId: draft.providerId as ProviderId,
+            providerModel: draft.providerModel,
+          })
+        : await client.updateModel({
+            id: draft.editingOf as ModelId,
             input: {
-              providerId: mapping.providerId,
-              providerModel: mapping.providerModel,
+              providerId: draft.providerId as ProviderId,
+              providerModel: draft.providerModel,
             },
           })
     if (r.ok) {
       setDraft(undefined)
-      aliases.refetch()
+      models.refetch()
     }
   }
 
-  const deleteAlias = async (aliasName: string): Promise<void> => {
-    const r = await client.deleteAlias({
-      alias: aliasName as ModelAlias["alias"],
-    })
-    if (r.ok) aliases.refetch()
+  const deleteModel = async (id: string): Promise<void> => {
+    const r = await client.deleteModel({ id: id as ModelId })
+    if (r.ok) models.refetch()
   }
 
-  const update = <K extends keyof AliasDraft>(
+  const update = <K extends keyof ModelDraft>(
     key: K,
-    value: AliasDraft[K],
+    value: ModelDraft[K],
   ): void => setDraft((prev) => ({ ...(prev ?? EMPTY_DRAFT), [key]: value }))
 
   /** When the provider changes, clear providerModel — the previous model may not be valid. */
@@ -168,23 +156,22 @@ export const RoutingPage = (): ReactElement => {
 
   const draftIncomplete =
     draft === undefined ||
-    draft.alias.trim() === "" ||
     draft.providerId.trim() === "" ||
     draft.providerModel.trim() === ""
 
   return (
-    <SettingsLayout title="Routing">
-      {aliases.loading || providers.loading ? (
-        <Spinner label="Loading routing" />
+    <SettingsLayout title="Models">
+      {models.loading || providers.loading ? (
+        <Spinner label="Loading models" />
       ) : null}
-      {aliases.error !== undefined ? (
+      {models.error !== undefined ? (
         <EmptyState
-          title="Could not load aliases"
-          hint={`IPC error: ${aliases.error.kind}`}
+          title="Could not load models"
+          hint={`IPC error: ${models.error.kind}`}
         />
       ) : null}
 
-      {aliases.data !== undefined ? (
+      {models.data !== undefined ? (
         <>
           <Button
             onClick={() =>
@@ -194,13 +181,13 @@ export const RoutingPage = (): ReactElement => {
               })
             }
           >
-            Add alias
+            Add model
           </Button>
-          <AliasTable
-            aliases={aliases.data}
+          <ModelTable
+            models={models.data}
             providerNames={providerNames}
             onEdit={startEdit}
-            onDelete={(a) => void deleteAlias(a)}
+            onDelete={(id) => void deleteModel(id)}
           />
         </>
       ) : null}
@@ -208,26 +195,16 @@ export const RoutingPage = (): ReactElement => {
       {draft !== undefined ? (
         <form
           aria-label={
-            draft.editingOf === undefined
-              ? "Add alias"
-              : `Edit alias ${draft.editingOf}`
+            draft.editingOf === undefined ? "Add model" : "Edit model"
           }
           onSubmit={(e) => {
             e.preventDefault()
             void submitDraft()
           }}
         >
-          <FormField id="alias-name" label="Alias name">
-            <TextInput
-              id="alias-name"
-              value={draft.alias}
-              onChange={(v) => update("alias", v)}
-              disabled={draft.editingOf !== undefined}
-            />
-          </FormField>
-          <FormField id="alias-provider" label="Provider">
+          <FormField id="model-provider" label="Provider">
             <Select
-              id="alias-provider"
+              id="model-provider"
               value={draft.providerId}
               options={[
                 { value: "", label: "Select a provider…" },
@@ -242,7 +219,7 @@ export const RoutingPage = (): ReactElement => {
             onChange={(v) => update("providerModel", v)}
           />
           <Button onClick={() => void submitDraft()} disabled={draftIncomplete}>
-            Save alias
+            Save model
           </Button>
           <Button variant="secondary" onClick={() => setDraft(undefined)}>
             Cancel

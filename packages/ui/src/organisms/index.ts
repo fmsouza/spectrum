@@ -1,5 +1,5 @@
 export * from "./ProviderList"
-export * from "./AliasTable"
+export * from "./ModelTable"
 export * from "./HarnessForm"
 export * from "./SessionTable"
 export * from "./SessionList"

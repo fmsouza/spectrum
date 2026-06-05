@@ -147,7 +147,6 @@ describe("createDirHarnessFileSource (real)", () => {
       command: "claude",
       apiFormat: "anthropic",
       envTemplate: { ANTHROPIC_BASE_URL: "{{baseUrl}}" },
-      defaultAlias: "default",
       description: "an integration test harness",
       builtIn: false,
     }) as unknown as HarnessDefinition

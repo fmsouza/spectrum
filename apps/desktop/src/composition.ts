@@ -393,8 +393,8 @@ export const createAppContext = (
 
   /**
    * Adapt the CLI/GUI's simplified `{ host, port, proxyKey, config }` start request into the real
-   * `startProxy` options: build the alias router from the live `config`, and supply the already-wired
-   * `factory` + `gateway` + the alias list. SECURITY: `host` comes straight from the caller (always
+   * `startProxy` options: build the model router from the live `config`, and supply the already-wired
+   * `factory` + `gateway` + the model list. SECURITY: `host` comes straight from the caller (always
    * `config.settings.proxyHost` = loopback) — never `0.0.0.0`. This is a thin adapter, not branching
    * logic, so the composition root stays effectively flat.
    */
@@ -411,7 +411,7 @@ export const createAppContext = (
       router: createRouter(opts.config),
       factory,
       gateway,
-      listAliases: () => opts.config.aliases.map((a) => String(a.alias)),
+      listModels: () => opts.config.models.map((m) => String(m.id)),
     })
 
   // Native folder picker — behind a LAZY dynamic import so bun test never loads native FFI.

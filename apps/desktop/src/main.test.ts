@@ -12,7 +12,7 @@ const fakeFactory = (() =>
         value: {
           version: 2,
           providers: [],
-          aliases: [],
+          models: [],
           settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
         },
       }),
@@ -82,7 +82,7 @@ describe("buildRealDeps", () => {
             value: {
               version: 2,
               providers: [],
-              aliases: [],
+              models: [],
               settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
             },
           }),
@@ -138,7 +138,7 @@ describe("buildRealDeps", () => {
             value: {
               version: 2,
               providers: [],
-              aliases: [],
+              models: [],
               settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
             },
           }),

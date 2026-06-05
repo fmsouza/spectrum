@@ -15,9 +15,9 @@ const seeded = () => ({
       models: [],
     },
   ],
-  aliases: [
+  models: [
     {
-      alias: "fast" as never,
+      id: "mdl_fast" as never,
       providerId: "p_openai" as never,
       providerModel: "gpt-4o-mini",
     },
@@ -55,19 +55,19 @@ describe("remove provider", () => {
   })
 })
 
-describe("remove alias", () => {
-  it("drops the matching alias and saves the config", async () => {
+describe("remove model", () => {
+  it("drops the matching model by id and saves the config", async () => {
     const deps = makeFakeDeps({ initialConfig: seeded() })
-    const result = await runCli(deps)(["remove", "alias", "fast"])
+    const result = await runCli(deps)(["remove", "model", "mdl_fast"])
     expect(result).toEqual({ ok: true, value: undefined })
     const loaded = await deps.config.load()
-    expect(loaded.ok && loaded.value.aliases).toEqual([])
+    expect(loaded.ok && loaded.value.models).toEqual([])
   })
 
-  it("returns a failed error when the alias name does not exist", async () => {
+  it("returns a failed error when the model id does not exist", async () => {
     const result = await runCli(makeFakeDeps({ initialConfig: seeded() }))([
       "remove",
-      "alias",
+      "model",
       "nope",
     ])
     expect(result.ok).toBe(false)

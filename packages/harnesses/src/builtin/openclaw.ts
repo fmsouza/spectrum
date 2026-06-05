@@ -1,8 +1,4 @@
-import {
-  AliasNameSchema,
-  type HarnessDefinition,
-  HarnessIdSchema,
-} from "@launchkit/types"
+import { type HarnessDefinition, HarnessIdSchema } from "@launchkit/types"
 
 export const openclaw: HarnessDefinition = {
   id: HarnessIdSchema.parse("openclaw"),
@@ -14,6 +10,5 @@ export const openclaw: HarnessDefinition = {
     ANTHROPIC_API_KEY: "{{proxyKey}}",
     ANTHROPIC_MODEL: "{{model}}",
   },
-  defaultAlias: AliasNameSchema.parse("default"),
   builtIn: true,
 } satisfies HarnessDefinition

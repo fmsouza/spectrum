@@ -1,8 +1,4 @@
-import {
-  AliasNameSchema,
-  type HarnessDefinition,
-  HarnessIdSchema,
-} from "@launchkit/types"
+import { type HarnessDefinition, HarnessIdSchema } from "@launchkit/types"
 
 export const codex: HarnessDefinition = {
   id: HarnessIdSchema.parse("codex"),
@@ -14,6 +10,5 @@ export const codex: HarnessDefinition = {
     OPENAI_API_KEY: "{{proxyKey}}",
     OPENAI_MODEL: "{{model}}",
   },
-  defaultAlias: AliasNameSchema.parse("default"),
   builtIn: true,
 } satisfies HarnessDefinition

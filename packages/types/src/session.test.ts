@@ -4,7 +4,7 @@ import { SessionSchema } from "./session"
 const open = {
   id: "s_1",
   harnessId: "claude",
-  alias: "default",
+  modelId: "mdl_default",
   startedAt: "2026-05-23T10:00:00.000Z",
 }
 
@@ -13,7 +13,7 @@ describe("SessionSchema", () => {
     const parsed = SessionSchema.parse(open)
     expect(parsed.id).toBe<string>("s_1")
     expect(parsed.harnessId).toBe<string>("claude")
-    expect(parsed.alias).toBe<string>("default")
+    expect(parsed.modelId).toBe<string>("mdl_default")
     expect(parsed.startedAt).toBe("2026-05-23T10:00:00.000Z")
   })
   it("parses a closed session with endedAt and exitCode", () => {

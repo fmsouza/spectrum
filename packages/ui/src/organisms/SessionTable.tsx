@@ -31,7 +31,7 @@ export const SessionTable = ({
         <thead>
           <tr>
             <th>Harness</th>
-            <th>Alias</th>
+            <th>Model</th>
             <th>Started</th>
             <th>Status</th>
           </tr>
@@ -40,7 +40,7 @@ export const SessionTable = ({
           {visible.map((session) => (
             <tr key={session.id}>
               <td>{session.harnessId}</td>
-              <td>{session.alias}</td>
+              <td>{session.modelId ?? "default"}</td>
               <td>{session.startedAt}</td>
               <td>
                 {session.endedAt === undefined ? (

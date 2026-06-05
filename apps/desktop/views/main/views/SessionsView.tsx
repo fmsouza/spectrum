@@ -54,7 +54,7 @@ const SessionsMaster = ({
     recent={recent}
     labelFor={(s: Session) => ({
       harnessName: String(s.harnessId),
-      model: String(s.alias),
+      model: s.modelId !== undefined ? String(s.modelId) : "default",
     })}
     {...(selectedSessionId === undefined
       ? {}

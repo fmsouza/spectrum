@@ -1,10 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { type Config, defaultConfig } from "@launchkit/config"
-import {
-  AliasNameSchema,
-  type HarnessDefinition,
-  HarnessIdSchema,
-} from "@launchkit/types"
+import { type HarnessDefinition, HarnessIdSchema } from "@launchkit/types"
 import { runCli } from "./run"
 import { makeFakeDeps } from "./test-support"
 import { createMemoryWriter } from "./writer"
@@ -15,7 +11,7 @@ const harness: HarnessDefinition = {
   command: "claude",
   apiFormat: "anthropic",
   envTemplate: { ANTHROPIC_BASE_URL: "{{proxyUrl}}" },
-  defaultAlias: AliasNameSchema.parse("default"),
+  builtIn: true,
 }
 
 const configWith = (): Config => ({
@@ -30,9 +26,9 @@ const configWith = (): Config => ({
       models: ["gpt-4o"],
     },
   ],
-  aliases: [
+  models: [
     {
-      alias: "fast" as never,
+      id: "mdl_fast" as never,
       providerId: "p_openai" as never,
       providerModel: "gpt-4o-mini",
     },
@@ -73,14 +69,15 @@ describe("list", () => {
     expect(text).not.toContain("apiKey")
   })
 
-  it("prints each alias mapping when 'list aliases' is run", async () => {
+  it("prints each model route when 'list models' is run", async () => {
     const out = createMemoryWriter()
     const result = await runCli(
       makeFakeDeps({ out, initialConfig: configWith() }),
-    )(["list", "aliases"])
+    )(["list", "models"])
     expect(result).toEqual({ ok: true, value: undefined })
     const text = out.lines.join("\n")
-    expect(text).toContain("fast")
+    expect(text).toContain("mdl_fast")
+    expect(text).toContain("p_openai")
     expect(text).toContain("gpt-4o-mini")
   })
 

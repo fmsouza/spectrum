@@ -45,7 +45,7 @@ const freshConfig = async (): Promise<{
         models: ["gpt-4o"],
       },
     ],
-    aliases: [{ alias: "default", providerId: "p1", providerModel: "gpt-4o" }],
+    models: [{ id: "mdl_default", providerId: "p1", providerModel: "gpt-4o" }],
     settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
   } as Config
   await writeFile(path, exportConfig(config), "utf8")
@@ -125,7 +125,7 @@ describe("LaunchKit end-to-end", () => {
       gateway: createScriptedGateway([
         { type: "finish", finishReason: "stop" },
       ]),
-      listAliases: () => loaded.value.aliases.map((a) => String(a.alias)),
+      listModels: () => loaded.value.models.map((m) => String(m.id)),
     })
     stopProxy = running.stop
 

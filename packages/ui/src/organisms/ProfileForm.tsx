@@ -1,8 +1,8 @@
 import type {
-  AliasName,
   HarnessDefinition,
   HarnessId,
-  ModelAlias,
+  ModelId,
+  ModelRoute,
 } from "@launchkit/types"
 import { useState } from "react"
 import type { ReactElement } from "react"
@@ -14,14 +14,15 @@ import { FormField } from "../molecules/FormField"
 export type ProfileFormValues = {
   readonly name: string
   readonly harnessId: HarnessId
-  readonly alias: AliasName
+  readonly modelId?: ModelId
   readonly env: Record<string, string>
 }
 
 export type ProfileFormProps = {
   readonly initialValues: ProfileFormValues
   readonly harnesses: readonly HarnessDefinition[]
-  readonly aliases: readonly ModelAlias[]
+  readonly models: readonly ModelRoute[]
+  readonly providerNames?: Readonly<Record<string, string>>
   readonly onSubmit: (values: ProfileFormValues) => void
   readonly onCancel: () => void
 }
@@ -40,7 +41,8 @@ export type ProfileFormProps = {
 export const ProfileForm = ({
   initialValues,
   harnesses,
-  aliases,
+  models,
+  providerNames,
   onSubmit,
   onCancel,
 }: ProfileFormProps): ReactElement => {
@@ -50,13 +52,26 @@ export const ProfileForm = ({
     value: ProfileFormValues[K],
   ): void => setValues((prev) => ({ ...prev, [key]: value }))
 
+  // exactOptionalPropertyTypes forbids `modelId: undefined`; a "" selection must
+  // OMIT the key rather than set it, so this field uses a dedicated setter.
+  const setModel = (v: string): void =>
+    setValues((prev) => {
+      const { modelId: _drop, ...rest } = prev
+      return v === "" ? rest : { ...rest, modelId: v as ModelId }
+    })
+
   const submit = (): void => {
     if (values.name.trim() === "") return
     onSubmit(values)
   }
 
   const harnessOptions = harnesses.map((h) => ({ value: h.id, label: h.name }))
-  const aliasOptions = aliases.map((a) => ({ value: a.alias, label: a.alias }))
+  const modelLabel = (m: ModelRoute): string =>
+    `${providerNames?.[String(m.providerId)] ?? String(m.providerId)} / ${m.providerModel}`
+  const modelOptions = [
+    { value: "", label: "default" },
+    ...models.map((m) => ({ value: String(m.id), label: modelLabel(m) })),
+  ]
 
   return (
     <form
@@ -80,12 +95,12 @@ export const ProfileForm = ({
           onChange={(v) => update("harnessId", v as HarnessId)}
         />
       </FormField>
-      <FormField id="profile-alias" label="Alias">
+      <FormField id="profile-model" label="Model">
         <Select
-          id="profile-alias"
-          value={values.alias}
-          options={aliasOptions}
-          onChange={(v) => update("alias", v as AliasName)}
+          id="profile-model"
+          value={values.modelId === undefined ? "" : String(values.modelId)}
+          options={modelOptions}
+          onChange={setModel}
         />
       </FormField>
       <Button onClick={() => submit()}>Save</Button>

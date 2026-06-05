@@ -27,7 +27,7 @@ export { createRecordingProcessSpawner } from "./process-spawner"
 export type { HarnessRegistry } from "./registry"
 export { createRegistry } from "./registry"
 
-export type { LaunchParams, ResolvedHarnessLaunch } from "./launch"
+export type { LaunchParams, LaunchRoute, ResolvedHarnessLaunch } from "./launch"
 export { launchHarness, resolveHarnessLaunch } from "./launch"
 
 export {

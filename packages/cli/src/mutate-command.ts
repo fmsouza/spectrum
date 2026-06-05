@@ -1,7 +1,7 @@
 import type { Config } from "@launchkit/config"
 import {
-  type ModelAlias,
-  ModelAliasSchema,
+  type ModelRoute,
+  ModelRouteSchema,
   type Profile,
   ProfileSchema,
   type Provider,
@@ -114,29 +114,26 @@ const addProvider = async (
   })
 }
 
-const addAlias = async (
+const addModel = async (
   deps: CliDeps,
   config: Config,
   flags: Readonly<Record<string, string | boolean>>,
 ): Promise<Result<void, CliError>> => {
-  const name = requireFlag(flags, "name")
-  if (isErr(name)) return name
   const provider = requireFlag(flags, "provider")
   if (isErr(provider)) return provider
   const model = requireFlag(flags, "model")
   if (isErr(model)) return model
 
-  const candidate = ModelAliasSchema.safeParse({
-    alias: name.value,
+  const candidate = ModelRouteSchema.safeParse({
+    id: `mdl_${crypto.randomUUID()}`,
     providerId: provider.value,
     providerModel: model.value,
   })
   if (!candidate.success) {
     return err({ kind: "usage", detail: candidate.error.message })
   }
-  const alias: ModelAlias = candidate.data
-
-  return saveOrFail(deps, { ...config, aliases: [...config.aliases, alias] })
+  const route: ModelRoute = candidate.data
+  return saveOrFail(deps, { ...config, models: [...config.models, route] })
 }
 
 const addProfile = async (
@@ -166,7 +163,7 @@ const addProfile = async (
     id: id.value,
     name: name.value,
     harnessId: harness.value,
-    alias: model.value,
+    modelId: model.value,
     env: splitEnv(flags),
   })
   if (!candidate.success) {
@@ -180,7 +177,7 @@ const addProfile = async (
   })
 }
 
-/** `add provider …` / `add alias …` / `add profile …`. */
+/** `add provider …` / `add model …` / `add profile …`. */
 export const add = async (
   deps: CliDeps,
   rest: readonly string[],
@@ -194,12 +191,12 @@ export const add = async (
   switch (target) {
     case "provider":
       return addProvider(deps, loaded.value, flags)
-    case "alias":
-      return addAlias(deps, loaded.value, flags)
+    case "model":
+      return addModel(deps, loaded.value, flags)
     case "profile":
       return addProfile(deps, loaded.value, flags)
     default:
-      return err({ kind: "usage", detail: "add <provider|alias|profile> --…" })
+      return err({ kind: "usage", detail: "add <provider|model|profile> --…" })
   }
 }
 
@@ -217,18 +214,18 @@ const removeProvider = async (
   return saveOrFail(deps, { ...config, providers: next })
 }
 
-const removeAlias = async (
+const removeModel = async (
   deps: CliDeps,
   config: Config,
-  name: string | undefined,
+  id: string | undefined,
 ): Promise<Result<void, CliError>> => {
-  if (name === undefined)
-    return err({ kind: "usage", detail: "remove alias <name>" })
-  const next = config.aliases.filter((a) => a.alias !== name)
-  if (next.length === config.aliases.length) {
-    return err({ kind: "failed", detail: `unknown alias: ${name}` })
+  if (id === undefined)
+    return err({ kind: "usage", detail: "remove model <id>" })
+  const next = config.models.filter((m) => m.id !== id)
+  if (next.length === config.models.length) {
+    return err({ kind: "failed", detail: `unknown model: ${id}` })
   }
-  return saveOrFail(deps, { ...config, aliases: next })
+  return saveOrFail(deps, { ...config, models: next })
 }
 
 const removeProfile = async (
@@ -245,7 +242,7 @@ const removeProfile = async (
   return saveOrFail(deps, { ...config, profiles: next })
 }
 
-/** `remove provider <id>` / `remove alias <name>` / `remove profile <id>`. */
+/** `remove provider <id>` / `remove model <id>` / `remove profile <id>`. */
 export const remove = async (
   deps: CliDeps,
   rest: readonly string[],
@@ -258,14 +255,14 @@ export const remove = async (
   switch (target) {
     case "provider":
       return removeProvider(deps, loaded.value, rest[1])
-    case "alias":
-      return removeAlias(deps, loaded.value, rest[1])
+    case "model":
+      return removeModel(deps, loaded.value, rest[1])
     case "profile":
       return removeProfile(deps, loaded.value, rest[1])
     default:
       return err({
         kind: "usage",
-        detail: "remove <provider|alias|profile> <id>",
+        detail: "remove <provider|model|profile> <id>",
       })
   }
 }

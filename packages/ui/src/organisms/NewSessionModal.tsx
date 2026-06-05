@@ -1,8 +1,8 @@
 import type {
-  AliasName,
   HarnessDefinition,
   HarnessId,
-  ModelAlias,
+  ModelId,
+  ModelRoute,
   Profile,
 } from "@launchkit/types"
 import { useEffect, useRef, useState } from "react"
@@ -18,7 +18,7 @@ export type NewSessionValues = {
   readonly name: string
   readonly cwd: string
   readonly harnessId: HarnessId
-  readonly alias: AliasName
+  readonly modelId?: ModelId
   readonly env: Record<string, string>
   readonly saveAsProfile?: { readonly name: string }
 }
@@ -27,7 +27,8 @@ export type NewSessionModalProps = {
   readonly open: boolean
   readonly profiles: readonly Profile[]
   readonly harnesses: readonly HarnessDefinition[]
-  readonly aliases: readonly ModelAlias[]
+  readonly models: readonly ModelRoute[]
+  readonly providerNames?: Readonly<Record<string, string>>
   readonly folder: string
   readonly onBrowse: () => void
   readonly onSubmit: (values: NewSessionValues) => void
@@ -40,7 +41,7 @@ type FormState = {
   readonly cwd: string
   readonly profileId: string
   readonly harnessId: HarnessId
-  readonly alias: AliasName
+  readonly modelId: ModelId | ""
   readonly env: Record<string, string>
   readonly save: boolean
   readonly saveName: string
@@ -50,7 +51,8 @@ export const NewSessionModal = ({
   open,
   profiles,
   harnesses,
-  aliases,
+  models,
+  providerNames,
   folder,
   onBrowse,
   onSubmit,
@@ -58,12 +60,11 @@ export const NewSessionModal = ({
   error,
 }: NewSessionModalProps): ReactElement => {
   const firstHarness = (harnesses[0]?.id ?? "") as HarnessId
-  const firstAlias = (aliases[0]?.alias ?? "") as AliasName
   const [state, setState] = useState<FormState>({
     cwd: folder,
     profileId: "",
     harnessId: firstHarness,
-    alias: firstAlias,
+    modelId: "",
     env: {},
     save: false,
     saveName: "",
@@ -82,14 +83,14 @@ export const NewSessionModal = ({
         cwd: folder,
         profileId: "",
         harnessId: firstHarness,
-        alias: firstAlias,
+        modelId: "",
         env: {},
         save: false,
         saveName: "",
       })
     }
     wasOpen.current = open
-  }, [open, folder, firstHarness, firstAlias])
+  }, [open, folder, firstHarness])
 
   const update = <K extends keyof FormState>(
     key: K,
@@ -106,7 +107,7 @@ export const NewSessionModal = ({
       ...prev,
       profileId: id,
       harnessId: profile.harnessId,
-      alias: profile.alias,
+      modelId: profile.modelId ?? "",
       env: profile.env,
     }))
   }
@@ -116,7 +117,7 @@ export const NewSessionModal = ({
       name: "Untitled",
       cwd: state.cwd,
       harnessId: state.harnessId,
-      alias: state.alias,
+      ...(state.modelId !== "" ? { modelId: state.modelId as ModelId } : {}),
       env: state.env,
       ...(state.save ? { saveAsProfile: { name: state.saveName } } : {}),
     }
@@ -128,12 +129,16 @@ export const NewSessionModal = ({
     ...profiles.map((p) => ({ value: p.id, label: p.name })),
   ]
   const harnessOptions = harnesses.map((h) => ({ value: h.id, label: h.name }))
-  const aliasOptions = aliases.map((a) => ({ value: a.alias, label: a.alias }))
+  const modelLabel = (m: ModelRoute): string =>
+    `${providerNames?.[String(m.providerId)] ?? String(m.providerId)} / ${m.providerModel}`
+  const modelOptions = [
+    { value: "", label: "default" },
+    ...models.map((m) => ({ value: String(m.id), label: modelLabel(m) })),
+  ]
 
-  // A session can only launch with both a harness and a routing alias selected.
-  // Without an alias the proxy has nothing to route to, so Launch stays disabled.
-  const canLaunch = state.harnessId !== "" && state.alias !== ""
-  const noAliases = aliases.length === 0
+  // A session can launch as long as a harness is selected. The "default" model
+  // option (no modelId) bypasses the proxy, so Launch is always available.
+  const canLaunch = state.harnessId !== ""
 
   return (
     <Modal title="New session" open={open} onClose={onCancel}>
@@ -167,12 +172,14 @@ export const NewSessionModal = ({
             onChange={(v) => update("harnessId", v as HarnessId)}
           />
         </FormField>
-        <FormField id="session-alias" label="Alias">
+        <FormField id="session-model" label="Model">
           <Select
-            id="session-alias"
-            value={state.alias}
-            options={aliasOptions}
-            onChange={(v) => update("alias", v as AliasName)}
+            id="session-model"
+            value={state.modelId === "" ? "" : String(state.modelId)}
+            options={modelOptions}
+            onChange={(v) =>
+              update("modelId", (v === "" ? "" : v) as FormState["modelId"])
+            }
           />
         </FormField>
         <label>
@@ -191,12 +198,6 @@ export const NewSessionModal = ({
               onChange={(v) => update("saveName", v)}
             />
           </FormField>
-        ) : null}
-        {noAliases ? (
-          <p role="alert">
-            No model alias is configured. Add one under Settings → Routing to
-            start a session.
-          </p>
         ) : null}
         {error === undefined ? null : <p role="alert">{error}</p>}
         <Button disabled={!canLaunch} onClick={() => submit()}>

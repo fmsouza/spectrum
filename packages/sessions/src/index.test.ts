@@ -24,7 +24,10 @@ describe("@launchkit/sessions barrel", () => {
       idGen: createSequentialIdGen(),
     })
     store.init()
-    store.create({ harnessId: "claude" as never, alias: "default" as never })
+    store.create({
+      harnessId: "claude" as never,
+      modelId: "mdl_default" as never,
+    })
     const r = store.query()
     expect(isOk(r) && r.value.length).toBe(1)
   })

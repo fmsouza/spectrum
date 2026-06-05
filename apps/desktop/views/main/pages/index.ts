@@ -1,5 +1,5 @@
 export * from "./GeneralPage"
 export * from "./ProvidersPage"
-export * from "./RoutingPage"
+export * from "./ModelsPage"
 export * from "./HarnessesPage"
 export * from "./ProfilesPage"

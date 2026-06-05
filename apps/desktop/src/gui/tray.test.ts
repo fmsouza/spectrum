@@ -4,7 +4,6 @@ import {
   resolveHarnessLaunch,
 } from "@launchkit/harnesses"
 import {
-  AliasNameSchema,
   type HarnessDefinition,
   HarnessIdSchema,
   type Session,
@@ -25,14 +24,12 @@ const harness: HarnessDefinition = {
     ANTHROPIC_API_KEY: "{{proxyKey}}",
     ANTHROPIC_MODEL: "{{model}}",
   },
-  defaultAlias: AliasNameSchema.parse("default"),
   builtIn: true,
 }
 
 const sampleSession: Session = {
   id: HarnessIdSchema.parse("s_1") as unknown as Session["id"],
   harnessId: harness.id,
-  alias: harness.defaultAlias,
   startedAt: "2026-05-23T10:00:00.000Z",
 }
 
@@ -100,7 +97,7 @@ const makeCtx = (
         ok({
           version: 2,
           providers: [],
-          aliases: [],
+          models: [],
           settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
         }),
       save: async () => ok(undefined),
@@ -160,7 +157,7 @@ describe("mountTray", () => {
     })
   })
 
-  it("opens a terminal session with the resolved env and focuses the window when a Launch item is clicked", async () => {
+  it("opens a DEFAULT (bypass) terminal session and focuses the window when a Launch item is clicked", async () => {
     const { ctx, terminalInputs, sessionInputs } = makeCtx({
       harnesses: [harness],
     })
@@ -171,14 +168,20 @@ describe("mountTray", () => {
     click("launch:claude")
     await flushMicrotasks() // let the detached launchById promises settle
 
-    // Same path as the IPC handler: resolve env then ctx.terminal.launch — the manager owns the session.
+    // Same path as the IPC handler: resolve then ctx.terminal.launch — the manager owns the session.
+    // A tray quick-launch is a DEFAULT launch = bypass the proxy (route kind "direct").
     expect(terminalInputs).toHaveLength(1)
-    expect(terminalInputs[0]).toMatchObject({
-      harnessId: harness.id,
-      alias: harness.defaultAlias,
-      command: "/usr/local/bin/claude",
-      env: { ANTHROPIC_BASE_URL: "http://127.0.0.1:4000" },
-    })
+    const input = terminalInputs[0] as Record<string, unknown> & {
+      env: Record<string, string>
+    }
+    expect(input.harnessId).toBe(harness.id)
+    expect(input.command).toBe("/usr/local/bin/claude")
+    // Bypass: no modelId/alias on the session ...
+    expect("modelId" in input).toBe(false)
+    expect("alias" in input).toBe(false)
+    // ... and no proxy env was rendered.
+    expect("ANTHROPIC_BASE_URL" in input.env).toBe(false)
+    expect("ANTHROPIC_API_KEY" in input.env).toBe(false)
     // The handler must NOT create a session directly (the manager does it).
     expect(sessionInputs).toEqual([])
     // The window is brought forward so the user sees the new terminal tab.

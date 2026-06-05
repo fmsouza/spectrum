@@ -9,7 +9,6 @@ const profile: Profile = {
   id: "pr_1" as Profile["id"],
   name: "Work",
   harnessId: "claude" as Profile["harnessId"],
-  alias: "fast" as Profile["alias"],
   env: {},
 }
 const harness = {
@@ -18,14 +17,14 @@ const harness = {
   command: "claude",
   apiFormat: "anthropic",
   envTemplate: {},
-  defaultAlias: "fast",
   builtIn: true,
 }
-const alias = { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o" }
+const model = { id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }
 const baseStubs = {
   getProfiles: async () => ({ ok: true as const, value: [profile] }),
   getHarnesses: async () => ({ ok: true as const, value: [harness] }),
-  getAliases: async () => ({ ok: true as const, value: [alias] }),
+  getModels: async () => ({ ok: true as const, value: [model] }),
+  getProviders: async () => ({ ok: true as const, value: [] }),
 }
 
 describe("ProfilesPage", () => {

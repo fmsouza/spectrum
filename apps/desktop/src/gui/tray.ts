@@ -31,10 +31,10 @@ export interface TrayActions {
 /**
  * Build the tray menu from the live registry + proxy status, render it through the seam, and route
  * clicks: `open` → openWindow, `quit` → quit, `launch:<id>` → open an embedded terminal session for
- * that harness with its `defaultAlias` — reusing the SAME path as `createIpcHandlers.launchHarness`
- * (`ctx.resolveLaunch(...)` then `ctx.terminal.launch(...)`; the manager owns session creation).
- * Thin by design: all the menu shape lives in the pure `buildTrayMenu`; this only assembles +
- * dispatches.
+ * that harness as a DEFAULT launch (= bypass the proxy) — reusing the SAME path as
+ * `createIpcHandlers.launchHarness` (`ctx.resolveLaunch(...)` then `ctx.terminal.launch(...)`; the
+ * manager owns session creation). Thin by design: all the menu shape lives in the pure
+ * `buildTrayMenu`; this only assembles + dispatches.
  */
 export const mountTray = async (
   ctx: AppContext,
@@ -49,9 +49,9 @@ export const mountTray = async (
 
   /**
    * Launch a harness by id via the shared embedded-terminal path (mirrors the IPC handler):
-   * resolve the command + render the proxy env, then `ctx.terminal.launch` (which creates the
-   * Session itself — so we do NOT call `ctx.sessions.create`). On success, bring the window forward
-   * so the user sees the new terminal tab; never block on exit.
+   * resolve the command (DEFAULT launch = bypass, so no proxy env is rendered), then
+   * `ctx.terminal.launch` (which creates the Session itself — so we do NOT call `ctx.sessions.create`).
+   * On success, bring the window forward so the user sees the new terminal tab; never block on exit.
    */
   const launchById = async (harnessId: string): Promise<void> => {
     const list = await ctx.registry.list()
@@ -59,23 +59,12 @@ export const mountTray = async (
     const harness = list.value.find((h) => String(h.id) === harnessId)
     if (harness === undefined) return
 
-    const loaded = await ctx.config.load()
-    if (!isOk(loaded)) return
-    const { proxyHost, proxyPort } = loaded.value.settings
-    const proxyUrl = `http://${proxyHost}:${proxyPort}`
-    const proxyKey = (await ctx.runtime.readProxyKey()) ?? ctx.genProxyKey()
-
-    const resolved = ctx.resolveLaunch({
-      harness,
-      proxyUrl,
-      proxyKey,
-      model: harness.defaultAlias,
-    })
+    // A tray quick-launch is a DEFAULT launch: bypass the proxy (route kind "direct").
+    const resolved = ctx.resolveLaunch({ harness, route: { kind: "direct" } })
     if (!isOk(resolved)) return
 
     const opened = ctx.terminal.launch({
       harnessId: harness.id,
-      alias: harness.defaultAlias,
       command: resolved.value.command,
       args: resolved.value.args,
       env: resolved.value.env,

@@ -9,9 +9,10 @@ import {
 } from "@launchkit/ui"
 import type { ProfileFormValues } from "@launchkit/ui"
 import { type ReactElement, useState } from "react"
-import { useAliases } from "../hooks/useAliases"
 import { useHarnesses } from "../hooks/useHarnesses"
+import { useModels } from "../hooks/useModels"
 import { useProfiles } from "../hooks/useProfiles"
+import { useProviders } from "../hooks/useProviders"
 
 /** Modal editor state: closed, adding (no id), or editing an existing profile. */
 type Editor =
@@ -22,30 +23,41 @@ type Editor =
 export const ProfilesPage = (): ReactElement => {
   const { data, loading, error, add, update, remove } = useProfiles()
   const harnesses = useHarnesses()
-  const aliases = useAliases()
+  const models = useModels()
+  const providers = useProviders()
   const [editor, setEditor] = useState<Editor>({ kind: "closed" })
 
   const harnessList = harnesses.data ?? []
-  const aliasList = aliases.data ?? []
+  const modelList = models.data ?? []
+
+  const providerNames: Record<string, string> = {}
+  for (const p of providers.data ?? []) providerNames[p.id] = p.name
 
   const initialValues: ProfileFormValues =
     editor.kind === "edit"
       ? {
           name: editor.profile.name,
           harnessId: editor.profile.harnessId,
-          alias: editor.profile.alias,
+          ...(editor.profile.modelId !== undefined
+            ? { modelId: editor.profile.modelId }
+            : {}),
           env: editor.profile.env,
         }
       : {
           name: "",
           harnessId: harnessList[0]?.id ?? ("" as Profile["harnessId"]),
-          alias: aliasList[0]?.alias ?? ("" as Profile["alias"]),
           env: {},
         }
 
   const onSubmit = async (v: ProfileFormValues): Promise<void> => {
     if (editor.kind === "edit") {
-      await update({ ...editor.profile, ...v })
+      await update({
+        id: editor.profile.id,
+        name: v.name,
+        harnessId: v.harnessId,
+        env: v.env,
+        ...(v.modelId !== undefined ? { modelId: v.modelId } : {}),
+      })
     } else {
       await add(v)
     }
@@ -80,7 +92,8 @@ export const ProfilesPage = (): ReactElement => {
           key={editor.kind === "edit" ? editor.profile.id : "add"}
           initialValues={initialValues}
           harnesses={harnessList}
-          aliases={aliasList}
+          models={modelList}
+          providerNames={providerNames}
           onSubmit={(v) => void onSubmit(v)}
           onCancel={() => setEditor({ kind: "closed" })}
         />

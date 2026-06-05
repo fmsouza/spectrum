@@ -1,18 +1,24 @@
 import { describe, expect, it } from "bun:test"
 import type {
-  AliasName,
   HarnessId,
+  ModelId,
   Profile,
   ProfileId,
   ProviderId,
   SessionId,
 } from "@launchkit/types"
 import {
+  AddModelParamsSchema,
+  AddModelResultSchema,
   AddProfileParamsSchema,
   AddProfileResultSchema,
   AddProviderParamsSchema,
+  DeleteModelParamsSchema,
+  DeleteModelResultSchema,
   DeleteProfileParamsSchema,
   DeleteProfileResultSchema,
+  GetModelsParamsSchema,
+  GetModelsResultSchema,
   GetProfilesParamsSchema,
   GetProfilesResultSchema,
   GetSessionScrollbackParamsSchema,
@@ -24,6 +30,8 @@ import {
   PickFolderParamsSchema,
   PickFolderResultSchema,
   SetProviderSecretParamsSchema,
+  UpdateModelParamsSchema,
+  UpdateModelResultSchema,
   UpdateProfileParamsSchema,
   UpdateProfileResultSchema,
 } from "./methods"
@@ -32,15 +40,21 @@ const sampleProfile: Profile = {
   id: "prof_default" as ProfileId,
   name: "Default",
   harnessId: "claude" as Profile["harnessId"],
-  alias: "default" as Profile["alias"],
+  modelId: "mdl_default" as ModelId,
   env: { ANTHROPIC_MODEL: "sonnet" },
 }
 
 const profileInput = {
   name: "Default",
   harnessId: "claude" as Profile["harnessId"],
-  alias: "default" as Profile["alias"],
+  modelId: "mdl_default" as ModelId,
   env: { ANTHROPIC_MODEL: "sonnet" },
+}
+
+const sampleModelRoute = {
+  id: "mdl_x" as ModelId,
+  providerId: "openai" as ProviderId,
+  providerModel: "gpt-4o",
 }
 
 describe("AddProviderParamsSchema", () => {
@@ -87,32 +101,151 @@ describe("SetProviderSecretParamsSchema", () => {
   })
 })
 
+describe("GetModelsResultSchema", () => {
+  it("parses an array of model routes", () => {
+    expect(GetModelsResultSchema.parse([sampleModelRoute])).toEqual([
+      sampleModelRoute,
+    ])
+  })
+  it("rejects a non-array result", () => {
+    expect(GetModelsResultSchema.safeParse({}).success).toBe(false)
+  })
+})
+
+describe("GetModelsParamsSchema", () => {
+  it("parses undefined params", () => {
+    expect(GetModelsParamsSchema.parse(undefined)).toBeUndefined()
+  })
+})
+
+describe("AddModelParamsSchema", () => {
+  it("AddModelParamsSchema accepts providerId + providerModel (server mints id)", () => {
+    expect(
+      AddModelParamsSchema.safeParse({
+        providerId: "openai",
+        providerModel: "gpt-4o",
+      }).success,
+    ).toBe(true)
+  })
+  it("rejects an input that supplies an id (server mints it)", () => {
+    expect(
+      AddModelParamsSchema.safeParse({
+        id: "mdl_x",
+        providerId: "openai",
+        providerModel: "gpt-4o",
+      }).success,
+    ).toBe(false)
+  })
+  it("rejects an empty providerModel", () => {
+    expect(
+      AddModelParamsSchema.safeParse({
+        providerId: "openai",
+        providerModel: "",
+      }).success,
+    ).toBe(false)
+  })
+})
+
+describe("AddModelResultSchema", () => {
+  it("parses a full model route carrying the minted id", () => {
+    expect(AddModelResultSchema.parse(sampleModelRoute)).toEqual(
+      sampleModelRoute,
+    )
+  })
+})
+
+describe("UpdateModelParamsSchema", () => {
+  it("keys by id and carries the new provider + model (sans id)", () => {
+    const params = {
+      id: "mdl_x" as ModelId,
+      input: { providerId: "openai" as ProviderId, providerModel: "gpt-4o" },
+    }
+    expect(UpdateModelParamsSchema.parse(params)).toEqual(params)
+  })
+  it("rejects an input that smuggles an id", () => {
+    expect(
+      UpdateModelParamsSchema.safeParse({
+        id: "mdl_x",
+        input: {
+          id: "mdl_y",
+          providerId: "openai",
+          providerModel: "gpt-4o",
+        },
+      }).success,
+    ).toBe(false)
+  })
+  it("rejects params missing the id", () => {
+    expect(
+      UpdateModelParamsSchema.safeParse({
+        input: { providerId: "openai", providerModel: "gpt-4o" },
+      }).success,
+    ).toBe(false)
+  })
+})
+
+describe("UpdateModelResultSchema", () => {
+  it("parses the updated model route", () => {
+    expect(UpdateModelResultSchema.parse(sampleModelRoute)).toEqual(
+      sampleModelRoute,
+    )
+  })
+})
+
+describe("DeleteModelParamsSchema", () => {
+  it("DeleteModelParamsSchema requires a model id", () => {
+    expect(DeleteModelParamsSchema.safeParse({ id: "mdl_x" }).success).toBe(
+      true,
+    )
+    expect(DeleteModelParamsSchema.safeParse({}).success).toBe(false)
+  })
+  it("rejects extra keys", () => {
+    expect(
+      DeleteModelParamsSchema.safeParse({ id: "mdl_x", extra: 1 }).success,
+    ).toBe(false)
+  })
+})
+
+describe("DeleteModelResultSchema", () => {
+  it("parses null (void) as the result", () => {
+    expect(DeleteModelResultSchema.parse(null)).toBeNull()
+  })
+})
+
 describe("LaunchHarnessParamsSchema", () => {
-  it("parses with an optional alias omitted", () => {
+  it("LaunchHarnessParamsSchema accepts an optional modelId", () => {
+    expect(LaunchHarnessParamsSchema.safeParse({ id: "claude" }).success).toBe(
+      true,
+    )
+    expect(
+      LaunchHarnessParamsSchema.safeParse({ id: "claude", modelId: "mdl_x" })
+        .success,
+    ).toBe(true)
+  })
+  it("parses with an optional modelId omitted", () => {
     expect(
       LaunchHarnessParamsSchema.parse({ id: "claude" as HarnessId }),
     ).toEqual({ id: "claude" as HarnessId })
   })
-  it("parses with an alias provided", () => {
+  it("parses with a modelId provided", () => {
     expect(
       LaunchHarnessParamsSchema.parse({
         id: "claude" as HarnessId,
-        alias: "fast" as AliasName,
+        modelId: "mdl_x" as ModelId,
       }),
-    ).toEqual({ id: "claude" as HarnessId, alias: "fast" as AliasName })
+    ).toEqual({ id: "claude" as HarnessId, modelId: "mdl_x" as ModelId })
   })
   it("parses launch params with name, cwd, and env", () => {
     expect(
       LaunchHarnessParamsSchema.parse({
         id: "claude" as HarnessId,
-        alias: "fast" as AliasName,
+        modelId: "mdl_x" as ModelId,
         name: "My run",
         cwd: "/Users/fred/projects/app",
         env: { ANTHROPIC_MODEL: "sonnet" },
       }),
     ).toEqual({
       id: "claude" as HarnessId,
-      alias: "fast" as AliasName,
+      modelId: "mdl_x" as ModelId,
       name: "My run",
       cwd: "/Users/fred/projects/app",
       env: { ANTHROPIC_MODEL: "sonnet" },
@@ -213,7 +346,7 @@ describe("UpdateProfileParamsSchema", () => {
       UpdateProfileParamsSchema.safeParse({
         name: "Default",
         harnessId: "claude" as Profile["harnessId"],
-        alias: "default" as Profile["alias"],
+        modelId: "mdl_default" as ModelId,
         env: {},
       }).success,
     ).toBe(false)
@@ -314,10 +447,10 @@ describe("IpcMethodSchemas", () => {
       "deleteProvider",
       "testProvider",
       "setProviderSecret",
-      "getAliases",
-      "addAlias",
-      "updateAlias",
-      "deleteAlias",
+      "getModels",
+      "addModel",
+      "updateModel",
+      "deleteModel",
       "getHarnesses",
       "addHarness",
       "updateHarness",

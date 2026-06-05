@@ -1,6 +1,6 @@
 # @launchkit/sessions
 
-**Responsibility:** Session history — persist each launched harness instance (harness, alias, timestamps, exit code) in SQLite.
+**Responsibility:** Session history — persist each launched harness instance (harness, optional modelId, timestamps, exit code) in SQLite.
 
 **Public API (barrel `src/index.ts`):** `SessionStore` interface + `createSessionStore({ db, clock, idGen })`; the `Database` effect interface + `createInMemoryDatabase()` (recording fake) + `createBunSqliteDatabase(path)` (real adapter); `SessionInput`, `SessionFilter`, `SessionError`.
 
