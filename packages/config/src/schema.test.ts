@@ -10,7 +10,7 @@ const validProfile = {
   id: "pr_default",
   name: "Default",
   harnessId: "claude",
-  alias: "fast",
+  modelId: "fast",
   env: {},
 }
 
@@ -41,12 +41,12 @@ describe("SettingsSchema", () => {
 })
 
 describe("ConfigSchema", () => {
-  it("parses a valid config with one provider, one alias, profiles, and settings", () => {
+  it("parses a valid config with one provider, one model, profiles, and settings", () => {
     const config = {
       version: CURRENT_CONFIG_VERSION,
       providers: [validProvider],
-      aliases: [
-        { alias: "fast", providerId: "p_openai", providerModel: "gpt-4o-mini" },
+      models: [
+        { id: "fast", providerId: "p_openai", providerModel: "gpt-4o-mini" },
       ],
       profiles: [validProfile],
       settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
@@ -59,7 +59,7 @@ describe("ConfigSchema", () => {
       ConfigSchema.safeParse({
         version: CURRENT_CONFIG_VERSION,
         providers: [],
-        aliases: [],
+        models: [],
         profiles: "nope",
         settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
       }).success,
@@ -71,7 +71,7 @@ describe("ConfigSchema", () => {
       ConfigSchema.safeParse({
         version: CURRENT_CONFIG_VERSION,
         providers: [],
-        aliases: [],
+        models: [],
         profiles: [],
         settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
       }).success,
@@ -83,7 +83,8 @@ describe("ConfigSchema", () => {
       providers: [
         { ...validProvider, secrets: { apiKey: "sk-raw-inline-key" } },
       ],
-      aliases: [],
+      models: [],
+      profiles: [],
       settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
     }
     expect(ConfigSchema.safeParse(config).success).toBe(false)
@@ -93,7 +94,8 @@ describe("ConfigSchema", () => {
       ConfigSchema.safeParse({
         version: CURRENT_CONFIG_VERSION,
         providers: [],
-        aliases: [],
+        models: [],
+        profiles: [],
         settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
         extra: 1,
       }).success,
@@ -102,11 +104,11 @@ describe("ConfigSchema", () => {
 })
 
 describe("defaultConfig", () => {
-  it("returns the current version, empty providers/aliases/profiles, and loopback defaults", () => {
+  it("returns the current version, empty providers/models/profiles, and loopback defaults", () => {
     expect(defaultConfig()).toEqual({
       version: CURRENT_CONFIG_VERSION,
       providers: [],
-      aliases: [],
+      models: [],
       profiles: [],
       settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
     })
@@ -114,7 +116,7 @@ describe("defaultConfig", () => {
   it("produces a config that satisfies ConfigSchema", () => {
     expect(ConfigSchema.safeParse(defaultConfig()).success).toBe(true)
   })
-  it("uses the bumped CURRENT_CONFIG_VERSION of 3", () => {
-    expect(CURRENT_CONFIG_VERSION).toBe(3)
+  it("uses the bumped CURRENT_CONFIG_VERSION of 4", () => {
+    expect(CURRENT_CONFIG_VERSION).toBe(4)
   })
 })

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import { isOk } from "@launchkit/utils"
 import { migrations, runMigrations } from "./migrations"
 import { CURRENT_CONFIG_VERSION } from "./schema"
 
@@ -19,12 +20,14 @@ const v1Config = {
 }
 
 describe("migrations", () => {
-  it("ships ordered v1->v2 and v2->v3 migrations", () => {
-    expect(migrations).toHaveLength(2)
+  it("ships ordered v1->v2, v2->v3, and v3->v4 migrations", () => {
+    expect(migrations).toHaveLength(3)
     expect(migrations[0]?.from).toBe(1)
     expect(migrations[0]?.to).toBe(2)
     expect(migrations[1]?.from).toBe(2)
     expect(migrations[1]?.to).toBe(3)
+    expect(migrations[2]?.from).toBe(3)
+    expect(migrations[2]?.to).toBe(4)
   })
 })
 
@@ -45,7 +48,7 @@ describe("runMigrations", () => {
     const current = {
       version: CURRENT_CONFIG_VERSION,
       providers: [],
-      aliases: [],
+      models: [],
       profiles: [],
       settings: { proxyPort: 4000, proxyHost: "127.0.0.1" as const },
     }
@@ -90,7 +93,7 @@ describe("runMigrations", () => {
         id: "pr_default",
         name: "Default",
         harnessId: "claude",
-        alias: "fast",
+        modelId: "fast",
         env: {},
       },
     ])
@@ -128,5 +131,44 @@ describe("runMigrations", () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error.kind).toBe("migration-failed")
+  })
+})
+
+describe("v3 → v4 (aliases → models)", () => {
+  it("converts aliases to models keyed by the old alias name and rewrites profile refs", () => {
+    const raw = {
+      version: 3,
+      providers: [],
+      aliases: [
+        { alias: "fast", providerId: "openai", providerModel: "gpt-4o-mini" },
+      ],
+      profiles: [
+        { id: "p1", name: "Fast", harnessId: "claude", alias: "fast", env: {} },
+      ],
+      settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+    }
+    const result = runMigrations(raw)
+    expect(isOk(result)).toBe(true)
+    if (!isOk(result)) return
+    expect(result.value.version).toBe(4)
+    expect(result.value.models).toEqual([
+      { id: "fast", providerId: "openai", providerModel: "gpt-4o-mini" },
+    ])
+    expect(result.value.profiles[0]?.modelId).toBe("fast")
+    expect("aliases" in result.value).toBe(false)
+  })
+
+  it("yields empty models when there are no aliases", () => {
+    const raw = {
+      version: 3,
+      providers: [],
+      aliases: [],
+      profiles: [],
+      settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+    }
+    const result = runMigrations(raw)
+    expect(isOk(result)).toBe(true)
+    if (!isOk(result)) return
+    expect(result.value.models).toEqual([])
   })
 })
