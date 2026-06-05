@@ -16,6 +16,10 @@ describe("uiStore view helpers", () => {
   it("collapses unknown hashes to the sessions view", () => {
     expect(parseView("dashboard")).toEqual({ kind: "sessions" })
   })
+
+  it("maps an empty hash to the sessions view", () => {
+    expect(parseView("")).toEqual({ kind: "sessions" })
+  })
 })
 
 describe("createUiStore", () => {
