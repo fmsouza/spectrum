@@ -14,15 +14,15 @@ describe("createBunSqliteDatabase + SessionStore", () => {
 
     const created = store.create({
       harnessId: "claude" as never,
-      alias: "default" as never,
+      modelId: "mdl_default" as never,
     })
     expect(isOk(created) && created.value).toEqual<
       | false
-      | { id: string; harnessId: string; alias: string; startedAt: string }
+      | { id: string; harnessId: string; modelId: string; startedAt: string }
     >({
       id: "s_1",
       harnessId: "claude",
-      alias: "default",
+      modelId: "mdl_default",
       startedAt: "2026-05-23T10:00:00.000Z",
     })
 
@@ -32,7 +32,7 @@ describe("createBunSqliteDatabase + SessionStore", () => {
       | {
           id: string
           harnessId: string
-          alias: string
+          modelId: string
           startedAt: string
           endedAt: string
           exitCode: number
@@ -40,7 +40,7 @@ describe("createBunSqliteDatabase + SessionStore", () => {
     >({
       id: "s_1",
       harnessId: "claude",
-      alias: "default",
+      modelId: "mdl_default",
       startedAt: "2026-05-23T10:00:00.000Z",
       endedAt: "2026-05-23T10:00:00.000Z",
       exitCode: 0,
@@ -72,8 +72,11 @@ describe("createBunSqliteDatabase + SessionStore", () => {
       idGen: createSequentialIdGen(),
     })
     store.init()
-    store.create({ harnessId: "claude" as never, alias: "default" as never })
-    store.create({ harnessId: "codex" as never, alias: "fast" as never })
+    store.create({
+      harnessId: "claude" as never,
+      modelId: "mdl_default" as never,
+    })
+    store.create({ harnessId: "codex" as never, modelId: "mdl_fast" as never })
     const r = store.query({ harnessId: "codex" as never })
     expect(isOk(r) && r.value.map((s) => s.harnessId)).toEqual<
       false | string[]
@@ -147,6 +150,72 @@ describe("createSessionStore.init column migration against real bun:sqlite", () 
   })
 })
 
+describe("createSessionStore.init alias->modelId rename against real bun:sqlite", () => {
+  // The legacy table shape carried an `alias TEXT NOT NULL` column (no modelId).
+  const LEGACY_CREATE_TABLE = `CREATE TABLE sessions (
+    id TEXT PRIMARY KEY,
+    harnessId TEXT NOT NULL,
+    alias TEXT NOT NULL,
+    startedAt TEXT NOT NULL,
+    endedAt TEXT,
+    exitCode INTEGER
+  )`
+
+  const columnNames = (
+    db: ReturnType<typeof createBunSqliteDatabase>,
+  ): string[] => {
+    const info = db.all("PRAGMA table_info(sessions)", [])
+    if (!isOk(info)) return []
+    return info.value.map((row) => String(row.name))
+  }
+
+  it("renames a legacy alias column to modelId and preserves its value when init() runs", () => {
+    const db = createBunSqliteDatabase(":memory:")
+    expect(isOk(db.exec(LEGACY_CREATE_TABLE))).toBe(true)
+    expect(
+      isOk(
+        db.run(
+          "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
+          ["s_legacy", "claude", "mdl_legacy", "2026-05-23T09:00:00.000Z"],
+        ),
+      ),
+    ).toBe(true)
+
+    const store = createSessionStore({
+      db,
+      clock: createFixedClock(new Date("2026-05-23T10:00:00.000Z")),
+      idGen: createSequentialIdGen(),
+    })
+    expect(isOk(store.init())).toBe(true)
+
+    const cols = columnNames(db)
+    expect(cols).toContain("modelId")
+    expect(cols).not.toContain("alias")
+
+    const r = store.query()
+    expect(isOk(r)).toBe(true)
+    if (!isOk(r)) return
+    expect(r.value).toHaveLength(1)
+    expect(String(r.value[0]?.id)).toBe("s_legacy")
+    expect(String(r.value[0]?.modelId)).toBe("mdl_legacy")
+  })
+
+  it("is idempotent — running init() twice on a renamed legacy table does not error", () => {
+    const db = createBunSqliteDatabase(":memory:")
+    expect(isOk(db.exec(LEGACY_CREATE_TABLE))).toBe(true)
+    const store = createSessionStore({
+      db,
+      clock: createFixedClock(new Date("2026-05-23T10:00:00.000Z")),
+      idGen: createSequentialIdGen(),
+    })
+    expect(isOk(store.init())).toBe(true)
+    expect(isOk(store.init())).toBe(true)
+    const cols = columnNames(db)
+    expect(cols.filter((c) => c === "modelId")).toHaveLength(1)
+    expect(cols).not.toContain("alias")
+  })
+})
+
 describe("createSessionStore.query offset-without-limit against real bun:sqlite", () => {
   it("returns tail rows without throwing when query() uses offset with no limit", () => {
     const db = createBunSqliteDatabase(":memory:")
@@ -157,16 +226,16 @@ describe("createSessionStore.query offset-without-limit against real bun:sqlite"
     })
     store.init()
     db.run(
-      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
-      ["s_a", "claude", "default", "2026-05-23T09:00:00.000Z"],
+      "INSERT INTO sessions (id, harnessId, modelId, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_a", "claude", "mdl_default", "2026-05-23T09:00:00.000Z"],
     )
     db.run(
-      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
-      ["s_b", "claude", "default", "2026-05-23T10:00:00.000Z"],
+      "INSERT INTO sessions (id, harnessId, modelId, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_b", "claude", "mdl_default", "2026-05-23T10:00:00.000Z"],
     )
     db.run(
-      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
-      ["s_c", "claude", "default", "2026-05-23T11:00:00.000Z"],
+      "INSERT INTO sessions (id, harnessId, modelId, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_c", "claude", "mdl_default", "2026-05-23T11:00:00.000Z"],
     )
     // offset=1, no limit — must NOT throw a SQLite syntax error
     // ordered DESC: s_c, s_b, s_a — skipping first (s_c), expect [s_b, s_a]
@@ -186,8 +255,11 @@ describe("createSessionStore.query running filter against real bun:sqlite", () =
       idGen: createSequentialIdGen(),
     })
     store.init()
-    store.create({ harnessId: "claude" as never, alias: "default" as never })
-    store.create({ harnessId: "codex" as never, alias: "fast" as never })
+    store.create({
+      harnessId: "claude" as never,
+      modelId: "mdl_default" as never,
+    })
+    store.create({ harnessId: "codex" as never, modelId: "mdl_fast" as never })
     store.close("s_1" as never, 0)
 
     const open = store.query({ running: true })
@@ -210,16 +282,16 @@ describe("createSessionStore.query running filter against real bun:sqlite", () =
     })
     store.init()
     db.run(
-      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
-      ["s_a", "claude", "default", "2026-05-23T09:00:00.000Z"],
+      "INSERT INTO sessions (id, harnessId, modelId, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_a", "claude", "mdl_default", "2026-05-23T09:00:00.000Z"],
     )
     db.run(
-      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
-      ["s_b", "claude", "default", "2026-05-23T10:00:00.000Z"],
+      "INSERT INTO sessions (id, harnessId, modelId, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_b", "claude", "mdl_default", "2026-05-23T10:00:00.000Z"],
     )
     db.run(
-      "INSERT INTO sessions (id, harnessId, alias, startedAt) VALUES (?, ?, ?, ?)",
-      ["s_c", "claude", "default", "2026-05-23T11:00:00.000Z"],
+      "INSERT INTO sessions (id, harnessId, modelId, startedAt) VALUES (?, ?, ?, ?)",
+      ["s_c", "claude", "mdl_default", "2026-05-23T11:00:00.000Z"],
     )
     const page = store.query({ limit: 1, offset: 1 })
     expect(isOk(page) && page.value.map((s) => s.id)).toEqual<false | string[]>(
