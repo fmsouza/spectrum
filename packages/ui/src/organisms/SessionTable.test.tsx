@@ -7,7 +7,6 @@ const sessions = [
   {
     id: "s_1",
     harnessId: "claude",
-    alias: "default",
     startedAt: "2026-05-23T10:00:00.000Z",
     endedAt: "2026-05-23T10:05:00.000Z",
     exitCode: 0,
@@ -15,13 +14,13 @@ const sessions = [
   {
     id: "s_2",
     harnessId: "codex",
-    alias: "fast",
+    modelId: "m_fast",
     startedAt: "2026-05-23T11:00:00.000Z",
   },
   {
     id: "s_3",
     harnessId: "opencode",
-    alias: "smart",
+    modelId: "m_smart",
     startedAt: "2026-05-23T12:00:00.000Z",
     endedAt: "2026-05-23T12:01:00.000Z",
     exitCode: 1,
@@ -29,11 +28,22 @@ const sessions = [
 ] as unknown as readonly Session[]
 
 describe("SessionTable", () => {
-  it("renders a row per session showing harness and alias", () => {
+  it("renders a row per session showing harness and model", () => {
     render(<SessionTable sessions={sessions} />)
     expect(screen.getByText("claude")).toBeInTheDocument()
     expect(screen.getByText("codex")).toBeInTheDocument()
     expect(screen.getByText("opencode")).toBeInTheDocument()
+  })
+  it("shows a Model column and renders default when no modelId is set", () => {
+    render(<SessionTable sessions={sessions} />)
+    expect(
+      screen.getByRole("columnheader", { name: "Model" }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole("columnheader", { name: "Alias" }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText("default")).toBeInTheDocument()
+    expect(screen.getByText("m_fast")).toBeInTheDocument()
   })
   it("shows a running status when a session has not ended", () => {
     render(<SessionTable sessions={sessions} />)

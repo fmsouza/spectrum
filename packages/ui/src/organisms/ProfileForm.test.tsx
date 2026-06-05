@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { HarnessDefinition, ModelAlias } from "@launchkit/types"
+import type { HarnessDefinition, ModelRoute } from "@launchkit/types"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { ProfileForm } from "./ProfileForm"
 import type { ProfileFormValues } from "./ProfileForm"
@@ -9,15 +9,17 @@ const harnesses = [
   { id: "codex", name: "Codex" },
 ] as unknown as readonly HarnessDefinition[]
 
-const aliases = [
-  { alias: "default", providerId: "p1", providerModel: "sonnet" },
-  { alias: "fast", providerId: "p1", providerModel: "haiku" },
-] as unknown as readonly ModelAlias[]
+const models = [
+  { id: "m_default", providerId: "p1", providerModel: "sonnet" },
+  { id: "m_fast", providerId: "p1", providerModel: "haiku" },
+] as unknown as readonly ModelRoute[]
+
+const providerNames = { p1: "Anthropic" }
 
 const initial = {
   name: "Sonnet default",
   harnessId: "claude",
-  alias: "default",
+  modelId: "m_default",
   env: { ANTHROPIC_MODEL: "sonnet" },
 } as unknown as ProfileFormValues
 
@@ -27,14 +29,30 @@ describe("ProfileForm", () => {
       <ProfileForm
         initialValues={initial}
         harnesses={harnesses}
-        aliases={aliases}
+        models={models}
+        providerNames={providerNames}
         onSubmit={() => {}}
         onCancel={() => {}}
       />,
     )
     expect(screen.getByLabelText("Name")).toHaveValue("Sonnet default")
     expect(screen.getByLabelText("Harness")).toHaveValue("claude")
-    expect(screen.getByLabelText("Alias")).toHaveValue("default")
+    expect(screen.getByLabelText("Model")).toHaveValue("m_default")
+  })
+  it("offers a default option that bypasses the proxy", () => {
+    render(
+      <ProfileForm
+        initialValues={initial}
+        harnesses={harnesses}
+        models={models}
+        providerNames={providerNames}
+        onSubmit={() => {}}
+        onCancel={() => {}}
+      />,
+    )
+    const model = screen.getByLabelText("Model")
+    expect(model).toContainHTML("default")
+    expect(model).toContainHTML("Anthropic / haiku")
   })
   it("submits the edited values, preserving env, when saved", () => {
     const onSubmit = mock((_v: ProfileFormValues) => {})
@@ -42,7 +60,8 @@ describe("ProfileForm", () => {
       <ProfileForm
         initialValues={initial}
         harnesses={harnesses}
-        aliases={aliases}
+        models={models}
+        providerNames={providerNames}
         onSubmit={onSubmit}
         onCancel={() => {}}
       />,
@@ -50,14 +69,36 @@ describe("ProfileForm", () => {
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Renamed" },
     })
-    fireEvent.change(screen.getByLabelText("Alias"), {
-      target: { value: "fast" },
+    fireEvent.change(screen.getByLabelText("Model"), {
+      target: { value: "m_fast" },
     })
     fireEvent.click(screen.getByRole("button", { name: /save/i }))
     expect(onSubmit).toHaveBeenCalledWith({
       name: "Renamed",
       harnessId: "claude",
-      alias: "fast",
+      modelId: "m_fast",
+      env: { ANTHROPIC_MODEL: "sonnet" },
+    })
+  })
+  it("omits modelId when the default option is selected", () => {
+    const onSubmit = mock((_v: ProfileFormValues) => {})
+    render(
+      <ProfileForm
+        initialValues={initial}
+        harnesses={harnesses}
+        models={models}
+        providerNames={providerNames}
+        onSubmit={onSubmit}
+        onCancel={() => {}}
+      />,
+    )
+    fireEvent.change(screen.getByLabelText("Model"), {
+      target: { value: "" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /save/i }))
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "Sonnet default",
+      harnessId: "claude",
       env: { ANTHROPIC_MODEL: "sonnet" },
     })
   })
@@ -67,7 +108,7 @@ describe("ProfileForm", () => {
       <ProfileForm
         initialValues={initial}
         harnesses={harnesses}
-        aliases={aliases}
+        models={models}
         onSubmit={onSubmit}
         onCancel={() => {}}
       />,
@@ -82,7 +123,7 @@ describe("ProfileForm", () => {
       <ProfileForm
         initialValues={initial}
         harnesses={harnesses}
-        aliases={aliases}
+        models={models}
         onSubmit={() => {}}
         onCancel={onCancel}
       />,
