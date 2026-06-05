@@ -1,57 +1,25 @@
-import { describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
-import { IpcClientProvider } from "../IpcClientContext"
+import { describe, expect, it } from "bun:test"
+import { screen, waitFor } from "@testing-library/react"
+import type { ReactElement } from "react"
 import { createFakeIpcClient } from "../test/fake-client"
+import { renderWithProviders } from "../test/renderWithProviders"
 import { useSessions } from "./useSessions"
 
-const Probe = ({ harnessId }: { readonly harnessId?: string }): JSX.Element => {
-  const { data } = useSessions(
-    harnessId === undefined ? undefined : { harnessId },
-  )
-  return <span>{data === undefined ? "no-data" : `count:${data.length}`}</span>
+const Probe = (): ReactElement => {
+  const { running, recent } = useSessions()
+  return <span>{`r:${running.length} e:${recent.length}`}</span>
 }
 
 describe("useSessions", () => {
-  it("passes the filter through to getSessions when one is given", async () => {
-    const getSessions = mock(async () => ({ ok: true as const, value: [] }))
-    const client = createFakeIpcClient({ getSessions })
-    render(
-      <IpcClientProvider client={client}>
-        <Probe harnessId="claude" />
-      </IpcClientProvider>,
-    )
-    await waitFor(() => expect(getSessions).toHaveBeenCalled())
-    expect(client.calls.getSessions[0]).toEqual({ harnessId: "claude" })
-  })
-
-  it("calls getSessions with undefined when no filter is given", async () => {
-    const getSessions = mock(async () => ({ ok: true as const, value: [] }))
-    const client = createFakeIpcClient({ getSessions })
-    render(
-      <IpcClientProvider client={client}>
-        <Probe />
-      </IpcClientProvider>,
-    )
-    await waitFor(() => expect(getSessions).toHaveBeenCalled())
-    expect(client.calls.getSessions[0]).toBeUndefined()
-  })
-
-  it("passes a running:true filter through to getSessions", async () => {
+  it("loads running and recent groups on mount", async () => {
     const client = createFakeIpcClient({
-      getSessions: async () => ({ ok: true as const, value: [] }),
+      getSessions: async (params) => ({
+        ok: true,
+        value:
+          params?.running === true ? ([{ id: "s_1" }] as never) : ([] as never),
+      }),
     })
-    const RunningProbe = (): JSX.Element => {
-      useSessions({ running: true })
-      return <span>ok</span>
-    }
-    render(
-      <IpcClientProvider client={client}>
-        <RunningProbe />
-      </IpcClientProvider>,
-    )
-    await waitFor(() =>
-      expect(client.calls.getSessions.length).toBeGreaterThan(0),
-    )
-    expect(client.calls.getSessions[0]).toEqual({ running: true })
+    renderWithProviders(<Probe />, client)
+    await waitFor(() => expect(screen.getByText("r:1 e:0")).toBeInTheDocument())
   })
 })

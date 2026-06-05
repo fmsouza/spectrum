@@ -10,7 +10,6 @@ import {
   TextInput,
 } from "@launchkit/ui"
 import { type ReactElement, useState } from "react"
-import { useIpcClient } from "../IpcClientContext"
 import { useModels } from "../hooks/useModels"
 import { useProviderModels } from "../hooks/useProviderModels"
 import { useProviders } from "../hooks/useProviders"
@@ -88,7 +87,6 @@ const ModelField = ({
 }
 
 export const ModelsPage = (): ReactElement => {
-  const client = useIpcClient()
   const models = useModels()
   const providers = useProviders()
 
@@ -119,26 +117,19 @@ export const ModelsPage = (): ReactElement => {
 
     const r =
       draft.editingOf === undefined
-        ? await client.addModel({
+        ? await models.add({
             providerId: draft.providerId as ProviderId,
             providerModel: draft.providerModel,
           })
-        : await client.updateModel({
-            id: draft.editingOf as ModelId,
-            input: {
-              providerId: draft.providerId as ProviderId,
-              providerModel: draft.providerModel,
-            },
+        : await models.update(draft.editingOf as ModelId, {
+            providerId: draft.providerId as ProviderId,
+            providerModel: draft.providerModel,
           })
-    if (r.ok) {
-      setDraft(undefined)
-      models.refetch()
-    }
+    if (r.ok) setDraft(undefined)
   }
 
   const deleteModel = async (id: string): Promise<void> => {
-    const r = await client.deleteModel({ id: id as ModelId })
-    if (r.ok) models.refetch()
+    await models.remove(id as ModelId)
   }
 
   const update = <K extends keyof ModelDraft>(

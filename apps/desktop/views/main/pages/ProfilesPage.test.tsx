@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import type { Profile } from "@launchkit/types"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { IpcClientProvider } from "../IpcClientContext"
+import { fireEvent, screen, waitFor } from "@testing-library/react"
 import { createFakeIpcClient } from "../test/fake-client"
+import { renderWithProviders } from "../test/renderWithProviders"
 import { ProfilesPage } from "./ProfilesPage"
 
 const profile: Profile = {
@@ -30,11 +30,7 @@ const baseStubs = {
 describe("ProfilesPage", () => {
   it("lists profiles from getProfiles", async () => {
     const client = createFakeIpcClient(baseStubs)
-    render(
-      <IpcClientProvider client={client}>
-        <ProfilesPage />
-      </IpcClientProvider>,
-    )
+    renderWithProviders(<ProfilesPage />, client)
     await waitFor(() => expect(screen.getByText("Work")).toBeInTheDocument())
   })
 
@@ -44,11 +40,7 @@ describe("ProfilesPage", () => {
       getProfiles: async () => ({ ok: true as const, value: [] }),
       addProfile: async () => ({ ok: true as const, value: profile }),
     })
-    render(
-      <IpcClientProvider client={client}>
-        <ProfilesPage />
-      </IpcClientProvider>,
-    )
+    renderWithProviders(<ProfilesPage />, client)
     // ProfileList's onAdd opens the modal containing ProfileForm.
     await waitFor(() =>
       expect(
