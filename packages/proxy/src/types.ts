@@ -1,9 +1,50 @@
 import { z } from "zod"
 
+/**
+ * A tool the model may call. The proxy is a RELAY: it forwards tool definitions to the model and
+ * streams tool calls back to the harness, but never executes a tool itself (the harness does). So a
+ * tool carries only its definition — name, optional description, and a JSON Schema for its input.
+ */
+export const NormalizedToolSchema = z
+  .object({
+    name: z.string().min(1),
+    description: z.string().optional(),
+    inputSchema: z.unknown(),
+  })
+  .strict()
+export type NormalizedTool = z.infer<typeof NormalizedToolSchema>
+
+/**
+ * A piece of message content. Plain text, OR a tool call (assistant asked to run a tool), OR a tool
+ * result (the harness ran a tool and is feeding the output back). These mirror the AI SDK v6
+ * `tool-call`/`tool-result` message parts so the gateway can map them 1:1.
+ */
+export const NormalizedContentPartSchema = z.union([
+  z.object({ type: z.literal("text"), text: z.string() }),
+  z.object({
+    type: z.literal("tool-call"),
+    toolCallId: z.string().min(1),
+    toolName: z.string().min(1),
+    input: z.unknown(),
+  }),
+  z.object({
+    type: z.literal("tool-result"),
+    toolCallId: z.string().min(1),
+    toolName: z.string().min(1),
+    output: z.string(),
+  }),
+])
+export type NormalizedContentPart = z.infer<typeof NormalizedContentPartSchema>
+
+/**
+ * A conversation message. `content` is either a plain string (the common text case) or an array of
+ * structured parts (used to carry assistant tool calls and tool results). Role `"tool"` carries
+ * tool-result parts (the AI SDK models tool output as its own message role).
+ */
 export const NormalizedMessageSchema = z
   .object({
-    role: z.enum(["system", "user", "assistant"]),
-    content: z.string(),
+    role: z.enum(["system", "user", "assistant", "tool"]),
+    content: z.union([z.string(), z.array(NormalizedContentPartSchema)]),
   })
   .strict()
 export type NormalizedMessage = z.infer<typeof NormalizedMessageSchema>
@@ -13,6 +54,7 @@ export const NormalizedRequestSchema = z
     model: z.string().min(1),
     system: z.string().optional(),
     messages: z.array(NormalizedMessageSchema).min(1),
+    tools: z.array(NormalizedToolSchema).optional(),
     maxTokens: z.number().int().positive().optional(),
     temperature: z.number().min(0).max(2).optional(),
     stream: z.boolean(),
@@ -20,8 +62,19 @@ export const NormalizedRequestSchema = z
   .strict()
 export type NormalizedRequest = z.infer<typeof NormalizedRequestSchema>
 
+/**
+ * Provider-agnostic stream events the gateway yields and the outbound serializers render. A
+ * `tool-call` carries the COMPLETE call (the gateway maps the AI SDK high-level `tool-call` part,
+ * which already has the fully-assembled `input`); the serializer renders it as one tool_use block.
+ */
 export type StreamEvent =
   | { readonly type: "text-delta"; readonly text: string }
+  | {
+      readonly type: "tool-call"
+      readonly toolCallId: string
+      readonly toolName: string
+      readonly input: unknown
+    }
   | {
       readonly type: "finish"
       readonly finishReason: string

@@ -64,10 +64,22 @@ export const resolveHarnessLaunch =
       env[key] = rendered.value
     }
 
+    // Render any argsTemplate with the same tokens. Some harnesses need CLI flags (not just env) to
+    // route through the proxy — codex, for one, only honors its config.toml provider, so we pass
+    // `-c` provider overrides here. Harnesses without an argsTemplate get an empty args array.
+    const args: string[] = []
+    for (const template of harness.argsTemplate ?? []) {
+      const rendered = renderTemplate(template, vars)
+      if (isErr(rendered)) {
+        return err({ kind: "invalid-template", token: rendered.error.token })
+      }
+      args.push(rendered.value)
+    }
+
     // params.env WINS over the rendered template env (callers can override / add vars).
     return ok({
       command: resolved.value,
-      args: [],
+      args,
       env: { ...env, ...(params.env ?? {}) },
     })
   }

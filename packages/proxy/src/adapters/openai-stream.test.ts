@@ -16,4 +16,25 @@ describe("serializeOpenAIStream", () => {
     expect(out).toContain('"content":"Hi"')
     expect(out).toContain("data: [DONE]")
   })
+
+  it("renders a tool-call as an OpenAI tool_calls delta and finishes with tool_calls", async () => {
+    const events: StreamEvent[] = [
+      {
+        type: "tool-call",
+        toolCallId: "call_1",
+        toolName: "get_weather",
+        input: { city: "Paris" },
+      },
+      { type: "finish", finishReason: "tool-calls" },
+    ]
+    const out = await collectStream(
+      serializeOpenAIStream(fromArray(events), "fast"),
+    )
+    expect(out).toContain('"tool_calls"')
+    expect(out).toContain('"id":"call_1"')
+    expect(out).toContain('"name":"get_weather"')
+    expect(out).toContain('"arguments":"{\\"city\\":\\"Paris\\"}"')
+    expect(out).toContain('"finish_reason":"tool_calls"')
+    expect(out).toContain("data: [DONE]")
+  })
 })

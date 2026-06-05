@@ -26,9 +26,13 @@ describe("builtinHarnesses", () => {
     }
   })
 
-  it("uses only the allowed tokens in every env template value", () => {
+  it("uses only the allowed tokens in every env + args template value", () => {
     for (const h of builtinHarnesses) {
-      for (const value of Object.values(h.envTemplate)) {
+      const values = [
+        ...Object.values(h.envTemplate),
+        ...(h.argsTemplate ?? []),
+      ]
+      for (const value of values) {
         for (const token of tokensIn(value)) {
           expect(ALLOWED_TOKENS).toContain(
             token as (typeof ALLOWED_TOKENS)[number],
@@ -43,20 +47,29 @@ describe("builtinHarnesses", () => {
     expect(claude.command).toBe("claude")
     expect(claude.envTemplate).toEqual({
       ANTHROPIC_BASE_URL: "{{proxyUrl}}",
-      ANTHROPIC_API_KEY: "{{proxyKey}}",
+      ANTHROPIC_AUTH_TOKEN: "{{proxyKey}}",
       ANTHROPIC_MODEL: "{{model}}",
     })
   })
 
-  it("wires codex and opencode to the OpenAI env vars", () => {
-    expect(codex.apiFormat).toBe("openai")
+  it("wires opencode to the OpenAI env vars with proxy tokens", () => {
     expect(opencode.apiFormat).toBe("openai")
-    expect(codex.envTemplate).toEqual(opencode.envTemplate)
-    expect(codex.envTemplate).toEqual({
+    expect(opencode.envTemplate).toEqual({
       OPENAI_BASE_URL: "{{proxyUrl}}",
       OPENAI_API_KEY: "{{proxyKey}}",
       OPENAI_MODEL: "{{model}}",
     })
+  })
+
+  it("wires codex to route through the proxy via -c provider args (Responses API) + the proxy key", () => {
+    expect(codex.apiFormat).toBe("openai")
+    // codex ignores OPENAI_BASE_URL, so it gets a `-c` provider override instead; only the key is env.
+    expect(codex.envTemplate).toEqual({ OPENAI_API_KEY: "{{proxyKey}}" })
+    const args = (codex.argsTemplate ?? []).join(" ")
+    expect(args).toContain("model_provider=launchkit")
+    expect(args).toContain('base_url="{{proxyUrl}}/v1"')
+    expect(args).toContain('wire_api="responses"')
+    expect(args).toContain("{{model}}")
   })
 
   it("wires openclaw to the Anthropic env vars", () => {
