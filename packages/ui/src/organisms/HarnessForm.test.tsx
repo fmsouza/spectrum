@@ -7,7 +7,6 @@ const initial: HarnessFormValues = {
   name: "Claude Code",
   command: "claude",
   apiFormat: "anthropic",
-  defaultAlias: "default",
 }
 
 describe("HarnessForm", () => {

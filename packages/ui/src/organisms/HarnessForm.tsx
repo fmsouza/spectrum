@@ -10,7 +10,6 @@ export type HarnessFormValues = {
   readonly name: string
   readonly command: string
   readonly apiFormat: ApiFormat
-  readonly defaultAlias: string
 }
 
 export type HarnessFormProps = {
@@ -67,13 +66,6 @@ export const HarnessForm = ({
           value={values.apiFormat}
           options={API_FORMAT_OPTIONS}
           onChange={(v) => update("apiFormat", v as ApiFormat)}
-        />
-      </FormField>
-      <FormField id="harness-alias" label="Default alias">
-        <TextInput
-          id="harness-alias"
-          value={values.defaultAlias}
-          onChange={(v) => update("defaultAlias", v)}
         />
       </FormField>
       <Button onClick={() => submit()}>Save</Button>
