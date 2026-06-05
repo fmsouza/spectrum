@@ -58,4 +58,20 @@ describe("runMigrations", () => {
     expect(isOk(runMigrations(client))).toBe(true)
     expect(tableNames(client)).toContain("sessions")
   })
+
+  it("tracks applied migrations in a tracking table, with no folder dependency", () => {
+    const opened = createSqliteClient(":memory:")
+    if (!isOk(opened)) throw new Error("open failed")
+    const client = opened.value
+
+    expect(isOk(runMigrations(client))).toBe(true)
+    expect(isOk(runMigrations(client))).toBe(true)
+
+    const rows = client.connection
+      .query("SELECT tag FROM __drizzle_migrations WHERE tag = ?")
+      .all("0000_sad_turbo")
+      .map((r) => String((r as { tag: unknown }).tag))
+
+    expect(rows).toEqual(["0000_sad_turbo"])
+  })
 })
