@@ -78,7 +78,6 @@
       "name": "@launchkit/db",
       "version": "0.1.0",
       "dependencies": {
-        "@launchkit/types": "workspace:*",
         "@launchkit/utils": "workspace:*",
         "drizzle-orm": "^0.44.0",
       },
