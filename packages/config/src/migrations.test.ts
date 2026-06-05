@@ -171,4 +171,18 @@ describe("v3 → v4 (aliases → models)", () => {
     if (!isOk(result)) return
     expect(result.value.models).toEqual([])
   })
+
+  it("omits modelId for a profile that had no alias", () => {
+    const raw = {
+      version: 3,
+      providers: [],
+      aliases: [],
+      profiles: [{ id: "p1", name: "Bare", harnessId: "claude", env: {} }],
+      settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+    }
+    const result = runMigrations(raw)
+    expect(isOk(result)).toBe(true)
+    if (!isOk(result)) return
+    expect("modelId" in (result.value.profiles[0] ?? {})).toBe(false)
+  })
 })
