@@ -4,7 +4,7 @@
 
 **Public API (barrel `src/index.ts`):** `SessionStore` interface + `createSessionStore({ db, clock, idGen })`; the `Database` effect interface + `createInMemoryDatabase()` (recording fake) + `createBunSqliteDatabase(path)` (real adapter); `SessionInput`, `SessionFilter`, `SessionError`.
 
-**Depends on:** `@launchkit/types`, `@launchkit/utils` (see build-plan/02-monorepo/boundaries.md).
+**Depends on:** `@launchkit/types`, `@launchkit/utils`
 
 **Effects owned:** sqlite (via the injected `Database` interface; the real adapter wraps `bun:sqlite`) — exposed to consumers as an injected interface; never reached around.
 

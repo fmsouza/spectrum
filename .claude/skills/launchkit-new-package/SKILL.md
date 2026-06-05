@@ -12,7 +12,7 @@ Checklist for creating a new `@launchkit/<name>` package:
 3. Create `tsconfig.json`: extends the right `tooling/tsconfig` preset with `"references"` to dependency packages.
 4. Create `src/index.ts` barrel file.
 5. Create a co-located smoke test.
-6. Add the package to the dependency DAG in `build-plan/02-monorepo/boundaries.md` if new.
-7. Create a short `CLAUDE.md` from the template in `build-plan/03-claude-config/package-claude-md.md`.
+6. Add the package to the dependency DAG (update root `CLAUDE.md` and any per-package `CLAUDE.md` that needs to depend on the new package).
+7. Create a short `CLAUDE.md` modeled on the existing per-package templates (e.g. `packages/pty/CLAUDE.md` — canonical short form).
 8. Add the package reference to root `tsconfig.json`.
 9. Verify `bun run typecheck`, `bun run lint`, `bun test` all pass.
