@@ -5,7 +5,7 @@ const valid = {
   id: "prof_default",
   name: "Default",
   harnessId: "claude",
-  alias: "default",
+  modelId: "mdl_default",
   env: { ANTHROPIC_MODEL: "sonnet" },
 }
 
@@ -15,7 +15,7 @@ describe("ProfileSchema", () => {
     expect(parsed.id).toBe<string>("prof_default")
     expect(parsed.name).toBe("Default")
     expect(parsed.harnessId).toBe<string>("claude")
-    expect(parsed.alias).toBe<string>("default")
+    expect(parsed.modelId).toBe<string>("mdl_default")
     expect(parsed.env).toEqual({ ANTHROPIC_MODEL: "sonnet" })
   })
   it("parses a profile with an empty env map", () => {

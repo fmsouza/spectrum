@@ -11,7 +11,6 @@ const claude = {
     ANTHROPIC_API_KEY: "{{proxyKey}}",
     ANTHROPIC_MODEL: "{{model}}",
   },
-  defaultAlias: "default",
   builtIn: true,
 }
 
@@ -22,7 +21,6 @@ describe("HarnessDefinitionSchema", () => {
     expect(parsed.name).toBe("Claude Code")
     expect(parsed.command).toBe("claude")
     expect(parsed.apiFormat).toBe("anthropic")
-    expect(parsed.defaultAlias).toBe<string>("default")
     expect(parsed.builtIn).toBe(true)
   })
   it("parses a harness with an optional description omitted", () => {

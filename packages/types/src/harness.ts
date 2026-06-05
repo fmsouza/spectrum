@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { ApiFormatSchema } from "./enums"
-import { AliasNameSchema, HarnessIdSchema } from "./ids"
+import { HarnessIdSchema } from "./ids"
 
 export const HarnessDefinitionSchema = z
   .object({
@@ -9,7 +9,6 @@ export const HarnessDefinitionSchema = z
     command: z.string().min(1),
     apiFormat: ApiFormatSchema,
     envTemplate: z.record(z.string(), z.string()),
-    defaultAlias: AliasNameSchema,
     description: z.string().optional(),
     builtIn: z.boolean(),
   })

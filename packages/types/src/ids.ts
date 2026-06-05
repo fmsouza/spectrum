@@ -3,8 +3,8 @@ import { z } from "zod"
 export const ProviderIdSchema = z.string().min(1).brand<"ProviderId">()
 export type ProviderId = z.infer<typeof ProviderIdSchema>
 
-export const AliasNameSchema = z.string().min(1).brand<"AliasName">()
-export type AliasName = z.infer<typeof AliasNameSchema>
+export const ModelIdSchema = z.string().min(1).brand<"ModelId">()
+export type ModelId = z.infer<typeof ModelIdSchema>
 
 export const HarnessIdSchema = z.string().min(1).brand<"HarnessId">()
 export type HarnessId = z.infer<typeof HarnessIdSchema>
