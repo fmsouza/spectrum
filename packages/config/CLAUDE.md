@@ -4,7 +4,7 @@
 
 **Public API (barrel `src/index.ts`):** `Config`/`ConfigSchema`, `Settings`/`SettingsSchema`, `CURRENT_CONFIG_VERSION`, `defaultConfig()`; `Migration`/`migrations`/`runMigrations`; `ConfigError`; `ConfigFile`/`createInMemoryConfigFile()` (test fake)/`createFsConfigFile()` (real adapter); `ConfigStore`/`createFileConfigStore({ file })`/`createCachedConfigStore(inner)`.
 
-**Depends on:** `@launchkit/types` (`Provider`, `ModelRoute`, `SecretRef`), `@launchkit/utils` (`Result`, `ok`, `err`, `isOk`, `Clock`) — see build-plan/02-monorepo/boundaries.md.
+**Depends on:** `@launchkit/types` (`Provider`, `ModelRoute`, `SecretRef`), `@launchkit/utils` (`Result`, `ok`, `err`, `isOk`, `Clock`)md.
 
 **Effects owned:** config file (via the injected `ConfigFile` interface) — exposed to consumers as an injected interface; never reached around.
 

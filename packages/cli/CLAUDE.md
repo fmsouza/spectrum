@@ -4,7 +4,7 @@
 
 **Public API (barrel `src/index.ts`):** `parseArgs` + `ParsedArgs`; `runCli(deps)(argv)`; the per-command functions `list`, `launchCommand`, `add`, `remove`; the `Writer`/`MemoryWriter` interface + `createMemoryWriter()` (test fake); `CliError`; `CliDeps` + `StartProxyDeps`.
 
-**Depends on:** `@launchkit/types`, `@launchkit/utils`, `@launchkit/config`, `@launchkit/secrets`, `@launchkit/proxy`, `@launchkit/harnesses`, `@launchkit/sessions` — see build-plan/02-monorepo/boundaries.md.
+**Depends on:** `@launchkit/types`, `@launchkit/utils`, `@launchkit/config`, `@launchkit/secrets`, `@launchkit/proxy`, `@launchkit/harnesses`, `@launchkit/sessions`md.
 
 **Effects owned:** none directly — every effect (config file, keychain, proxy server, process spawn, sqlite) arrives through an injected interface on `CliDeps`. The app shell (`apps/desktop`) constructs the real adapters and injects them.
 
