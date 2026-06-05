@@ -41,4 +41,15 @@ describe("createRouter", () => {
       error: { kind: "unknown-provider", providerId: "ghost" },
     })
   })
+
+  it("resolves against the latest config when given a getter (sees models added after construction)", () => {
+    let current = { ...config, models: [] } as unknown as Config
+    const router = createRouter(() => current)
+    // Not present yet: a model added to config only after the proxy started.
+    expect(isErr(router.resolve("mdl_fast"))).toBe(true)
+    // The live config changes (e.g. the user adds a model in the GUI) — no rebuild needed.
+    current = config
+    const r = router.resolve("mdl_fast")
+    expect(r.ok && r.value.providerModel).toBe("gpt-4o")
+  })
 })

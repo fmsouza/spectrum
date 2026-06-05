@@ -3,6 +3,8 @@ import { parseAnthropicRequest } from "./adapters/anthropic-request"
 import { serializeAnthropicStream } from "./adapters/anthropic-stream"
 import { parseOpenAIRequest } from "./adapters/openai-request"
 import { serializeOpenAIStream } from "./adapters/openai-stream"
+import { parseResponsesRequest } from "./adapters/responses-request"
+import { serializeResponsesStream } from "./adapters/responses-stream"
 import { checkAuth } from "./auth"
 import type { LanguageModelGateway } from "./gateway"
 import type { ProviderFactory } from "./providers/factory"
@@ -82,6 +84,8 @@ export const createHandler = (
         return handleChat(req, parseAnthropicRequest, serializeAnthropicStream)
       if (url.pathname === "/v1/chat/completions")
         return handleChat(req, parseOpenAIRequest, serializeOpenAIStream)
+      if (url.pathname === "/v1/responses")
+        return handleChat(req, parseResponsesRequest, serializeResponsesStream)
       return new Response("not found", { status: 404 })
     },
   }

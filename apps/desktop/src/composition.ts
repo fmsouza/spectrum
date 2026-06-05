@@ -323,10 +323,26 @@ export const createAppContext = (
   const scrollbackDir = join(configDir, "scrollback")
   const runtimeFile = join(configDir, "runtime.json")
 
-  // config: cached( file( fs(configFile) ) )
-  const config = deps.createCachedConfigStore(
+  // config: cached( file( fs(configFile) ) ). Wrapped to keep a synchronous snapshot of the latest
+  // config (`liveConfig`) updated on every load/save, so the long-running GUI proxy can resolve
+  // against live provider/model changes without an app restart. (The cached store already refreshes
+  // its own cache on save; this just exposes that latest value synchronously to the proxy router.)
+  const baseConfig = deps.createCachedConfigStore(
     deps.createFileConfigStore({ file: deps.createFsConfigFile(configFile) }),
   )
+  let liveConfig: import("@launchkit/config").Config | undefined
+  const config: ConfigStore = {
+    load: async () => {
+      const loaded = await baseConfig.load()
+      if (loaded.ok) liveConfig = loaded.value
+      return loaded
+    },
+    save: async (next) => {
+      const saved = await baseConfig.save(next)
+      if (saved.ok) liveConfig = next
+      return saved
+    },
+  }
 
   // secrets: store( macOS security backend over a Bun process runner, crypto id gen )
   const secrets = deps.createSecretStore({
@@ -403,16 +419,23 @@ export const createAppContext = (
     port: number
     proxyKey: string
     config: import("@launchkit/config").Config
-  }): RunningProxy =>
-    startProxy({
+  }): RunningProxy => {
+    // Seed the live snapshot, then resolve against it on EVERY request: a model/provider added or
+    // edited in the GUI (persisted via `config.save`, which updates `liveConfig` above) is picked up
+    // by the already-running proxy with no restart. Falls back to the start-time config defensively.
+    liveConfig = opts.config
+    const getConfig = (): import("@launchkit/config").Config =>
+      liveConfig ?? opts.config
+    return startProxy({
       host: opts.host,
       port: opts.port,
       proxyKey: opts.proxyKey,
-      router: createRouter(opts.config),
+      router: createRouter(getConfig),
       factory,
       gateway,
-      listModels: () => opts.config.models.map((m) => String(m.id)),
+      listModels: () => getConfig().models.map((m) => String(m.id)),
     })
+  }
 
   // Native folder picker — behind a LAZY dynamic import so bun test never loads native FFI.
   const pickFolder: AppContext["pickFolder"] = async (opts) => {

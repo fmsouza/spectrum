@@ -79,6 +79,26 @@ describe("createHandler", () => {
     expect(body).toContain("content_block_delta")
     expect(body).toContain("message_stop")
   })
+  it("streams Responses API SSE when a valid /v1/responses request is made (codex)", async () => {
+    const res = await handler().fetch(
+      post("/v1/responses", {
+        model: "mdl_default",
+        stream: true,
+        input: [
+          {
+            type: "message",
+            role: "user",
+            content: [{ type: "input_text", text: "hi" }],
+          },
+        ],
+      }),
+    )
+    expect(res.headers.get("content-type")).toContain("text/event-stream")
+    const body = await collectStream(res.body as ReadableStream<Uint8Array>)
+    expect(body).toContain("event: response.created")
+    expect(body).toContain('"delta":"Hi"')
+    expect(body).toContain("event: response.completed")
+  })
   it("returns 400 when the model is unknown", async () => {
     const res = await handler().fetch(
       post("/v1/messages", {
