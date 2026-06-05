@@ -1,45 +1,37 @@
-import type { IpcMethods } from "@launchkit/ipc"
-import type { Profile, ProfileId } from "@launchkit/types"
-import { useCallback } from "react"
-import { useIpcClient } from "../IpcClientContext"
-import { type AsyncResource, useAsyncResource } from "./useAsyncResource"
-
-/** addProfile params = ProfileSchema WITHOUT id (the handler mints it). */
-type AddInput = IpcMethods["addProfile"]["params"]
+import type { Profile } from "@launchkit/types"
+import { useEffect } from "react"
+import { useStore } from "zustand"
+import { useStores } from "../stores/createStores"
+import type { ProfilesStore } from "../stores/profilesStore"
+import type { AsyncResource } from "./useAsyncResource"
 
 export type UseProfiles = AsyncResource<readonly Profile[]> & {
-  readonly add: (input: AddInput) => Promise<void>
-  readonly update: (profile: Profile) => Promise<void>
-  readonly remove: (id: ProfileId) => Promise<void>
+  readonly add: ProfilesStore["add"]
+  readonly update: ProfilesStore["update"]
+  readonly remove: ProfilesStore["remove"]
 }
 
 /** Loads profiles and exposes CRUD that calls the client then refetches. */
 export const useProfiles = (): UseProfiles => {
-  const client = useIpcClient()
-  const call = useCallback(() => client.getProfiles(undefined), [client])
-  const resource = useAsyncResource(call)
-  const { refetch } = resource
-
-  const add = useCallback(
-    async (input: AddInput): Promise<void> => {
-      const r = await client.addProfile(input)
-      if (r.ok) refetch()
-    },
-    [client, refetch],
-  )
-  const update = useCallback(
-    async (profile: Profile): Promise<void> => {
-      const r = await client.updateProfile(profile)
-      if (r.ok) refetch()
-    },
-    [client, refetch],
-  )
-  const remove = useCallback(
-    async (id: ProfileId): Promise<void> => {
-      const r = await client.deleteProfile({ id })
-      if (r.ok) refetch()
-    },
-    [client, refetch],
-  )
-  return { ...resource, add, update, remove }
+  const store = useStores().profiles
+  const data = useStore(store, (s) => s.data)
+  const loading = useStore(store, (s) => s.loading)
+  const error = useStore(store, (s) => s.error)
+  const fetch = useStore(store, (s) => s.fetch)
+  const invalidate = useStore(store, (s) => s.invalidate)
+  const add = useStore(store, (s) => s.add)
+  const update = useStore(store, (s) => s.update)
+  const remove = useStore(store, (s) => s.remove)
+  useEffect(() => {
+    void fetch()
+  }, [fetch])
+  return {
+    data,
+    loading,
+    error,
+    refetch: () => void invalidate(),
+    add,
+    update,
+    remove,
+  }
 }

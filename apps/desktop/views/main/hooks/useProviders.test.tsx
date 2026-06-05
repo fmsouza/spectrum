@@ -1,8 +1,8 @@
 import { describe, expect, it, mock } from "bun:test"
 import type { ProviderView } from "@launchkit/ipc"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { IpcClientProvider } from "../IpcClientContext"
+import { fireEvent, screen, waitFor } from "@testing-library/react"
 import { createFakeIpcClient } from "../test/fake-client"
+import { renderWithProviders } from "../test/renderWithProviders"
 import { useProviders } from "./useProviders"
 
 const view: ProviderView = {
@@ -33,11 +33,7 @@ describe("useProviders", () => {
     const client = createFakeIpcClient({
       getProviders: async () => ({ ok: true, value: [view] }),
     })
-    render(
-      <IpcClientProvider client={client}>
-        <Probe />
-      </IpcClientProvider>,
-    )
+    renderWithProviders(<Probe />, client)
     expect(screen.getByText("loading")).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText("count:1")).toBeInTheDocument())
     expect(screen.getByText("idle")).toBeInTheDocument()
@@ -51,11 +47,7 @@ describe("useProviders", () => {
         error: { kind: "transport-failed", detail: "down" },
       }),
     })
-    render(
-      <IpcClientProvider client={client}>
-        <Probe />
-      </IpcClientProvider>,
-    )
+    renderWithProviders(<Probe />, client)
     await waitFor(() =>
       expect(screen.getByText("transport-failed")).toBeInTheDocument(),
     )
@@ -68,11 +60,7 @@ describe("useProviders", () => {
       value: [view],
     }))
     const client = createFakeIpcClient({ getProviders })
-    render(
-      <IpcClientProvider client={client}>
-        <Probe />
-      </IpcClientProvider>,
-    )
+    renderWithProviders(<Probe />, client)
     await waitFor(() => expect(screen.getByText("count:1")).toBeInTheDocument())
     fireEvent.click(screen.getByRole("button", { name: "refetch" }))
     await waitFor(() => expect(getProviders).toHaveBeenCalledTimes(2))

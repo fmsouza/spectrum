@@ -12,7 +12,6 @@ import {
 } from "@launchkit/ui"
 import type { ProviderDisplay } from "@launchkit/ui"
 import { type ReactElement, useState } from "react"
-import { useIpcClient } from "../IpcClientContext"
 import { useProviders } from "../hooks/useProviders"
 
 const SDK_PROVIDER_OPTIONS = [
@@ -30,8 +29,7 @@ const toDisplay = (view: ProviderView): ProviderDisplay => ({
 })
 
 export const ProvidersPage = (): ReactElement => {
-  const client = useIpcClient()
-  const { data, loading, error, refetch } = useProviders()
+  const { data, loading, error, add, setSecret } = useProviders()
 
   const [addOpen, setAddOpen] = useState<boolean>(false)
   const [newName, setNewName] = useState<string>("")
@@ -45,7 +43,7 @@ export const ProvidersPage = (): ReactElement => {
 
   const submitAdd = async (): Promise<void> => {
     if (newName.trim() === "") return
-    const r = await client.addProvider({
+    const r = await add({
       name: newName,
       sdkProvider: newSdk,
       config: {},
@@ -55,7 +53,6 @@ export const ProvidersPage = (): ReactElement => {
     if (r.ok) {
       setAddOpen(false)
       setNewName("")
-      refetch()
     }
   }
 
@@ -66,7 +63,7 @@ export const ProvidersPage = (): ReactElement => {
       secretValue.trim() === ""
     )
       return
-    const r = await client.setProviderSecret({
+    const r = await setSecret({
       providerId: secretFor.id,
       field: secretField,
       value: secretValue,
@@ -76,7 +73,6 @@ export const ProvidersPage = (): ReactElement => {
       setSecretValue("")
       setSecretField("")
       setSecretFor(undefined)
-      refetch()
     }
   }
 
