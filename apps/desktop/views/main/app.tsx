@@ -4,6 +4,7 @@ import { type AppMode, AppShell, NewSessionModal } from "@launchkit/ui"
 import type { NewSessionValues } from "@launchkit/ui"
 import { type ReactElement, StrictMode, useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
+import { useStore } from "zustand"
 import { IpcClientProvider, useIpcClient } from "./IpcClientContext"
 import { createRealClients } from "./clients"
 import { useHarnesses } from "./hooks/useHarnesses"
@@ -12,33 +13,15 @@ import { useProfiles } from "./hooks/useProfiles"
 import { useProviders } from "./hooks/useProviders"
 import { useProxyStatus } from "./hooks/useProxyStatus"
 import { useSessions } from "./hooks/useSessions"
-import { StoreProvider } from "./stores/createStores"
+import { StoreProvider, useStores } from "./stores/createStores"
+import { type LocationAdapter, windowLocationAdapter } from "./stores/location"
+import { encodeView } from "./stores/uiStore"
 import type { CreateTerminal } from "./terminal/TerminalPane"
 import type { TerminalClient } from "./terminal/terminalClient"
 import { SessionsView } from "./views/SessionsView"
 import { SettingsView } from "./views/SettingsView"
 
-/**
- * The top-level app view. `sessions` carries the optionally-selected session id;
- * `settings` carries the active section key. Serialized to the URL hash so a
- * reload lands on the same place (no remote navigation).
- */
-export type View =
-  | { readonly kind: "sessions"; readonly selectedSessionId?: SessionId }
-  | { readonly kind: "settings"; readonly section: string }
-
-/** Parse a raw hash (e.g. `#settings/providers`) into a `View`. */
-const parseView = (raw: string): View => {
-  const [kind, rest] = raw.replace(/^#/, "").split("/", 2)
-  if (kind === "settings")
-    return { kind: "settings", section: rest ?? "general" }
-  if (kind === "sessions")
-    return rest === undefined || rest === ""
-      ? { kind: "sessions" }
-      : { kind: "sessions", selectedSessionId: rest as SessionId }
-  // Anything else (incl. the retired #dashboard) collapses to the default sessions view.
-  return { kind: "sessions" }
-}
+export type { View } from "./stores/uiStore"
 
 /**
  * Derive a readable, message-safe string from an `IpcError` for the modal alert.
@@ -49,14 +32,6 @@ const ipcErrorMessage = (prefix: string, error: IpcError): string =>
   error.detail.trim() === ""
     ? `${prefix} (${error.kind}).`
     : `${prefix}: ${error.detail}`
-
-/** Encode a `View` back to its hash representation. */
-const encodeView = (view: View): string =>
-  view.kind === "settings"
-    ? `#settings/${view.section}`
-    : view.selectedSessionId === undefined
-      ? "#sessions"
-      : `#sessions/${view.selectedSessionId}`
 
 export type AppProps = {
   readonly client: IpcClient
@@ -72,11 +47,13 @@ export type AppProps = {
    * (the real `createXterm`); tests pass a fake so xterm + its CSS never load.
    */
   readonly createTerminal: CreateTerminal
+  /** Injected so the hash-sync effect is testable; defaults to window. */
+  readonly location?: LocationAdapter
 }
 
 /** Props for the data-aware inner shell (rendered inside `IpcClientProvider`). */
 type AppInnerProps = {
-  readonly initialView: string
+  readonly location: LocationAdapter
   readonly terminalClient: TerminalClient
   readonly createTerminal: CreateTerminal
 }
@@ -87,16 +64,19 @@ type AppInnerProps = {
  * `IpcClientProvider` that `App` mounts.
  */
 const AppInner = ({
-  initialView,
+  location,
   terminalClient,
   createTerminal,
 }: AppInnerProps): ReactElement => {
   const client = useIpcClient()
-  const [view, setView] = useState<View>(parseView(initialView))
-  // Open live sessions stay mounted (hidden) keyed by id so xterm scrollback
-  // survives selection changes; never auto-removed (the old tab behaviour).
-  const [openSessionIds, setOpenSessionIds] = useState<readonly SessionId[]>([])
-  const [modalOpen, setModalOpen] = useState<boolean>(false)
+  const uiStore = useStores().ui
+  const view = useStore(uiStore, (s) => s.view)
+  const openSessionIds = useStore(uiStore, (s) => s.openSessionIds)
+  const modalOpen = useStore(uiStore, (s) => s.modalOpen)
+  const navigate = useStore(uiStore, (s) => s.navigate)
+  const openSession = useStore(uiStore, (s) => s.openSession)
+  const closeSession = useStore(uiStore, (s) => s.closeSession)
+  const setModalOpen = useStore(uiStore, (s) => s.setModalOpen)
   // A launch failure to surface inside the modal (so the user isn't left staring
   // at a silently-failed "New session"). Cleared when the modal (re)opens, on
   // cancel, and on a successful launch.
@@ -127,13 +107,13 @@ const AppInner = ({
 
   // Keep the URL hash in sync so reloads land on the same view (no remote nav).
   useEffect(() => {
-    window.location.hash = encodeView(view)
-  }, [view])
+    location.writeHash(encodeView(view))
+  }, [view, location])
 
   const mode: AppMode = view.kind === "settings" ? "settings" : "sessions"
 
   const onModeChange = (next: AppMode): void =>
-    setView(
+    navigate(
       next === "settings"
         ? { kind: "settings", section: "general" }
         : { kind: "sessions" },
@@ -177,8 +157,8 @@ const AppInner = ({
       })
     }
     const id = r.value.sessionId
-    setOpenSessionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
-    setView({ kind: "sessions", selectedSessionId: id })
+    openSession(id)
+    navigate({ kind: "sessions", selectedSessionId: id })
     setModalOpen(false)
     // sessions.launch already invalidates both groups on success.
   }
@@ -189,7 +169,7 @@ const AppInner = ({
    * master moves it from Running to Recent.
    */
   const onSessionExit = (id: SessionId): void => {
-    setOpenSessionIds((prev) => prev.filter((x) => x !== id))
+    closeSession(id)
     refetchSessions()
   }
 
@@ -197,7 +177,7 @@ const AppInner = ({
     view.kind === "settings"
       ? SettingsView({
           section: view.section,
-          onSection: (key) => setView({ kind: "settings", section: key }),
+          onSection: (key) => navigate({ kind: "settings", section: key }),
         })
       : SessionsView({
           ...(view.selectedSessionId === undefined
@@ -209,7 +189,7 @@ const AppInner = ({
           hasMore,
           onMore: sessions.loadMore,
           onSelect: (id) =>
-            setView({ kind: "sessions", selectedSessionId: id }),
+            navigate({ kind: "sessions", selectedSessionId: id }),
           onNew: () => {
             profiles.refetch()
             harnesses.refetch()
@@ -256,13 +236,14 @@ export const App = ({
   initialView = "sessions",
   terminalClient,
   createTerminal,
+  location = windowLocationAdapter,
 }: AppProps): ReactElement => (
   <IpcClientProvider client={client}>
-    <StoreProvider client={client}>
+    <StoreProvider client={client} initialView={initialView}>
       <AppInner
-        initialView={initialView}
         terminalClient={terminalClient}
         createTerminal={createTerminal}
+        location={location}
       />
     </StoreProvider>
   </IpcClientProvider>

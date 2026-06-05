@@ -14,6 +14,7 @@ import { type ProvidersStore, createProvidersStore } from "./providersStore"
 import { type ProxyStore, createProxyStore } from "./proxyStore"
 import { type SessionsStore, createSessionsStore } from "./sessionsStore"
 import type { StoreDeps } from "./types"
+import { type UiStore, createUiStore } from "./uiStore"
 
 /** The full bundle of domain stores. Grows as each domain is migrated. */
 export type Stores = {
@@ -23,14 +24,19 @@ export type Stores = {
   readonly harnesses: StoreApi<HarnessesStore>
   readonly profiles: StoreApi<ProfilesStore>
   readonly sessions: StoreApi<SessionsStore>
+  readonly ui: StoreApi<UiStore>
 }
 
 export type CreateStoresOptions = {
   readonly client: IpcClient
+  readonly initialView: string
 }
 
 /** Build every store once with the injected client. */
-export const createStores = ({ client }: CreateStoresOptions): Stores => {
+export const createStores = ({
+  client,
+  initialView,
+}: CreateStoresOptions): Stores => {
   const deps: StoreDeps = { client }
   return {
     proxy: createProxyStore(deps),
@@ -39,6 +45,7 @@ export const createStores = ({ client }: CreateStoresOptions): Stores => {
     harnesses: createHarnessesStore(deps),
     profiles: createProfilesStore(deps),
     sessions: createSessionsStore(deps),
+    ui: createUiStore(initialView),
   }
 }
 
@@ -46,15 +53,17 @@ const StoresContext = createContext<Stores | null>(null)
 
 export type StoreProviderProps = {
   readonly client: IpcClient
+  readonly initialView?: string
   readonly children: ReactNode
 }
 
 /** Creates the store bundle once (per mount) and injects it via context. */
 export const StoreProvider = ({
   client,
+  initialView = "sessions",
   children,
 }: StoreProviderProps): ReactElement => {
-  const [stores] = useState(() => createStores({ client }))
+  const [stores] = useState(() => createStores({ client, initialView }))
   return (
     <StoresContext.Provider value={stores}>{children}</StoresContext.Provider>
   )

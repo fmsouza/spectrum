@@ -8,9 +8,12 @@ import { StoreProvider } from "../stores/createStores"
 export const renderWithProviders = (
   ui: ReactElement,
   client: IpcClient,
+  initialView = "sessions",
 ): RenderResult =>
   render(
     <IpcClientProvider client={client}>
-      <StoreProvider client={client}>{ui}</StoreProvider>
+      <StoreProvider client={client} initialView={initialView}>
+        {ui}
+      </StoreProvider>
     </IpcClientProvider>,
   )
