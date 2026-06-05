@@ -17,6 +17,7 @@ import {
   createRegistry,
 } from "@launchkit/harnesses"
 import {
+  type LanguageModelGateway,
   createRouter,
   createScriptedGateway,
   isProxyRunning,
@@ -132,6 +133,60 @@ describe("LaunchKit end-to-end", () => {
     expect(running.hostname).toBe("127.0.0.1")
     expect(await isProxyRunning(`http://127.0.0.1:${running.port}`)).toBe(true)
   })
+
+  it("keeps a slow stream open past the old 10s idle timeout (idleTimeout disabled)", async () => {
+    const cfg = {
+      version: 4,
+      providers: [
+        {
+          id: "p1",
+          name: "x",
+          sdkProvider: "openai",
+          config: {},
+          secrets: {},
+          models: [],
+        },
+      ],
+      models: [
+        { id: "mdl_default", providerId: "p1", providerModel: "gpt-4o" },
+      ],
+      profiles: [],
+      settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+    } as unknown as Config
+
+    // A slow model: nothing for 10.5s (longer than Bun's old default idleTimeout), then a token.
+    // Regression guard for "The socket connection was closed unexpectedly" — the proxy must not drop
+    // the idle socket while the model is thinking.
+    const slow: LanguageModelGateway = {
+      async *stream() {
+        await new Promise((r) => setTimeout(r, 10_500))
+        yield { type: "text-delta", text: "ok" }
+        yield { type: "finish", finishReason: "stop" }
+      },
+    }
+    const running = startProxy({
+      host: "127.0.0.1",
+      port: 0,
+      proxyKey: "k",
+      router: createRouter(cfg),
+      factory: { getModel: async () => ({ ok: true, value: {} }) },
+      gateway: slow,
+      listModels: () => cfg.models.map((m) => String(m.id)),
+    })
+    stopProxy = running.stop
+    const res = await fetch(`http://127.0.0.1:${running.port}/v1/messages`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": "k" },
+      body: JSON.stringify({
+        model: "mdl_default",
+        max_tokens: 1,
+        stream: true,
+        messages: [{ role: "user", content: "hi" }],
+      }),
+    })
+    const body = await res.text() // would throw / truncate if the socket were dropped at 10s
+    expect(body).toContain("message_stop")
+  }, 20_000)
 
   it("a running proxy with a live config getter reflects a model saved after startup (no restart)", async () => {
     const { store } = await freshConfig()

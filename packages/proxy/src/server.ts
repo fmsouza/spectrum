@@ -15,6 +15,12 @@ export const startProxy = (opts: StartProxyOptions): RunningProxy => {
   const server = Bun.serve({
     hostname: opts.host,
     port: opts.port,
+    // Disable Bun's idle-connection timeout (default 10s). This is a STREAMING proxy: a slow model
+    // can take far longer than 10s to emit its first token (large context + tools + thinking on a
+    // cloud model), during which the socket is idle — Bun would close it, surfacing to the harness
+    // as "The socket connection was closed unexpectedly". The harness and the upstream own their own
+    // timeouts; on loopback there is no resource risk to leaving long-lived streams open.
+    idleTimeout: 0,
     fetch: handler.fetch,
   })
   return {
