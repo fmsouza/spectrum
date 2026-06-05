@@ -62,4 +62,18 @@ describe("createResource", () => {
     await res.invalidate()
     expect(call).toHaveBeenCalledTimes(2)
   })
+
+  it("sets loading to true while the call is in flight", async () => {
+    let resolveCall!: (v: Result<number, IpcError>) => void
+    const call = (): Promise<Result<number, IpcError>> =>
+      new Promise((r) => {
+        resolveCall = r
+      })
+    const { bag, res } = harness(call)
+    const p = res.fetch()
+    expect(bag.loading).toBe(true)
+    resolveCall({ ok: true, value: 7 })
+    await p
+    expect(bag.loading).toBe(false)
+  })
 })

@@ -35,15 +35,19 @@ export const createResource = <T>(
   const load = (): Promise<void> => {
     if (inflight !== undefined) return inflight
     set({ loading: true })
-    const p = call().then((r) => {
-      if (r.ok) set({ data: r.value, error: undefined, loading: false })
-      else set({ error: r.error, loading: false })
-      inflight = undefined
-    })
+    const p = call()
+      .then((r) => {
+        if (r.ok) set({ data: r.value, error: undefined, loading: false })
+        else set({ error: r.error, loading: false })
+      })
+      .finally(() => {
+        inflight = undefined
+      })
     inflight = p
     return p
   }
   return {
+    // Initial values only; live state is owned by the store atom via `set`.
     data: undefined,
     loading: false,
     error: undefined,
