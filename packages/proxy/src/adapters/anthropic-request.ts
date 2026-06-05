@@ -1,16 +1,53 @@
 import { type Result, err, ok } from "@launchkit/utils"
 import { z } from "zod"
-import type { NormalizedMessage, NormalizedRequest, ProxyError } from "../types"
+import type {
+  NormalizedContentPart,
+  NormalizedMessage,
+  NormalizedRequest,
+  NormalizedTool,
+  ProxyError,
+} from "../types"
 
 // A text block. Anthropic blocks may carry extra keys (e.g. cache_control);
 // the non-strict object tolerates and ignores them. Non-text blocks
-// (tool_use/tool_result/image) are matched by the catch-all branch below.
+// (tool_use/tool_result/image) are matched by their own branches below.
 const TextBlock = z.object({ type: z.literal("text"), text: z.string() })
-const ContentBlock = z.union([TextBlock, z.object({ type: z.string() })])
+
+// An assistant tool call. `input` is arbitrary JSON; keep it as unknown.
+const ToolUseBlock = z.object({
+  type: z.literal("tool_use"),
+  id: z.string(),
+  name: z.string(),
+  input: z.unknown(),
+})
+
+// A tool result fed back by the harness. Anthropic omits the tool name here
+// (only tool_use_id is present); content is a string or an array of text blocks.
+const ToolResultBlock = z.object({
+  type: z.literal("tool_result"),
+  tool_use_id: z.string(),
+  content: z.union([z.string(), z.array(TextBlock)]),
+})
+
+const ContentBlock = z.union([
+  TextBlock,
+  ToolUseBlock,
+  ToolResultBlock,
+  z.object({ type: z.string() }),
+])
+type ContentBlockT = z.infer<typeof ContentBlock>
 const Content = z.union([z.string(), z.array(ContentBlock)])
 
 // system: a string, or an array of text blocks (Claude Code sends the latter).
 const System = z.union([z.string(), z.array(TextBlock)])
+
+// Top-level tool definitions. Custom tools carry a string name + JSON Schema;
+// server tools are shaped differently and are skipped (no string name).
+const ToolDef = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(),
+  input_schema: z.unknown().optional(),
+})
 
 const AnthropicBody = z.object({
   model: z.string().min(1),
@@ -18,6 +55,7 @@ const AnthropicBody = z.object({
   max_tokens: z.number().int().positive().optional(),
   temperature: z.number().optional(),
   stream: z.boolean().optional(),
+  tools: z.array(ToolDef).optional(),
   messages: z
     .array(
       z.object({
@@ -28,18 +66,50 @@ const AnthropicBody = z.object({
     .min(1),
 })
 
+const isTextBlock = (b: ContentBlockT): b is z.infer<typeof TextBlock> =>
+  b.type === "text"
+const isToolUseBlock = (b: ContentBlockT): b is z.infer<typeof ToolUseBlock> =>
+  b.type === "tool_use"
+const isToolResultBlock = (
+  b: ContentBlockT,
+): b is z.infer<typeof ToolResultBlock> => b.type === "tool_result"
+
 // Concatenate the text of a content value, ignoring non-text blocks.
 const flatten = (c: z.infer<typeof Content>): string =>
   typeof c === "string"
     ? c
     : c
-        .filter((b): b is z.infer<typeof TextBlock> => b.type === "text")
+        .filter(isTextBlock)
         .map((b) => b.text)
         .join("")
 
 // Flatten a system value (string or array of text blocks) to a string.
 const flattenSystem = (s: z.infer<typeof System>): string =>
   typeof s === "string" ? s : s.map((b) => b.text).join("")
+
+// Extract the text of a tool_result's content (string passes through; an array
+// of text blocks is concatenated).
+const flattenToolResult = (
+  c: z.infer<typeof ToolResultBlock>["content"],
+): string => (typeof c === "string" ? c : c.map((b) => b.text).join(""))
+
+// Map top-level tool definitions, skipping entries without a string name and
+// defaulting a missing input_schema to an empty object schema.
+const mapTools = (
+  tools: z.infer<typeof ToolDef>[] | undefined,
+): NormalizedTool[] => {
+  if (tools === undefined) return []
+  const mapped: NormalizedTool[] = []
+  for (const t of tools) {
+    if (typeof t.name !== "string") continue
+    mapped.push({
+      name: t.name,
+      ...(t.description !== undefined ? { description: t.description } : {}),
+      inputSchema: t.input_schema ?? { type: "object" },
+    })
+  }
+  return mapped
+}
 
 export const parseAnthropicRequest = (
   body: unknown,
@@ -59,20 +129,83 @@ export const parseAnthropicRequest = (
   ]
   const system = systemPieces.join("\n") || undefined
 
-  const messages: NormalizedMessage[] = b.messages
-    .filter(
-      (m): m is { role: "user" | "assistant"; content: typeof m.content } =>
-        m.role !== "system",
-    )
-    .map((m) => ({ role: m.role, content: flatten(m.content) }))
+  // Resolve tool names for tool_result blocks: Anthropic omits the name on a
+  // tool_result, so map each tool_use id → name by scanning assistant turns.
+  const toolNameById = new Map<string, string>()
+  for (const m of b.messages) {
+    if (m.role !== "assistant" || typeof m.content === "string") continue
+    for (const block of m.content) {
+      if (isToolUseBlock(block)) toolNameById.set(block.id, block.name)
+    }
+  }
+
+  // Build normalized messages, preserving conversation order. A single
+  // Anthropic user turn may expand into a user-text message and/or a tool-role
+  // message; an assistant turn with tool_use becomes structured parts.
+  const messages: NormalizedMessage[] = []
+  for (const m of b.messages) {
+    if (m.role === "system") continue
+
+    if (m.role === "assistant") {
+      if (typeof m.content === "string") {
+        messages.push({ role: "assistant", content: m.content })
+        continue
+      }
+      const hasToolUse = m.content.some(isToolUseBlock)
+      if (!hasToolUse) {
+        // Text-only assistant: keep the existing flattened-string behavior.
+        messages.push({ role: "assistant", content: flatten(m.content) })
+        continue
+      }
+      const parts: NormalizedContentPart[] = []
+      for (const block of m.content) {
+        if (isTextBlock(block)) parts.push({ type: "text", text: block.text })
+        else if (isToolUseBlock(block))
+          parts.push({
+            type: "tool-call",
+            toolCallId: block.id,
+            toolName: block.name,
+            input: block.input,
+          })
+      }
+      messages.push({ role: "assistant", content: parts })
+      continue
+    }
+
+    // role === "user"
+    if (typeof m.content === "string") {
+      messages.push({ role: "user", content: m.content })
+      continue
+    }
+    const toolResults = m.content.filter(isToolResultBlock)
+    if (toolResults.length === 0) {
+      messages.push({ role: "user", content: flatten(m.content) })
+      continue
+    }
+    // Mixed turn: preserve any plain text as a user message first, then emit
+    // the tool results as a separate tool-role message.
+    const text = flatten(m.content)
+    if (text.length > 0) messages.push({ role: "user", content: text })
+    const parts: NormalizedContentPart[] = toolResults.map((block) => ({
+      type: "tool-result",
+      toolCallId: block.tool_use_id,
+      toolName: toolNameById.get(block.tool_use_id) ?? "tool",
+      output: flattenToolResult(block.content),
+    }))
+    messages.push({ role: "tool", content: parts })
+  }
+
   if (messages.length === 0)
     return err({ kind: "bad-request", detail: "no user/assistant messages" })
+
+  const tools = mapTools(b.tools)
 
   return ok({
     model: b.model,
     ...(system !== undefined ? { system } : {}),
     ...(b.max_tokens !== undefined ? { maxTokens: b.max_tokens } : {}),
     ...(b.temperature !== undefined ? { temperature: b.temperature } : {}),
+    ...(tools.length > 0 ? { tools } : {}),
     stream: b.stream ?? false,
     messages,
   })
