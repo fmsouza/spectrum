@@ -1,11 +1,11 @@
 # @launchkit/sessions
 
-**Responsibility:** Session history — persist each launched harness instance (harness, optional modelId, timestamps, exit code) in SQLite.
+**Responsibility:** Session history — persist each launched harness instance (harness, optional modelId, timestamps, exit code) via the @launchkit/db SQLite layer.
 
-**Public API (barrel `src/index.ts`):** `SessionStore` interface + `createSessionStore({ db, clock, idGen })`; the `Database` effect interface + `createInMemoryDatabase()` (recording fake) + `createBunSqliteDatabase(path)` (real adapter); `SessionInput`, `SessionFilter`, `SessionError`.
+**Public API (barrel `src/index.ts`):** `SessionStore` interface + `createSessionStore({ db, clock, idGen })`; `SessionInput`, `SessionFilter`, `SessionError`.
 
-**Depends on:** `@launchkit/types`, `@launchkit/utils`
+**Depends on:** `@launchkit/db`, `@launchkit/types`, `@launchkit/utils`
 
-**Effects owned:** sqlite (via the injected `Database` interface; the real adapter wraps `bun:sqlite`) — exposed to consumers as an injected interface; never reached around.
+**Effects owned:** none directly — sqlite is reached through the injected `DbClient` from `@launchkit/db`. The store builds queries with Drizzle and crosses the boundary through `tryDb`, returning `Result<T, SessionError>`.
 
-**Local rules:** Parameterized statements only — values go in the `params` array, never interpolated into the SQL string (a test asserts this for every statement). Index `startedAt` and `harnessId`. The real adapter reuses prepared statements. `Session` and the branded ids come from `@launchkit/types`; do not redefine or re-export them here.
+**Local rules:** Schema and migrations live in `@launchkit/db`; this package never issues DDL. `Session` and branded ids come from `@launchkit/types`.
