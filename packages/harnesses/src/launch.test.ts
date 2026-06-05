@@ -104,6 +104,21 @@ describe("launchHarness", () => {
     expect(spawner.calls).toEqual([])
   })
 
+  it("returns an invalid-command error and never spawns for a relative command even in direct (bypass) mode", () => {
+    const resolver = createFakeCommandResolver({})
+    const spawner = createRecordingProcessSpawner(1)
+    const relative: HarnessDefinition = { ...claude, command: "./claude" }
+
+    const r = launchHarness({ resolver, spawner })({
+      harness: relative,
+      route: { kind: "direct" },
+    })
+
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error.kind).toBe("invalid-command")
+    expect(spawner.calls).toEqual([])
+  })
+
   it("resolves the command and renders the env without spawning", () => {
     const resolver = createFakeCommandResolver({
       claude: "/usr/local/bin/claude",
