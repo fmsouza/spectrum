@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@launchkit/utils": "workspace:*",
-    "drizzle-orm": "^0.44.0"
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.0"
