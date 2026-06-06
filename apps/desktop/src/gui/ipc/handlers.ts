@@ -264,8 +264,8 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         ...config,
         settings: {
           ...config.settings,
-          lastSelectedHarnessId: String(harness.id),
-          lastSelectedModelId: modelId === undefined ? "" : String(modelId),
+          lastSelectedHarnessId: harness.id,
+          lastSelectedModelId: modelId ?? "",
           ...(safeCwd === undefined ? {} : { lastSelectedFolder: safeCwd }),
         },
       })
