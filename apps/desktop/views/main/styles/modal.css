@@ -85,9 +85,9 @@ dialog[aria-modal="true"] form {
 .lk-folder-field {
   width: 100%;
 }
-.lk-folder-field > input {
+.lk-folder-field input {
   min-width: 0;
-} /* allow the input to shrink so Browse never overflows */
+} /* descendant (not child) so it reaches the input regardless of TextInput's wrapper; allow it to shrink so Browse never overflows */
 .lk-folder-field > button[data-variant] {
   flex: 0 0 auto;
 }
