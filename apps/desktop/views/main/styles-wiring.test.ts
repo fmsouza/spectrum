@@ -64,4 +64,30 @@ describe("views/main stylesheet partials wiring", () => {
     expect(shell).toContain('nav[aria-label="Primary"]')
     expect(sessions).toContain(".sessions-detail")
   })
+
+  it("guards key structural selectors so CSS stays in sync with the shell DOM", async () => {
+    const tokens = await Bun.file(
+      new URL("./styles/tokens.css", import.meta.url),
+    ).text()
+    const controls = await Bun.file(
+      new URL("./styles/controls.css", import.meta.url),
+    ).text()
+    const shell = await Bun.file(
+      new URL("./styles/shell.css", import.meta.url),
+    ).text()
+    const sessionsMaster = await Bun.file(
+      new URL("./styles/sessions-master.css", import.meta.url),
+    ).text()
+    const sessionsDetail = await Bun.file(
+      new URL("./styles/sessions-detail.css", import.meta.url),
+    ).text()
+
+    expect(tokens).toContain("--master-w")
+    expect(tokens).toContain("prefers-color-scheme")
+    expect(controls).toContain("[data-variant=")
+    expect(shell).toContain("[data-app-icon]")
+    expect(shell).toContain('nav[aria-label="Primary"]')
+    expect(sessionsMaster).toContain('nav[aria-label="Sessions"]')
+    expect(sessionsDetail).toContain(".sessions-detail")
+  })
 })

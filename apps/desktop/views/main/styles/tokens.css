@@ -1,3 +1,7 @@
+/* LaunchKit global styles, split into per-area partials. Visual design targets semantic
+ * markup via robust data-attribute/tag selectors plus scoped lk-* class hooks.
+ * WebKit-only (Electrobun webview); system fonts only (CSP forbids remote fonts). */
+
 /* ───────────────────────────── Design tokens ───────────────────────────── */
 :root {
   color-scheme: light dark;
