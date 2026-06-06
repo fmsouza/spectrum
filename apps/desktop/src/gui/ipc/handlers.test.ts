@@ -329,6 +329,28 @@ describe("createIpcHandlers.addProvider", () => {
   })
 })
 
+describe("createIpcHandlers.updateProvider", () => {
+  it("falls back to the sdkProvider name when updating with a blank name", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    const view = await handlers.updateProvider({
+      id: provider().id,
+      input: {
+        name: "   ",
+        sdkProvider: "anthropic",
+        config: {},
+        secretFieldNames: ["apiKey"],
+        models: [],
+      },
+    })
+
+    expect(view.name).toBe("anthropic")
+    const savedProviders = saves.at(-1)?.providers ?? []
+    expect(savedProviders.at(-1)?.name).toBe("anthropic")
+  })
+})
+
 describe("createIpcHandlers.setProviderSecret", () => {
   it("stores the raw value in the keychain and saves the returned ref onto the provider", async () => {
     const { ctx, saves, secretSets } = makeCtx({
