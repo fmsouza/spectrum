@@ -197,27 +197,6 @@ div[aria-label="Proxy status"] {
 }
 
 /* ───────────────────── Spinner (span role=status busy) ──────────────────── */
-.lk-tooltip {
-  position: relative;
-  display: inline-flex;
-}
-
-.lk-tooltip__bubble {
-  position: absolute;
-  z-index: 50;
-  bottom: calc(100% + var(--space-2));
-  left: 50%;
-  transform: translateX(-50%);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--sidebar-bg, #222);
-  color: var(--sidebar-active-fg, #fff);
-  font-size: var(--text-xs);
-  white-space: nowrap;
-  pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
 span[role="status"][aria-busy="true"] {
   display: inline-block;
   width: 18px;
@@ -242,4 +221,26 @@ span[role="status"][aria-busy="true"] {
   * {
     scroll-behavior: auto;
   }
+}
+
+/* ───────────────────────────── Tooltip ───────────────────────────── */
+.lk-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.lk-tooltip__bubble {
+  position: absolute;
+  z-index: 50;
+  bottom: calc(100% + var(--space-2));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--sidebar-bg, #222);
+  color: var(--sidebar-fg, #fff);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
 }
