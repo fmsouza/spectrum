@@ -48,7 +48,11 @@ describe("SettingsNav", () => {
   })
   it("renders a bare ul (no inner nav) so AppShell's nav is the only one", () => {
     const { container } = render(
-      <SettingsNav sections={[{ key: "general", label: "General" }]} active="general" onSelect={() => {}} />,
+      <SettingsNav
+        sections={[{ key: "general", label: "General" }]}
+        active="general"
+        onSelect={() => {}}
+      />,
     )
     expect(container.querySelector("nav")).toBeNull()
     expect(container.querySelector("ul.lk-settings-nav")).not.toBeNull()
