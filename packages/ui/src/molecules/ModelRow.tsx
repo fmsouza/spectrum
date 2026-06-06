@@ -19,7 +19,7 @@ export const ModelRow = ({
   <tr>
     <td>{provider}</td>
     <td>{model}</td>
-    <td>
+    <td className="lk-cell-actions">
       <Button variant="secondary" onClick={() => onEdit(id)}>
         Edit
       </Button>
