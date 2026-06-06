@@ -83,6 +83,34 @@ describe("HarnessesPage", () => {
     })
   })
 
+  it("renders the harness form inside a modal dialog", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByText("Claude Code")).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /add custom harness/i }))
+
+    expect(
+      await screen.findByRole("dialog", { name: /add custom harness/i }),
+    ).toBeInTheDocument()
+  })
+
+  it("closes the harness modal when Cancel is clicked", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByText("Claude Code")).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /add custom harness/i }))
+    await screen.findByRole("dialog", { name: /add custom harness/i })
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }))
+
+    expect(
+      screen.queryByRole("dialog", { name: /add custom harness/i }),
+    ).toBeNull()
+  })
+
   it("does not offer a delete control for a built-in harness", async () => {
     renderPage({})
     await waitFor(() =>

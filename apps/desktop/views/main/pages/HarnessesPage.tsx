@@ -4,6 +4,7 @@ import {
   Button,
   EmptyState,
   HarnessForm,
+  Modal,
   SettingsLayout,
   Spinner,
 } from "@launchkit/ui"
@@ -95,13 +96,17 @@ export const HarnessesPage = (): ReactElement => {
         </>
       ) : null}
 
-      {addOpen ? (
+      <Modal
+        title="Add custom harness"
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+      >
         <HarnessForm
           initialValues={NEW_HARNESS_DEFAULTS}
           onSubmit={(v) => void submitAdd(v)}
           onCancel={() => setAddOpen(false)}
         />
-      ) : null}
+      </Modal>
     </SettingsLayout>
   )
 }
