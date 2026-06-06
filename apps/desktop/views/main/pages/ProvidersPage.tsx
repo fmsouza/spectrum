@@ -11,7 +11,7 @@ import {
   Spinner,
   TextInput,
 } from "@launchkit/ui"
-import type { ProviderDisplay } from "@launchkit/ui"
+import type { ProviderRow } from "@launchkit/ui"
 import { type ReactElement, useState } from "react"
 import { useProviders } from "../hooks/useProviders"
 
@@ -23,11 +23,16 @@ const SDK_PROVIDER_OPTIONS = [
   { value: "ollama", label: "Ollama" },
 ] as const
 
-const toDisplay = (view: ProviderView): ProviderDisplay => ({
-  id: view.id,
-  name: view.name,
-  sdkProvider: view.sdkProvider,
-})
+const toRow = (view: ProviderView): ProviderRow => {
+  const fields = Object.values(view.secretFields)
+  const secretSet = fields.length > 0 && fields.every((s) => s.isSet)
+  return {
+    id: view.id,
+    name: view.name,
+    sdkProvider: view.sdkProvider,
+    secretSet,
+  }
+}
 
 export const ProvidersPage = (): ReactElement => {
   const { data, loading, error, add, setSecret } = useProviders()
@@ -89,33 +94,14 @@ export const ProvidersPage = (): ReactElement => {
 
       {data !== undefined ? (
         <>
+          <Button onClick={() => setAddOpen(true)}>Add provider</Button>
           <ProviderList
-            providers={data.map(toDisplay)}
-            onAdd={() => setAddOpen(true)}
-            onSelect={() => {}}
+            providers={data.map(toRow)}
+            onSetSecret={(id) => {
+              const p = data.find((x) => x.id === id)
+              if (p !== undefined) setSecretFor(p)
+            }}
           />
-
-          {/* Per-provider secret status (presence flags ONLY -- never a value). */}
-          <ul aria-label="Provider secrets" className="lk-list">
-            {data.map((provider) => (
-              <li key={provider.id} className="lk-list-row">
-                <span className="lk-list-row__label">{provider.name}</span>
-                {Object.entries(provider.secretFields).map(
-                  ([field, status]) => (
-                    <span
-                      key={field}
-                    >{`${field}: ${status.isSet ? "set" : "unset"}`}</span>
-                  ),
-                )}
-                <Button
-                  variant="secondary"
-                  onClick={() => setSecretFor(provider)}
-                >
-                  {`Set secret for ${provider.name}`}
-                </Button>
-              </li>
-            ))}
-          </ul>
         </>
       ) : null}
 

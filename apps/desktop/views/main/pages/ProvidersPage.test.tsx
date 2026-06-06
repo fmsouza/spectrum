@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { ProviderView } from "@launchkit/ipc"
-import { fireEvent, screen, waitFor } from "@testing-library/react"
+import { fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { createFakeIpcClient } from "../test/fake-client"
 import { renderWithProviders } from "../test/renderWithProviders"
 import { ProvidersPage } from "./ProvidersPage"
@@ -24,27 +24,68 @@ const renderPage = (stubs: Parameters<typeof createFakeIpcClient>[0]) => {
 }
 
 describe("ProvidersPage", () => {
-  it("renders the provider-secrets list with lk-list/lk-list-row/lk-list-row__label hooks", async () => {
+  it("renders a table once providers load (consistent with Models page)", async () => {
     renderPage({})
     await waitFor(() =>
-      expect(
-        screen.getByRole("heading", { name: "OpenAI" }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
     )
-    const list = document.querySelector("ul.lk-list")
-    expect(list).not.toBeNull()
-    const row = document.querySelector("li.lk-list-row")
-    expect(row).not.toBeNull()
-    const label = document.querySelector(".lk-list-row__label")
-    expect(label).not.toBeNull()
+    expect(document.querySelector("table")).not.toBeNull()
+  })
+
+  it("shows the provider name, SDK badge, and Set badge in the table row", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    // Provider name cell
+    expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument()
+    // SDK badge — info tone
+    const infoBadge = document.querySelector("span[data-tone='info']")
+    expect(infoBadge?.textContent).toBe("openai")
+    // secretSet = true → "Set" badge
+    const successBadge = document.querySelector("span[data-tone='success']")
+    expect(successBadge?.textContent).toBe("Set")
+  })
+
+  it("renders the Set secret button inside lk-cell-actions in the provider's row", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    const row = document.querySelector("tbody tr") as HTMLElement
+    const actionsCell = row.querySelector("td.lk-cell-actions")
+    expect(actionsCell).not.toBeNull()
+    expect(
+      within(actionsCell as HTMLElement).getByRole("button", {
+        name: /set secret/i,
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it("does NOT render a separate 'Provider secrets' list", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    const secretsList = document.querySelector(
+      "ul[aria-label='Provider secrets']",
+    )
+    expect(secretsList).toBeNull()
+  })
+
+  it("does NOT render an article or the old lk-list-row--card style", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    expect(document.querySelector("article")).toBeNull()
+    expect(document.querySelector(".lk-list-row--card")).toBeNull()
   })
 
   it("wraps the add-provider form action buttons in lk-form-actions row", async () => {
     renderPage({})
     await waitFor(() =>
-      expect(
-        screen.getByRole("heading", { name: "OpenAI" }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
     )
     fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
     const actionsRow = document.querySelector(".lk-row.lk-form-actions")
@@ -60,12 +101,13 @@ describe("ProvidersPage", () => {
   it("wraps the set-secret form action buttons in lk-form-actions row", async () => {
     renderPage({})
     await waitFor(() =>
-      expect(
-        screen.getByRole("heading", { name: "OpenAI" }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
     )
+    // Trigger the set-secret form from the table row
+    const row = document.querySelector("tbody tr") as HTMLElement
+    const actionsCell = row.querySelector("td.lk-cell-actions") as HTMLElement
     fireEvent.click(
-      screen.getByRole("button", { name: "Set secret for OpenAI" }),
+      within(actionsCell).getByRole("button", { name: /set secret/i }),
     )
     const secretForm = document.querySelector(
       "form[aria-label='Set secret for OpenAI']",
@@ -80,41 +122,19 @@ describe("ProvidersPage", () => {
     expect(directButtons.length).toBe(0)
   })
 
-  it("renders the provider name once the providers load", async () => {
-    renderPage({})
-    await waitFor(() =>
-      expect(
-        screen.getByRole("heading", { name: "OpenAI" }),
-      ).toBeInTheDocument(),
-    )
-  })
-
-  it("shows the secret field as set without rendering any secret value", async () => {
-    renderPage({})
-    await waitFor(() =>
-      expect(
-        screen.getByRole("heading", { name: "OpenAI" }),
-      ).toBeInTheDocument(),
-    )
-    // Presence flag is shown...
-    expect(screen.getByText(/apiKey/i)).toBeInTheDocument()
-    expect(screen.getByText("apiKey: set")).toBeInTheDocument()
-    // ...and no secret value is anywhere in the DOM (the view never carries one).
-    expect(document.body.textContent).not.toContain("sk-")
-  })
-
   it("calls setProviderSecret with the typed value when the secret form is submitted", async () => {
     const client = renderPage({
       setProviderSecret: async () => ({ ok: true, value: null }),
     })
     await waitFor(() =>
-      expect(
-        screen.getByRole("heading", { name: "OpenAI" }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
     )
 
+    // Open via table row's Set secret button
+    const row = document.querySelector("tbody tr") as HTMLElement
+    const actionsCell = row.querySelector("td.lk-cell-actions") as HTMLElement
     fireEvent.click(
-      screen.getByRole("button", { name: "Set secret for OpenAI" }),
+      within(actionsCell).getByRole("button", { name: /set secret/i }),
     )
     fireEvent.change(screen.getByLabelText("Secret field"), {
       target: { value: "apiKey" },
@@ -137,13 +157,13 @@ describe("ProvidersPage", () => {
       setProviderSecret: async () => ({ ok: true, value: null }),
     })
     await waitFor(() =>
-      expect(
-        screen.getByRole("heading", { name: "OpenAI" }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
     )
 
+    const row = document.querySelector("tbody tr") as HTMLElement
+    const actionsCell = row.querySelector("td.lk-cell-actions") as HTMLElement
     fireEvent.click(
-      screen.getByRole("button", { name: "Set secret for OpenAI" }),
+      within(actionsCell).getByRole("button", { name: /set secret/i }),
     )
     fireEvent.change(screen.getByLabelText("Secret field"), {
       target: { value: "apiKey" },
@@ -163,9 +183,7 @@ describe("ProvidersPage", () => {
       addProvider: async () => ({ ok: true, value: view }),
     })
     await waitFor(() =>
-      expect(
-        screen.getByRole("heading", { name: "OpenAI" }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
     )
 
     fireEvent.click(screen.getByRole("button", { name: /add provider/i }))

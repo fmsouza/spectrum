@@ -43,7 +43,7 @@
  *   2. Sessions view — running + recent sessions, one selected (ended → replay empty-state)
  *   3. New-session modal open (harness + model seed data)
  *   4. Settings General page (proxy running → StatusDot green)
- *   5. Settings Providers page (one provider → lk-list/lk-list-row hooks)
+ *   5. Settings Providers page (one provider → Providers table, td span[data-tone] badges)
  *   6. Settings Models page (one model in table, Add-model form open → lk-form-actions)
  *   7. Settings Harnesses page (built-in + custom, HarnessForm open → form + lk-field)
  *   8. Settings Profiles page (one profile + add-profile modal open → dialog + ProfileForm)
@@ -575,7 +575,7 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
   // ── State 2a: Sessions view — running + recent sessions, failed session selected ─
   // Renders: .lk-session-row, .lk-session-row__line, .lk-session-row__sub,
   //   .lk-session-row__meta, .lk-session-list, .lk-session-group, .lk-session-group__heading,
-  //   span[data-tone="danger"] (exitCode:1 badge), article (ProviderCard in session detail empty-state?),
+  //   span[data-tone="danger"] (exitCode:1 badge),
   //   .lk-sessions-detail (not matched by has() — see has-not bucket)
   {
     const client = createFakeIpcClient({
@@ -748,6 +748,7 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
   }
 
   // ── State 5: Settings — Providers page (one provider) ───────────────────
+  // Renders: table (Providers table), td span[data-tone] (badges in table cells)
   {
     const client = createFakeIpcClient({
       ...baseStubs,
@@ -762,7 +763,7 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
       />,
     )
     await waitFor(() => {
-      expect(container.querySelector(".lk-list")).not.toBeNull()
+      expect(container.querySelector("table")).not.toBeNull()
     })
     containers.push(container.cloneNode(true) as ParentNode)
     cleanup()

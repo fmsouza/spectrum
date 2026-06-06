@@ -1,27 +1,3 @@
-/* ───────────────────────── ProviderCard (article) ───────────────────────── */
-article {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-5);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  transition: border-color var(--dur) var(--ease), box-shadow var(--dur)
-    var(--ease), transform var(--dur) var(--ease);
-}
-
-article:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-md);
-}
-
-article > h3 {
-  font-size: var(--text-lg);
-}
-
 /* ───────────────────────────── Tables ───────────────────────────── */
 table {
   width: 100%;
@@ -75,6 +51,11 @@ tbody tr:hover {
   gap: var(--space-2);
 }
 
+/* Badges inside provider/model table cells align with surrounding text. */
+td span[data-tone] {
+  vertical-align: middle;
+}
+
 /* ─────────────────────── EmptyState (div > h2 + p) ──────────────────────── */
 div:has(> h2 + p):not(:has(> h2 + p ~ *)):not([aria-label]) {
   display: flex;
@@ -118,14 +99,6 @@ div:has(> h2 + p):not(:has(> h2 + p ~ *)):not([aria-label]) > p {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-}
-
-/* Let a card-bearing row drop its own chrome (the article already has it). */
-.lk-list-row--card {
-  background: transparent;
-  border: none;
-  padding: 0;
-  align-items: stretch;
 }
 
 /* The leading label in a row takes the slack so trailing buttons align right. */
