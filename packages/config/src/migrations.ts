@@ -92,8 +92,22 @@ const v3ToV4: Migration = {
   },
 }
 
+/**
+ * v5 removes the `profiles` feature entirely. Older documents may carry a top-level
+ * `profiles` array; the strict `ConfigSchema` would now reject it, so this drops the key.
+ */
+const v4ToV5: Migration = {
+  from: 4,
+  to: 5,
+  migrate: (raw) => {
+    const { profiles: _drop, ...rest } = raw
+    void _drop
+    return { ...rest, version: 5 }
+  },
+}
+
 /** Ordered list of forward migrations. Append a new step whenever `CURRENT_CONFIG_VERSION` bumps. */
-export const migrations: readonly Migration[] = [v1ToV2, v2ToV3, v3ToV4]
+export const migrations: readonly Migration[] = [v1ToV2, v2ToV3, v3ToV4, v4ToV5]
 
 /**
  * Read `raw.version`, apply ordered migrations up to `CURRENT_CONFIG_VERSION`, then validate

@@ -20,14 +20,16 @@ const v1Config = {
 }
 
 describe("migrations", () => {
-  it("ships ordered v1->v2, v2->v3, and v3->v4 migrations", () => {
-    expect(migrations).toHaveLength(3)
+  it("ships ordered v1->v2, v2->v3, v3->v4, and v4->v5 migrations", () => {
+    expect(migrations).toHaveLength(4)
     expect(migrations[0]?.from).toBe(1)
     expect(migrations[0]?.to).toBe(2)
     expect(migrations[1]?.from).toBe(2)
     expect(migrations[1]?.to).toBe(3)
     expect(migrations[2]?.from).toBe(3)
     expect(migrations[2]?.to).toBe(4)
+    expect(migrations[3]?.from).toBe(4)
+    expect(migrations[3]?.to).toBe(5)
   })
 })
 
@@ -41,7 +43,7 @@ describe("runMigrations", () => {
     expect(provider?.secrets).toEqual({})
     // The inline `apiKey` string is gone — it is not part of the validated Provider shape.
     expect((provider as Record<string, unknown>).apiKey).toBeUndefined()
-    expect(result.value.profiles).toEqual([])
+    expect("profiles" in result.value).toBe(false)
   })
 
   it("passes an already-current config through and validates it", () => {
@@ -49,13 +51,18 @@ describe("runMigrations", () => {
       version: CURRENT_CONFIG_VERSION,
       providers: [],
       models: [],
-      profiles: [],
-      settings: { proxyPort: 4000, proxyHost: "127.0.0.1" as const },
+      settings: {
+        proxyPort: 4000,
+        proxyHost: "127.0.0.1" as const,
+        lastSelectedFolder: "",
+        lastSelectedHarnessId: "",
+        lastSelectedModelId: "",
+      },
     }
     expect(runMigrations(current)).toEqual({ ok: true, value: current })
   })
 
-  it("migrates a v2 config to v3 by seeding an empty profiles array when none exists", () => {
+  it("migrates a v2 config through the chain and drops profiles by the current version", () => {
     const v2Config = {
       version: 2,
       providers: [],
@@ -66,10 +73,10 @@ describe("runMigrations", () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.value.version).toBe(CURRENT_CONFIG_VERSION)
-    expect(result.value.profiles).toEqual([])
+    expect("profiles" in result.value).toBe(false)
   })
 
-  it("preserves an existing profiles array when migrating v2 to v3", () => {
+  it("strips a legacy profiles array carried up from v2 by the current version", () => {
     const v2WithProfiles = {
       version: 2,
       providers: [],
@@ -88,15 +95,8 @@ describe("runMigrations", () => {
     const result = runMigrations(v2WithProfiles)
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    expect(result.value.profiles).toEqual([
-      {
-        id: "pr_default",
-        name: "Default",
-        harnessId: "claude",
-        modelId: "fast",
-        env: {},
-      },
-    ])
+    expect(result.value.version).toBe(CURRENT_CONFIG_VERSION)
+    expect("profiles" in result.value).toBe(false)
   })
 
   it("returns migration-failed when version is newer than CURRENT", () => {
@@ -135,7 +135,7 @@ describe("runMigrations", () => {
 })
 
 describe("v3 → v4 (aliases → models)", () => {
-  it("converts aliases to models keyed by the old alias name and rewrites profile refs", () => {
+  it("converts aliases to models keyed by the old alias name and drops profiles by the current version", () => {
     const raw = {
       version: 3,
       providers: [],
@@ -150,11 +150,11 @@ describe("v3 → v4 (aliases → models)", () => {
     const result = runMigrations(raw)
     expect(isOk(result)).toBe(true)
     if (!isOk(result)) return
-    expect(result.value.version).toBe(4)
+    expect(result.value.version).toBe(CURRENT_CONFIG_VERSION)
     expect(result.value.models).toEqual([
       { id: "fast", providerId: "openai", providerModel: "gpt-4o-mini" },
     ])
-    expect(result.value.profiles[0]?.modelId).toBe("fast")
+    expect("profiles" in result.value).toBe(false)
     expect("aliases" in result.value).toBe(false)
   })
 
@@ -171,18 +171,22 @@ describe("v3 → v4 (aliases → models)", () => {
     if (!isOk(result)) return
     expect(result.value.models).toEqual([])
   })
+})
 
-  it("omits modelId for a profile that had no alias", () => {
+describe("v4 → v5 (drop profiles)", () => {
+  it("v4→v5 strips the profiles field so the strict schema accepts the doc", () => {
     const raw = {
-      version: 3,
+      version: 4,
       providers: [],
-      aliases: [],
-      profiles: [{ id: "p1", name: "Bare", harnessId: "claude", env: {} }],
+      models: [],
+      profiles: [{ id: "pr_1", name: "Fast", harnessId: "claude", env: {} }],
       settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
     }
     const result = runMigrations(raw)
-    expect(isOk(result)).toBe(true)
-    if (!isOk(result)) return
-    expect("modelId" in (result.value.profiles[0] ?? {})).toBe(false)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.version).toBe(5)
+      expect("profiles" in result.value).toBe(false)
+    }
   })
 })
