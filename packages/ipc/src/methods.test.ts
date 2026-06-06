@@ -2,28 +2,22 @@ import { describe, expect, it } from "bun:test"
 import type {
   HarnessId,
   ModelId,
-  Profile,
-  ProfileId,
   ProviderId,
   SessionId,
 } from "@launchkit/types"
 import {
   AddModelParamsSchema,
   AddModelResultSchema,
-  AddProfileParamsSchema,
-  AddProfileResultSchema,
   AddProviderParamsSchema,
   DeleteModelParamsSchema,
   DeleteModelResultSchema,
-  DeleteProfileParamsSchema,
-  DeleteProfileResultSchema,
   GetModelsParamsSchema,
   GetModelsResultSchema,
-  GetProfilesParamsSchema,
-  GetProfilesResultSchema,
   GetSessionScrollbackParamsSchema,
   GetSessionScrollbackResultSchema,
   GetSessionsParamsSchema,
+  GetSettingsParamsSchema,
+  GetSettingsResultSchema,
   IpcMethodSchemas,
   LaunchHarnessParamsSchema,
   LaunchHarnessResultSchema,
@@ -32,24 +26,7 @@ import {
   SetProviderSecretParamsSchema,
   UpdateModelParamsSchema,
   UpdateModelResultSchema,
-  UpdateProfileParamsSchema,
-  UpdateProfileResultSchema,
 } from "./methods"
-
-const sampleProfile: Profile = {
-  id: "prof_default" as ProfileId,
-  name: "Default",
-  harnessId: "claude" as Profile["harnessId"],
-  modelId: "mdl_default" as ModelId,
-  env: { ANTHROPIC_MODEL: "sonnet" },
-}
-
-const profileInput = {
-  name: "Default",
-  harnessId: "claude" as Profile["harnessId"],
-  modelId: "mdl_default" as ModelId,
-  env: { ANTHROPIC_MODEL: "sonnet" },
-}
 
 const sampleModelRoute = {
   id: "mdl_x" as ModelId,
@@ -295,94 +272,6 @@ describe("GetSessionsParamsSchema", () => {
   })
 })
 
-describe("GetProfilesParamsSchema", () => {
-  it("parses undefined params", () => {
-    expect(GetProfilesParamsSchema.parse(undefined)).toBeUndefined()
-  })
-})
-
-describe("GetProfilesResultSchema", () => {
-  it("parses an array of profiles", () => {
-    expect(GetProfilesResultSchema.parse([sampleProfile])).toEqual([
-      sampleProfile,
-    ])
-  })
-  it("rejects a non-array result", () => {
-    expect(GetProfilesResultSchema.safeParse({}).success).toBe(false)
-  })
-})
-
-describe("AddProfileParamsSchema", () => {
-  it("parses a profile input without an id (server mints it)", () => {
-    expect(AddProfileParamsSchema.parse(profileInput)).toEqual(profileInput)
-  })
-  it("rejects an input that supplies an id", () => {
-    expect(
-      AddProfileParamsSchema.safeParse({ ...profileInput, id: "prof_x" })
-        .success,
-    ).toBe(false)
-  })
-  it("rejects an input with an empty name", () => {
-    expect(
-      AddProfileParamsSchema.safeParse({ ...profileInput, name: "" }).success,
-    ).toBe(false)
-  })
-})
-
-describe("AddProfileResultSchema", () => {
-  it("parses a full profile carrying the minted id", () => {
-    expect(AddProfileResultSchema.parse(sampleProfile)).toEqual(sampleProfile)
-  })
-})
-
-describe("UpdateProfileParamsSchema", () => {
-  it("parses a full profile (id included)", () => {
-    expect(UpdateProfileParamsSchema.parse(sampleProfile)).toEqual(
-      sampleProfile,
-    )
-  })
-  it("rejects a profile missing its id", () => {
-    expect(
-      UpdateProfileParamsSchema.safeParse({
-        name: "Default",
-        harnessId: "claude" as Profile["harnessId"],
-        modelId: "mdl_default" as ModelId,
-        env: {},
-      }).success,
-    ).toBe(false)
-  })
-})
-
-describe("UpdateProfileResultSchema", () => {
-  it("parses the updated profile", () => {
-    expect(UpdateProfileResultSchema.parse(sampleProfile)).toEqual(
-      sampleProfile,
-    )
-  })
-})
-
-describe("DeleteProfileParamsSchema", () => {
-  it("parses an object carrying the profile id", () => {
-    expect(
-      DeleteProfileParamsSchema.parse({ id: "prof_default" as ProfileId }),
-    ).toEqual({ id: "prof_default" as ProfileId })
-  })
-  it("rejects extra keys", () => {
-    expect(
-      DeleteProfileParamsSchema.safeParse({
-        id: "prof_default" as ProfileId,
-        extra: 1,
-      }).success,
-    ).toBe(false)
-  })
-})
-
-describe("DeleteProfileResultSchema", () => {
-  it("parses null (void) as the result", () => {
-    expect(DeleteProfileResultSchema.parse(null)).toBeNull()
-  })
-})
-
 describe("PickFolderParamsSchema", () => {
   it("parses omitted params (undefined)", () => {
     expect(PickFolderParamsSchema.parse(undefined)).toBeUndefined()
@@ -438,6 +327,56 @@ describe("GetSessionScrollbackResultSchema", () => {
   })
 })
 
+describe("GetSettingsParamsSchema", () => {
+  it("parses undefined params", () => {
+    expect(GetSettingsParamsSchema.parse(undefined)).toBeUndefined()
+  })
+})
+
+describe("GetSettingsResultSchema", () => {
+  it("parses a result carrying all three persisted fields", () => {
+    expect(
+      GetSettingsResultSchema.parse({
+        lastSelectedFolder: "/home/me/proj",
+        lastSelectedHarnessId: "claude",
+        lastSelectedModelId: "mdl_x",
+      }),
+    ).toEqual({
+      lastSelectedFolder: "/home/me/proj",
+      lastSelectedHarnessId: "claude",
+      lastSelectedModelId: "mdl_x",
+    })
+  })
+  it("validates a getSettings result with all three persisted fields", () => {
+    const result = GetSettingsResultSchema.safeParse({
+      lastSelectedFolder: "/p",
+      lastSelectedHarnessId: "claude",
+      lastSelectedModelId: "",
+    })
+    expect(result.success).toBe(true)
+  })
+  it("rejects a getSettings result missing lastSelectedHarnessId", () => {
+    const result = GetSettingsResultSchema.safeParse({
+      lastSelectedFolder: "/p",
+      lastSelectedModelId: "",
+    })
+    expect(result.success).toBe(false)
+  })
+  it("rejects a result missing lastSelectedFolder", () => {
+    expect(GetSettingsResultSchema.safeParse({}).success).toBe(false)
+  })
+  it("rejects extra keys", () => {
+    expect(
+      GetSettingsResultSchema.safeParse({
+        lastSelectedFolder: "/x",
+        lastSelectedHarnessId: "claude",
+        lastSelectedModelId: "",
+        extra: 1,
+      }).success,
+    ).toBe(false)
+  })
+})
+
 describe("IpcMethodSchemas", () => {
   it("exposes a params and result schema for every contract method", () => {
     const expected = [
@@ -458,13 +397,10 @@ describe("IpcMethodSchemas", () => {
       "launchHarness",
       "getSessions",
       "getProxyStatus",
-      "getProfiles",
-      "addProfile",
-      "updateProfile",
-      "deleteProfile",
       "pickFolder",
       "getSessionScrollback",
       "listProviderModels",
+      "getSettings",
     ] as const
     for (const name of expected) {
       expect(IpcMethodSchemas[name]).toBeDefined()

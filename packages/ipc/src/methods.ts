@@ -3,8 +3,6 @@ import {
   HarnessIdSchema,
   ModelIdSchema,
   ModelRouteSchema,
-  ProfileIdSchema,
-  ProfileSchema,
   ProviderIdSchema,
   SdkProviderSchema,
   SessionIdSchema,
@@ -178,23 +176,6 @@ export const GetTerminalSocketUrlResultSchema = z
   .object({ url: z.string() })
   .strict()
 
-// ── Profiles ───────────────────────────────────────────────────────────────
-
-export const GetProfilesParamsSchema = z.undefined()
-export const GetProfilesResultSchema = z.array(ProfileSchema)
-
-/** Add omits `id` — the server mints it (mirrors addProvider). */
-export const AddProfileParamsSchema = ProfileSchema.omit({ id: true }).strict()
-export const AddProfileResultSchema = ProfileSchema
-
-export const UpdateProfileParamsSchema = ProfileSchema
-export const UpdateProfileResultSchema = ProfileSchema
-
-export const DeleteProfileParamsSchema = z
-  .object({ id: ProfileIdSchema })
-  .strict()
-export const DeleteProfileResultSchema = VoidSchema
-
 // ── Model discovery ───────────────────────────────────────────────────────
 
 export const ListProviderModelsParamsSchema = z
@@ -214,6 +195,20 @@ export const PickFolderParamsSchema = z
   .optional()
 export const PickFolderResultSchema = z
   .object({ path: z.string().optional() })
+  .strict()
+
+// ── Settings ──────────────────────────────────────────────────────────────
+
+// Read the persisted, non-secret settings the GUI needs to prefill its UI: the
+// last launched cwd, harness, and model. The New Session modal seeds its fields
+// from these. Empty strings mean "nothing remembered yet".
+export const GetSettingsParamsSchema = z.undefined()
+export const GetSettingsResultSchema = z
+  .object({
+    lastSelectedFolder: z.string(),
+    lastSelectedHarnessId: z.string(),
+    lastSelectedModelId: z.string(),
+  })
   .strict()
 
 // ── The method → {params, result} schema map ──────────────────────────────────
@@ -293,22 +288,6 @@ export const IpcMethodSchemas = {
     params: GetTerminalSocketUrlParamsSchema,
     result: GetTerminalSocketUrlResultSchema,
   },
-  getProfiles: {
-    params: GetProfilesParamsSchema,
-    result: GetProfilesResultSchema,
-  },
-  addProfile: {
-    params: AddProfileParamsSchema,
-    result: AddProfileResultSchema,
-  },
-  updateProfile: {
-    params: UpdateProfileParamsSchema,
-    result: UpdateProfileResultSchema,
-  },
-  deleteProfile: {
-    params: DeleteProfileParamsSchema,
-    result: DeleteProfileResultSchema,
-  },
   pickFolder: {
     params: PickFolderParamsSchema,
     result: PickFolderResultSchema,
@@ -316,6 +295,10 @@ export const IpcMethodSchemas = {
   listProviderModels: {
     params: ListProviderModelsParamsSchema,
     result: ListProviderModelsResultSchema,
+  },
+  getSettings: {
+    params: GetSettingsParamsSchema,
+    result: GetSettingsResultSchema,
   },
 } as const
 

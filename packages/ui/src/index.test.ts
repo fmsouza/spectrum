@@ -25,8 +25,6 @@ describe("@launchkit/ui barrel", () => {
       "SessionTable",
       "SessionList",
       "SettingsNav",
-      "ProfileList",
-      "ProfileForm",
       "NewSessionModal",
       "AppShell",
       "SettingsLayout",

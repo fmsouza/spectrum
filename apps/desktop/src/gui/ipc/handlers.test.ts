@@ -8,7 +8,6 @@ import { bytesToBase64 } from "@launchkit/pty"
 import type {
   HarnessId,
   ModelId,
-  Profile,
   Provider,
   ProviderId,
   Session,
@@ -30,13 +29,23 @@ const provider = (over: Partial<Provider> = {}): Provider =>
     ...over,
   }) as Provider
 
-const baseConfig = (providers: readonly Provider[]): Config =>
+const baseConfig = (
+  providers: readonly Provider[],
+  lastSelectedFolder = "",
+  lastSelectedHarnessId = "",
+  lastSelectedModelId = "",
+): Config =>
   ({
     version: 2,
     providers,
     models: [],
-    profiles: [],
-    settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+    settings: {
+      proxyPort: 4000,
+      proxyHost: "127.0.0.1",
+      lastSelectedFolder,
+      lastSelectedHarnessId,
+      lastSelectedModelId,
+    },
   }) as Config
 
 /** Build a fake AppContext, capturing every save + secret set so tests can assert behavior. */
@@ -54,6 +63,9 @@ const makeCtx = (
     registryRemoveOk?: boolean
     pickFolderResult?: readonly string[]
     scrollback?: Result<Uint8Array, { readonly kind: string }>
+    lastSelectedFolder?: string
+    lastSelectedHarnessId?: string
+    lastSelectedModelId?: string
   } = {},
 ): {
   ctx: AppContext
@@ -76,7 +88,12 @@ const makeCtx = (
   const registryRemoves: string[] = []
   const pickFolderCalls: unknown[] = []
   const readScrollbackIds: string[] = []
-  let current = baseConfig(over.providers ?? [provider()])
+  let current = baseConfig(
+    over.providers ?? [provider()],
+    over.lastSelectedFolder ?? "",
+    over.lastSelectedHarnessId ?? "",
+    over.lastSelectedModelId ?? "",
+  )
 
   // The handler resolves the harness command+env via ctx.resolveLaunch — use the REAL renderer
   // over a fake resolver so the rendered proxy vars (ANTHROPIC_*) are asserted faithfully.
@@ -576,6 +593,112 @@ describe("createIpcHandlers.launchHarness", () => {
       handlers.launchHarness({ id: "claude" as HarnessId }),
     ).rejects.toThrow()
   })
+
+  it("persists the launched cwd as settings.lastSelectedFolder on a successful launch", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({
+      id: "claude" as HarnessId,
+      name: "x",
+      cwd: "/home/me/proj",
+      env: {},
+    })
+
+    expect(saves.at(-1)?.settings.lastSelectedFolder).toBe("/home/me/proj")
+  })
+
+  it("keeps the prior lastSelectedFolder when cwd is blank but still persists harness/model", async () => {
+    const { ctx, saves } = makeCtx({
+      providers: [provider()],
+      lastSelectedFolder: "/home/me/prior",
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({
+      id: "claude" as HarnessId,
+      modelId: "mdl_1" as ModelId,
+      name: "x",
+      cwd: "   ",
+      env: {},
+    })
+
+    // A save STILL happens — harness/model persist on every success ...
+    const saved = saves.at(-1)
+    expect(saved?.settings.lastSelectedHarnessId).toBe("claude")
+    expect(saved?.settings.lastSelectedModelId).toBe("mdl_1")
+    // ... but the folder is unchanged (blank cwd never overwrites the prior value).
+    expect(saved?.settings.lastSelectedFolder).toBe("/home/me/prior")
+  })
+
+  it("persists the launched harness and model on a successful launch", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({
+      id: "claude" as HarnessId,
+      modelId: "mdl_1" as ModelId,
+      env: {},
+    })
+
+    const saved = saves.at(-1)
+    expect(saved?.settings.lastSelectedHarnessId).toBe("claude")
+    expect(saved?.settings.lastSelectedModelId).toBe("mdl_1")
+  })
+
+  it("persists harness and an empty model on a default (no-model) launch", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({ id: "claude" as HarnessId, env: {} })
+
+    const saved = saves.at(-1)
+    expect(saved?.settings.lastSelectedHarnessId).toBe("claude")
+    expect(saved?.settings.lastSelectedModelId).toBe("")
+  })
+
+  it("persists harness/model even when no cwd is provided", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({ id: "claude" as HarnessId, env: {} })
+
+    expect(saves.at(-1)).toBeDefined()
+    expect(saves.at(-1)?.settings.lastSelectedHarnessId).toBe("claude")
+  })
+
+  it("does not persist harness/model when the launch fails", async () => {
+    const { ctx, saves } = makeCtx({
+      providers: [provider()],
+      terminalOk: false,
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.launchHarness({ id: "claude" as HarnessId, env: {} }),
+    ).rejects.toThrow()
+
+    expect(saves).toHaveLength(0)
+  })
+
+  it("does not persist lastSelectedFolder when the launch fails", async () => {
+    const { ctx, saves } = makeCtx({
+      providers: [provider()],
+      terminalOk: false,
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.launchHarness({
+        id: "claude" as HarnessId,
+        name: "x",
+        cwd: "/home/me/proj",
+        env: {},
+      }),
+    ).rejects.toThrow()
+
+    expect(saves).toHaveLength(0)
+  })
 })
 
 describe("createIpcHandlers.addHarness", () => {
@@ -693,130 +816,31 @@ describe("createIpcHandlers.getProxyStatus", () => {
   })
 })
 
-// ── D.1 Profiles CRUD ─────────────────────────────────────────────────────────
-
-const sampleProfile: Profile = {
-  id: "pr_default" as Profile["id"],
-  name: "Default",
-  harnessId: "claude" as Profile["harnessId"],
-  modelId: "mdl_fast" as ModelId,
-  env: {},
-}
-
-describe("createIpcHandlers.getProfiles", () => {
-  it("returns the profiles from the loaded config when listing", async () => {
-    const { ctx } = makeCtx()
-    await ctx.config.save({
-      ...(await ctx.config.load()).value,
-      profiles: [sampleProfile],
-    } as Config)
+describe("createIpcHandlers.getSettings", () => {
+  it("returns all three persisted fields from the loaded config", async () => {
+    const { ctx } = makeCtx({
+      lastSelectedFolder: "/home/me/last",
+      lastSelectedHarnessId: "claude",
+      lastSelectedModelId: "mdl_x",
+    })
     const handlers = createIpcHandlers(ctx)
 
-    expect(await handlers.getProfiles(undefined)).toEqual([sampleProfile])
+    expect(await handlers.getSettings(undefined)).toEqual({
+      lastSelectedFolder: "/home/me/last",
+      lastSelectedHarnessId: "claude",
+      lastSelectedModelId: "mdl_x",
+    })
   })
 
-  it("returns an empty list when the config has no profiles", async () => {
+  it("returns empty strings when nothing has been persisted", async () => {
     const { ctx } = makeCtx()
     const handlers = createIpcHandlers(ctx)
-    expect(await handlers.getProfiles(undefined)).toEqual([])
-  })
-})
 
-describe("createIpcHandlers.addProfile", () => {
-  it("mints a pr_-prefixed id and persists the new profile when adding", async () => {
-    const original = crypto.randomUUID
-    ;(crypto as { randomUUID: () => string }).randomUUID = () => "fixed-uuid"
-    try {
-      const { ctx, saves } = makeCtx()
-      const handlers = createIpcHandlers(ctx)
-
-      const created = await handlers.addProfile({
-        name: "Work",
-        harnessId: "claude" as Profile["harnessId"],
-        modelId: "mdl_fast" as ModelId,
-        env: { EXTRA: "1" },
-      })
-
-      expect(created.id).toBe("pr_fixed-uuid")
-      expect(created.name).toBe("Work")
-      expect(created.harnessId).toBe("claude")
-      expect(created.modelId).toBe("mdl_fast")
-      expect(created.env).toEqual({ EXTRA: "1" })
-      expect(saves).toHaveLength(1)
-      expect(saves[0]?.profiles).toEqual([created])
-    } finally {
-      ;(crypto as { randomUUID: () => string }).randomUUID = original
-    }
-  })
-
-  it("throws so the server surfaces handler-failed when the save fails", async () => {
-    const { ctx } = makeCtx()
-    ;(ctx.config as { save: unknown }).save = async () =>
-      err({ kind: "write-failed" })
-    const handlers = createIpcHandlers(ctx)
-
-    await expect(
-      handlers.addProfile({
-        name: "X",
-        harnessId: "claude" as Profile["harnessId"],
-        modelId: "mdl_fast" as ModelId,
-        env: {},
-      }),
-    ).rejects.toThrow()
-  })
-})
-
-describe("createIpcHandlers.updateProfile", () => {
-  it("replaces the matching profile and returns the full updated record", async () => {
-    const { ctx, saves } = makeCtx()
-    await ctx.config.save({
-      ...(await ctx.config.load()).value,
-      profiles: [sampleProfile],
-    } as Config)
-    const handlers = createIpcHandlers(ctx)
-
-    const next: Profile = {
-      id: sampleProfile.id,
-      name: "Renamed",
-      harnessId: "codex" as Profile["harnessId"],
-      modelId: "mdl_smart" as ModelId,
-      env: { TOKEN: "z" },
-    }
-    const updated = await handlers.updateProfile(next)
-
-    expect(updated).toEqual(next)
-    const saved = saves.at(-1)?.profiles.find((p) => p.id === sampleProfile.id)
-    expect(saved).toEqual(next)
-  })
-
-  it("throws when updateProfile targets an id that does not exist", async () => {
-    const { ctx } = makeCtx()
-    const handlers = createIpcHandlers(ctx)
-    await expect(
-      handlers.updateProfile({
-        id: "pr_ghost" as Profile["id"],
-        name: "X",
-        harnessId: "claude" as Profile["harnessId"],
-        modelId: "mdl_fast" as ModelId,
-        env: {},
-      }),
-    ).rejects.toThrow()
-  })
-})
-
-describe("createIpcHandlers.deleteProfile", () => {
-  it("removes the profile and returns null on success", async () => {
-    const { ctx, saves } = makeCtx()
-    await ctx.config.save({
-      ...(await ctx.config.load()).value,
-      profiles: [sampleProfile],
-    } as Config)
-    const handlers = createIpcHandlers(ctx)
-
-    const result = await handlers.deleteProfile({ id: sampleProfile.id })
-
-    expect(result).toBeNull()
-    expect(saves.at(-1)?.profiles).toEqual([])
+    expect(await handlers.getSettings(undefined)).toEqual({
+      lastSelectedFolder: "",
+      lastSelectedHarnessId: "",
+      lastSelectedModelId: "",
+    })
   })
 })
 

@@ -9,7 +9,6 @@ import { IpcClientProvider, useIpcClient } from "./IpcClientContext"
 import { createRealClients } from "./clients"
 import { useHarnesses } from "./hooks/useHarnesses"
 import { useModels } from "./hooks/useModels"
-import { useProfiles } from "./hooks/useProfiles"
 import { useProviders } from "./hooks/useProviders"
 import { useProxyStatus } from "./hooks/useProxyStatus"
 import { useSessions } from "./hooks/useSessions"
@@ -83,7 +82,29 @@ const AppInner = ({
   const [launchError, setLaunchError] = useState<string | undefined>(undefined)
   // The cwd picked via the native folder dialog (fed into NewSessionModal).
   const [folder, setFolder] = useState<string>("")
+  // The last harness/model launched, used to preselect the modal's selects.
+  const [initialHarnessId, setInitialHarnessId] = useState<string>("")
+  const [initialModelId, setInitialModelId] = useState<string>("")
   const proxy = useProxyStatus()
+
+  // Prefill the New Session modal with the last launched folder/harness/model
+  // (persisted by a successful launch). Page-level fetch — the modal stays dumb
+  // and just receives the resolved props.
+  useEffect(() => {
+    let active = true
+    void client.getSettings(undefined).then((r) => {
+      if (!active || !r.ok) return
+      if (r.value.lastSelectedFolder !== "")
+        setFolder(r.value.lastSelectedFolder)
+      if (r.value.lastSelectedHarnessId !== "")
+        setInitialHarnessId(r.value.lastSelectedHarnessId)
+      if (r.value.lastSelectedModelId !== "")
+        setInitialModelId(r.value.lastSelectedModelId)
+    })
+    return () => {
+      active = false
+    }
+  }, [client])
 
   // The session list lives here (not inside SessionsView) so a launch or an exit
   // can refetch it: a new running session must appear and an exited one must
@@ -97,7 +118,6 @@ const AppInner = ({
 
   // Feed the new-session modal. These hooks load lazily and stay cheap when the
   // modal is closed (the data is just handed to a dumb component).
-  const profiles = useProfiles()
   const harnesses = useHarnesses()
   const models = useModels()
   const providers = useProviders()
@@ -148,14 +168,6 @@ const AppInner = ({
       return
     }
     setLaunchError(undefined)
-    if (v.saveAsProfile !== undefined) {
-      await client.addProfile({
-        name: v.saveAsProfile.name,
-        harnessId: v.harnessId,
-        ...(v.modelId !== undefined ? { modelId: v.modelId } : {}),
-        env: v.env,
-      })
-    }
     const id = r.value.sessionId
     openSession(id)
     navigate({ kind: "sessions", selectedSessionId: id })
@@ -191,7 +203,6 @@ const AppInner = ({
           onSelect: (id) =>
             navigate({ kind: "sessions", selectedSessionId: id }),
           onNew: () => {
-            profiles.refetch()
             harnesses.refetch()
             models.refetch()
             providers.refetch()
@@ -215,11 +226,12 @@ const AppInner = ({
       />
       <NewSessionModal
         open={modalOpen}
-        profiles={profiles.data ?? []}
         harnesses={harnesses.data ?? []}
         models={models.data ?? []}
         providerNames={providerNames}
         folder={folder}
+        initialHarnessId={initialHarnessId}
+        initialModelId={initialModelId}
         {...(launchError === undefined ? {} : { error: launchError })}
         onBrowse={() => void onBrowse()}
         onSubmit={(v) => void onSubmitNewSession(v)}

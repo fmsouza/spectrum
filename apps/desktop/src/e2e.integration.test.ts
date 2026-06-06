@@ -150,7 +150,6 @@ describe("LaunchKit end-to-end", () => {
       models: [
         { id: "mdl_default", providerId: "p1", providerModel: "gpt-4o" },
       ],
-      profiles: [],
       settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
     } as unknown as Config
 

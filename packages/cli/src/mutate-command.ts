@@ -2,8 +2,6 @@ import type { Config } from "@launchkit/config"
 import {
   type ModelRoute,
   ModelRouteSchema,
-  type Profile,
-  ProfileSchema,
   type Provider,
   ProviderSchema,
   SdkProviderSchema,
@@ -136,48 +134,7 @@ const addModel = async (
   return saveOrFail(deps, { ...config, models: [...config.models, route] })
 }
 
-const addProfile = async (
-  deps: CliDeps,
-  config: Config,
-  flags: Readonly<Record<string, string | boolean>>,
-): Promise<Result<void, CliError>> => {
-  const id = requireFlag(flags, "id")
-  if (isErr(id)) return id
-  const name = requireFlag(flags, "name")
-  if (isErr(name)) return name
-  const harness = requireFlag(flags, "harness")
-  if (isErr(harness)) return harness
-  const model = requireFlag(flags, "model")
-  if (isErr(model)) return model
-
-  if (config.profiles.some((p) => p.id === id.value)) {
-    return err({
-      kind: "failed",
-      detail: `profile already exists: ${id.value}`,
-    })
-  }
-
-  // Validate through ProfileSchema so the branded ids are constructed from one source
-  // of truth and a bad shape is rejected before save. `--env K=V,…` parses via splitEnv.
-  const candidate = ProfileSchema.safeParse({
-    id: id.value,
-    name: name.value,
-    harnessId: harness.value,
-    modelId: model.value,
-    env: splitEnv(flags),
-  })
-  if (!candidate.success) {
-    return err({ kind: "usage", detail: candidate.error.message })
-  }
-  const profile: Profile = candidate.data
-
-  return saveOrFail(deps, {
-    ...config,
-    profiles: [...config.profiles, profile],
-  })
-}
-
-/** `add provider …` / `add model …` / `add profile …`. */
+/** `add provider …` / `add model …`. */
 export const add = async (
   deps: CliDeps,
   rest: readonly string[],
@@ -193,10 +150,8 @@ export const add = async (
       return addProvider(deps, loaded.value, flags)
     case "model":
       return addModel(deps, loaded.value, flags)
-    case "profile":
-      return addProfile(deps, loaded.value, flags)
     default:
-      return err({ kind: "usage", detail: "add <provider|model|profile> --…" })
+      return err({ kind: "usage", detail: "add <provider|model> --…" })
   }
 }
 
@@ -228,21 +183,7 @@ const removeModel = async (
   return saveOrFail(deps, { ...config, models: next })
 }
 
-const removeProfile = async (
-  deps: CliDeps,
-  config: Config,
-  id: string | undefined,
-): Promise<Result<void, CliError>> => {
-  if (id === undefined)
-    return err({ kind: "usage", detail: "remove profile <id>" })
-  const next = config.profiles.filter((p) => p.id !== id)
-  if (next.length === config.profiles.length) {
-    return err({ kind: "failed", detail: `unknown profile: ${id}` })
-  }
-  return saveOrFail(deps, { ...config, profiles: next })
-}
-
-/** `remove provider <id>` / `remove model <id>` / `remove profile <id>`. */
+/** `remove provider <id>` / `remove model <id>`. */
 export const remove = async (
   deps: CliDeps,
   rest: readonly string[],
@@ -257,12 +198,10 @@ export const remove = async (
       return removeProvider(deps, loaded.value, rest[1])
     case "model":
       return removeModel(deps, loaded.value, rest[1])
-    case "profile":
-      return removeProfile(deps, loaded.value, rest[1])
     default:
       return err({
         kind: "usage",
-        detail: "remove <provider|model|profile> <id>",
+        detail: "remove <provider|model> <id>",
       })
   }
 }
