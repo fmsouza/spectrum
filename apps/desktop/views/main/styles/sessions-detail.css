@@ -1,0 +1,79 @@
+/* ─────────────────────── Sessions detail (terminal pane) ─────────────────── */
+/* The sessions detail fills the whole <main> pane: a dark, full-bleed column
+   holding the live terminal panes (one mounted-hidden per open session), an
+   optional replay (exit banner + read-only pane), or an empty state. (Replaces
+   the deleted tabbed TerminalPage — no tab strip; selection is the master list.) */
+.sessions-detail {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  background: #111216;
+  overflow: hidden;
+}
+
+/* The empty state ("No session selected") centers in the dark detail pane rather
+   than rendering as the default dashed settings card. */
+.sessions-detail > div:has(> h2 + p):not([aria-label]) {
+  margin: auto;
+  background: transparent;
+  border: none;
+}
+
+/* The replay exit banner: a thin header strip above the read-only replay pane. */
+.replay-exit-banner {
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-4);
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid color-mix(in srgb, #000 35%, var(--sidebar-bg));
+  color: var(--sidebar-fg);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.01em;
+}
+
+/* A replay TerminalPane is a direct child of .sessions-detail (no host wrapper),
+   so it must claim the remaining height itself. */
+.sessions-detail > .terminal-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-3);
+}
+
+.terminal-panes {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.terminal-pane-host {
+  position: absolute;
+  inset: 0;
+  padding: var(--space-3);
+}
+
+.terminal-pane-host[hidden] {
+  display: none;
+}
+
+.terminal-pane {
+  width: 100%;
+  height: 100%;
+}
+
+/* xterm fills its host; the viewport scrolls internally. */
+.terminal-pane .xterm {
+  height: 100%;
+}
+
+/* Hide the xterm viewport scrollbar so the full pane width is usable text. Otherwise the ~15px
+   scrollbar gutter makes FitAddon's column count overshoot the visible width and the harness TUI
+   wraps its right-edge content by a few columns. Scrolling still works via wheel/keyboard. */
+.terminal-pane .xterm-viewport {
+  scrollbar-width: none;
+}
+.terminal-pane .xterm-viewport::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}

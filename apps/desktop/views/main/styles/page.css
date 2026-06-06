@@ -1,0 +1,40 @@
+/* ─────────────────────── SettingsLayout: page sections ─────────────────── */
+/* <section><header><h1>…</header><div>…</div></section> */
+main > section {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+main > section > header {
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+main > section > header > h1 {
+  font-size: var(--text-2xl);
+}
+
+main > section > header > h1::after {
+  content: "";
+  display: block;
+  width: 44px;
+  height: 3px;
+  margin-top: var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+/* Direct content wrapper inside SettingsLayout — stack its blocks. */
+main > section > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Page-level labelled sections (Quick launch, Active sessions, etc.) */
+main section[aria-label] > h2,
+main > section > div > section > h2 {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-3);
+}

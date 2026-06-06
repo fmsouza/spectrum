@@ -1,0 +1,121 @@
+/* ───────────────────────────── Design tokens ───────────────────────────── */
+:root {
+  color-scheme: light dark;
+
+  /* Type */
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo",
+    "Cascadia Code", "Roboto Mono", monospace;
+
+  /* Spacing scale (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 9px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* Type scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.875rem;
+
+  /* Motion */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur: 140ms;
+
+  /* Layout — the 3-zone shell: a narrow icon rail, a fixed master column, and a
+     flexible detail pane. (`--sidebar-w` is retained for the responsive collapse.) */
+  --rail-w: 56px;
+  --master-w: 304px;
+  --sidebar-w: 244px;
+
+  /* Light palette (default) */
+  --bg: #f4f4f1;
+  --bg-grain: #efeee9;
+  --surface: #ffffff;
+  --surface-2: #faf9f6;
+  --surface-inset: #f1f0ec;
+  --sidebar-bg: #1c1d22;
+  --sidebar-fg: #b9bbc4;
+  --sidebar-fg-dim: #797c88;
+  --sidebar-active-fg: #16171b;
+  --border: #e3e2dc;
+  --border-strong: #d2d0c8;
+  --text: #1b1c20;
+  --text-muted: #6c6e78;
+  --text-faint: #9a9ca6;
+
+  --accent: #d9622b;
+  --accent-strong: #c0501e;
+  --accent-soft: #fbe8dd;
+  --accent-contrast: #ffffff;
+
+  --green: #2f9e5a;
+  --green-soft: #dcefe1;
+  --grey: #9a9ca6;
+  --red: #d23f3f;
+  --red-soft: #fbe0e0;
+  --blue: #2f6fd0;
+  --blue-soft: #dde9fb;
+  --amber: #b8841a;
+  --amber-soft: #f8eccf;
+
+  --ring: color-mix(in srgb, var(--accent) 45%, transparent);
+  --shadow-sm: 0 1px 2px rgba(20, 20, 25, 0.06);
+  --shadow-md: 0 1px 2px rgba(20, 20, 25, 0.05), 0 8px 24px -12px
+    rgba(20, 20, 25, 0.18);
+  --shadow-lg: 0 24px 60px -28px rgba(20, 20, 25, 0.32);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111216;
+    --bg-grain: #0d0e11;
+    --surface: #191b20;
+    --surface-2: #1f2128;
+    --surface-inset: #14161a;
+    --sidebar-bg: #0c0d10;
+    --sidebar-fg: #a4a7b2;
+    --sidebar-fg-dim: #6a6d79;
+    --sidebar-active-fg: #f3f3f5;
+    --border: #2a2d35;
+    --border-strong: #3a3e48;
+    --text: #ecedf1;
+    --text-muted: #9fa2ae;
+    --text-faint: #6f7280;
+
+    --accent: #f0763b;
+    --accent-strong: #ff8a4f;
+    --accent-soft: #38231a;
+    --accent-contrast: #16100c;
+
+    --green: #44c97c;
+    --green-soft: #16321f;
+    --grey: #6f7280;
+    --red: #f06464;
+    --red-soft: #3a1c1c;
+    --blue: #6aa0f5;
+    --blue-soft: #182740;
+    --amber: #e2b24c;
+    --amber-soft: #332813;
+
+    --ring: color-mix(in srgb, var(--accent) 55%, transparent);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 28px -14px
+      rgba(0, 0, 0, 0.7);
+    --shadow-lg: 0 28px 64px -28px rgba(0, 0, 0, 0.8);
+  }
+}

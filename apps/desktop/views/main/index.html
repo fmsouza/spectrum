@@ -15,9 +15,19 @@
     />
     <title>LaunchKit</title>
     <!-- Bundled locally next to app.js by the Electrobun build (same-origin = 'self'). -->
-    <!-- Vendored xterm stylesheet first so the app theme (app.css) can override it. -->
+    <!-- Vendored xterm stylesheet first so the app theme partials can override it. -->
     <link rel="stylesheet" href="./xterm.css" />
-    <link rel="stylesheet" href="./app.css" />
+    <link rel="stylesheet" href="./styles/tokens.css" />
+    <link rel="stylesheet" href="./styles/base.css" />
+    <link rel="stylesheet" href="./styles/controls.css" />
+    <link rel="stylesheet" href="./styles/primitives.css" />
+    <link rel="stylesheet" href="./styles/shell.css" />
+    <link rel="stylesheet" href="./styles/sessions-master.css" />
+    <link rel="stylesheet" href="./styles/sessions-detail.css" />
+    <link rel="stylesheet" href="./styles/forms.css" />
+    <link rel="stylesheet" href="./styles/modal.css" />
+    <link rel="stylesheet" href="./styles/lists.css" />
+    <link rel="stylesheet" href="./styles/page.css" />
   </head>
   <body>
     <div id="root"></div>

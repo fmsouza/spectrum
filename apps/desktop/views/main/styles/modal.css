@@ -1,0 +1,89 @@
+/* ───────────────────────── Modal (NewSession / Profile) ──────────────────── */
+/* Modal renders <div data-testid="modal-backdrop" style="position:fixed;inset:0;
+   …flex-center;dim"> wrapping a native <dialog aria-modal open>. The backdrop's
+   inline styles own the overlay + dimming + centering; we style the dialog card,
+   its header, the close button, and flatten the form chrome inside it. The
+   backdrop is fixed/inset:0 so it overlays the whole window above the shell. */
+dialog[aria-modal="true"] {
+  position: static;
+  width: min(560px, calc(100vw - 2 * var(--space-6)));
+  max-height: calc(100vh - 2 * var(--space-6));
+  margin: 0;
+  padding: 0;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden auto;
+}
+
+/* Dialog header: title left, the × close button pushed right. */
+dialog[aria-modal="true"] > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+dialog[aria-modal="true"] > header > h2 {
+  font-size: var(--text-lg);
+}
+
+dialog[aria-modal="true"] > header > button[aria-label="Close"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xl);
+  line-height: 1;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+dialog[aria-modal="true"] > header > button[aria-label="Close"]:hover {
+  background: var(--surface-inset);
+  color: var(--text);
+}
+
+/* The dialog body wraps the form. */
+dialog[aria-modal="true"] > div {
+  padding: var(--space-5);
+}
+
+/* The form is already inside the dialog card, so drop its standalone chrome. */
+dialog[aria-modal="true"] form {
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* The "Save edits as new profile" checkbox label is inline (checkbox + text),
+   not a stacked field label. */
+dialog[aria-modal="true"] form > label:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: 0;
+  font-weight: 500;
+}
+
+dialog[aria-modal="true"] form > label > input[type="checkbox"] {
+  width: auto;
+  min-height: 0;
+}
+
+/* FolderField is a <div> with a text input + a "Browse…" button on one row. */
+dialog[aria-modal="true"] form div:has(> input + button[data-variant]) {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-2);
+}

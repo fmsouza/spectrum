@@ -33,8 +33,20 @@ const config = {
     },
     copy: {
       "views/main/index.html": "views/main/index.html",
-      "views/main/app.css": "views/main/app.css",
       "views/main/xterm.css": "views/main/xterm.css",
+      "views/main/styles/tokens.css": "views/main/styles/tokens.css",
+      "views/main/styles/base.css": "views/main/styles/base.css",
+      "views/main/styles/controls.css": "views/main/styles/controls.css",
+      "views/main/styles/primitives.css": "views/main/styles/primitives.css",
+      "views/main/styles/shell.css": "views/main/styles/shell.css",
+      "views/main/styles/sessions-master.css":
+        "views/main/styles/sessions-master.css",
+      "views/main/styles/sessions-detail.css":
+        "views/main/styles/sessions-detail.css",
+      "views/main/styles/forms.css": "views/main/styles/forms.css",
+      "views/main/styles/modal.css": "views/main/styles/modal.css",
+      "views/main/styles/lists.css": "views/main/styles/lists.css",
+      "views/main/styles/page.css": "views/main/styles/page.css",
     },
     mac: { createDmg: false },
   },

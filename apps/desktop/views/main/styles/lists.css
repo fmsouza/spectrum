@@ -1,0 +1,153 @@
+/* ───────────────────────── ProviderCard (article) ───────────────────────── */
+article {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur)
+    var(--ease), transform var(--dur) var(--ease);
+}
+
+article:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+article > h3 {
+  font-size: var(--text-lg);
+}
+
+/* ───────────────────────────── Tables ───────────────────────────── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  font-size: var(--text-sm);
+}
+
+thead {
+  background: var(--surface-inset);
+}
+
+th {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-weight: 650;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--surface-inset) 45%, transparent);
+}
+
+tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+/* Model cells read as code; the actions cell keeps buttons inline. */
+td:has(> button) {
+  display: flex;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+td span[data-tone] {
+  vertical-align: middle;
+}
+
+/* "+N more" hint below a windowed SessionTable. */
+table + p {
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+}
+
+/* ─────────────────────── EmptyState (div > h2 + p) ──────────────────────── */
+div:has(> h2 + p):not(:has(> h2 + p ~ *)):not([aria-label]) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-7) var(--space-5);
+  text-align: center;
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+}
+
+div:has(> h2 + p):not(:has(> h2 + p ~ *)):not([aria-label]) > h2 {
+  font-size: var(--text-lg);
+  color: var(--text);
+}
+
+div:has(> h2 + p):not(:has(> h2 + p ~ *)):not([aria-label]) > p {
+  max-width: 38ch;
+}
+
+/* ───────────────── Generic list rows (provider/harness/launch) ──────────── */
+/* These pages use bare <ul><li> rows mixing a <span> label with controls. */
+main section ul:not(nav ul),
+main > section > div > ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+main section li:has(> span),
+main section li:has(> article),
+main > section > div > ul > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+/* Let a card-bearing row drop its own chrome (the article already has it). */
+main section li:has(> article) {
+  background: transparent;
+  border: none;
+  padding: 0;
+  align-items: stretch;
+}
+
+/* The leading label in a row takes the slack so trailing buttons align right. */
+main section li > span:first-child {
+  flex: 1 1 auto;
+  font-weight: 550;
+}
+
+/* Quick-launch / provider-secret rows: push trailing actions to the right. */
+main section li > button[data-variant] {
+  margin-left: auto;
+}
