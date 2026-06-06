@@ -212,4 +212,8 @@ describe("NewSessionModal", () => {
       expect.objectContaining({ name: "Untitled" }),
     )
   })
+  it("marks the save-as-profile checkbox label with lk-modal__checkbox", () => {
+    const { container } = render(<NewSessionModal {...baseProps} />)
+    expect(container.querySelector("label.lk-modal__checkbox")).not.toBeNull()
+  })
 })
