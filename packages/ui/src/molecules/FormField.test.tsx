@@ -19,6 +19,7 @@ describe("FormField", () => {
       </FormField>,
     )
     expect(screen.getByRole("alert")).toHaveTextContent("Required")
+    expect(screen.getByRole("alert")).toHaveClass("lk-field__error")
   })
   it("renders no alert when there is no error", () => {
     render(
