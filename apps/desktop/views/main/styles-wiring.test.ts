@@ -85,6 +85,7 @@ describe("views/main stylesheet partials wiring", () => {
     expect(tokens).toContain("--master-w")
     expect(tokens).toContain("prefers-color-scheme")
     expect(controls).toContain("[data-variant=")
+    expect(shell).toContain(".lk-shell")
     expect(shell).toContain("[data-app-icon]")
     expect(shell).toContain('nav[aria-label="Primary"]')
     expect(sessionsMaster).toContain('nav[aria-label="Sessions"]')
