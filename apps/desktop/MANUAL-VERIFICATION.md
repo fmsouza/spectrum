@@ -24,8 +24,9 @@ the native window, the native tray, and click-through behavior. Check each box o
       type and see the agent respond (routed through the loopback proxy, so a provider + the matching
       alias must be configured first), and the new session is **selected** in the list.
 - [ ] **Click New session → the native folder picker opens for cwd**, the modal launches the chosen
-      harness, and the new live terminal appears selected. If **"save as profile"** is checked, the new
-      profile shows under **Settings → Profiles**.
+      harness, and the new live terminal appears selected.
+- [ ] **Folder is remembered:** launch a session with a chosen cwd, then reopen **New session** —
+      the Folder field is **prefilled** with that last-launched path (persisted in settings).
 - [ ] Resizing the window reflows the selected terminal (the TUI uses the new width/height).
 - [ ] **Launch two harnesses, switch between them in the session list**, confirm each keeps its live
       output (scrollback survives selection), and **typing reaches only the selected** live session.
