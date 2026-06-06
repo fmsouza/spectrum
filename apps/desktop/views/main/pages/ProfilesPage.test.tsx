@@ -41,7 +41,7 @@ describe("ProfilesPage", () => {
       addProfile: async () => ({ ok: true as const, value: profile }),
     })
     renderWithProviders(<ProfilesPage />, client)
-    // ProfileList's onAdd opens the modal containing ProfileForm.
+    // The page's Add profile button opens the modal containing ProfileForm.
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: /add profile/i }),
