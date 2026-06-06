@@ -1,12 +1,6 @@
 import type { IpcHandlers, ProviderView } from "@launchkit/ipc"
 import { bytesToBase64 } from "@launchkit/pty"
-import type {
-  ModelRoute,
-  Profile,
-  ProfileId,
-  Provider,
-  SecretRef,
-} from "@launchkit/types"
+import type { ModelRoute, Provider, SecretRef } from "@launchkit/types"
 import { isOk } from "@launchkit/utils"
 import type { AppContext } from "../../composition"
 
@@ -282,51 +276,6 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
     },
 
     getTerminalSocketUrl: async () => ({ url: ctx.terminalSocketUrl }),
-
-    // ── Profiles ──────────────────────────────────────────────────────────────
-    getProfiles: async () => {
-      const config = await loadConfig()
-      return config.profiles
-    },
-
-    addProfile: async (input) => {
-      const config = await loadConfig()
-      // Mint the id the same way addProvider mints provider ids (crypto.randomUUID + typed prefix).
-      const profile: Profile = {
-        id: `pr_${crypto.randomUUID()}` as ProfileId,
-        name: input.name,
-        harnessId: input.harnessId,
-        ...(input.modelId !== undefined ? { modelId: input.modelId } : {}),
-        env: input.env,
-      }
-      const saved = await ctx.config.save({
-        ...config,
-        profiles: [...config.profiles, profile],
-      })
-      if (!isOk(saved)) return fail("could not save profile")
-      return profile
-    },
-
-    updateProfile: async (profile) => {
-      const config = await loadConfig()
-      const existing = config.profiles.find((p) => p.id === profile.id)
-      if (existing === undefined)
-        return fail(`unknown profile: ${String(profile.id)}`)
-      const profiles = config.profiles.map((p) =>
-        p.id === profile.id ? profile : p,
-      )
-      const saved = await ctx.config.save({ ...config, profiles })
-      if (!isOk(saved)) return fail("could not save profile")
-      return profile
-    },
-
-    deleteProfile: async ({ id }) => {
-      const config = await loadConfig()
-      const profiles = config.profiles.filter((p) => p.id !== id)
-      const saved = await ctx.config.save({ ...config, profiles })
-      if (!isOk(saved)) return fail("could not delete profile")
-      return null
-    },
 
     // ── Dialogs ───────────────────────────────────────────────────────────────
     pickFolder: async (params) => {
