@@ -33,6 +33,17 @@ describe("ProfileList", () => {
     expect(container.querySelector("table")).not.toBeNull()
     expect(container.querySelector("ul")).toBeNull()
   })
+  it("actions cell carries lk-cell-actions class for flex/gap layout", () => {
+    const { container } = render(
+      <ProfileList
+        profiles={profiles}
+        onAdd={() => {}}
+        onEdit={() => {}}
+        onDelete={() => {}}
+      />,
+    )
+    expect(container.querySelector("td.lk-cell-actions")).not.toBeNull()
+  })
   it("shows an empty state when there are no profiles", () => {
     render(
       <ProfileList
