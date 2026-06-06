@@ -178,6 +178,31 @@ describe("ProvidersPage", () => {
     expect(screen.queryByDisplayValue("sk-secret-123")).toBeNull()
   })
 
+  it("renders the add-provider form inside a modal dialog", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+
+    const dialog = await screen.findByRole("dialog", { name: /add provider/i })
+    expect(
+      dialog.querySelector("form[aria-label='Add provider']"),
+    ).not.toBeNull()
+  })
+
+  it("closes the add-provider modal when Cancel is clicked", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    await screen.findByRole("dialog", { name: /add provider/i })
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }))
+
+    expect(screen.queryByRole("dialog", { name: /add provider/i })).toBeNull()
+  })
+
   it("submits the add-provider form with non-secret config and secret field names only", async () => {
     const client = renderPage({
       addProvider: async () => ({ ok: true, value: view }),
