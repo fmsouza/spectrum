@@ -53,11 +53,36 @@ describe("NewSessionModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /browse/i }))
     expect(onBrowse).toHaveBeenCalledTimes(1)
   })
-  it("calls onCancel when the cancel button is clicked", () => {
+  it("invokes onCancel via the modal header close control", () => {
     const onCancel = mock(() => {})
     render(<NewSessionModal {...baseProps} onCancel={onCancel} />)
-    fireEvent.click(screen.getByRole("button", { name: /cancel/i }))
+    fireEvent.click(screen.getByRole("button", { name: /close/i }))
     expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not render a Cancel button", () => {
+    render(<NewSessionModal {...baseProps} />)
+    expect(screen.queryByRole("button", { name: /cancel/i })).toBeNull()
+  })
+
+  it("preselects the harness from initialHarnessId when the modal opens", () => {
+    render(<NewSessionModal {...baseProps} initialHarnessId="codex" />)
+    expect(screen.getByLabelText("Harness")).toHaveValue("codex")
+  })
+
+  it("preselects the model from initialModelId when the modal opens", () => {
+    render(<NewSessionModal {...baseProps} initialModelId="mdl_fast" />)
+    expect(screen.getByLabelText("Model")).toHaveValue("mdl_fast")
+  })
+
+  it("falls back to the first harness when initialHarnessId is unknown", () => {
+    render(<NewSessionModal {...baseProps} initialHarnessId="ghost" />)
+    expect(screen.getByLabelText("Harness")).toHaveValue("claude")
+  })
+
+  it("falls back to the default (empty) model when initialModelId is unknown", () => {
+    render(<NewSessionModal {...baseProps} initialModelId="ghost" />)
+    expect(screen.getByLabelText("Model")).toHaveValue("")
   })
 
   it("syncs folder input when folder prop changes (Fix 1)", () => {

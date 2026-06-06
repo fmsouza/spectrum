@@ -4,7 +4,7 @@ import type {
   ModelId,
   ModelRoute,
 } from "@launchkit/types"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { ReactElement } from "react"
 import { Button } from "../atoms/Button"
 import { Modal } from "../atoms/Modal"
@@ -26,6 +26,10 @@ export type NewSessionModalProps = {
   readonly models: readonly ModelRoute[]
   readonly providerNames?: Readonly<Record<string, string>>
   readonly folder: string
+  /** Persisted last-launched harness id; preselected on open when it matches a harness. */
+  readonly initialHarnessId?: string
+  /** Persisted last-launched model id; preselected on open when it matches a model. */
+  readonly initialModelId?: string
   readonly onBrowse: () => void
   readonly onSubmit: (values: NewSessionValues) => void
   readonly onCancel: () => void
@@ -46,16 +50,31 @@ export const NewSessionModal = ({
   models,
   providerNames,
   folder,
+  initialHarnessId,
+  initialModelId,
   onBrowse,
   onSubmit,
   onCancel,
   error,
 }: NewSessionModalProps): ReactElement => {
   const firstHarness = (harnesses[0]?.id ?? "") as HarnessId
+
+  // Resolve a persisted harness/model id against the currently-available options,
+  // falling back to the first harness / the "default" (empty) model when the
+  // persisted id no longer exists (e.g. it was deleted between sessions).
+  const resolveHarness = useCallback((): HarnessId => {
+    const match = harnesses.find((h) => h.id === initialHarnessId)
+    return (match?.id ?? firstHarness) as HarnessId
+  }, [harnesses, initialHarnessId, firstHarness])
+  const resolveModel = useCallback((): ModelId | "" => {
+    const match = models.find((m) => String(m.id) === initialModelId)
+    return match ? (match.id as ModelId) : ""
+  }, [models, initialModelId])
+
   const [state, setState] = useState<FormState>({
     cwd: folder,
-    harnessId: firstHarness,
-    modelId: "",
+    harnessId: resolveHarness(),
+    modelId: resolveModel(),
     env: {},
   })
 
@@ -70,13 +89,13 @@ export const NewSessionModal = ({
     if (open && !wasOpen.current) {
       setState({
         cwd: folder,
-        harnessId: firstHarness,
-        modelId: "",
+        harnessId: resolveHarness(),
+        modelId: resolveModel(),
         env: {},
       })
     }
     wasOpen.current = open
-  }, [open, folder, firstHarness])
+  }, [open, folder, resolveHarness, resolveModel])
 
   const update = <K extends keyof FormState>(
     key: K,
@@ -143,9 +162,6 @@ export const NewSessionModal = ({
         {error === undefined ? null : <p role="alert">{error}</p>}
         <Button disabled={!canLaunch} onClick={() => submit()}>
           Launch
-        </Button>
-        <Button variant="secondary" onClick={() => onCancel()}>
-          Cancel
         </Button>
       </form>
     </Modal>
