@@ -57,6 +57,29 @@ describe("ProvidersPage", () => {
     expect(directButtons.length).toBe(0)
   })
 
+  it("wraps the set-secret form action buttons in lk-form-actions row", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "OpenAI" }),
+      ).toBeInTheDocument(),
+    )
+    fireEvent.click(
+      screen.getByRole("button", { name: "Set secret for OpenAI" }),
+    )
+    const secretForm = document.querySelector(
+      "form[aria-label='Set secret for OpenAI']",
+    )
+    expect(secretForm).not.toBeNull()
+    const actionsRow = secretForm?.querySelector(".lk-row.lk-form-actions")
+    expect(actionsRow).not.toBeNull()
+    // buttons must NOT be direct children of the form
+    const directButtons = Array.from(secretForm?.children ?? []).filter(
+      (c) => c.tagName === "BUTTON",
+    )
+    expect(directButtons.length).toBe(0)
+  })
+
   it("renders the provider name once the providers load", async () => {
     renderPage({})
     await waitFor(() =>

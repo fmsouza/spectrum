@@ -38,7 +38,7 @@ describe("HarnessesPage", () => {
       expect(screen.getByText("Claude Code")).toBeInTheDocument(),
     )
     const lists = document.querySelectorAll("ul.lk-list")
-    expect(lists.length).toBeGreaterThanOrEqual(1)
+    expect(lists.length).toBe(2)
     const rows = document.querySelectorAll("li.lk-list-row")
     expect(rows.length).toBeGreaterThan(0)
     const labels = document.querySelectorAll(".lk-list-row__label")

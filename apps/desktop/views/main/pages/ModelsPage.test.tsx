@@ -52,6 +52,29 @@ describe("ModelsPage", () => {
     expect(directButtons.length).toBe(0)
   })
 
+  it("wraps the edit-model form action buttons in lk-form-actions row", async () => {
+    renderPage({
+      updateModel: async () => ({ ok: true, value: model }),
+      listProviderModels: async () => ({ ok: true, value: { models: [] } }),
+    })
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }))
+    await waitFor(() =>
+      expect(screen.getByLabelText("Model")).toHaveValue("gpt-4o-mini"),
+    )
+    const editForm = document.querySelector("form[aria-label='Edit model']")
+    expect(editForm).not.toBeNull()
+    const actionsRow = editForm?.querySelector(".lk-row.lk-form-actions")
+    expect(actionsRow).not.toBeNull()
+    // buttons must NOT be direct children of the form
+    const directButtons = Array.from(editForm?.children ?? []).filter(
+      (c) => c.tagName === "BUTTON",
+    )
+    expect(directButtons.length).toBe(0)
+  })
+
   it("renders the Models heading when loaded", async () => {
     renderPage({})
     await waitFor(() =>
