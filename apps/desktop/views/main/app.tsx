@@ -84,6 +84,20 @@ const AppInner = ({
   const [folder, setFolder] = useState<string>("")
   const proxy = useProxyStatus()
 
+  // Prefill the New Session modal with the last launched folder (persisted by a
+  // successful launch as settings.lastSelectedFolder). Page-level fetch — the
+  // modal stays dumb and just receives the resolved `folder` prop.
+  useEffect(() => {
+    let active = true
+    void client.getSettings(undefined).then((r) => {
+      if (active && r.ok && r.value.lastSelectedFolder !== "")
+        setFolder(r.value.lastSelectedFolder)
+    })
+    return () => {
+      active = false
+    }
+  }, [client])
+
   // The session list lives here (not inside SessionsView) so a launch or an exit
   // can refetch it: a new running session must appear and an exited one must
   // move from Running to Recent. Two server-side queries: all running sessions

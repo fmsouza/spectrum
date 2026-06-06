@@ -580,6 +580,49 @@ describe("App view model", () => {
     )
   })
 
+  it("prefills the folder field from the persisted lastSelectedFolder setting (B2)", async () => {
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getHarnesses: async () => ({
+        ok: true as const,
+        value: [
+          {
+            id: "claude",
+            name: "Claude Code",
+            command: "claude",
+            apiFormat: "anthropic",
+            envTemplate: {},
+            builtIn: true,
+          },
+        ],
+      }),
+      getModels: async () => ({
+        ok: true as const,
+        value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
+      }),
+      getSettings: async () => ({
+        ok: true as const,
+        value: { lastSelectedFolder: "/seed/dir" },
+      }),
+    })
+    render(
+      <App
+        client={client}
+        terminalClient={fakeTerminalClient}
+        createTerminal={fakeXterm}
+        initialView="sessions"
+      />,
+    )
+    // Open the modal; its Folder field should already carry the persisted folder.
+    fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
+    await screen.findByRole("button", { name: /launch/i })
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: /folder/i })).toHaveValue(
+        "/seed/dir",
+      ),
+    )
+  })
+
   it("surfaces a pickFolder error as an alert in the modal (Fix #2)", async () => {
     const client = createFakeIpcClient({
       ...baseStubs,

@@ -16,6 +16,8 @@ import {
   GetSessionScrollbackParamsSchema,
   GetSessionScrollbackResultSchema,
   GetSessionsParamsSchema,
+  GetSettingsParamsSchema,
+  GetSettingsResultSchema,
   IpcMethodSchemas,
   LaunchHarnessParamsSchema,
   LaunchHarnessResultSchema,
@@ -325,6 +327,31 @@ describe("GetSessionScrollbackResultSchema", () => {
   })
 })
 
+describe("GetSettingsParamsSchema", () => {
+  it("parses undefined params", () => {
+    expect(GetSettingsParamsSchema.parse(undefined)).toBeUndefined()
+  })
+})
+
+describe("GetSettingsResultSchema", () => {
+  it("parses a result carrying the last selected folder", () => {
+    expect(
+      GetSettingsResultSchema.parse({ lastSelectedFolder: "/home/me/proj" }),
+    ).toEqual({ lastSelectedFolder: "/home/me/proj" })
+  })
+  it("rejects a result missing lastSelectedFolder", () => {
+    expect(GetSettingsResultSchema.safeParse({}).success).toBe(false)
+  })
+  it("rejects extra keys", () => {
+    expect(
+      GetSettingsResultSchema.safeParse({
+        lastSelectedFolder: "/x",
+        extra: 1,
+      }).success,
+    ).toBe(false)
+  })
+})
+
 describe("IpcMethodSchemas", () => {
   it("exposes a params and result schema for every contract method", () => {
     const expected = [
@@ -348,6 +375,7 @@ describe("IpcMethodSchemas", () => {
       "pickFolder",
       "getSessionScrollback",
       "listProviderModels",
+      "getSettings",
     ] as const
     for (const name of expected) {
       expect(IpcMethodSchemas[name]).toBeDefined()

@@ -29,12 +29,15 @@ const provider = (over: Partial<Provider> = {}): Provider =>
     ...over,
   }) as Provider
 
-const baseConfig = (providers: readonly Provider[]): Config =>
+const baseConfig = (
+  providers: readonly Provider[],
+  lastSelectedFolder = "",
+): Config =>
   ({
     version: 2,
     providers,
     models: [],
-    settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+    settings: { proxyPort: 4000, proxyHost: "127.0.0.1", lastSelectedFolder },
   }) as Config
 
 /** Build a fake AppContext, capturing every save + secret set so tests can assert behavior. */
@@ -52,6 +55,7 @@ const makeCtx = (
     registryRemoveOk?: boolean
     pickFolderResult?: readonly string[]
     scrollback?: Result<Uint8Array, { readonly kind: string }>
+    lastSelectedFolder?: string
   } = {},
 ): {
   ctx: AppContext
@@ -74,7 +78,10 @@ const makeCtx = (
   const registryRemoves: string[] = []
   const pickFolderCalls: unknown[] = []
   const readScrollbackIds: string[] = []
-  let current = baseConfig(over.providers ?? [provider()])
+  let current = baseConfig(
+    over.providers ?? [provider()],
+    over.lastSelectedFolder ?? "",
+  )
 
   // The handler resolves the harness command+env via ctx.resolveLaunch — use the REAL renderer
   // over a fake resolver so the rendered proxy vars (ANTHROPIC_*) are asserted faithfully.
@@ -734,6 +741,26 @@ describe("createIpcHandlers.getProxyStatus", () => {
     expect(await handlers.getProxyStatus(undefined)).toEqual({
       running: false,
       port: 4000,
+    })
+  })
+})
+
+describe("createIpcHandlers.getSettings", () => {
+  it("returns the persisted lastSelectedFolder from the loaded config", async () => {
+    const { ctx } = makeCtx({ lastSelectedFolder: "/home/me/last" })
+    const handlers = createIpcHandlers(ctx)
+
+    expect(await handlers.getSettings(undefined)).toEqual({
+      lastSelectedFolder: "/home/me/last",
+    })
+  })
+
+  it("returns an empty lastSelectedFolder when none has been persisted", async () => {
+    const { ctx } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+
+    expect(await handlers.getSettings(undefined)).toEqual({
+      lastSelectedFolder: "",
     })
   })
 })

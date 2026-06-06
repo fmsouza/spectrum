@@ -197,6 +197,16 @@ export const PickFolderResultSchema = z
   .object({ path: z.string().optional() })
   .strict()
 
+// ── Settings ──────────────────────────────────────────────────────────────
+
+// Read the persisted, non-secret settings the GUI needs to prefill its UI. Today
+// that is only `lastSelectedFolder` (the last launched cwd); the New Session modal
+// seeds its folder field from it.
+export const GetSettingsParamsSchema = z.undefined()
+export const GetSettingsResultSchema = z
+  .object({ lastSelectedFolder: z.string() })
+  .strict()
+
 // ── The method → {params, result} schema map ──────────────────────────────────
 
 /** Maps each contract method to its on-the-wire param + result zod schemas. */
@@ -281,6 +291,10 @@ export const IpcMethodSchemas = {
   listProviderModels: {
     params: ListProviderModelsParamsSchema,
     result: ListProviderModelsResultSchema,
+  },
+  getSettings: {
+    params: GetSettingsParamsSchema,
+    result: GetSettingsResultSchema,
   },
 } as const
 

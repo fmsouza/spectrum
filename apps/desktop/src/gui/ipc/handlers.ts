@@ -289,6 +289,11 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
 
     getTerminalSocketUrl: async () => ({ url: ctx.terminalSocketUrl }),
 
+    getSettings: async () => {
+      const config = await loadConfig()
+      return { lastSelectedFolder: config.settings.lastSelectedFolder }
+    },
+
     // ── Dialogs ───────────────────────────────────────────────────────────────
     pickFolder: async (params) => {
       const startingFolder = params?.startingFolder

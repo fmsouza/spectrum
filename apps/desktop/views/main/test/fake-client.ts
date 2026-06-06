@@ -35,6 +35,7 @@ const METHOD_NAMES = [
   "pickFolder",
   "getSessionScrollback",
   "listProviderModels",
+  "getSettings",
 ] as const satisfies ReadonlyArray<keyof IpcClient>
 
 /**
