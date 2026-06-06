@@ -1,21 +1,21 @@
 /* ─────────────────────── SettingsLayout: page sections ─────────────────── */
-/* <section><header><h1>…</header><div>…</div></section> */
-main > section {
+/* .lk-page > .lk-page__header > h1 / .lk-page__body */
+.lk-page {
   max-width: 920px;
   margin: 0 auto;
 }
 
-main > section > header {
+.lk-page__header {
   margin-bottom: var(--space-6);
   padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--border);
 }
 
-main > section > header > h1 {
+.lk-page__header > h1 {
   font-size: var(--text-2xl);
 }
 
-main > section > header > h1::after {
+.lk-page__header > h1::after {
   content: "";
   display: block;
   width: 44px;
@@ -26,15 +26,15 @@ main > section > header > h1::after {
 }
 
 /* Direct content wrapper inside SettingsLayout — stack its blocks. */
-main > section > div {
+.lk-page__body {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
 }
 
 /* Page-level labelled sections (Quick launch, Active sessions, etc.) */
-main section[aria-label] > h2,
-main > section > div > section > h2 {
+.lk-page__body section[aria-label] > h2,
+.lk-page__body > section > h2 {
   font-size: var(--text-lg);
   margin-bottom: var(--space-3);
 }

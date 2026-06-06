@@ -9,10 +9,10 @@ export const SettingsLayout = ({
   title,
   children,
 }: SettingsLayoutProps): ReactElement => (
-  <section>
-    <header>
+  <section className="lk-page">
+    <header className="lk-page__header">
       <h1>{title}</h1>
     </header>
-    <div>{children}</div>
+    <div className="lk-page__body">{children}</div>
   </section>
 )
