@@ -281,6 +281,54 @@ describe("createIpcHandlers.getProviders", () => {
   })
 })
 
+describe("createIpcHandlers.addProvider", () => {
+  it("falls back to the sdkProvider name when no name is given", async () => {
+    const { ctx, saves } = makeCtx({ providers: [] })
+    const handlers = createIpcHandlers(ctx)
+
+    const view = await handlers.addProvider({
+      sdkProvider: "anthropic",
+      config: {},
+      secretFieldNames: ["apiKey"],
+      models: [],
+    })
+
+    expect(view.name).toBe("anthropic")
+    const savedProviders = saves.at(-1)?.providers ?? []
+    expect(savedProviders.at(-1)?.name).toBe("anthropic")
+  })
+
+  it("falls back to the sdkProvider name when the name is blank/whitespace", async () => {
+    const { ctx } = makeCtx({ providers: [] })
+    const handlers = createIpcHandlers(ctx)
+
+    const view = await handlers.addProvider({
+      name: "   ",
+      sdkProvider: "groq",
+      config: {},
+      secretFieldNames: ["apiKey"],
+      models: [],
+    })
+
+    expect(view.name).toBe("groq")
+  })
+
+  it("keeps the provided name when one is given", async () => {
+    const { ctx } = makeCtx({ providers: [] })
+    const handlers = createIpcHandlers(ctx)
+
+    const view = await handlers.addProvider({
+      name: "My OpenAI",
+      sdkProvider: "openai",
+      config: {},
+      secretFieldNames: ["apiKey"],
+      models: [],
+    })
+
+    expect(view.name).toBe("My OpenAI")
+  })
+})
+
 describe("createIpcHandlers.setProviderSecret", () => {
   it("stores the raw value in the keychain and saves the returned ref onto the provider", async () => {
     const { ctx, saves, secretSets } = makeCtx({

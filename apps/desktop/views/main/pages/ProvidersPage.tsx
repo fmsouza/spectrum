@@ -48,9 +48,9 @@ export const ProvidersPage = (): ReactElement => {
   const [secretValue, setSecretValue] = useState<string>("")
 
   const submitAdd = async (): Promise<void> => {
-    if (newName.trim() === "") return
+    const trimmed = newName.trim()
     const r = await add({
-      name: newName,
+      ...(trimmed !== "" ? { name: trimmed } : {}),
       sdkProvider: newSdk,
       config: {},
       secretFieldNames: ["apiKey"],
@@ -118,6 +118,7 @@ export const ProvidersPage = (): ReactElement => {
               id="new-provider-name"
               value={newName}
               onChange={setNewName}
+              placeholder="Defaults to the SDK provider name"
             />
           </FormField>
           <FormField id="new-provider-sdk" label="SDK provider">
