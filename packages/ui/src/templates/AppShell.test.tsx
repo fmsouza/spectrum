@@ -55,4 +55,16 @@ describe("AppShell", () => {
     const { container } = render(<AppShell {...baseProps} />)
     expect(container.querySelector(".lk-shell")).not.toBeNull()
   })
+  it("renders SVG rail icons rather than text glyphs", () => {
+    const { container } = render(<AppShell {...baseProps} />)
+    expect(
+      container.querySelectorAll("nav[aria-label='Primary'] svg").length,
+    ).toBe(2)
+  })
+
+  it("shows the proxy port in a tooltip when the rail status is hovered", () => {
+    render(<AppShell {...baseProps} proxyRunning proxyPort={4000} />)
+    fireEvent.mouseOver(screen.getByRole("img", { name: /proxy/i }))
+    expect(screen.getByRole("tooltip")).toHaveTextContent("4000")
+  })
 })

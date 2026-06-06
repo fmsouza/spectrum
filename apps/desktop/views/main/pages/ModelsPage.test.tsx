@@ -52,6 +52,29 @@ describe("ModelsPage", () => {
     expect(directButtons.length).toBe(0)
   })
 
+  it("renders the add-model form inside a modal dialog", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
+
+    const dialog = await screen.findByRole("dialog", { name: /add model/i })
+    expect(dialog.querySelector("form[aria-label='Add model']")).not.toBeNull()
+  })
+
+  it("closes the add-model modal when Cancel is clicked", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
+    await screen.findByRole("dialog", { name: /add model/i })
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }))
+
+    expect(screen.queryByRole("dialog", { name: /add model/i })).toBeNull()
+  })
+
   it("wraps the edit-model form action buttons in lk-form-actions row", async () => {
     renderPage({
       updateModel: async () => ({ ok: true, value: model }),

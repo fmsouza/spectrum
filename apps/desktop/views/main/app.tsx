@@ -209,6 +209,7 @@ const AppInner = ({
         mode={mode}
         onModeChange={onModeChange}
         proxyRunning={proxy.data?.running ?? false}
+        proxyPort={proxy.data?.port}
         master={master}
         detail={detail}
       />
