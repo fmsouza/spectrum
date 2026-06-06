@@ -41,7 +41,8 @@
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--text);
-  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  transition: background var(--dur) var(--ease), border-color var(--dur)
+    var(--ease);
 }
 
 .lk-session-row:hover {

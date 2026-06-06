@@ -31,7 +31,9 @@ export const SessionRow = ({
     >
       <span className="lk-session-row__line">
         <StatusDot status={isRunning ? "on" : "off"} label="session status" />
-        <Truncate className="lk-session-row__name">{session.name ?? session.id}</Truncate>
+        <Truncate className="lk-session-row__name">
+          {session.name ?? session.id}
+        </Truncate>
         {isRunning ? (
           <Badge tone="info">running</Badge>
         ) : session.exitCode === undefined ? (

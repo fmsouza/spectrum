@@ -152,7 +152,13 @@ describe("SessionRow", () => {
 
   it("wraps the name (and only the name) in the truncating hook", () => {
     const { container } = render(
-      <SessionRow session={running} harnessName="claude" model="default" selected={false} onSelect={() => {}} />,
+      <SessionRow
+        session={running}
+        harnessName="claude"
+        model="default"
+        selected={false}
+        onSelect={() => {}}
+      />,
     )
     // the line-1 wrapper carries the hook; the dot and badge are NOT truncated
     expect(container.querySelector(".lk-session-row__line")).not.toBeNull()

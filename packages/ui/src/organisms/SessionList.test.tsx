@@ -130,8 +130,15 @@ describe("SessionList", () => {
 
   it("marks the list container and group sections with hooks", () => {
     const { container } = render(
-      <SessionList running={[]} recent={[]} labelFor={() => ({ harnessName: "h", model: "m" })}
-        hasMore={false} onSelect={() => {}} onMore={() => {}} onNew={() => {}} />,
+      <SessionList
+        running={[]}
+        recent={[]}
+        labelFor={() => ({ harnessName: "h", model: "m" })}
+        hasMore={false}
+        onSelect={() => {}}
+        onMore={() => {}}
+        onNew={() => {}}
+      />,
     )
     expect(container.querySelector(".lk-session-list")).not.toBeNull()
   })

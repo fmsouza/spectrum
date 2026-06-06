@@ -1,8 +1,8 @@
 import type { Session, SessionId } from "@launchkit/types"
 import type { ReactElement } from "react"
 import { Button } from "../atoms/Button"
-import { Stack } from "../primitives/Stack"
 import { SessionRow } from "../molecules/SessionRow"
+import { Stack } from "../primitives/Stack"
 
 export type SessionLabel = {
   readonly harnessName: string

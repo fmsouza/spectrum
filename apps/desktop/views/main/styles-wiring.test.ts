@@ -88,7 +88,7 @@ describe("views/main stylesheet partials wiring", () => {
     expect(shell).toContain(".lk-shell")
     expect(shell).toContain("[data-app-icon]")
     expect(shell).toContain('nav[aria-label="Primary"]')
-    expect(sessionsMaster).toContain('nav[aria-label="Sessions"]')
+    expect(sessionsMaster).toContain(".lk-session-row")
     expect(sessionsDetail).toContain(".sessions-detail")
   })
 })
