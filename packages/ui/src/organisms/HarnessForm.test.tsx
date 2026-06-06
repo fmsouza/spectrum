@@ -66,4 +66,16 @@ describe("HarnessForm", () => {
     fireEvent.click(screen.getByRole("button", { name: /save/i }))
     expect(onSubmit).not.toHaveBeenCalled()
   })
+  it("groups the action buttons in an lk-form-actions row", () => {
+    const { container } = render(
+      <HarnessForm
+        initialValues={initial}
+        onSubmit={() => {}}
+        onCancel={() => {}}
+      />,
+    )
+    const actions = container.querySelector(".lk-row.lk-form-actions")
+    expect(actions).not.toBeNull()
+    expect(actions?.querySelectorAll("button[data-variant]").length).toBe(2)
+  })
 })

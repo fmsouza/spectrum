@@ -10,6 +10,7 @@ import { Button } from "../atoms/Button"
 import { Select } from "../atoms/Select"
 import { TextInput } from "../atoms/TextInput"
 import { FormField } from "../molecules/FormField"
+import { Row } from "../primitives/Row"
 
 export type ProfileFormValues = {
   readonly name: string
@@ -103,10 +104,12 @@ export const ProfileForm = ({
           onChange={setModel}
         />
       </FormField>
-      <Button onClick={() => submit()}>Save</Button>
-      <Button variant="secondary" onClick={() => onCancel()}>
-        Cancel
-      </Button>
+      <Row gap={2} className="lk-form-actions">
+        <Button onClick={() => submit()}>Save</Button>
+        <Button variant="secondary" onClick={() => onCancel()}>
+          Cancel
+        </Button>
+      </Row>
     </form>
   )
 }

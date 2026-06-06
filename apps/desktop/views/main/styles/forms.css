@@ -25,17 +25,7 @@ form {
   box-shadow: var(--shadow-sm);
 }
 
-/* Trailing action buttons (Save / Cancel) sit on one row. */
-form button[data-variant] {
-  align-self: flex-start;
-}
-
-form:has(> button[data-variant] + button[data-variant]) {
-  position: relative;
-}
-
-/* Place adjacent submit/cancel buttons inline. */
-form > button[data-variant] + button[data-variant] {
-  margin-top: calc(-1 * var(--space-4));
-  margin-left: var(--space-2);
+.lk-form-actions {
+  justify-content: flex-start;
+  margin-top: var(--space-1);
 }
