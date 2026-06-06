@@ -13,6 +13,8 @@ export const SettingsSchema = z
     proxyPort: z.number().int().min(1).max(65535).default(4000),
     proxyHost: z.literal("127.0.0.1").default("127.0.0.1"),
     lastSelectedFolder: z.string().default(""),
+    lastSelectedHarnessId: z.string().default(""),
+    lastSelectedModelId: z.string().default(""),
   })
   .strict()
 

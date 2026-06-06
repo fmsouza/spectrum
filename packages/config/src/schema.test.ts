@@ -21,6 +21,8 @@ describe("SettingsSchema", () => {
       proxyPort: 4000,
       proxyHost: "127.0.0.1",
       lastSelectedFolder: "",
+      lastSelectedHarnessId: "",
+      lastSelectedModelId: "",
     })
   })
   it("rejects a non-loopback proxyHost so the proxy can never bind a public interface", () => {
@@ -42,6 +44,21 @@ describe("SettingsSchema", () => {
     })
     expect(settings.lastSelectedFolder).toBe("/home/me/proj")
   })
+
+  it("defaults lastSelectedHarnessId and lastSelectedModelId to empty strings", () => {
+    const settings = SettingsSchema.parse({})
+    expect(settings.lastSelectedHarnessId).toBe("")
+    expect(settings.lastSelectedModelId).toBe("")
+  })
+
+  it("accepts provided lastSelectedHarnessId and lastSelectedModelId", () => {
+    const settings = SettingsSchema.parse({
+      lastSelectedHarnessId: "claude",
+      lastSelectedModelId: "mdl_1",
+    })
+    expect(settings.lastSelectedHarnessId).toBe("claude")
+    expect(settings.lastSelectedModelId).toBe("mdl_1")
+  })
 })
 
 describe("ConfigSchema", () => {
@@ -56,6 +73,8 @@ describe("ConfigSchema", () => {
         proxyPort: 4000,
         proxyHost: "127.0.0.1",
         lastSelectedFolder: "",
+        lastSelectedHarnessId: "",
+        lastSelectedModelId: "",
       },
     }
     expect(ConfigSchema.parse(config)).toEqual(config)
@@ -95,6 +114,8 @@ describe("defaultConfig", () => {
         proxyPort: 4000,
         proxyHost: "127.0.0.1",
         lastSelectedFolder: "",
+        lastSelectedHarnessId: "",
+        lastSelectedModelId: "",
       },
     })
   })

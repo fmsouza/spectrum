@@ -21,6 +21,8 @@ const configWithProvider = (): Config => ({
     proxyPort: 4000,
     proxyHost: "127.0.0.1",
     lastSelectedFolder: "",
+    lastSelectedHarnessId: "",
+    lastSelectedModelId: "",
   },
 })
 

@@ -55,6 +55,8 @@ describe("runMigrations", () => {
         proxyPort: 4000,
         proxyHost: "127.0.0.1" as const,
         lastSelectedFolder: "",
+        lastSelectedHarnessId: "",
+        lastSelectedModelId: "",
       },
     }
     expect(runMigrations(current)).toEqual({ ok: true, value: current })

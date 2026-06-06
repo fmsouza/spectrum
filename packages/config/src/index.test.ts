@@ -31,6 +31,8 @@ describe("@launchkit/config barrel", () => {
         proxyPort: 4100,
         proxyHost: "127.0.0.1" as const,
         lastSelectedFolder: "",
+        lastSelectedHarnessId: "",
+        lastSelectedModelId: "",
       },
     }
     const saved = await store.save(next)
