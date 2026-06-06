@@ -513,7 +513,11 @@ describe("App view model", () => {
     fireEvent.click(await screen.findByRole("button", { name: /launch/i }))
     await waitFor(() => expect(window.location.hash).toBe("#sessions/s_new"))
     await waitFor(() =>
-      expect(container.querySelector(".lk-terminal-pane-host")).not.toBeNull(),
+      expect(
+        container.querySelector(
+          ".lk-terminal-pane-host:not(.lk-terminal-pane-host--replay)",
+        ),
+      ).not.toBeNull(),
     )
     // Sanity: no replay pane yet — the live pane is wrapped in a host, so a
     // direct child of lk-sessions-detail is not a terminal pane.
