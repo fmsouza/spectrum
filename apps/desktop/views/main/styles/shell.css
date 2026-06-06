@@ -154,11 +154,8 @@ main {
   overflow-y: auto;
 }
 
-/* The sessions detail is a full-bleed terminal surface — drop the centered
-   settings padding so the panes reach every edge of the detail pane. */
-main:has(> .sessions-detail) {
-  padding: 0;
-}
+/* The sessions detail padding/overflow override lives in sessions-detail.css
+   (main:has(> .lk-sessions-detail)) so it stays co-located with the component. */
 
 /* Narrow-window fallback (the desktop window is normally far wider): collapse to
    a rail + a single right column, with the master stacked above the detail so
@@ -182,8 +179,8 @@ main:has(> .sessions-detail) {
     grid-row: 2;
     height: auto;
   }
-  main:has(> .sessions-detail),
-  .sessions-detail {
+  main:has(> .lk-sessions-detail),
+  .lk-sessions-detail {
     height: 100%;
   }
 }

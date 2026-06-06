@@ -62,7 +62,7 @@ describe("views/main stylesheet partials wiring", () => {
       new URL("./styles/sessions-detail.css", import.meta.url),
     ).text()
     expect(shell).toContain('nav[aria-label="Primary"]')
-    expect(sessions).toContain(".sessions-detail")
+    expect(sessions).toContain(".lk-sessions-detail")
   })
 
   it("guards key structural selectors so CSS stays in sync with the shell DOM", async () => {
@@ -89,6 +89,6 @@ describe("views/main stylesheet partials wiring", () => {
     expect(shell).toContain("[data-app-icon]")
     expect(shell).toContain('nav[aria-label="Primary"]')
     expect(sessionsMaster).toContain(".lk-session-row")
-    expect(sessionsDetail).toContain(".sessions-detail")
+    expect(sessionsDetail).toContain(".lk-sessions-detail")
   })
 })
