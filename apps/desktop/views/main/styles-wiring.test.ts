@@ -45,8 +45,11 @@ describe("views/main stylesheet partials wiring", () => {
   })
 
   it("copies every partial in the Electrobun build so they ship next to app.js", () => {
+    // Normalise the config source so biome's line-wrapping of long keys doesn't
+    // affect the check (both key and value must appear regardless of wrapping).
+    const flat = electrobunConfig.replace(/\s+/g, " ")
     for (const p of PARTIALS)
-      expect(electrobunConfig).toContain(
+      expect(flat).toContain(
         `"views/main/styles/${p}": "views/main/styles/${p}"`,
       )
   })

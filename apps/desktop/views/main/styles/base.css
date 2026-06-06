@@ -10,6 +10,7 @@
 }
 
 html {
+  height: 100%;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -31,11 +32,13 @@ body {
       color-mix(in srgb, var(--text) 3%, transparent) 23px
     );
   background-attachment: fixed;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 100%;
 }
 
 #root {
-  min-height: 100vh;
+  height: 100%;
+  min-height: 100%;
 }
 
 h1,
