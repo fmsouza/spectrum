@@ -142,4 +142,22 @@ describe("SessionList", () => {
     )
     expect(container.querySelector(".lk-session-list")).not.toBeNull()
   })
+
+  it("renders exactly 2 group sections and 2 group headings with one running and one recent session", () => {
+    const { container } = render(
+      <SessionList
+        running={running}
+        recent={recent}
+        labelFor={labelFor}
+        hasMore={false}
+        onSelect={() => {}}
+        onMore={() => {}}
+        onNew={() => {}}
+      />,
+    )
+    expect(container.querySelectorAll(".lk-session-group").length).toBe(2)
+    expect(
+      container.querySelectorAll(".lk-session-group__heading").length,
+    ).toBe(2)
+  })
 })

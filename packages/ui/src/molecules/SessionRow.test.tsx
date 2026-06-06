@@ -165,5 +165,12 @@ describe("SessionRow", () => {
     const name = container.querySelector(".lk-session-row__name.lk-truncate")
     expect(name).not.toBeNull()
     expect(container.querySelectorAll(".lk-truncate").length).toBe(1)
+    // StatusDot and Badge are siblings of — NOT inside — the Truncate element
+    expect(container.querySelector(".lk-truncate [role='img']")).toBeNull()
+    expect(container.querySelector(".lk-truncate [data-tone]")).toBeNull()
+    // StatusDot (role=img) is a direct child of line-1
+    expect(
+      container.querySelector(".lk-session-row__line > [role='img']"),
+    ).not.toBeNull()
   })
 })
