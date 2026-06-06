@@ -3,6 +3,7 @@ import {
   Button,
   EmptyState,
   FormField,
+  Modal,
   ModelTable,
   Row,
   Select,
@@ -184,45 +185,51 @@ export const ModelsPage = (): ReactElement => {
         </>
       ) : null}
 
-      {draft !== undefined ? (
-        <form
-          aria-label={
-            draft.editingOf === undefined ? "Add model" : "Edit model"
-          }
-          onSubmit={(e) => {
-            e.preventDefault()
-            void submitDraft()
-          }}
-        >
-          <FormField id="model-provider" label="Provider">
-            <Select
-              id="model-provider"
-              value={draft.providerId}
-              options={[
-                { value: "", label: "Select a provider…" },
-                ...providerOptions,
-              ]}
-              onChange={updateProvider}
+      <Modal
+        title={draft?.editingOf === undefined ? "Add model" : "Edit model"}
+        open={draft !== undefined}
+        onClose={() => setDraft(undefined)}
+      >
+        {draft !== undefined ? (
+          <form
+            aria-label={
+              draft.editingOf === undefined ? "Add model" : "Edit model"
+            }
+            onSubmit={(e) => {
+              e.preventDefault()
+              void submitDraft()
+            }}
+          >
+            <FormField id="model-provider" label="Provider">
+              <Select
+                id="model-provider"
+                value={draft.providerId}
+                options={[
+                  { value: "", label: "Select a provider…" },
+                  ...providerOptions,
+                ]}
+                onChange={updateProvider}
+              />
+            </FormField>
+            <ModelField
+              providerId={draft.providerId}
+              value={draft.providerModel}
+              onChange={(v) => update("providerModel", v)}
             />
-          </FormField>
-          <ModelField
-            providerId={draft.providerId}
-            value={draft.providerModel}
-            onChange={(v) => update("providerModel", v)}
-          />
-          <Row gap={2} className="lk-form-actions">
-            <Button
-              onClick={() => void submitDraft()}
-              disabled={draftIncomplete}
-            >
-              Save model
-            </Button>
-            <Button variant="secondary" onClick={() => setDraft(undefined)}>
-              Cancel
-            </Button>
-          </Row>
-        </form>
-      ) : null}
+            <Row gap={2} className="lk-form-actions">
+              <Button
+                onClick={() => void submitDraft()}
+                disabled={draftIncomplete}
+              >
+                Save model
+              </Button>
+              <Button variant="secondary" onClick={() => setDraft(undefined)}>
+                Cancel
+              </Button>
+            </Row>
+          </form>
+        ) : null}
+      </Modal>
     </SettingsLayout>
   )
 }

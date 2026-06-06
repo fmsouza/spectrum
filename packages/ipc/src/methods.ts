@@ -28,7 +28,7 @@ export const GetProvidersResultSchema = z.array(ProviderViewSchema)
  */
 const ProviderMutationInputSchema = z
   .object({
-    name: z.string().min(1),
+    name: z.string().optional(),
     sdkProvider: SdkProviderSchema,
     config: z.record(z.string(), z.string()),
     secretFieldNames: z.array(z.string()),

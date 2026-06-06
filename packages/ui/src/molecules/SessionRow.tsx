@@ -1,7 +1,6 @@
 import type { Session } from "@launchkit/types"
 import type { ReactElement } from "react"
 import { Badge } from "../atoms/Badge"
-import { StatusDot } from "../atoms/StatusDot"
 import { Truncate } from "../primitives/Truncate"
 import { relativeTime } from "./relativeTime"
 
@@ -30,7 +29,6 @@ export const SessionRow = ({
       onClick={() => onSelect()}
     >
       <span className="lk-session-row__line">
-        <StatusDot status={isRunning ? "on" : "off"} label="session status" />
         <Truncate className="lk-session-row__name">
           {session.name ?? session.id}
         </Truncate>
