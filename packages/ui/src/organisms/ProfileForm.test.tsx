@@ -134,4 +134,19 @@ describe("ProfileForm", () => {
     fireEvent.click(screen.getByRole("button", { name: /cancel/i }))
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
+  it("groups the action buttons in an lk-form-actions row", () => {
+    const { container } = render(
+      <ProfileForm
+        initialValues={initial}
+        harnesses={harnesses}
+        models={models}
+        providerNames={providerNames}
+        onSubmit={() => {}}
+        onCancel={() => {}}
+      />,
+    )
+    const actions = container.querySelector(".lk-row.lk-form-actions")
+    expect(actions).not.toBeNull()
+    expect(actions?.querySelectorAll("button[data-variant]").length).toBe(2)
+  })
 })

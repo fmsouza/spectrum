@@ -1,0 +1,76 @@
+/* Both list buttons (+ New session / View more) span the master width. */
+.lk-session-list > button[data-variant] {
+  width: 100%;
+}
+
+.lk-session-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Group headings: "Running" / "Recent" — small, uppercase, muted. */
+.lk-session-group__heading {
+  margin-bottom: var(--space-1);
+  padding: 0 var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+}
+
+/* ── SessionRow: hook-based, 3 stacked lines. ── */
+.lk-session-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  transition: background var(--dur) var(--ease), border-color var(--dur)
+    var(--ease);
+}
+
+.lk-session-row:hover {
+  background: var(--surface-inset);
+}
+
+.lk-session-row[data-selected="true"] {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* Line 1: status dot + name (.lk-truncate) + badge pushed to the right. */
+.lk-session-row__line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+/* Lines 2 & 3: harness·model and cwd·time — smaller, muted. */
+.lk-session-row__sub {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.lk-session-row__meta {
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+}
+
+/* The selected row keeps its inner text legible on the accent-soft wash. */
+.lk-session-row[data-selected="true"] .lk-session-row__sub,
+.lk-session-row[data-selected="true"] .lk-session-row__meta {
+  color: color-mix(in srgb, var(--text-muted) 80%, var(--accent-strong));
+}

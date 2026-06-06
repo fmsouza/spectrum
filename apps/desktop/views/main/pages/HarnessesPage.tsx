@@ -56,10 +56,10 @@ export const HarnessesPage = (): ReactElement => {
         <>
           <section aria-label="Built-in harnesses">
             <h2>Built-in</h2>
-            <ul>
+            <ul className="lk-list">
               {builtIns.map((h) => (
-                <li key={h.id}>
-                  <span>{h.name}</span>
+                <li key={h.id} className="lk-list-row">
+                  <span className="lk-list-row__label">{h.name}</span>
                   <Badge tone="info">{h.apiFormat}</Badge>
                   <Badge tone="neutral">built-in</Badge>
                 </li>
@@ -75,10 +75,10 @@ export const HarnessesPage = (): ReactElement => {
                 hint="Add one to launch your own tool."
               />
             ) : (
-              <ul>
+              <ul className="lk-list">
                 {customs.map((h) => (
-                  <li key={h.id}>
-                    <span>{h.name}</span>
+                  <li key={h.id} className="lk-list-row">
+                    <span className="lk-list-row__label">{h.name}</span>
                     <Badge tone="info">{h.apiFormat}</Badge>
                     <Button
                       variant="danger"

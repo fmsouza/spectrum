@@ -45,7 +45,7 @@ export const ProfileList = ({
               <td>{profile.name}</td>
               <td>{profile.harnessId}</td>
               <td>{profile.modelId ?? "default"}</td>
-              <td>
+              <td className="lk-cell-actions">
                 <Button variant="secondary" onClick={() => onEdit(profile)}>
                   Edit
                 </Button>

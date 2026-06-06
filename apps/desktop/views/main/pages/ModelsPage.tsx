@@ -4,6 +4,7 @@ import {
   EmptyState,
   FormField,
   ModelTable,
+  Row,
   Select,
   SettingsLayout,
   Spinner,
@@ -209,12 +210,17 @@ export const ModelsPage = (): ReactElement => {
             value={draft.providerModel}
             onChange={(v) => update("providerModel", v)}
           />
-          <Button onClick={() => void submitDraft()} disabled={draftIncomplete}>
-            Save model
-          </Button>
-          <Button variant="secondary" onClick={() => setDraft(undefined)}>
-            Cancel
-          </Button>
+          <Row gap={2} className="lk-form-actions">
+            <Button
+              onClick={() => void submitDraft()}
+              disabled={draftIncomplete}
+            >
+              Save model
+            </Button>
+            <Button variant="secondary" onClick={() => setDraft(undefined)}>
+              Cancel
+            </Button>
+          </Row>
         </form>
       ) : null}
     </SettingsLayout>

@@ -48,6 +48,66 @@ the native window, the native tray, and click-through behavior. Check each box o
 - [ ] Importing that file restores providers/aliases; importing a foreign/invalid file is rejected
       with a clear message (and does not corrupt the existing config).
 
+## Layout & responsiveness (UI spacing re-architecture — Bugs 1–9)
+
+Build and launch with `apps/desktop/scripts/smoke.sh`. Inspect geometry with WebKit devtools
+(`Cmd+Option+I` in the running app). Check each item below.
+
+- [ ] **Bug 1 — Settings sidebar: single border.**
+      Navigate to Settings. The sidebar (master column) has exactly one right-side border between
+      it and the detail pane. No doubled inset, no missing gap, no double `<nav>` wrapper in the DOM
+      (`Cmd+Option+I` → Elements: the Settings nav must be a bare `<ul class="lk-settings-nav">`,
+      not wrapped in a `<nav aria-label="Settings">`).
+
+- [ ] **Bug 2 — Session rows: dot · name (ellipsized) · badge layout.**
+      Open a session with a long name (e.g. rename via the session title). In the Sessions master,
+      the row shows: 10 px status dot → name (truncates with `…` when long) → badge ("running",
+      "ended", or "exit N") at its intrinsic width on the right. The dot and badge must not shrink
+      or overflow.
+
+- [ ] **Bug 3 — Window resize: fluid master column.**
+      Drag the window from ~700 px wide to full width (and back). The master (Sessions/Settings list)
+      column is fluid — it widens smoothly between its clamp bounds (~232–320 px). The detail/terminal
+      column grows to fill remaining space. No dead band where the master hogs the whole width.
+
+- [ ] **Bug 4 — Terminal resize: no main scrollbar, no clipped rows.**
+      With a live session open, drag the window narrower and wider. The terminal fits the pane at
+      every size (xterm's FitAddon refits). The `<main>` element has no vertical scrollbar; the
+      terminal surface reaches every edge of the detail pane (`main:has(> .lk-sessions-detail)`
+      gets `padding:0; overflow:hidden`).
+
+- [ ] **Bug 5 — Replay pane: banner + pane fit without clipping.**
+      Select an ended session that has captured output. The exit banner (`exited · code N · ended …`)
+      renders as a thin strip above the read-only replay terminal. The replay terminal fills the
+      remaining vertical space; nothing is clipped or overflows.
+
+- [ ] **Bug 6 — New-session modal (narrow): Browse stays on-row.**
+      Narrow the window to ~700 px, then open "New session". The "Browse…" button stays on the same
+      row as the Folder text input. The input shrinks; the button never wraps below or overflows the
+      modal edge (`Cmd+Option+I` → check `.lk-folder-field` is a flex row with the input shrinking).
+
+- [ ] **Bug 7 — Models table (narrow): Edit/Delete wrap instead of clipping.**
+      With at least one model configured, open Settings → Models. Narrow the window. The Edit and
+      Delete buttons in the actions column wrap to a second line rather than clipping or overflowing
+      the table cell (`.lk-cell-actions` uses `flex-wrap: wrap`).
+
+- [ ] **Bug 8 — Form Save/Cancel: tidy row at all widths.**
+      Open any settings form (e.g. Settings → Harnesses → "Add custom harness", or
+      Settings → Models → "Add model"). The Save and Cancel buttons are on a single row
+      (`<div class="lk-row lk-form-actions">`), left-aligned, at all window widths.
+      They must not be stacked vertically or separated by excess margin.
+
+- [ ] **Bug 9 — Hidden→visible terminal refits after resize.**
+      Launch two sessions. Select session A and resize the window while session B is hidden.
+      Switch to session B. If it renders at a stale size (wrong column count / bottom rows clipped),
+      that is a refit regression. Expected behavior: `ResizeObserver` on `lk-terminal-pane-host`
+      catches the show transition and xterm refits automatically. Mark this item "no-repro" if
+      the refit happens correctly without additional code.
+
+*Reference:* build and launch via `apps/desktop/scripts/smoke.sh`; inspect the live DOM with
+WebKit devtools (`Cmd+Option+I`); see `selector-contract.test.tsx` for the automated CSS↔markup
+regression guard.
+
 ## Security spot-checks
 - [ ] The proxy is bound to `127.0.0.1` only (e.g. `lsof -iTCP -sTCP:LISTEN -P | grep launchkit`
       shows loopback, never `*` / `0.0.0.0`).

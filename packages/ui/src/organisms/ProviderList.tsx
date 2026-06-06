@@ -1,39 +1,63 @@
 import type { ReactElement } from "react"
+import { Badge } from "../atoms/Badge"
 import { Button } from "../atoms/Button"
 import { EmptyState } from "../molecules/EmptyState"
-import { ProviderCard } from "../molecules/ProviderCard"
-import type { ProviderDisplay } from "../molecules/ProviderCard"
+
+export type ProviderRow = {
+  readonly id: string
+  readonly name: string
+  readonly sdkProvider: string
+  /** Whether the provider's secret(s) are configured. */
+  readonly secretSet: boolean
+}
 
 export type ProviderListProps = {
-  readonly providers: readonly ProviderDisplay[]
-  readonly onAdd: () => void
-  readonly onSelect: (providerId: string) => void
+  readonly providers: readonly ProviderRow[]
+  readonly onSetSecret: (providerId: string) => void
 }
 
 export const ProviderList = ({
   providers,
-  onAdd,
-  onSelect,
-}: ProviderListProps): ReactElement => (
-  <section>
-    <Button onClick={() => onAdd()}>Add provider</Button>
-    {providers.length === 0 ? (
+  onSetSecret,
+}: ProviderListProps): ReactElement => {
+  if (providers.length === 0) {
+    return (
       <EmptyState
         title="No providers yet"
         hint="Add a provider to start routing models."
       />
-    ) : (
-      <ul>
-        {providers.map((provider) => (
-          <li key={provider.id}>
-            <ProviderCard provider={provider} />
-            <Button
-              variant="secondary"
-              onClick={() => onSelect(provider.id)}
-            >{`Select ${provider.name}`}</Button>
-          </li>
+    )
+  }
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Provider</th>
+          <th>SDK</th>
+          <th>API key</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {providers.map((p) => (
+          <tr key={p.id}>
+            <td>{p.name}</td>
+            <td>
+              <Badge tone="info">{p.sdkProvider}</Badge>
+            </td>
+            <td>
+              <Badge tone={p.secretSet ? "success" : "neutral"}>
+                {p.secretSet ? "Set" : "Not set"}
+              </Badge>
+            </td>
+            <td className="lk-cell-actions">
+              <Button variant="secondary" onClick={() => onSetSecret(p.id)}>
+                Set secret
+              </Button>
+            </td>
+          </tr>
         ))}
-      </ul>
-    )}
-  </section>
-)
+      </tbody>
+    </table>
+  )
+}

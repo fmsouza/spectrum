@@ -19,6 +19,7 @@ describe("FormField", () => {
       </FormField>,
     )
     expect(screen.getByRole("alert")).toHaveTextContent("Required")
+    expect(screen.getByRole("alert")).toHaveClass("lk-field__error")
   })
   it("renders no alert when there is no error", () => {
     render(
@@ -27,5 +28,13 @@ describe("FormField", () => {
       </FormField>,
     )
     expect(screen.queryByRole("alert")).toBeNull()
+  })
+  it("marks the field wrapper with lk-field", () => {
+    const { container } = render(
+      <FormField label="Name" id="name-field">
+        <input />
+      </FormField>,
+    )
+    expect(container.querySelector(".lk-field")).not.toBeNull()
   })
 })

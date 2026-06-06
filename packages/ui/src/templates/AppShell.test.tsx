@@ -51,4 +51,8 @@ describe("AppShell", () => {
       "grey",
     )
   })
+  it("marks the shell root with the lk-shell hook", () => {
+    const { container } = render(<AppShell {...baseProps} />)
+    expect(container.querySelector(".lk-shell")).not.toBeNull()
+  })
 })
