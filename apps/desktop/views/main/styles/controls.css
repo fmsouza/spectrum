@@ -70,8 +70,7 @@ button[data-variant]:disabled {
 
 /* ───────────────────────── Form controls ───────────────────────── */
 input,
-select,
-textarea {
+select {
   font: inherit;
   width: 100%;
   padding: var(--space-2) var(--space-3);
@@ -89,22 +88,19 @@ input::placeholder {
 }
 
 input:hover:not(:disabled),
-select:hover:not(:disabled),
-textarea:hover:not(:disabled) {
+select:hover:not(:disabled) {
   border-color: var(--text-faint);
 }
 
 input:focus,
-select:focus,
-textarea:focus {
+select:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--ring);
 }
 
 input:disabled,
-select:disabled,
-textarea:disabled {
+select:disabled {
   opacity: 0.55;
   cursor: not-allowed;
   background: var(--surface-inset);
@@ -158,11 +154,6 @@ span[data-tone="info"] {
 span[data-tone="success"] {
   color: var(--green);
   background: var(--green-soft);
-}
-
-span[data-tone="warning"] {
-  color: var(--amber);
-  background: var(--amber-soft);
 }
 
 span[data-tone="danger"] {
