@@ -17,7 +17,6 @@ const configWithProvider = (): Config => ({
   models: [
     { id: "fast", providerId: "p_openai", providerModel: "gpt-4o-mini" },
   ],
-  profiles: [],
   settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
 })
 
