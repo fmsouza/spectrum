@@ -19,7 +19,7 @@ export const AppShell = ({
   master,
   detail,
 }: AppShellProps): ReactElement => (
-  <div>
+  <div className="lk-shell">
     <nav aria-label="Primary">
       <span aria-hidden="true" data-app-icon="">
         LK

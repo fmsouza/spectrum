@@ -4,11 +4,23 @@
  *   <nav aria-label="Sessions"|"Settings"> — the MASTER list column
  *   <main>                        — the DETAIL pane (terminal / settings page)
  * A 3-column grid lays them out; each zone owns its own scroll. */
-div:has(> nav[aria-label="Primary"]) {
+.lk-shell {
   display: grid;
-  grid-template-columns: var(--rail-w) var(--master-w) minmax(0, 1fr);
-  height: 100vh;
-  min-height: 100vh;
+  grid-template-columns: var(--rail-w) clamp(232px, 24vw, var(--master-w)) minmax(
+      0,
+      1fr
+    );
+  height: 100%;
+  min-height: 0;
+}
+/* Intermediate width: shrink the master toward its min before the rail-only collapse. */
+@media (max-width: 1080px) {
+  .lk-shell {
+    grid-template-columns: var(--rail-w) clamp(232px, 22vw, 288px) minmax(
+        0,
+        1fr
+      );
+  }
 }
 
 /* ── Rail (column 1): narrow, dark, vertical, centered icon buttons. ── */
@@ -145,7 +157,8 @@ nav[aria-label="Settings"] a[aria-current="page"] {
 main {
   grid-column: 3;
   min-width: 0;
-  height: 100vh;
+  height: 100%;
+  min-height: 0;
   padding: var(--space-7) var(--space-7);
   overflow-y: auto;
 }
@@ -160,7 +173,7 @@ main:has(> .sessions-detail) {
    a rail + a single right column, with the master stacked above the detail so
    neither overlaps. The rail spans both rows on the left. */
 @media (max-width: 720px) {
-  div:has(> nav[aria-label="Primary"]) {
+  .lk-shell {
     grid-template-columns: var(--rail-w) minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
   }
