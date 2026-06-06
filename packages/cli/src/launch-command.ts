@@ -1,45 +1,20 @@
 import type { Config } from "@launchkit/config"
 import type { LaunchRoute } from "@launchkit/harnesses"
 import type { RunningProxy } from "@launchkit/proxy"
-import { type ModelId, ModelIdSchema, type Profile } from "@launchkit/types"
+import { type ModelId, ModelIdSchema } from "@launchkit/types"
 import { type Result, err, isErr, ok } from "@launchkit/utils"
 import type { CliDeps } from "./deps"
 import type { CliError } from "./errors"
 
-/** Look up the `--profile <id>` profile in config, if the flag is present. */
-const resolveProfile = (
-  config: Config,
-  flags: Readonly<Record<string, string | boolean>>,
-): Result<Profile | undefined, CliError> => {
-  const flag = flags.profile
-  if (typeof flag !== "string") return ok(undefined)
-  const found = config.profiles.find((p) => p.id === flag)
-  return found === undefined
-    ? err({ kind: "usage", detail: `unknown profile: ${flag}` })
-    : ok(found)
-}
-
 /**
- * Resolve the harness id to launch: the positional `<harnessId>` wins; otherwise the
- * `--profile`'s harness. Errors only when neither is present.
+ * Resolve the harness id to launch: the positional `<harnessId>` is required.
+ * Errors when it is absent.
  */
 const resolveHarnessId = (
   positional: string | undefined,
-  profile: Profile | undefined,
 ): Result<string, CliError> => {
   if (positional !== undefined) return ok(positional)
-  if (profile !== undefined) return ok(String(profile.harnessId))
   return err({ kind: "usage", detail: "launch <harnessId> [--model <id>]" })
-}
-
-/** Resolve the model id: `--model` wins, then the profile's modelId; absent ⇒ default (bypass). */
-const resolveModel = (
-  profile: Profile | undefined,
-  flags: Readonly<Record<string, string | boolean>>,
-): ModelId | undefined => {
-  const flag = flags.model
-  if (typeof flag === "string") return ModelIdSchema.parse(flag)
-  return profile?.modelId
 }
 
 /**
@@ -77,17 +52,15 @@ const ensureProxiedRoute = async (
 }
 
 /**
- * `launch [<harnessId>] [--profile <id>] [--model <id>] [--name <name>] [--cwd <dir>]`.
+ * `launch <harnessId> [--model <id>] [--name <name>] [--cwd <dir>]`.
  *
- * Loads config; if `--profile` is given, seeds the harness, model, and env from it (a
- * positional `<harnessId>` and `--model` override the profile, and `--profile` makes the
- * positional id optional). The resolved model id decides the route:
+ * Loads config. The resolved model id decides the route:
  *  - no model (default) ⇒ a DIRECT route that bypasses the proxy entirely (none is started
  *    or even probed), and the session is recorded without a model id;
  *  - a model id ⇒ a PROXIED route: ensure a proxy is up (reuse a running one, else start an
  *    ephemeral one with a freshly generated per-run key) and pass it to the harness.
- * Launches the harness with the profile's env + `--cwd`, and records a session with
- * `--name`/`--cwd`. SECURITY: the generated proxy key flows only into `deps.launch(...)` —
+ * Launches the harness with `--cwd`, and records a session with `--name`/`--cwd`.
+ * SECURITY: the generated proxy key flows only into `deps.launch(...)` —
  * never to `deps.out.write`.
  */
 export const launchCommand = async (
@@ -99,11 +72,7 @@ export const launchCommand = async (
   if (isErr(loaded))
     return err({ kind: "failed", detail: "could not load config" })
 
-  const profileResult = resolveProfile(loaded.value, flags)
-  if (isErr(profileResult)) return profileResult
-  const profile = profileResult.value
-
-  const harnessIdResult = resolveHarnessId(rest[0], profile)
+  const harnessIdResult = resolveHarnessId(rest[0])
   if (isErr(harnessIdResult)) return harnessIdResult
   const harnessId = harnessIdResult.value
 
@@ -116,8 +85,10 @@ export const launchCommand = async (
     return err({ kind: "usage", detail: `unknown harness: ${harnessId}` })
   }
 
-  const modelId = resolveModel(profile, flags)
-  const env = profile?.env ?? {}
+  const modelId =
+    typeof flags.model === "string"
+      ? ModelIdSchema.parse(flags.model)
+      : undefined
   const cwd = typeof flags.cwd === "string" ? flags.cwd : undefined
   const name = typeof flags.name === "string" ? flags.name : undefined
 
@@ -134,7 +105,7 @@ export const launchCommand = async (
     harness,
     route,
     ...(cwd !== undefined ? { cwd } : {}),
-    env,
+    env: {},
   })
   if (isErr(launched)) {
     // Spawning failed: tear down the proxy we just started so we don't leak it.

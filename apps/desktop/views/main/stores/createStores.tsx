@@ -9,7 +9,6 @@ import {
 import type { StoreApi } from "zustand/vanilla"
 import { type HarnessesStore, createHarnessesStore } from "./harnessesStore"
 import { type ModelsStore, createModelsStore } from "./modelsStore"
-import { type ProfilesStore, createProfilesStore } from "./profilesStore"
 import { type ProvidersStore, createProvidersStore } from "./providersStore"
 import { type ProxyStore, createProxyStore } from "./proxyStore"
 import { type SessionsStore, createSessionsStore } from "./sessionsStore"
@@ -22,7 +21,6 @@ export type Stores = {
   readonly providers: StoreApi<ProvidersStore>
   readonly models: StoreApi<ModelsStore>
   readonly harnesses: StoreApi<HarnessesStore>
-  readonly profiles: StoreApi<ProfilesStore>
   readonly sessions: StoreApi<SessionsStore>
   readonly ui: StoreApi<UiStore>
 }
@@ -43,7 +41,6 @@ export const createStores = ({
     providers: createProvidersStore(deps),
     models: createModelsStore(deps),
     harnesses: createHarnessesStore(deps),
-    profiles: createProfilesStore(deps),
     sessions: createSessionsStore(deps),
     ui: createUiStore(initialView),
   }

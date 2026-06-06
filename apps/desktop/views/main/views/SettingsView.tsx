@@ -1,20 +1,13 @@
 import { SettingsNav } from "@launchkit/ui"
 import type { ReactNode } from "react"
 import { ErrorBoundary } from "../ErrorBoundary"
-import {
-  GeneralPage,
-  HarnessesPage,
-  ModelsPage,
-  ProfilesPage,
-  ProvidersPage,
-} from "../pages"
+import { GeneralPage, HarnessesPage, ModelsPage, ProvidersPage } from "../pages"
 
 const SECTIONS = [
   { key: "general", label: "General" },
   { key: "providers", label: "Providers" },
   { key: "models", label: "Models" },
   { key: "harnesses", label: "Harnesses" },
-  { key: "profiles", label: "Profiles" },
 ] as const
 
 const detailFor = (section: string): ReactNode => {
@@ -25,8 +18,6 @@ const detailFor = (section: string): ReactNode => {
       return <ModelsPage />
     case "harnesses":
       return <HarnessesPage />
-    case "profiles":
-      return <ProfilesPage />
     default:
       return <GeneralPage />
   }
