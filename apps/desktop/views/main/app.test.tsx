@@ -56,7 +56,6 @@ const baseStubs = {
     ok: true as const,
     value: { running: false, port: 4000 },
   }),
-  getProfiles: async () => ({ ok: true as const, value: [] }),
   getModels: async () => ({ ok: true as const, value: [] }),
   getProviders: async () => ({ ok: true as const, value: [] }),
 }
@@ -131,7 +130,6 @@ describe("App view model", () => {
           },
         ],
       }),
-      getProfiles: async () => ({ ok: true as const, value: [] }),
       getModels: async () => ({
         ok: true as const,
         value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
@@ -255,67 +253,6 @@ describe("App view model", () => {
     const params = client.calls.launchHarness[0] as Record<string, unknown>
     expect(params.name).toBe("Untitled")
     expect("cwd" in params).toBe(false)
-  })
-
-  it("also calls addProfile when 'Save edits as new profile' is checked", async () => {
-    const client = createFakeIpcClient({
-      ...baseStubs,
-      getHarnesses: async () => ({
-        ok: true as const,
-        value: [
-          {
-            id: "claude",
-            name: "Claude Code",
-            command: "claude",
-            apiFormat: "anthropic",
-            envTemplate: {},
-            builtIn: true,
-          },
-        ],
-      }),
-      getModels: async () => ({
-        ok: true as const,
-        value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
-      }),
-      getProfiles: async () => ({ ok: true as const, value: [] }),
-      addProfile: async () => ({
-        ok: true as const,
-        value: {
-          id: "pr_1",
-          name: "Work",
-          harnessId: "claude",
-          env: {},
-        },
-      }),
-      launchHarness: async () => ({
-        ok: true as const,
-        value: { sessionId: "s_new" },
-      }),
-    })
-    render(
-      <App
-        client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
-        initialView="sessions"
-      />,
-    )
-    fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
-    // Name field removed (Fix #3); use Folder and "Save edits as new profile"
-    fireEvent.change(screen.getByLabelText("Folder"), {
-      target: { value: "/tmp/app" },
-    })
-    fireEvent.click(screen.getByLabelText(/save edits as new profile/i))
-    fireEvent.change(screen.getByLabelText("Profile name"), {
-      target: { value: "Work" },
-    })
-    fireEvent.click(screen.getByRole("button", { name: /launch/i }))
-    await waitFor(() => expect(client.calls.launchHarness.length).toBe(1))
-    await waitFor(() => expect(client.calls.addProfile.length).toBe(1))
-    expect(client.calls.addProfile[0]).toMatchObject({
-      name: "Work",
-      harnessId: "claude",
-    })
   })
 
   it("refetches sessions after a successful launch", async () => {
@@ -551,7 +488,7 @@ describe("App view model", () => {
     )
   })
 
-  it("refetches getModels (and getProfiles/getHarnesses) when the new-session modal is opened (Fix #1)", async () => {
+  it("refetches getModels (and getHarnesses) when the new-session modal is opened (Fix #1)", async () => {
     const client = createFakeIpcClient({
       ...baseStubs,
       getHarnesses: async () => ({
@@ -580,7 +517,7 @@ describe("App view model", () => {
         initialView="sessions"
       />,
     )
-    // Wait for initial render — hooks fire on mount for models, profiles, harnesses
+    // Wait for initial render — hooks fire on mount for models, harnesses
     await waitFor(() =>
       expect(client.calls.getModels.length).toBeGreaterThan(0),
     )
@@ -593,10 +530,8 @@ describe("App view model", () => {
     await waitFor(() =>
       expect(client.calls.getModels.length).toBeGreaterThan(countBefore),
     )
-    // Same for getProfiles and getHarnesses
-    const profilesCountAfterOpen = client.calls.getProfiles.length
+    // Same for getHarnesses
     const harnessCountAfterOpen = client.calls.getHarnesses.length
-    expect(profilesCountAfterOpen).toBeGreaterThan(0)
     expect(harnessCountAfterOpen).toBeGreaterThan(0)
   })
 

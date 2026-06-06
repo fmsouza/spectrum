@@ -1,18 +1,8 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { HarnessDefinition, ModelRoute, Profile } from "@launchkit/types"
+import type { HarnessDefinition, ModelRoute } from "@launchkit/types"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { NewSessionModal } from "./NewSessionModal"
 import type { NewSessionValues } from "./NewSessionModal"
-
-const profiles = [
-  {
-    id: "prof_a",
-    name: "Sonnet default",
-    harnessId: "claude",
-    modelId: "mdl_default",
-    env: { ANTHROPIC_MODEL: "sonnet" },
-  },
-] as unknown as readonly Profile[]
 
 const harnesses = [
   { id: "claude", name: "Claude Code" },
@@ -28,7 +18,6 @@ const providerNames: Readonly<Record<string, string>> = { p1: "Anthropic" }
 
 const baseProps = {
   open: true,
-  profiles,
   harnesses,
   models,
   providerNames,
@@ -43,55 +32,19 @@ describe("NewSessionModal", () => {
     render(<NewSessionModal {...baseProps} open={false} />)
     expect(screen.queryByRole("dialog")).toBeNull()
   })
-  it("prefills harness, model, and env when a profile is selected", () => {
+  it("submits the selected harness and model", () => {
     const onSubmit = mock((_v: NewSessionValues) => {})
     render(<NewSessionModal {...baseProps} onSubmit={onSubmit} />)
-    fireEvent.change(screen.getByLabelText("Profile"), {
-      target: { value: "prof_a" },
+    fireEvent.change(screen.getByLabelText("Model"), {
+      target: { value: "mdl_default" },
     })
-    expect(screen.getByLabelText("Harness")).toHaveValue("claude")
-    expect(screen.getByLabelText("Model")).toHaveValue("mdl_default")
     fireEvent.click(screen.getByRole("button", { name: /launch/i }))
     expect(onSubmit).toHaveBeenCalledWith({
       name: "Untitled",
       cwd: "/Users/fred/app",
       harnessId: "claude",
       modelId: "mdl_default",
-      env: { ANTHROPIC_MODEL: "sonnet" },
-    })
-  })
-  it("keeps fields editable after a profile prefill", () => {
-    const onSubmit = mock((_v: NewSessionValues) => {})
-    render(<NewSessionModal {...baseProps} onSubmit={onSubmit} />)
-    fireEvent.change(screen.getByLabelText("Profile"), {
-      target: { value: "prof_a" },
-    })
-    fireEvent.change(screen.getByLabelText("Model"), {
-      target: { value: "mdl_fast" },
-    })
-    fireEvent.click(screen.getByRole("button", { name: /launch/i }))
-    expect(onSubmit).toHaveBeenCalledWith({
-      name: "Untitled",
-      cwd: "/Users/fred/app",
-      harnessId: "claude",
-      modelId: "mdl_fast",
-      env: { ANTHROPIC_MODEL: "sonnet" },
-    })
-  })
-  it("includes saveAsProfile when the save checkbox is checked", () => {
-    const onSubmit = mock((_v: NewSessionValues) => {})
-    render(<NewSessionModal {...baseProps} onSubmit={onSubmit} />)
-    fireEvent.click(screen.getByLabelText(/save edits as new profile/i))
-    fireEvent.change(screen.getByLabelText("Profile name"), {
-      target: { value: "My profile" },
-    })
-    fireEvent.click(screen.getByRole("button", { name: /launch/i }))
-    expect(onSubmit).toHaveBeenCalledWith({
-      name: "Untitled",
-      cwd: "/Users/fred/app",
-      harnessId: "claude",
       env: {},
-      saveAsProfile: { name: "My profile" },
     })
   })
   it("calls onBrowse when the folder Browse button is clicked", () => {
@@ -142,7 +95,6 @@ describe("NewSessionModal", () => {
     render(
       <NewSessionModal
         open
-        profiles={[]}
         harnesses={[{ id: "claude", name: "Claude Code" } as HarnessDefinition]}
         models={[]}
         folder="/tmp"
@@ -164,7 +116,6 @@ describe("NewSessionModal", () => {
     render(
       <NewSessionModal
         open
-        profiles={[]}
         harnesses={[{ id: "claude", name: "Claude Code" } as HarnessDefinition]}
         models={[
           {
@@ -211,9 +162,5 @@ describe("NewSessionModal", () => {
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({ name: "Untitled" }),
     )
-  })
-  it("marks the save-as-profile checkbox label with lk-modal__checkbox", () => {
-    const { container } = render(<NewSessionModal {...baseProps} />)
-    expect(container.querySelector("label.lk-modal__checkbox")).not.toBeNull()
   })
 })

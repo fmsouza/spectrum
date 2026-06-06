@@ -9,7 +9,6 @@ import { IpcClientProvider, useIpcClient } from "./IpcClientContext"
 import { createRealClients } from "./clients"
 import { useHarnesses } from "./hooks/useHarnesses"
 import { useModels } from "./hooks/useModels"
-import { useProfiles } from "./hooks/useProfiles"
 import { useProviders } from "./hooks/useProviders"
 import { useProxyStatus } from "./hooks/useProxyStatus"
 import { useSessions } from "./hooks/useSessions"
@@ -97,7 +96,6 @@ const AppInner = ({
 
   // Feed the new-session modal. These hooks load lazily and stay cheap when the
   // modal is closed (the data is just handed to a dumb component).
-  const profiles = useProfiles()
   const harnesses = useHarnesses()
   const models = useModels()
   const providers = useProviders()
@@ -148,14 +146,6 @@ const AppInner = ({
       return
     }
     setLaunchError(undefined)
-    if (v.saveAsProfile !== undefined) {
-      await client.addProfile({
-        name: v.saveAsProfile.name,
-        harnessId: v.harnessId,
-        ...(v.modelId !== undefined ? { modelId: v.modelId } : {}),
-        env: v.env,
-      })
-    }
     const id = r.value.sessionId
     openSession(id)
     navigate({ kind: "sessions", selectedSessionId: id })
@@ -191,7 +181,6 @@ const AppInner = ({
           onSelect: (id) =>
             navigate({ kind: "sessions", selectedSessionId: id }),
           onNew: () => {
-            profiles.refetch()
             harnesses.refetch()
             models.refetch()
             providers.refetch()
@@ -215,7 +204,6 @@ const AppInner = ({
       />
       <NewSessionModal
         open={modalOpen}
-        profiles={profiles.data ?? []}
         harnesses={harnesses.data ?? []}
         models={models.data ?? []}
         providerNames={providerNames}

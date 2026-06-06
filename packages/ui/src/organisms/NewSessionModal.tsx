@@ -3,14 +3,12 @@ import type {
   HarnessId,
   ModelId,
   ModelRoute,
-  Profile,
 } from "@launchkit/types"
 import { useEffect, useRef, useState } from "react"
 import type { ReactElement } from "react"
 import { Button } from "../atoms/Button"
 import { Modal } from "../atoms/Modal"
 import { Select } from "../atoms/Select"
-import { TextInput } from "../atoms/TextInput"
 import { FolderField } from "../molecules/FolderField"
 import { FormField } from "../molecules/FormField"
 
@@ -20,12 +18,10 @@ export type NewSessionValues = {
   readonly harnessId: HarnessId
   readonly modelId?: ModelId
   readonly env: Record<string, string>
-  readonly saveAsProfile?: { readonly name: string }
 }
 
 export type NewSessionModalProps = {
   readonly open: boolean
-  readonly profiles: readonly Profile[]
   readonly harnesses: readonly HarnessDefinition[]
   readonly models: readonly ModelRoute[]
   readonly providerNames?: Readonly<Record<string, string>>
@@ -39,17 +35,13 @@ export type NewSessionModalProps = {
 
 type FormState = {
   readonly cwd: string
-  readonly profileId: string
   readonly harnessId: HarnessId
   readonly modelId: ModelId | ""
   readonly env: Record<string, string>
-  readonly save: boolean
-  readonly saveName: string
 }
 
 export const NewSessionModal = ({
   open,
-  profiles,
   harnesses,
   models,
   providerNames,
@@ -62,31 +54,25 @@ export const NewSessionModal = ({
   const firstHarness = (harnesses[0]?.id ?? "") as HarnessId
   const [state, setState] = useState<FormState>({
     cwd: folder,
-    profileId: "",
     harnessId: firstHarness,
     modelId: "",
     env: {},
-    save: false,
-    saveName: "",
   })
 
-  // Fix 1: sync cwd field whenever the folder prop changes (Browse flow)
+  // Sync cwd field whenever the folder prop changes (Browse flow + prefill).
   useEffect(() => {
     setState((prev) => ({ ...prev, cwd: folder }))
   }, [folder])
 
-  // Fix 3: reset form only on the false→true transition of open
+  // Reset form only on the false→true transition of open.
   const wasOpen = useRef(false)
   useEffect(() => {
     if (open && !wasOpen.current) {
       setState({
         cwd: folder,
-        profileId: "",
         harnessId: firstHarness,
         modelId: "",
         env: {},
-        save: false,
-        saveName: "",
       })
     }
     wasOpen.current = open
@@ -97,21 +83,6 @@ export const NewSessionModal = ({
     value: FormState[K],
   ): void => setState((prev) => ({ ...prev, [key]: value }))
 
-  const selectProfile = (id: string): void => {
-    const profile = profiles.find((p) => p.id === id)
-    if (profile === undefined) {
-      update("profileId", id)
-      return
-    }
-    setState((prev) => ({
-      ...prev,
-      profileId: id,
-      harnessId: profile.harnessId,
-      modelId: profile.modelId ?? "",
-      env: profile.env,
-    }))
-  }
-
   const submit = (): void => {
     const values: NewSessionValues = {
       name: "Untitled",
@@ -119,15 +90,10 @@ export const NewSessionModal = ({
       harnessId: state.harnessId,
       ...(state.modelId !== "" ? { modelId: state.modelId as ModelId } : {}),
       env: state.env,
-      ...(state.save ? { saveAsProfile: { name: state.saveName } } : {}),
     }
     onSubmit(values)
   }
 
-  const profileOptions = [
-    { value: "", label: "None" },
-    ...profiles.map((p) => ({ value: p.id, label: p.name })),
-  ]
   const harnessOptions = harnesses.map((h) => ({ value: h.id, label: h.name }))
   const modelLabel = (m: ModelRoute): string =>
     `${providerNames?.[String(m.providerId)] ?? String(m.providerId)} / ${m.providerModel}`
@@ -148,14 +114,6 @@ export const NewSessionModal = ({
           submit()
         }}
       >
-        <FormField id="session-profile" label="Profile">
-          <Select
-            id="session-profile"
-            value={state.profileId}
-            options={profileOptions}
-            onChange={selectProfile}
-          />
-        </FormField>
         <FormField id="session-folder" label="Folder">
           <FolderField
             id="session-folder"
@@ -182,23 +140,6 @@ export const NewSessionModal = ({
             }
           />
         </FormField>
-        <label className="lk-modal__checkbox">
-          <input
-            type="checkbox"
-            checked={state.save}
-            onChange={(e) => update("save", e.currentTarget.checked)}
-          />
-          Save edits as new profile
-        </label>
-        {state.save ? (
-          <FormField id="session-save-name" label="Profile name">
-            <TextInput
-              id="session-save-name"
-              value={state.saveName}
-              onChange={(v) => update("saveName", v)}
-            />
-          </FormField>
-        ) : null}
         {error === undefined ? null : <p role="alert">{error}</p>}
         <Button disabled={!canLaunch} onClick={() => submit()}>
           Launch

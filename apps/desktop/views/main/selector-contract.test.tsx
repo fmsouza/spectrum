@@ -46,7 +46,6 @@
  *   5. Settings Providers page (one provider → Providers table, td span[data-tone] badges)
  *   6. Settings Models page (one model in table, Add-model form open → lk-form-actions)
  *   7. Settings Harnesses page (built-in + custom, HarnessForm open → form + lk-field)
- *   8. Settings Profiles page (one profile + add-profile modal open → dialog + ProfileForm)
  *
  * Coverage gaps (documented):
  *   - `span[role="status"][aria-busy="true"]` (Spinner) — only shown briefly
@@ -63,12 +62,7 @@
 
 import { afterEach, describe, expect, it } from "bun:test"
 import type { ProviderView } from "@launchkit/ipc"
-import type {
-  HarnessDefinition,
-  ModelRoute,
-  Profile,
-  Session,
-} from "@launchkit/types"
+import type { HarnessDefinition, ModelRoute, Session } from "@launchkit/types"
 import { act, cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { render } from "@testing-library/react"
 import { App } from "./app"
@@ -136,13 +130,6 @@ const model: ModelRoute = {
   providerId: "p_openai",
   providerModel: "gpt-4o-mini",
 } as unknown as ModelRoute
-
-const profile: Profile = {
-  id: "pr_1" as Profile["id"],
-  name: "Work",
-  harnessId: "claude" as Profile["harnessId"],
-  env: {},
-}
 
 const runningSession: Session = {
   id: "s_running" as Session["id"],
@@ -427,7 +414,6 @@ const baseStubs = {
     ok: true as const,
     value: { running: false, port: 4000 },
   }),
-  getProfiles: async () => ({ ok: true as const, value: [] }),
   getModels: async () => ({ ok: true as const, value: [] }),
   getProviders: async () => ({ ok: true as const, value: [] }),
 }
@@ -672,7 +658,6 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
       getSessions: async () => ({ ok: true as const, value: [] }),
       getHarnesses: async () => ({ ok: true as const, value: [harness] }),
       getModels: async () => ({ ok: true as const, value: [model] }),
-      getProfiles: async () => ({ ok: true as const, value: [] }),
       launchHarness: async () => ({
         ok: true as const,
         value: { sessionId: "s_live" },
@@ -709,7 +694,6 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
       ...baseStubs,
       getHarnesses: async () => ({ ok: true as const, value: [harness] }),
       getModels: async () => ({ ok: true as const, value: [model] }),
-      getProfiles: async () => ({ ok: true as const, value: [] }),
     })
     const { container, getByRole } = render(
       <App
@@ -844,38 +828,6 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
       })
       containers.push(container.cloneNode(true) as ParentNode)
     }
-    cleanup()
-  }
-
-  // ── State 8: Settings — Profiles page (one profile + add-profile modal) ──
-  {
-    const client = createFakeIpcClient({
-      ...baseStubs,
-      getProfiles: async () => ({ ok: true as const, value: [profile] }),
-      getHarnesses: async () => ({ ok: true as const, value: [harness] }),
-      getModels: async () => ({ ok: true as const, value: [model] }),
-      getProviders: async () => ({ ok: true as const, value: [] }),
-    })
-    const { container, getByRole } = render(
-      <App
-        client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
-        initialView="settings/profiles"
-      />,
-    )
-    await waitFor(() => {
-      expect(container.querySelector(".lk-page")).not.toBeNull()
-    })
-    containers.push(container.cloneNode(true) as ParentNode)
-    const addProfileBtn = getByRole("button", { name: /add profile/i })
-    await act(async () => {
-      fireEvent.click(addProfileBtn)
-    })
-    await waitFor(() => {
-      expect(container.querySelector("dialog[aria-modal]")).not.toBeNull()
-    })
-    containers.push(container.cloneNode(true) as ParentNode)
     cleanup()
   }
 
