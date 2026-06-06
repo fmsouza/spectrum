@@ -149,4 +149,15 @@ describe("SessionRow", () => {
     fireEvent.click(screen.getByRole("button"))
     expect(onSelect).toHaveBeenCalledTimes(1)
   })
+
+  it("wraps the name (and only the name) in the truncating hook", () => {
+    const { container } = render(
+      <SessionRow session={running} harnessName="claude" model="default" selected={false} onSelect={() => {}} />,
+    )
+    // the line-1 wrapper carries the hook; the dot and badge are NOT truncated
+    expect(container.querySelector(".lk-session-row__line")).not.toBeNull()
+    const name = container.querySelector(".lk-session-row__name.lk-truncate")
+    expect(name).not.toBeNull()
+    expect(container.querySelectorAll(".lk-truncate").length).toBe(1)
+  })
 })

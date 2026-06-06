@@ -1,6 +1,6 @@
-/* SessionList is a <div> of: the "+ New session" button, a Running <section>,
+/* SessionList is a Stack with: the "+ New session" button, a Running <section>,
    a Recent <section>, and an optional "View more" button. Stack them. */
-nav[aria-label="Sessions"] > div {
+.lk-session-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -8,18 +8,18 @@ nav[aria-label="Sessions"] > div {
 }
 
 /* Both list buttons (+ New session / View more) span the master width. */
-nav[aria-label="Sessions"] > div > button[data-variant] {
+.lk-session-list > button[data-variant] {
   width: 100%;
 }
 
-nav[aria-label="Sessions"] section {
+.lk-session-group {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
 
 /* Group headings: "Running" / "Recent" — small, uppercase, muted. */
-nav[aria-label="Sessions"] section > h3 {
+.lk-session-group__heading {
   margin-bottom: var(--space-1);
   padding: 0 var(--space-1);
   font-size: var(--text-xs);
@@ -29,9 +29,8 @@ nav[aria-label="Sessions"] section > h3 {
   color: var(--text-faint);
 }
 
-/* ── SessionRow: <button aria-pressed data-selected> with 3 stacked lines. ──
-   Scoped to the master so it doesn't pick up the data-variant button chrome. */
-nav[aria-label="Sessions"] section > button[aria-pressed] {
+/* ── SessionRow: hook-based, 3 stacked lines. ── */
+.lk-session-row {
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -42,23 +41,20 @@ nav[aria-label="Sessions"] section > button[aria-pressed] {
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--text);
-  transition: background var(--dur) var(--ease), border-color var(--dur)
-    var(--ease);
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 
-nav[aria-label="Sessions"] section > button[aria-pressed]:hover {
+.lk-session-row:hover {
   background: var(--surface-inset);
 }
 
-nav[aria-label="Sessions"]
-  section
-  > button[aria-pressed][data-selected="true"] {
+.lk-session-row[data-selected="true"] {
   background: var(--accent-soft);
   border-color: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
-/* Line 1: status dot + name + (badge pushed to the right). */
-nav[aria-label="Sessions"] section > button[aria-pressed] > span:first-child {
+/* Line 1: status dot + name (.lk-truncate) + badge pushed to the right. */
+.lk-session-row__line {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -66,32 +62,14 @@ nav[aria-label="Sessions"] section > button[aria-pressed] > span:first-child {
   font-size: var(--text-sm);
 }
 
-/* The name text takes the slack so the badge sits flush-right; truncate it. */
-nav[aria-label="Sessions"]
-  section
-  > button[aria-pressed]
-  > span:first-child
-  > span {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Lines 2 & 3: harness·model and cwd·time — smaller, muted; line 3 truncates. */
-nav[aria-label="Sessions"]
-  section
-  > button[aria-pressed]
-  > span:not(:first-child) {
+/* Lines 2 & 3: harness·model and cwd·time — smaller, muted. */
+.lk-session-row__sub {
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
 
-nav[aria-label="Sessions"]
-  section
-  > button[aria-pressed]
-  > span[data-testid="session-row-meta"] {
+.lk-session-row__meta {
+  font-size: var(--text-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -100,9 +78,7 @@ nav[aria-label="Sessions"]
 }
 
 /* The selected row keeps its inner text legible on the accent-soft wash. */
-nav[aria-label="Sessions"]
-  section
-  > button[aria-pressed][data-selected="true"]
-  > span:not(:first-child) {
+.lk-session-row[data-selected="true"] .lk-session-row__sub,
+.lk-session-row[data-selected="true"] .lk-session-row__meta {
   color: color-mix(in srgb, var(--text-muted) 80%, var(--accent-strong));
 }
