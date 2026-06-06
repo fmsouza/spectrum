@@ -1,12 +1,10 @@
-/* FormField is a bare <div> wrapping a <label>, a control, and optional
-   <p role="alert">. Target it structurally. */
-form div:has(> label),
-main div:has(> label):not(:has(nav)) {
+/* FormField wrapper — stable hook replaces the fragile :has(> label) selector. */
+.lk-field {
   display: flex;
   flex-direction: column;
 }
 
-p[role="alert"] {
+.lk-field__error {
   margin-top: var(--space-2);
   font-size: var(--text-xs);
   font-weight: 500;

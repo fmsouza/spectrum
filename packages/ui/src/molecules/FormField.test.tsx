@@ -28,4 +28,12 @@ describe("FormField", () => {
     )
     expect(screen.queryByRole("alert")).toBeNull()
   })
+  it("marks the field wrapper with lk-field", () => {
+    const { container } = render(
+      <FormField label="Name" id="name-field">
+        <input />
+      </FormField>,
+    )
+    expect(container.querySelector(".lk-field")).not.toBeNull()
+  })
 })

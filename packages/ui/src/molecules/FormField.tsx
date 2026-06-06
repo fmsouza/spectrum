@@ -14,9 +14,13 @@ export const FormField = ({
   children,
   error,
 }: FormFieldProps): ReactElement => (
-  <div>
+  <div className="lk-field">
     <Label htmlFor={id}>{label}</Label>
     {children}
-    {error !== undefined ? <p role="alert">{error}</p> : null}
+    {error !== undefined ? (
+      <p role="alert" className="lk-field__error">
+        {error}
+      </p>
+    ) : null}
   </div>
 )
