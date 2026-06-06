@@ -45,4 +45,26 @@ describe("Stack", () => {
       container.querySelector(".lk-stack")?.hasAttribute("data-min-height-0"),
     ).toBe(true)
   })
+
+  it("does not set data-gap when gap is omitted", () => {
+    const { container } = render(
+      <Stack>
+        <span>a</span>
+      </Stack>,
+    )
+    expect(container.querySelector(".lk-stack")?.hasAttribute("data-gap")).toBe(
+      false,
+    )
+  })
+
+  it("does not set data-min-height-0 when minHeight0 is omitted", () => {
+    const { container } = render(
+      <Stack>
+        <span>a</span>
+      </Stack>,
+    )
+    expect(
+      container.querySelector(".lk-stack")?.hasAttribute("data-min-height-0"),
+    ).toBe(false)
+  })
 })

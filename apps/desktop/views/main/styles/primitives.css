@@ -9,16 +9,13 @@
 .lk-row {
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: center; /* center is the default; omitting align= centres items */
 }
 .lk-row[data-wrap] {
   flex-wrap: wrap;
 }
 .lk-row[data-align="start"] {
   align-items: flex-start;
-}
-.lk-row[data-align="center"] {
-  align-items: center;
 }
 .lk-row[data-align="stretch"] {
   align-items: stretch;

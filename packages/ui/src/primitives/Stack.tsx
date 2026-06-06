@@ -1,7 +1,5 @@
 import type { ReactElement, ReactNode } from "react"
-
-/** Token step 1–8 → var(--space-N). */
-export type SpaceStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
+import type { SpaceStep } from "./types"
 
 export type StackProps = {
   readonly children: ReactNode

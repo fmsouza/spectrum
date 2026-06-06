@@ -36,4 +36,37 @@ describe("Row", () => {
       container.querySelector(".lk-row")?.classList.contains("lk-form-actions"),
     ).toBe(true)
   })
+
+  it("emits no gap/align/justify/wrap attributes when no optional props are given", () => {
+    const { container } = render(
+      <Row>
+        <span>a</span>
+      </Row>,
+    )
+    const el = container.querySelector(".lk-row")
+    expect(el?.hasAttribute("data-gap")).toBe(false)
+    expect(el?.hasAttribute("data-align")).toBe(false)
+    expect(el?.hasAttribute("data-justify")).toBe(false)
+    expect(el?.hasAttribute("data-wrap")).toBe(false)
+  })
+
+  it("sets data-wrap only when wrap is true", () => {
+    const { container: withWrap } = render(
+      <Row wrap>
+        <span>a</span>
+      </Row>,
+    )
+    expect(withWrap.querySelector(".lk-row")?.hasAttribute("data-wrap")).toBe(
+      true,
+    )
+
+    const { container: withoutWrap } = render(
+      <Row>
+        <span>a</span>
+      </Row>,
+    )
+    expect(
+      withoutWrap.querySelector(".lk-row")?.hasAttribute("data-wrap"),
+    ).toBe(false)
+  })
 })

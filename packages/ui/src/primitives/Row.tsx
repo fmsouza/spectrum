@@ -1,8 +1,5 @@
 import type { ReactElement, ReactNode } from "react"
-import type { SpaceStep } from "./Stack"
-
-export type RowAlign = "start" | "center" | "stretch"
-export type RowJustify = "start" | "between" | "end"
+import type { RowAlign, RowJustify, SpaceStep } from "./types"
 
 export type RowProps = {
   readonly children: ReactNode
