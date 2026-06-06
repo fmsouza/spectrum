@@ -68,22 +68,11 @@ tbody tr:hover {
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
-/* Model cells read as code; the actions cell keeps buttons inline. */
-td:has(> button) {
+/* Model cells read as code; the actions cell wraps so buttons reflow. */
+.lk-cell-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
-  white-space: nowrap;
-}
-
-td span[data-tone] {
-  vertical-align: middle;
-}
-
-/* "+N more" hint below a windowed SessionTable. */
-table + p {
-  margin-top: var(--space-3);
-  font-size: var(--text-xs);
-  color: var(--text-faint);
 }
 
 /* ─────────────────────── EmptyState (div > h2 + p) ──────────────────────── */
@@ -110,9 +99,9 @@ div:has(> h2 + p):not(:has(> h2 + p ~ *)):not([aria-label]) > p {
 }
 
 /* ───────────────── Generic list rows (provider/harness/launch) ──────────── */
-/* These pages use bare <ul><li> rows mixing a <span> label with controls. */
-main section ul:not(nav ul),
-main > section > div > ul {
+/* Stable lk-* class hooks. Applied to ProviderList <ul>/<li> by Slice F1;
+   consumed by Slice F2 page inline-lists (ProvidersPage, HarnessesPage). */
+.lk-list {
   list-style: none;
   padding: 0;
   display: flex;
@@ -120,9 +109,7 @@ main > section > div > ul {
   gap: var(--space-2);
 }
 
-main section li:has(> span),
-main section li:has(> article),
-main > section > div > ul > li {
+.lk-list-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -134,7 +121,7 @@ main > section > div > ul > li {
 }
 
 /* Let a card-bearing row drop its own chrome (the article already has it). */
-main section li:has(> article) {
+.lk-list-row--card {
   background: transparent;
   border: none;
   padding: 0;
@@ -142,12 +129,12 @@ main section li:has(> article) {
 }
 
 /* The leading label in a row takes the slack so trailing buttons align right. */
-main section li > span:first-child {
+.lk-list-row__label {
   flex: 1 1 auto;
   font-weight: 550;
 }
 
 /* Quick-launch / provider-secret rows: push trailing actions to the right. */
-main section li > button[data-variant] {
+.lk-list-row > button[data-variant] {
   margin-left: auto;
 }

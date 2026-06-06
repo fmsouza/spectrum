@@ -9,6 +9,28 @@ const providers: readonly ProviderDisplay[] = [
 ]
 
 describe("ProviderList", () => {
+  it("renders rows with the lk-list / lk-list-row hooks", () => {
+    const { container } = render(
+      <ProviderList
+        providers={[{ id: "p1", name: "OpenAI", sdkProvider: "openai" }]}
+        onAdd={() => {}}
+        onSelect={() => {}}
+      />,
+    )
+    expect(container.querySelector(".lk-list")).not.toBeNull()
+    expect(container.querySelector(".lk-list-row")).not.toBeNull()
+  })
+
+  it("renders card rows with the lk-list-row--card modifier", () => {
+    const { container } = render(
+      <ProviderList
+        providers={[{ id: "p1", name: "OpenAI", sdkProvider: "openai" }]}
+        onAdd={() => {}}
+        onSelect={() => {}}
+      />,
+    )
+    expect(container.querySelector(".lk-list-row--card")).not.toBeNull()
+  })
   it("renders one card per provider", () => {
     render(
       <ProviderList

@@ -23,9 +23,9 @@ export const ProviderList = ({
         hint="Add a provider to start routing models."
       />
     ) : (
-      <ul>
+      <ul className="lk-list">
         {providers.map((provider) => (
-          <li key={provider.id}>
+          <li key={provider.id} className="lk-list-row lk-list-row--card">
             <ProviderCard provider={provider} />
             <Button
               variant="secondary"

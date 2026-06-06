@@ -20,6 +20,19 @@ const profiles = [
 ] as unknown as readonly Profile[]
 
 describe("ProfileList", () => {
+  it("renders a table (not a ul list) so lk-list hooks are not applied", () => {
+    const { container } = render(
+      <ProfileList
+        profiles={profiles}
+        onAdd={() => {}}
+        onEdit={() => {}}
+        onDelete={() => {}}
+      />,
+    )
+    // ProfileList is purely table-structured; it is styled by tag rules in lists.css
+    expect(container.querySelector("table")).not.toBeNull()
+    expect(container.querySelector("ul")).toBeNull()
+  })
   it("shows an empty state when there are no profiles", () => {
     render(
       <ProfileList
