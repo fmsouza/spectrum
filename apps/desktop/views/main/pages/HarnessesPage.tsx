@@ -55,6 +55,7 @@ export const HarnessesPage = (): ReactElement => {
 
       {data !== undefined ? (
         <>
+          <Button onClick={() => setAddOpen(true)}>Add custom harness</Button>
           <section aria-label="Built-in harnesses">
             <h2>Built-in</h2>
             <ul className="lk-list">
@@ -91,7 +92,6 @@ export const HarnessesPage = (): ReactElement => {
                 ))}
               </ul>
             )}
-            <Button onClick={() => setAddOpen(true)}>Add custom harness</Button>
           </section>
         </>
       ) : null}

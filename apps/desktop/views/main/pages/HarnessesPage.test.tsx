@@ -130,4 +130,21 @@ describe("HarnessesPage", () => {
     await waitFor(() => expect(client.calls.deleteHarness.length).toBe(1))
     expect(client.calls.deleteHarness[0]).toEqual({ id: "mytool" })
   })
+
+  it("renders the Add custom harness button at the top of the page body, before the built-in section", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByText("Claude Code")).toBeInTheDocument(),
+    )
+    const button = screen.getByRole("button", { name: /add custom harness/i })
+    const body = document.querySelector(".lk-page__body")
+    expect(button.parentElement).toBe(body)
+    const builtIn = document.querySelector(
+      "section[aria-label='Built-in harnesses']",
+    )
+    expect(
+      button.compareDocumentPosition(builtIn as Node) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
 })

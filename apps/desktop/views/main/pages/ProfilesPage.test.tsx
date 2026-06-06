@@ -58,4 +58,20 @@ describe("ProfilesPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /save|create/i }))
     await waitFor(() => expect(client.calls.addProfile.length).toBe(1))
   })
+
+  it("renders the Add profile button at the top of the page body, before the profiles list", async () => {
+    const client = createFakeIpcClient(baseStubs)
+    renderWithProviders(<ProfilesPage />, client)
+    await waitFor(() => expect(screen.getByText("Work")).toBeInTheDocument())
+    const button = screen.getByRole("button", { name: /add profile/i })
+    const body = document.querySelector(".lk-page__body")
+    // direct child of the body (consistent with the other pages), not nested in the list
+    expect(button.parentElement).toBe(body)
+    // appears before the profiles table in document order
+    const table = document.querySelector("table")
+    expect(
+      button.compareDocumentPosition(table as Node) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
 })
