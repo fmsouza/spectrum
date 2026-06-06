@@ -182,7 +182,7 @@ export const NewSessionModal = ({
             }
           />
         </FormField>
-        <label>
+        <label className="lk-modal__checkbox">
           <input
             type="checkbox"
             checked={state.save}

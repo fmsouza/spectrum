@@ -10,10 +10,11 @@ import type { ElectrobunConfig } from "electrobun"
  *   `runApp(detectMode(argv), argv, buildRealDeps(...))`.
  * - `build.views.main.entrypoint` → the React webview; bundled (target: browser) to
  *   `views/main/app.js`, which `views/main/index.html` references as `./app.js`.
- * - `build.copy` → copies the CSP-hardened `index.html` AND the global stylesheet `app.css`
- *   next to the bundled `app.js` so the `views://main/index.html` URL (see `gui/window.ts`)
- *   resolves to local, bundled assets only (the `<link rel="stylesheet" href="./app.css">`
- *   loads same-origin under `style-src 'self'`).
+ * - `build.copy` → ships the CSP-hardened `index.html`, the vendored `xterm.css`, and the
+ *   split stylesheet partials under `views/main/styles/` (tokens, base, controls, primitives,
+ *   shell, sessions-master, sessions-detail, forms, modal, lists, page) next to the bundled
+ *   `app.js` so the `views://main/index.html` URL (see `gui/window.ts`) resolves to local,
+ *   bundled assets only — each partial is linked same-origin under `style-src 'self'`.
  * - `build.mac.createDmg: false` → a local app-bundle build needs no DMG/codesign tooling.
  * - `build.watch`/`build.watchIgnore` → extra paths for `electrobun dev --watch` (rebuild + relaunch
  *   on change). The default watch only covers this app's `src/` + `views/`; we add the workspace
@@ -33,8 +34,20 @@ const config = {
     },
     copy: {
       "views/main/index.html": "views/main/index.html",
-      "views/main/app.css": "views/main/app.css",
       "views/main/xterm.css": "views/main/xterm.css",
+      "views/main/styles/tokens.css": "views/main/styles/tokens.css",
+      "views/main/styles/base.css": "views/main/styles/base.css",
+      "views/main/styles/controls.css": "views/main/styles/controls.css",
+      "views/main/styles/primitives.css": "views/main/styles/primitives.css",
+      "views/main/styles/shell.css": "views/main/styles/shell.css",
+      "views/main/styles/sessions-master.css":
+        "views/main/styles/sessions-master.css",
+      "views/main/styles/sessions-detail.css":
+        "views/main/styles/sessions-detail.css",
+      "views/main/styles/forms.css": "views/main/styles/forms.css",
+      "views/main/styles/modal.css": "views/main/styles/modal.css",
+      "views/main/styles/lists.css": "views/main/styles/lists.css",
+      "views/main/styles/page.css": "views/main/styles/page.css",
     },
     mac: { createDmg: false },
   },

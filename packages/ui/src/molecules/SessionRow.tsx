@@ -2,6 +2,7 @@ import type { Session } from "@launchkit/types"
 import type { ReactElement } from "react"
 import { Badge } from "../atoms/Badge"
 import { StatusDot } from "../atoms/StatusDot"
+import { Truncate } from "../primitives/Truncate"
 import { relativeTime } from "./relativeTime"
 
 export type SessionRowProps = {
@@ -23,13 +24,16 @@ export const SessionRow = ({
   return (
     <button
       type="button"
+      className="lk-session-row"
       aria-pressed={selected}
       data-selected={selected}
       onClick={() => onSelect()}
     >
-      <span>
+      <span className="lk-session-row__line">
         <StatusDot status={isRunning ? "on" : "off"} label="session status" />
-        <span>{session.name ?? session.id}</span>
+        <Truncate className="lk-session-row__name">
+          {session.name ?? session.id}
+        </Truncate>
         {isRunning ? (
           <Badge tone="info">running</Badge>
         ) : session.exitCode === undefined ? (
@@ -40,8 +44,8 @@ export const SessionRow = ({
           </Badge>
         )}
       </span>
-      <span>{`${harnessName} · ${model}`}</span>
-      <span data-testid="session-row-meta">
+      <span className="lk-session-row__sub">{`${harnessName} · ${model}`}</span>
+      <span className="lk-session-row__meta" data-testid="session-row-meta">
         {`${session.cwd ?? ""} · ${relativeTime(session.startedAt, Date.now())}`}
       </span>
     </button>

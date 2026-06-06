@@ -1,0 +1,113 @@
+/* ───────────────────────────── Tables ───────────────────────────── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  font-size: var(--text-sm);
+}
+
+thead {
+  background: var(--surface-inset);
+}
+
+th {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-weight: 650;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--surface-inset) 45%, transparent);
+}
+
+tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+/* Model cells read as code; the actions cell wraps so buttons reflow. */
+.lk-cell-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Badges inside provider/model table cells align with surrounding text. */
+td span[data-tone] {
+  vertical-align: middle;
+}
+
+/* ─────────────────────── EmptyState (div > h2 + p) ──────────────────────── */
+div:has(> h2 + p):not(:has(> h2 + p ~ *)):not([aria-label]) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-7) var(--space-5);
+  text-align: center;
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+}
+
+div:has(> h2 + p):not(:has(> h2 + p ~ *)):not([aria-label]) > h2 {
+  font-size: var(--text-lg);
+  color: var(--text);
+}
+
+div:has(> h2 + p):not(:has(> h2 + p ~ *)):not([aria-label]) > p {
+  max-width: 38ch;
+}
+
+/* ───────────────── Generic list rows (provider/harness/launch) ──────────── */
+/* Stable lk-* class hooks. Applied to ProviderList <ul>/<li> by Slice F1;
+   consumed by Slice F2 page inline-lists (ProvidersPage, HarnessesPage). */
+.lk-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.lk-list-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+/* The leading label in a row takes the slack so trailing buttons align right. */
+.lk-list-row__label {
+  flex: 1 1 auto;
+  font-weight: 550;
+}
+
+/* Quick-launch / provider-secret rows: push trailing actions to the right. */
+.lk-list-row > button[data-variant] {
+  margin-left: auto;
+}

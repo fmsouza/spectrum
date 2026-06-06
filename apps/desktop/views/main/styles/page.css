@@ -1,0 +1,40 @@
+/* ─────────────────────── SettingsLayout: page sections ─────────────────── */
+/* .lk-page > .lk-page__header > h1 / .lk-page__body */
+.lk-page {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.lk-page__header {
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.lk-page__header > h1 {
+  font-size: var(--text-2xl);
+}
+
+.lk-page__header > h1::after {
+  content: "";
+  display: block;
+  width: 44px;
+  height: 3px;
+  margin-top: var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+/* Direct content wrapper inside SettingsLayout — stack its blocks. */
+.lk-page__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Page-level labelled sections (Quick launch, Active sessions, etc.) */
+.lk-page__body section[aria-label] > h2,
+.lk-page__body > section > h2 {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-3);
+}

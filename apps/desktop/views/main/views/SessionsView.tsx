@@ -95,7 +95,7 @@ const ReplayDetail = ({
   // empty-state, or error), once we have the session row to read its code from.
   const banner =
     session === undefined ? null : (
-      <div className="replay-exit-banner">
+      <div className="lk-replay-banner">
         {`exited · code ${session.exitCode ?? "?"}`}
         {ended === "" ? null : ` · ended ${ended}`}
       </div>
@@ -131,21 +131,25 @@ const ReplayDetail = ({
       </>
     )
 
+  // C.2: wrap the banner + pane in lk-replay so flex geometry resolves
+  // correctly — the banner is flex:0 0 auto and the pane host grows to fill.
   return (
-    <>
+    <div className="lk-replay">
       {banner}
-      <TerminalPane
-        // Key by session id so switching between two ended sessions remounts the
-        // pane — otherwise it would briefly show the previous session's
-        // scrollback while the next one's bytes load.
-        key={sessionId}
-        mode="replay"
-        sessionId={sessionId}
-        client={client}
-        createTerminal={createTerminal}
-        bytes={scrollback.data}
-      />
-    </>
+      <div className="lk-terminal-pane-host lk-terminal-pane-host--replay">
+        <TerminalPane
+          // Key by session id so switching between two ended sessions remounts the
+          // pane — otherwise it would briefly show the previous session's
+          // scrollback while the next one's bytes load.
+          key={sessionId}
+          mode="replay"
+          sessionId={sessionId}
+          client={client}
+          createTerminal={createTerminal}
+          bytes={scrollback.data}
+        />
+      </div>
+    </div>
   )
 }
 
@@ -183,13 +187,12 @@ const SessionsDetail = ({
   )
 
   return (
-    <div className="sessions-detail">
-      <div className="terminal-panes">
+    <div className="lk-sessions-detail">
+      <div className="lk-terminal-panes">
         {openSessionIds.map((id) => (
           <div
             key={id}
-            className="terminal-pane-host"
-            data-active={id === selectedSessionId}
+            className="lk-terminal-pane-host"
             hidden={id !== selectedSessionId}
           >
             <TerminalPane

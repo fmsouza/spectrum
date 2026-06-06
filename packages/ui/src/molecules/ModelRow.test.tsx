@@ -5,6 +5,16 @@ import { ModelRow } from "./ModelRow"
 const props = { id: "mdl_fast", provider: "OpenAI", model: "gpt-4o-mini" }
 
 describe("ModelRow", () => {
+  it("wraps row actions in a wrapping cell hook", () => {
+    const { container } = render(
+      <table>
+        <tbody>
+          <ModelRow {...props} onEdit={() => {}} onDelete={() => {}} />
+        </tbody>
+      </table>,
+    )
+    expect(container.querySelector("td.lk-cell-actions")).not.toBeNull()
+  })
   it("renders the provider and model", () => {
     render(
       <table>

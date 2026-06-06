@@ -118,14 +118,14 @@ describe("SessionsView", () => {
     // The banner + replay pane render once the scrollback resolves (the replay
     // is gated behind the scrollback fetch, like the live→replay transition).
     await waitFor(() =>
-      expect(container.querySelector(".replay-exit-banner")).not.toBeNull(),
+      expect(container.querySelector(".lk-replay-banner")).not.toBeNull(),
     )
-    const banner = container.querySelector(".replay-exit-banner")
+    const banner = container.querySelector(".lk-replay-banner")
     expect(banner?.textContent).toContain("exited")
     expect(banner?.textContent).toContain("code 0")
     // The read-only replay pane renders alongside the banner.
     expect(
-      container.querySelector('.terminal-pane[data-session="s_done"]'),
+      container.querySelector('.lk-terminal-pane[data-session="s_done"]'),
     ).not.toBeNull()
   })
 
@@ -167,10 +167,10 @@ describe("SessionsView", () => {
       expect(screen.getByText(/no recorded output/i)).toBeInTheDocument(),
     )
     // ... under the exit banner ...
-    expect(container.querySelector(".replay-exit-banner")).not.toBeNull()
+    expect(container.querySelector(".lk-replay-banner")).not.toBeNull()
     // ... and there is NO terminal pane (it would be blank) and no lingering spinner.
     expect(
-      container.querySelector('.terminal-pane[data-session="s_blank"]'),
+      container.querySelector('.lk-terminal-pane[data-session="s_blank"]'),
     ).toBeNull()
     expect(screen.queryByText(/loading session/i)).toBeNull()
   })

@@ -149,7 +149,7 @@ export const TerminalPane = (props: TerminalPaneProps): ReactElement => {
   return (
     <div
       ref={containerRef}
-      className="terminal-pane"
+      className="lk-terminal-pane"
       data-session={sessionId}
     />
   )

@@ -38,6 +38,7 @@ export const Modal = ({
     >
       <dialog
         ref={dialogRef}
+        className="lk-modal"
         aria-label={title}
         aria-modal="true"
         tabIndex={-1}
@@ -47,13 +48,18 @@ export const Modal = ({
           if (e.key === "Escape") onClose()
         }}
       >
-        <header>
+        <header className="lk-modal__header">
           <h2>{title}</h2>
-          <button type="button" aria-label="Close" onClick={() => onClose()}>
+          <button
+            type="button"
+            className="lk-modal__close"
+            aria-label="Close"
+            onClick={() => onClose()}
+          >
             ×
           </button>
         </header>
-        <div>{children}</div>
+        <div className="lk-modal__body">{children}</div>
       </dialog>
     </div>
   )

@@ -513,12 +513,16 @@ describe("App view model", () => {
     fireEvent.click(await screen.findByRole("button", { name: /launch/i }))
     await waitFor(() => expect(window.location.hash).toBe("#sessions/s_new"))
     await waitFor(() =>
-      expect(container.querySelector(".terminal-pane-host")).not.toBeNull(),
+      expect(
+        container.querySelector(
+          ".lk-terminal-pane-host:not(.lk-terminal-pane-host--replay)",
+        ),
+      ).not.toBeNull(),
     )
     // Sanity: no replay pane yet — the live pane is wrapped in a host, so a
-    // direct `.sessions-detail > .terminal-pane` child only appears for replay.
+    // direct child of lk-sessions-detail is not a terminal pane.
     expect(
-      container.querySelector(".sessions-detail > .terminal-pane"),
+      container.querySelector(".lk-sessions-detail > .lk-terminal-pane"),
     ).toBeNull()
 
     // The session exits: its dead live pane host must unmount and the read-only
@@ -527,17 +531,21 @@ describe("App view model", () => {
     exited = true
     act(() => fireExit("s_new" as SessionId, 0))
     await waitFor(() =>
-      expect(container.querySelector(".terminal-pane-host")).toBeNull(),
+      expect(
+        container.querySelector(
+          ".lk-terminal-pane-host:not(.lk-terminal-pane-host--replay)",
+        ),
+      ).toBeNull(),
     )
     await waitFor(() =>
       expect(client.calls.getSessionScrollback.length).toBeGreaterThan(0),
     )
-    // The replay pane is an unwrapped `.terminal-pane` directly under
-    // `.sessions-detail`; it renders once the scrollback resolves into state.
+    // The replay pane is wrapped inside lk-replay > lk-terminal-pane-host--replay;
+    // it renders once the scrollback resolves into state.
     await waitFor(() =>
       expect(
         container.querySelector(
-          '.sessions-detail > .terminal-pane[data-session="s_new"]',
+          '.lk-terminal-pane-host--replay .lk-terminal-pane[data-session="s_new"]',
         ),
       ).not.toBeNull(),
     )

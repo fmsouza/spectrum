@@ -1,49 +1,115 @@
 import { describe, expect, it, mock } from "bun:test"
-import { fireEvent, render, screen } from "@testing-library/react"
-import type { ProviderDisplay } from "../molecules/ProviderCard"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import { ProviderList } from "./ProviderList"
+import type { ProviderRow } from "./ProviderList"
 
-const providers: readonly ProviderDisplay[] = [
-  { id: "p_openai", name: "OpenAI", sdkProvider: "openai" },
-  { id: "p_anthropic", name: "Anthropic", sdkProvider: "anthropic" },
+const providers: readonly ProviderRow[] = [
+  { id: "p_openai", name: "OpenAI", sdkProvider: "openai", secretSet: true },
+  {
+    id: "p_anthropic",
+    name: "Anthropic",
+    sdkProvider: "anthropic",
+    secretSet: false,
+  },
 ]
 
 describe("ProviderList", () => {
-  it("renders one card per provider", () => {
-    render(
-      <ProviderList
-        providers={providers}
-        onAdd={() => {}}
-        onSelect={() => {}}
-      />,
-    )
-    expect(screen.getByText("OpenAI")).toBeInTheDocument()
-    expect(screen.getByText("Anthropic")).toBeInTheDocument()
-  })
   it("shows an empty state when there are no providers", () => {
-    render(<ProviderList providers={[]} onAdd={() => {}} onSelect={() => {}} />)
+    render(<ProviderList providers={[]} onSetSecret={() => {}} />)
     expect(
       screen.getByRole("heading", { name: /no providers/i }),
     ).toBeInTheDocument()
   })
-  it("calls onAdd when the add button is clicked", () => {
-    const onAdd = mock(() => {})
-    render(
-      <ProviderList providers={providers} onAdd={onAdd} onSelect={() => {}} />,
+
+  it("renders a table with a row per provider", () => {
+    const { container } = render(
+      <ProviderList providers={providers} onSetSecret={() => {}} />,
     )
-    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
-    expect(onAdd).toHaveBeenCalledTimes(1)
+    expect(container.querySelector("table")).not.toBeNull()
+    const rows = container.querySelectorAll("tbody tr")
+    expect(rows.length).toBe(2)
   })
-  it("calls onSelect with the provider id when a provider is selected", () => {
-    const onSelect = mock((_id: string) => {})
-    render(
-      <ProviderList
-        providers={providers}
-        onAdd={() => {}}
-        onSelect={onSelect}
-      />,
+
+  it("renders the provider name in each row", () => {
+    render(<ProviderList providers={providers} onSetSecret={() => {}} />)
+    expect(screen.getByText("OpenAI")).toBeInTheDocument()
+    expect(screen.getByText("Anthropic")).toBeInTheDocument()
+  })
+
+  it("renders an info Badge with sdkProvider in each row", () => {
+    const { container } = render(
+      <ProviderList providers={providers} onSetSecret={() => {}} />,
     )
-    fireEvent.click(screen.getByRole("button", { name: "Select OpenAI" }))
-    expect(onSelect).toHaveBeenCalledWith("p_openai")
+    const infoBadges = Array.from(
+      container.querySelectorAll("span[data-tone='info']"),
+    )
+    const texts = infoBadges.map((b) => b.textContent)
+    expect(texts).toContain("openai")
+    expect(texts).toContain("anthropic")
+  })
+
+  it("renders a 'Set' Badge (success) when secretSet is true", () => {
+    const setProvider = providers[0] ?? {
+      id: "",
+      name: "",
+      sdkProvider: "",
+      secretSet: true,
+    }
+    const { container } = render(
+      <ProviderList providers={[setProvider]} onSetSecret={() => {}} />,
+    )
+    const badge = container.querySelector("span[data-tone='success']")
+    expect(badge).not.toBeNull()
+    expect(badge?.textContent).toBe("Set")
+  })
+
+  it("renders a 'Not set' Badge (neutral) when secretSet is false", () => {
+    const unsetProvider = providers[1] ?? {
+      id: "",
+      name: "",
+      sdkProvider: "",
+      secretSet: false,
+    }
+    const { container } = render(
+      <ProviderList providers={[unsetProvider]} onSetSecret={() => {}} />,
+    )
+    const badge = container.querySelector("span[data-tone='neutral']")
+    expect(badge).not.toBeNull()
+    expect(badge?.textContent).toBe("Not set")
+  })
+
+  it("renders a 'Set secret' button in lk-cell-actions td per row", () => {
+    const { container } = render(
+      <ProviderList providers={providers} onSetSecret={() => {}} />,
+    )
+    const rows = Array.from(container.querySelectorAll("tbody tr"))
+    for (const row of rows) {
+      const actionsCell = row.querySelector("td.lk-cell-actions")
+      expect(actionsCell).not.toBeNull()
+      const btn = within(actionsCell as HTMLElement).getByRole("button", {
+        name: /set secret/i,
+      })
+      expect(btn).toBeInTheDocument()
+    }
+  })
+
+  it("calls onSetSecret with the provider id when 'Set secret' is clicked", () => {
+    const onSetSecret = mock((_id: string) => {})
+    const { container } = render(
+      <ProviderList providers={providers} onSetSecret={onSetSecret} />,
+    )
+    // Click the first row's Set secret button
+    const firstRow = container.querySelector("tbody tr") as HTMLElement
+    const btn = within(firstRow).getByRole("button", { name: /set secret/i })
+    fireEvent.click(btn)
+    expect(onSetSecret).toHaveBeenCalledWith("p_openai")
+  })
+
+  it("does not render an article element or lk-list-row--card class", () => {
+    const { container } = render(
+      <ProviderList providers={providers} onSetSecret={() => {}} />,
+    )
+    expect(container.querySelector("article")).toBeNull()
+    expect(container.querySelector(".lk-list-row--card")).toBeNull()
   })
 })

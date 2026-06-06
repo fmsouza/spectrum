@@ -1,0 +1,186 @@
+/* ───────────────── AppShell: rail + master + detail (3 zones) ───────────── */
+/* AppShell renders three children inside one <div>:
+ *   <nav aria-label="Primary">    — the narrow icon RAIL (mode switch + proxy dot)
+ *   <nav aria-label="Sessions"|"Settings"> — the MASTER list column
+ *   <main>                        — the DETAIL pane (terminal / settings page)
+ * A 3-column grid lays them out; each zone owns its own scroll. */
+.lk-shell {
+  display: grid;
+  grid-template-columns: var(--rail-w) clamp(232px, 24vw, var(--master-w)) minmax(
+      0,
+      1fr
+    );
+  height: 100%;
+  min-height: 0;
+}
+
+/* ── Rail (column 1): narrow, dark, vertical, centered icon buttons. ── */
+nav[aria-label="Primary"] {
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-2);
+  background: var(--sidebar-bg);
+  border-right: 1px solid color-mix(in srgb, #000 35%, var(--sidebar-bg));
+  overflow-y: auto;
+}
+
+/* The app mark the component renders (<span data-app-icon>LK</span>): a small
+   monogram tile at the top of the rail. (No CSS ::before wordmark — the DOM owns
+   this text now, so injecting one would double it.) */
+nav[aria-label="Primary"] [data-app-icon] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 22%, var(--sidebar-bg));
+  color: var(--sidebar-active-fg);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+nav[aria-label="Primary"] ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+nav[aria-label="Primary"] li {
+  margin: 0;
+}
+
+/* Rail items are IconButtons: <button aria-label … data-active … aria-current?>.
+   Square, icon-only, with hover + active states (active = data-active="true",
+   which IconButton also mirrors as aria-current="page"). */
+nav[aria-label="Primary"] button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--sidebar-fg);
+  font-size: var(--text-lg);
+  line-height: 1;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+
+nav[aria-label="Primary"] button:hover {
+  background: color-mix(in srgb, #fff 8%, var(--sidebar-bg));
+  color: var(--sidebar-active-fg);
+}
+
+nav[aria-label="Primary"] button[data-active="true"] {
+  background: color-mix(in srgb, var(--accent) 20%, var(--sidebar-bg));
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--sidebar-active-fg);
+}
+
+/* The proxy StatusDot is the last child of the rail; pin it to the bottom. */
+nav[aria-label="Primary"] > span[role="img"][data-color] {
+  margin-top: auto;
+  margin-bottom: var(--space-1);
+}
+
+/* ── Master (column 2): the Sessions / Settings list column. ──
+   Fixed width, its own scroll, a surface background and a hairline right border. */
+nav[aria-label="Sessions"],
+nav[aria-label="Settings"] {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--space-4);
+  background: var(--surface-2);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+/* ── Settings master (column 2): SettingsNav is <ul class="lk-settings-nav"><li><a aria-current>. ── */
+.lk-settings-nav {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lk-settings-nav li {
+  margin: 0;
+}
+
+.lk-settings-nav a {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 550;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.lk-settings-nav a:hover {
+  background: var(--surface-inset);
+  color: var(--text);
+}
+
+.lk-settings-nav a[aria-current="page"] {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 650;
+}
+
+/* ── Detail (column 3): the <main> pane fills the remaining width, full height. ── */
+main {
+  grid-column: 3;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  padding: var(--space-7) var(--space-7);
+  overflow-y: auto;
+}
+
+/* The sessions detail padding/overflow override lives in sessions-detail.css
+   (main:has(> .lk-sessions-detail)) so it stays co-located with the component. */
+
+/* Narrow-window fallback (the desktop window is normally far wider): collapse to
+   a rail + a single right column, with the master stacked above the detail so
+   neither overlaps. The rail spans both rows on the left. */
+@media (max-width: 720px) {
+  .lk-shell {
+    grid-template-columns: var(--rail-w) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  nav[aria-label="Primary"] {
+    grid-row: 1 / span 2;
+  }
+  nav[aria-label="Sessions"],
+  nav[aria-label="Settings"] {
+    grid-column: 2;
+    grid-row: 1;
+    max-height: 40vh;
+  }
+  main {
+    grid-column: 2;
+    grid-row: 2;
+    height: auto;
+  }
+  main:has(> .lk-sessions-detail),
+  .lk-sessions-detail {
+    height: 100%;
+  }
+}
