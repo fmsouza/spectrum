@@ -24,6 +24,39 @@ const renderPage = (stubs: Parameters<typeof createFakeIpcClient>[0]) => {
 }
 
 describe("ProvidersPage", () => {
+  it("renders the provider-secrets list with lk-list/lk-list-row/lk-list-row__label hooks", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "OpenAI" }),
+      ).toBeInTheDocument(),
+    )
+    const list = document.querySelector("ul.lk-list")
+    expect(list).not.toBeNull()
+    const row = document.querySelector("li.lk-list-row")
+    expect(row).not.toBeNull()
+    const label = document.querySelector(".lk-list-row__label")
+    expect(label).not.toBeNull()
+  })
+
+  it("wraps the add-provider form action buttons in lk-form-actions row", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "OpenAI" }),
+      ).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    const actionsRow = document.querySelector(".lk-row.lk-form-actions")
+    expect(actionsRow).not.toBeNull()
+    // buttons must NOT be direct children of the form
+    const form = document.querySelector("form[aria-label='Add provider']")
+    const directButtons = Array.from(form?.children ?? []).filter(
+      (c) => c.tagName === "BUTTON",
+    )
+    expect(directButtons.length).toBe(0)
+  })
+
   it("renders the provider name once the providers load", async () => {
     renderPage({})
     await waitFor(() =>

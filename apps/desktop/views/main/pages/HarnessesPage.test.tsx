@@ -32,6 +32,19 @@ const renderPage = (stubs: Parameters<typeof createFakeIpcClient>[0]) => {
 }
 
 describe("HarnessesPage", () => {
+  it("renders built-in and custom lists with lk-list/lk-list-row/lk-list-row__label hooks", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByText("Claude Code")).toBeInTheDocument(),
+    )
+    const lists = document.querySelectorAll("ul.lk-list")
+    expect(lists.length).toBeGreaterThanOrEqual(1)
+    const rows = document.querySelectorAll("li.lk-list-row")
+    expect(rows.length).toBeGreaterThan(0)
+    const labels = document.querySelectorAll(".lk-list-row__label")
+    expect(labels.length).toBeGreaterThan(0)
+  })
+
   it("lists built-in and custom harnesses under separate sections when loaded", async () => {
     renderPage({})
     await waitFor(() =>

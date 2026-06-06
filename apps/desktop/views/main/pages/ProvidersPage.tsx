@@ -5,6 +5,7 @@ import {
   EmptyState,
   FormField,
   ProviderList,
+  Row,
   Select,
   SettingsLayout,
   Spinner,
@@ -95,10 +96,10 @@ export const ProvidersPage = (): ReactElement => {
           />
 
           {/* Per-provider secret status (presence flags ONLY -- never a value). */}
-          <ul aria-label="Provider secrets">
+          <ul aria-label="Provider secrets" className="lk-list">
             {data.map((provider) => (
-              <li key={provider.id}>
-                <span>{provider.name}</span>
+              <li key={provider.id} className="lk-list-row">
+                <span className="lk-list-row__label">{provider.name}</span>
                 {Object.entries(provider.secretFields).map(
                   ([field, status]) => (
                     <span
@@ -141,10 +142,12 @@ export const ProvidersPage = (): ReactElement => {
               onChange={(v) => setNewSdk(v as SdkProvider)}
             />
           </FormField>
-          <Button onClick={() => void submitAdd()}>Create provider</Button>
-          <Button variant="secondary" onClick={() => setAddOpen(false)}>
-            Cancel
-          </Button>
+          <Row gap={2} className="lk-form-actions">
+            <Button onClick={() => void submitAdd()}>Create provider</Button>
+            <Button variant="secondary" onClick={() => setAddOpen(false)}>
+              Cancel
+            </Button>
+          </Row>
         </form>
       ) : null}
 
@@ -172,10 +175,12 @@ export const ProvidersPage = (): ReactElement => {
               onChange={setSecretValue}
             />
           </FormField>
-          <Button onClick={() => void submitSecret()}>Save secret</Button>
-          <Button variant="secondary" onClick={() => setSecretFor(undefined)}>
-            Cancel
-          </Button>
+          <Row gap={2} className="lk-form-actions">
+            <Button onClick={() => void submitSecret()}>Save secret</Button>
+            <Button variant="secondary" onClick={() => setSecretFor(undefined)}>
+              Cancel
+            </Button>
+          </Row>
         </form>
       ) : null}
     </SettingsLayout>
