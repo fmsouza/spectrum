@@ -602,7 +602,11 @@ describe("App view model", () => {
       }),
       getSettings: async () => ({
         ok: true as const,
-        value: { lastSelectedFolder: "/seed/dir" },
+        value: {
+          lastSelectedFolder: "/seed/dir",
+          lastSelectedHarnessId: "",
+          lastSelectedModelId: "",
+        },
       }),
     })
     render(
@@ -621,6 +625,63 @@ describe("App view model", () => {
         "/seed/dir",
       ),
     )
+  })
+
+  it("prefills harness and model in the New Session modal from settings", async () => {
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getHarnesses: async () => ({
+        ok: true as const,
+        value: [
+          {
+            id: "claude",
+            name: "Claude Code",
+            command: "claude",
+            apiFormat: "anthropic",
+            envTemplate: {},
+            builtIn: true,
+          },
+          {
+            id: "codex",
+            name: "Codex",
+            command: "codex",
+            apiFormat: "openai",
+            envTemplate: {},
+            builtIn: true,
+          },
+        ],
+      }),
+      getModels: async () => ({
+        ok: true as const,
+        value: [
+          { id: "mdl_fast", providerId: "p_openai", providerModel: "gpt-4o" },
+        ],
+      }),
+      getSettings: async () => ({
+        ok: true as const,
+        value: {
+          lastSelectedFolder: "/seed/dir",
+          lastSelectedHarnessId: "codex",
+          lastSelectedModelId: "mdl_fast",
+        },
+      }),
+    })
+    render(
+      <App
+        client={client}
+        terminalClient={fakeTerminalClient}
+        createTerminal={fakeXterm}
+        initialView="sessions"
+      />,
+    )
+    // Open the modal; the harness/model selects must carry the persisted ids
+    // (page-level fetch → props), not the first-harness / default fallbacks.
+    fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
+    await screen.findByRole("button", { name: /launch/i })
+    await waitFor(() =>
+      expect(screen.getByLabelText("Harness")).toHaveValue("codex"),
+    )
+    expect(screen.getByLabelText("Model")).toHaveValue("mdl_fast")
   })
 
   it("surfaces a pickFolder error as an alert in the modal (Fix #2)", async () => {

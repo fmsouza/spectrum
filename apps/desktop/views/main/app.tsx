@@ -82,16 +82,24 @@ const AppInner = ({
   const [launchError, setLaunchError] = useState<string | undefined>(undefined)
   // The cwd picked via the native folder dialog (fed into NewSessionModal).
   const [folder, setFolder] = useState<string>("")
+  // The last harness/model launched, used to preselect the modal's selects.
+  const [initialHarnessId, setInitialHarnessId] = useState<string>("")
+  const [initialModelId, setInitialModelId] = useState<string>("")
   const proxy = useProxyStatus()
 
-  // Prefill the New Session modal with the last launched folder (persisted by a
-  // successful launch as settings.lastSelectedFolder). Page-level fetch — the
-  // modal stays dumb and just receives the resolved `folder` prop.
+  // Prefill the New Session modal with the last launched folder/harness/model
+  // (persisted by a successful launch). Page-level fetch — the modal stays dumb
+  // and just receives the resolved props.
   useEffect(() => {
     let active = true
     void client.getSettings(undefined).then((r) => {
-      if (active && r.ok && r.value.lastSelectedFolder !== "")
+      if (!active || !r.ok) return
+      if (r.value.lastSelectedFolder !== "")
         setFolder(r.value.lastSelectedFolder)
+      if (r.value.lastSelectedHarnessId !== "")
+        setInitialHarnessId(r.value.lastSelectedHarnessId)
+      if (r.value.lastSelectedModelId !== "")
+        setInitialModelId(r.value.lastSelectedModelId)
     })
     return () => {
       active = false
@@ -222,6 +230,8 @@ const AppInner = ({
         models={models.data ?? []}
         providerNames={providerNames}
         folder={folder}
+        initialHarnessId={initialHarnessId}
+        initialModelId={initialModelId}
         {...(launchError === undefined ? {} : { error: launchError })}
         onBrowse={() => void onBrowse()}
         onSubmit={(v) => void onSubmitNewSession(v)}
