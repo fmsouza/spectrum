@@ -50,7 +50,12 @@ export const Modal = ({
       >
         <header className="lk-modal__header">
           <h2>{title}</h2>
-          <button type="button" className="lk-modal__close" aria-label="Close" onClick={() => onClose()}>
+          <button
+            type="button"
+            className="lk-modal__close"
+            aria-label="Close"
+            onClick={() => onClose()}
+          >
             ×
           </button>
         </header>

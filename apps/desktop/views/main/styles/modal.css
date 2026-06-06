@@ -82,6 +82,12 @@ dialog[aria-modal="true"] form {
 }
 
 /* FolderField: input + Browse button on one row, input shrinks so Browse never overflows. */
-.lk-folder-field { width: 100%; }
-.lk-folder-field > input { min-width: 0; } /* allow the input to shrink so Browse never overflows */
-.lk-folder-field > button[data-variant] { flex: 0 0 auto; }
+.lk-folder-field {
+  width: 100%;
+}
+.lk-folder-field > input {
+  min-width: 0;
+} /* allow the input to shrink so Browse never overflows */
+.lk-folder-field > button[data-variant] {
+  flex: 0 0 auto;
+}
