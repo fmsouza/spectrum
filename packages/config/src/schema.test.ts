@@ -20,6 +20,7 @@ describe("SettingsSchema", () => {
     expect(SettingsSchema.parse({})).toEqual({
       proxyPort: 4000,
       proxyHost: "127.0.0.1",
+      lastSelectedFolder: "",
     })
   })
   it("rejects a non-loopback proxyHost so the proxy can never bind a public interface", () => {
@@ -29,6 +30,17 @@ describe("SettingsSchema", () => {
   })
   it("rejects a non-integer proxyPort", () => {
     expect(SettingsSchema.safeParse({ proxyPort: 40.5 }).success).toBe(false)
+  })
+  it("defaults lastSelectedFolder to an empty string", () => {
+    const settings = SettingsSchema.parse({})
+    expect(settings.lastSelectedFolder).toBe("")
+  })
+
+  it("accepts a provided lastSelectedFolder", () => {
+    const settings = SettingsSchema.parse({
+      lastSelectedFolder: "/home/me/proj",
+    })
+    expect(settings.lastSelectedFolder).toBe("/home/me/proj")
   })
 })
 
@@ -40,7 +52,11 @@ describe("ConfigSchema", () => {
       models: [
         { id: "fast", providerId: "p_openai", providerModel: "gpt-4o-mini" },
       ],
-      settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+      settings: {
+        proxyPort: 4000,
+        proxyHost: "127.0.0.1",
+        lastSelectedFolder: "",
+      },
     }
     expect(ConfigSchema.parse(config)).toEqual(config)
   })
@@ -75,7 +91,11 @@ describe("defaultConfig", () => {
       version: CURRENT_CONFIG_VERSION,
       providers: [],
       models: [],
-      settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+      settings: {
+        proxyPort: 4000,
+        proxyHost: "127.0.0.1",
+        lastSelectedFolder: "",
+      },
     })
   })
   it("produces a config that satisfies ConfigSchema", () => {

@@ -574,6 +574,53 @@ describe("createIpcHandlers.launchHarness", () => {
       handlers.launchHarness({ id: "claude" as HarnessId }),
     ).rejects.toThrow()
   })
+
+  it("persists the launched cwd as settings.lastSelectedFolder on a successful launch", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({
+      id: "claude" as HarnessId,
+      name: "x",
+      cwd: "/home/me/proj",
+      env: {},
+    })
+
+    expect(saves.at(-1)?.settings.lastSelectedFolder).toBe("/home/me/proj")
+  })
+
+  it("does not persist lastSelectedFolder when cwd is blank", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({
+      id: "claude" as HarnessId,
+      name: "x",
+      cwd: "   ",
+      env: {},
+    })
+
+    expect(saves).toHaveLength(0)
+  })
+
+  it("does not persist lastSelectedFolder when the launch fails", async () => {
+    const { ctx, saves } = makeCtx({
+      providers: [provider()],
+      terminalOk: false,
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.launchHarness({
+        id: "claude" as HarnessId,
+        name: "x",
+        cwd: "/home/me/proj",
+        env: {},
+      }),
+    ).rejects.toThrow()
+
+    expect(saves).toHaveLength(0)
+  })
 })
 
 describe("createIpcHandlers.addHarness", () => {

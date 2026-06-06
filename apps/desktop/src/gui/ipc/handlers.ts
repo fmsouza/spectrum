@@ -253,6 +253,18 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         ...(safeCwd === undefined ? {} : { cwd: safeCwd }),
       })
       if (!isOk(opened)) return fail("failed to launch harness")
+
+      // Remember the launched working directory so the New Session modal can
+      // prefill it next time. Persist on success only (a cancelled modal must
+      // not change the prefill); skip blank cwd. A save failure here is
+      // non-fatal — the session already launched.
+      if (safeCwd !== undefined) {
+        await ctx.config.save({
+          ...config,
+          settings: { ...config.settings, lastSelectedFolder: safeCwd },
+        })
+      }
+
       return { sessionId: opened.value.sessionId }
     },
 

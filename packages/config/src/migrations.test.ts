@@ -51,7 +51,11 @@ describe("runMigrations", () => {
       version: CURRENT_CONFIG_VERSION,
       providers: [],
       models: [],
-      settings: { proxyPort: 4000, proxyHost: "127.0.0.1" as const },
+      settings: {
+        proxyPort: 4000,
+        proxyHost: "127.0.0.1" as const,
+        lastSelectedFolder: "",
+      },
     }
     expect(runMigrations(current)).toEqual({ ok: true, value: current })
   })

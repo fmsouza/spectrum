@@ -12,6 +12,7 @@ export const SettingsSchema = z
   .object({
     proxyPort: z.number().int().min(1).max(65535).default(4000),
     proxyHost: z.literal("127.0.0.1").default("127.0.0.1"),
+    lastSelectedFolder: z.string().default(""),
   })
   .strict()
 
