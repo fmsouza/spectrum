@@ -10,7 +10,9 @@ export const Truncate = ({
   className,
 }: TruncateProps): ReactElement => (
   <span
-    className={className === undefined ? "lk-truncate" : `lk-truncate ${className}`}
+    className={
+      className === undefined ? "lk-truncate" : `lk-truncate ${className}`
+    }
   >
     {children}
   </span>
