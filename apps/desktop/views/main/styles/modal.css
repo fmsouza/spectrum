@@ -19,7 +19,7 @@ dialog[aria-modal="true"] {
 }
 
 /* Dialog header: title left, the × close button pushed right. */
-dialog[aria-modal="true"] > header {
+.lk-modal__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -28,11 +28,11 @@ dialog[aria-modal="true"] > header {
   border-bottom: 1px solid var(--border);
 }
 
-dialog[aria-modal="true"] > header > h2 {
+.lk-modal__header > h2 {
   font-size: var(--text-lg);
 }
 
-dialog[aria-modal="true"] > header > button[aria-label="Close"] {
+.lk-modal__close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -48,13 +48,13 @@ dialog[aria-modal="true"] > header > button[aria-label="Close"] {
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 
-dialog[aria-modal="true"] > header > button[aria-label="Close"]:hover {
+.lk-modal__close:hover {
   background: var(--surface-inset);
   color: var(--text);
 }
 
 /* The dialog body wraps the form. */
-dialog[aria-modal="true"] > div {
+.lk-modal__body {
   padding: var(--space-5);
 }
 
