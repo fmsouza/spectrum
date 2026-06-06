@@ -17,15 +17,6 @@ const resolveHarnessId = (
   return err({ kind: "usage", detail: "launch <harnessId> [--model <id>]" })
 }
 
-/** Resolve the model id: `--model` wins; absent ⇒ default (bypass). */
-const resolveModel = (
-  flags: Readonly<Record<string, string | boolean>>,
-): ModelId | undefined => {
-  const flag = flags.model
-  if (typeof flag === "string") return ModelIdSchema.parse(flag)
-  return undefined
-}
-
 /**
  * Ensure a proxy is up for a PROXIED launch and return the route plus the proxy this run OWNS
  * (`null` when we reused an already-running one). Reuses a running proxy's persisted per-run key
@@ -94,8 +85,10 @@ export const launchCommand = async (
     return err({ kind: "usage", detail: `unknown harness: ${harnessId}` })
   }
 
-  const modelId = resolveModel(flags)
-  const env = {}
+  const modelId =
+    typeof flags.model === "string"
+      ? ModelIdSchema.parse(flags.model)
+      : undefined
   const cwd = typeof flags.cwd === "string" ? flags.cwd : undefined
   const name = typeof flags.name === "string" ? flags.name : undefined
 
@@ -112,7 +105,7 @@ export const launchCommand = async (
     harness,
     route,
     ...(cwd !== undefined ? { cwd } : {}),
-    env,
+    env: {},
   })
   if (isErr(launched)) {
     // Spawning failed: tear down the proxy we just started so we don't leak it.
