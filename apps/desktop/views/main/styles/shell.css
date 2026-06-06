@@ -90,8 +90,8 @@ nav[aria-label="Primary"] button[data-active="true"] {
   color: var(--sidebar-active-fg);
 }
 
-/* The proxy StatusDot is the last child of the rail; pin it to the bottom. */
-nav[aria-label="Primary"] > span[role="img"][data-color] {
+/* The proxy status (now wrapped in a Tooltip) is the last child; pin it down. */
+nav[aria-label="Primary"] > .lk-tooltip {
   margin-top: auto;
   margin-bottom: var(--space-1);
 }
