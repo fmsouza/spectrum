@@ -32,12 +32,20 @@ const provider = (over: Partial<Provider> = {}): Provider =>
 const baseConfig = (
   providers: readonly Provider[],
   lastSelectedFolder = "",
+  lastSelectedHarnessId = "",
+  lastSelectedModelId = "",
 ): Config =>
   ({
     version: 2,
     providers,
     models: [],
-    settings: { proxyPort: 4000, proxyHost: "127.0.0.1", lastSelectedFolder },
+    settings: {
+      proxyPort: 4000,
+      proxyHost: "127.0.0.1",
+      lastSelectedFolder,
+      lastSelectedHarnessId,
+      lastSelectedModelId,
+    },
   }) as Config
 
 /** Build a fake AppContext, capturing every save + secret set so tests can assert behavior. */
@@ -56,6 +64,8 @@ const makeCtx = (
     pickFolderResult?: readonly string[]
     scrollback?: Result<Uint8Array, { readonly kind: string }>
     lastSelectedFolder?: string
+    lastSelectedHarnessId?: string
+    lastSelectedModelId?: string
   } = {},
 ): {
   ctx: AppContext
@@ -81,6 +91,8 @@ const makeCtx = (
   let current = baseConfig(
     over.providers ?? [provider()],
     over.lastSelectedFolder ?? "",
+    over.lastSelectedHarnessId ?? "",
+    over.lastSelectedModelId ?? "",
   )
 
   // The handler resolves the harness command+env via ctx.resolveLaunch — use the REAL renderer
@@ -596,16 +608,75 @@ describe("createIpcHandlers.launchHarness", () => {
     expect(saves.at(-1)?.settings.lastSelectedFolder).toBe("/home/me/proj")
   })
 
-  it("does not persist lastSelectedFolder when cwd is blank", async () => {
+  it("keeps the prior lastSelectedFolder when cwd is blank but still persists harness/model", async () => {
+    const { ctx, saves } = makeCtx({
+      providers: [provider()],
+      lastSelectedFolder: "/home/me/prior",
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({
+      id: "claude" as HarnessId,
+      modelId: "mdl_1" as ModelId,
+      name: "x",
+      cwd: "   ",
+      env: {},
+    })
+
+    // A save STILL happens — harness/model persist on every success ...
+    const saved = saves.at(-1)
+    expect(saved?.settings.lastSelectedHarnessId).toBe("claude")
+    expect(saved?.settings.lastSelectedModelId).toBe("mdl_1")
+    // ... but the folder is unchanged (blank cwd never overwrites the prior value).
+    expect(saved?.settings.lastSelectedFolder).toBe("/home/me/prior")
+  })
+
+  it("persists the launched harness and model on a successful launch", async () => {
     const { ctx, saves } = makeCtx({ providers: [provider()] })
     const handlers = createIpcHandlers(ctx)
 
     await handlers.launchHarness({
       id: "claude" as HarnessId,
-      name: "x",
-      cwd: "   ",
+      modelId: "mdl_1" as ModelId,
       env: {},
     })
+
+    const saved = saves.at(-1)
+    expect(saved?.settings.lastSelectedHarnessId).toBe("claude")
+    expect(saved?.settings.lastSelectedModelId).toBe("mdl_1")
+  })
+
+  it("persists harness and an empty model on a default (no-model) launch", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({ id: "claude" as HarnessId, env: {} })
+
+    const saved = saves.at(-1)
+    expect(saved?.settings.lastSelectedHarnessId).toBe("claude")
+    expect(saved?.settings.lastSelectedModelId).toBe("")
+  })
+
+  it("persists harness/model even when no cwd is provided", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({ id: "claude" as HarnessId, env: {} })
+
+    expect(saves.at(-1)).toBeDefined()
+    expect(saves.at(-1)?.settings.lastSelectedHarnessId).toBe("claude")
+  })
+
+  it("does not persist harness/model when the launch fails", async () => {
+    const { ctx, saves } = makeCtx({
+      providers: [provider()],
+      terminalOk: false,
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.launchHarness({ id: "claude" as HarnessId, env: {} }),
+    ).rejects.toThrow()
 
     expect(saves).toHaveLength(0)
   })
@@ -746,21 +817,29 @@ describe("createIpcHandlers.getProxyStatus", () => {
 })
 
 describe("createIpcHandlers.getSettings", () => {
-  it("returns the persisted lastSelectedFolder from the loaded config", async () => {
-    const { ctx } = makeCtx({ lastSelectedFolder: "/home/me/last" })
+  it("returns all three persisted fields from the loaded config", async () => {
+    const { ctx } = makeCtx({
+      lastSelectedFolder: "/home/me/last",
+      lastSelectedHarnessId: "claude",
+      lastSelectedModelId: "mdl_x",
+    })
     const handlers = createIpcHandlers(ctx)
 
     expect(await handlers.getSettings(undefined)).toEqual({
       lastSelectedFolder: "/home/me/last",
+      lastSelectedHarnessId: "claude",
+      lastSelectedModelId: "mdl_x",
     })
   })
 
-  it("returns an empty lastSelectedFolder when none has been persisted", async () => {
+  it("returns empty strings when nothing has been persisted", async () => {
     const { ctx } = makeCtx()
     const handlers = createIpcHandlers(ctx)
 
     expect(await handlers.getSettings(undefined)).toEqual({
       lastSelectedFolder: "",
+      lastSelectedHarnessId: "",
+      lastSelectedModelId: "",
     })
   })
 })

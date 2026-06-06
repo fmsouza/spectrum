@@ -334,10 +334,33 @@ describe("GetSettingsParamsSchema", () => {
 })
 
 describe("GetSettingsResultSchema", () => {
-  it("parses a result carrying the last selected folder", () => {
+  it("parses a result carrying all three persisted fields", () => {
     expect(
-      GetSettingsResultSchema.parse({ lastSelectedFolder: "/home/me/proj" }),
-    ).toEqual({ lastSelectedFolder: "/home/me/proj" })
+      GetSettingsResultSchema.parse({
+        lastSelectedFolder: "/home/me/proj",
+        lastSelectedHarnessId: "claude",
+        lastSelectedModelId: "mdl_x",
+      }),
+    ).toEqual({
+      lastSelectedFolder: "/home/me/proj",
+      lastSelectedHarnessId: "claude",
+      lastSelectedModelId: "mdl_x",
+    })
+  })
+  it("validates a getSettings result with all three persisted fields", () => {
+    const result = GetSettingsResultSchema.safeParse({
+      lastSelectedFolder: "/p",
+      lastSelectedHarnessId: "claude",
+      lastSelectedModelId: "",
+    })
+    expect(result.success).toBe(true)
+  })
+  it("rejects a getSettings result missing lastSelectedHarnessId", () => {
+    const result = GetSettingsResultSchema.safeParse({
+      lastSelectedFolder: "/p",
+      lastSelectedModelId: "",
+    })
+    expect(result.success).toBe(false)
   })
   it("rejects a result missing lastSelectedFolder", () => {
     expect(GetSettingsResultSchema.safeParse({}).success).toBe(false)
@@ -346,6 +369,8 @@ describe("GetSettingsResultSchema", () => {
     expect(
       GetSettingsResultSchema.safeParse({
         lastSelectedFolder: "/x",
+        lastSelectedHarnessId: "claude",
+        lastSelectedModelId: "",
         extra: 1,
       }).success,
     ).toBe(false)

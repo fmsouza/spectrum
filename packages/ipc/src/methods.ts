@@ -199,12 +199,16 @@ export const PickFolderResultSchema = z
 
 // ── Settings ──────────────────────────────────────────────────────────────
 
-// Read the persisted, non-secret settings the GUI needs to prefill its UI. Today
-// that is only `lastSelectedFolder` (the last launched cwd); the New Session modal
-// seeds its folder field from it.
+// Read the persisted, non-secret settings the GUI needs to prefill its UI: the
+// last launched cwd, harness, and model. The New Session modal seeds its fields
+// from these. Empty strings mean "nothing remembered yet".
 export const GetSettingsParamsSchema = z.undefined()
 export const GetSettingsResultSchema = z
-  .object({ lastSelectedFolder: z.string() })
+  .object({
+    lastSelectedFolder: z.string(),
+    lastSelectedHarnessId: z.string(),
+    lastSelectedModelId: z.string(),
+  })
   .strict()
 
 // ── The method → {params, result} schema map ──────────────────────────────────

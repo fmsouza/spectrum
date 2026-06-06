@@ -254,16 +254,21 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       })
       if (!isOk(opened)) return fail("failed to launch harness")
 
-      // Remember the launched working directory so the New Session modal can
-      // prefill it next time. Persist on success only (a cancelled modal must
-      // not change the prefill); skip blank cwd. A save failure here is
-      // non-fatal — the session already launched.
-      if (safeCwd !== undefined) {
-        await ctx.config.save({
-          ...config,
-          settings: { ...config.settings, lastSelectedFolder: safeCwd },
-        })
-      }
+      // Remember the launched harness/model/cwd so the New Session modal can
+      // prefill them next time. Persist on success only (a cancelled modal must
+      // not change the prefill). Harness & model are always recorded; the folder
+      // is only updated when a cwd was actually given (otherwise the previously
+      // remembered folder is kept). A save failure here is non-fatal — the
+      // session already launched.
+      await ctx.config.save({
+        ...config,
+        settings: {
+          ...config.settings,
+          lastSelectedHarnessId: String(harness.id),
+          lastSelectedModelId: modelId === undefined ? "" : String(modelId),
+          ...(safeCwd === undefined ? {} : { lastSelectedFolder: safeCwd }),
+        },
+      })
 
       return { sessionId: opened.value.sessionId }
     },
@@ -291,7 +296,11 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
 
     getSettings: async () => {
       const config = await loadConfig()
-      return { lastSelectedFolder: config.settings.lastSelectedFolder }
+      return {
+        lastSelectedFolder: config.settings.lastSelectedFolder,
+        lastSelectedHarnessId: config.settings.lastSelectedHarnessId,
+        lastSelectedModelId: config.settings.lastSelectedModelId,
+      }
     },
 
     // ── Dialogs ───────────────────────────────────────────────────────────────
