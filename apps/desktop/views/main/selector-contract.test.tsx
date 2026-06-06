@@ -56,6 +56,9 @@
  *     prop. No current render state triggers a server-side validation error that
  *     flows back through to the FormField. Verified by FormField unit tests.
  *   - `tbody tr:nth-child(even)` — nth-child pseudo bucketed as PSEUDO.
+ *   - `.lk-tooltip__bubble` — only in the DOM while the Tooltip trigger is
+ *     hovered/focused (open state). No rendered app state hovers the rail
+ *     tooltip; the `.lk-tooltip` wrapper IS checked. Verified by Tooltip.test.tsx.
  */
 
 import { afterEach, describe, expect, it } from "bun:test"
@@ -406,6 +409,10 @@ const isDocumentedGap = (s: string): boolean => {
   // Terminal pane host [hidden] — requires 2+ concurrent open sessions so one is hidden;
   // the base .lk-terminal-pane-host is checked; hiding is exercised by TerminalPane unit tests
   if (s === ".lk-terminal-pane-host[hidden]") return true
+  // Tooltip bubble — only present in the DOM while the trigger is hovered/focused
+  // (open state). No rendered app state hovers the rail tooltip; the bubble's
+  // appearance is verified by Tooltip.test.tsx. The .lk-tooltip wrapper IS checked.
+  if (s === ".lk-tooltip__bubble") return true
   return false
 }
 

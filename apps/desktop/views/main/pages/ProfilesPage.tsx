@@ -1,5 +1,6 @@
 import type { Profile, ProfileId } from "@launchkit/types"
 import {
+  Button,
   EmptyState,
   Modal,
   ProfileForm,
@@ -74,12 +75,16 @@ export const ProfilesPage = (): ReactElement => {
         />
       ) : null}
       {data !== undefined ? (
-        <ProfileList
-          profiles={data}
-          onAdd={() => setEditor({ kind: "add" })}
-          onEdit={(p: Profile) => setEditor({ kind: "edit", profile: p })}
-          onDelete={(id: ProfileId) => void remove(id)}
-        />
+        <>
+          <Button onClick={() => setEditor({ kind: "add" })}>
+            Add profile
+          </Button>
+          <ProfileList
+            profiles={data}
+            onEdit={(p: Profile) => setEditor({ kind: "edit", profile: p })}
+            onDelete={(id: ProfileId) => void remove(id)}
+          />
+        </>
       ) : null}
       <Modal
         title={editor.kind === "edit" ? "Edit profile" : "New profile"}

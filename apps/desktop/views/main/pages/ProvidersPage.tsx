@@ -4,6 +4,7 @@ import {
   Button,
   EmptyState,
   FormField,
+  Modal,
   ProviderList,
   Row,
   Select,
@@ -48,9 +49,9 @@ export const ProvidersPage = (): ReactElement => {
   const [secretValue, setSecretValue] = useState<string>("")
 
   const submitAdd = async (): Promise<void> => {
-    if (newName.trim() === "") return
+    const trimmed = newName.trim()
     const r = await add({
-      name: newName,
+      ...(trimmed !== "" ? { name: trimmed } : {}),
       sdkProvider: newSdk,
       config: {},
       secretFieldNames: ["apiKey"],
@@ -105,7 +106,11 @@ export const ProvidersPage = (): ReactElement => {
         </>
       ) : null}
 
-      {addOpen ? (
+      <Modal
+        title="Add provider"
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+      >
         <form
           aria-label="Add provider"
           onSubmit={(e) => {
@@ -118,6 +123,7 @@ export const ProvidersPage = (): ReactElement => {
               id="new-provider-name"
               value={newName}
               onChange={setNewName}
+              placeholder="Defaults to the SDK provider name"
             />
           </FormField>
           <FormField id="new-provider-sdk" label="SDK provider">
@@ -135,40 +141,53 @@ export const ProvidersPage = (): ReactElement => {
             </Button>
           </Row>
         </form>
-      ) : null}
+      </Modal>
 
-      {secretFor !== undefined ? (
-        <form
-          aria-label={`Set secret for ${secretFor.name}`}
-          onSubmit={(e) => {
-            e.preventDefault()
-            void submitSecret()
-          }}
-        >
-          <FormField id="secret-field" label="Secret field">
-            <TextInput
-              id="secret-field"
-              value={secretField}
-              onChange={setSecretField}
-            />
-          </FormField>
-          {/* type="password" + write-only: the value is sent, then cleared, never shown. */}
-          <FormField id="secret-value" label="Secret value">
-            <TextInput
-              id="secret-value"
-              type="password"
-              value={secretValue}
-              onChange={setSecretValue}
-            />
-          </FormField>
-          <Row gap={2} className="lk-form-actions">
-            <Button onClick={() => void submitSecret()}>Save secret</Button>
-            <Button variant="secondary" onClick={() => setSecretFor(undefined)}>
-              Cancel
-            </Button>
-          </Row>
-        </form>
-      ) : null}
+      <Modal
+        title={
+          secretFor === undefined
+            ? "Set secret"
+            : `Set secret for ${secretFor.name}`
+        }
+        open={secretFor !== undefined}
+        onClose={() => setSecretFor(undefined)}
+      >
+        {secretFor !== undefined ? (
+          <form
+            aria-label={`Set secret for ${secretFor.name}`}
+            onSubmit={(e) => {
+              e.preventDefault()
+              void submitSecret()
+            }}
+          >
+            <FormField id="secret-field" label="Secret field">
+              <TextInput
+                id="secret-field"
+                value={secretField}
+                onChange={setSecretField}
+              />
+            </FormField>
+            {/* type="password" + write-only: the value is sent, then cleared, never shown. */}
+            <FormField id="secret-value" label="Secret value">
+              <TextInput
+                id="secret-value"
+                type="password"
+                value={secretValue}
+                onChange={setSecretValue}
+              />
+            </FormField>
+            <Row gap={2} className="lk-form-actions">
+              <Button onClick={() => void submitSecret()}>Save secret</Button>
+              <Button
+                variant="secondary"
+                onClick={() => setSecretFor(undefined)}
+              >
+                Cancel
+              </Button>
+            </Row>
+          </form>
+        ) : null}
+      </Modal>
     </SettingsLayout>
   )
 }

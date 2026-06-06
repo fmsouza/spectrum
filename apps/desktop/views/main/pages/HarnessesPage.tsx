@@ -4,6 +4,7 @@ import {
   Button,
   EmptyState,
   HarnessForm,
+  Modal,
   SettingsLayout,
   Spinner,
 } from "@launchkit/ui"
@@ -54,6 +55,7 @@ export const HarnessesPage = (): ReactElement => {
 
       {data !== undefined ? (
         <>
+          <Button onClick={() => setAddOpen(true)}>Add custom harness</Button>
           <section aria-label="Built-in harnesses">
             <h2>Built-in</h2>
             <ul className="lk-list">
@@ -90,18 +92,21 @@ export const HarnessesPage = (): ReactElement => {
                 ))}
               </ul>
             )}
-            <Button onClick={() => setAddOpen(true)}>Add custom harness</Button>
           </section>
         </>
       ) : null}
 
-      {addOpen ? (
+      <Modal
+        title="Add custom harness"
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+      >
         <HarnessForm
           initialValues={NEW_HARNESS_DEFAULTS}
           onSubmit={(v) => void submitAdd(v)}
           onCancel={() => setAddOpen(false)}
         />
-      ) : null}
+      </Modal>
     </SettingsLayout>
   )
 }

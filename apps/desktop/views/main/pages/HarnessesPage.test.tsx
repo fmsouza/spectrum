@@ -83,6 +83,34 @@ describe("HarnessesPage", () => {
     })
   })
 
+  it("renders the harness form inside a modal dialog", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByText("Claude Code")).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /add custom harness/i }))
+
+    expect(
+      await screen.findByRole("dialog", { name: /add custom harness/i }),
+    ).toBeInTheDocument()
+  })
+
+  it("closes the harness modal when Cancel is clicked", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByText("Claude Code")).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /add custom harness/i }))
+    await screen.findByRole("dialog", { name: /add custom harness/i })
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }))
+
+    expect(
+      screen.queryByRole("dialog", { name: /add custom harness/i }),
+    ).toBeNull()
+  })
+
   it("does not offer a delete control for a built-in harness", async () => {
     renderPage({})
     await waitFor(() =>
@@ -101,5 +129,22 @@ describe("HarnessesPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Delete My Tool" }))
     await waitFor(() => expect(client.calls.deleteHarness.length).toBe(1))
     expect(client.calls.deleteHarness[0]).toEqual({ id: "mytool" })
+  })
+
+  it("renders the Add custom harness button at the top of the page body, before the built-in section", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByText("Claude Code")).toBeInTheDocument(),
+    )
+    const button = screen.getByRole("button", { name: /add custom harness/i })
+    const body = document.querySelector(".lk-page__body")
+    expect(button.parentElement).toBe(body)
+    const builtIn = document.querySelector(
+      "section[aria-label='Built-in harnesses']",
+    )
+    expect(
+      button.compareDocumentPosition(builtIn as Node) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 })

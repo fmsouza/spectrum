@@ -56,11 +56,18 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
 
     addProvider: async (input) => {
       const config = await loadConfig()
+      // A blank/missing name falls back to the SDK provider name so a persisted provider always
+      // has a RESOLVED non-empty name (ProviderSchema.name stays min(1)). The fallback lives here
+      // so the rule is consistent for every IPC client.
+      const name =
+        input.name !== undefined && input.name.trim() !== ""
+          ? input.name.trim()
+          : input.sdkProvider
       // Build a Provider from the NON-secret input. secrets start empty — a value can only be set
       // later via setProviderSecret, never through this path (security.md).
       const provider: Provider = {
         id: `p_${crypto.randomUUID()}` as Provider["id"],
-        name: input.name,
+        name,
         sdkProvider: input.sdkProvider,
         config: input.config,
         secrets: {},
@@ -78,10 +85,15 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       const config = await loadConfig()
       const existing = config.providers.find((p) => p.id === id)
       if (existing === undefined) return fail(`unknown provider: ${String(id)}`)
+      // Same fallback as addProvider: a blank/missing name resolves to the SDK provider name.
+      const name =
+        input.name !== undefined && input.name.trim() !== ""
+          ? input.name.trim()
+          : input.sdkProvider
       // Preserve existing secret refs; only non-secret fields are updatable over IPC.
       const updated: Provider = {
         ...existing,
-        name: input.name,
+        name,
         sdkProvider: input.sdkProvider,
         config: input.config,
         models: input.models,
