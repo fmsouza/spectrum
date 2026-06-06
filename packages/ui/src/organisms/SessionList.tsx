@@ -1,6 +1,7 @@
 import type { Session, SessionId } from "@launchkit/types"
 import type { ReactElement } from "react"
 import { Button } from "../atoms/Button"
+import { Stack } from "../primitives/Stack"
 import { SessionRow } from "../molecules/SessionRow"
 
 export type SessionLabel = {
@@ -44,14 +45,14 @@ export const SessionList = ({
   }
 
   return (
-    <div>
+    <Stack gap={4} minHeight0 className="lk-session-list">
       <Button onClick={() => onNew()}>+ New session</Button>
-      <section>
-        <h3>Running</h3>
+      <section className="lk-session-group">
+        <h3 className="lk-session-group__heading">Running</h3>
         {running.map(renderRow)}
       </section>
-      <section>
-        <h3>Recent</h3>
+      <section className="lk-session-group">
+        <h3 className="lk-session-group__heading">Recent</h3>
         {recent.map(renderRow)}
       </section>
       {hasMore ? (
@@ -59,6 +60,6 @@ export const SessionList = ({
           View more
         </Button>
       ) : null}
-    </div>
+    </Stack>
   )
 }

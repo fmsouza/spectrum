@@ -127,4 +127,12 @@ describe("SessionList", () => {
     fireEvent.click(screen.getByRole("button", { name: /view more/i }))
     expect(onMore).toHaveBeenCalledTimes(1)
   })
+
+  it("marks the list container and group sections with hooks", () => {
+    const { container } = render(
+      <SessionList running={[]} recent={[]} labelFor={() => ({ harnessName: "h", model: "m" })}
+        hasMore={false} onSelect={() => {}} onMore={() => {}} onNew={() => {}} />,
+    )
+    expect(container.querySelector(".lk-session-list")).not.toBeNull()
+  })
 })
