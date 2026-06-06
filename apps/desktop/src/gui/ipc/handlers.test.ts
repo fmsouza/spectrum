@@ -34,7 +34,6 @@ const baseConfig = (providers: readonly Provider[]): Config =>
     version: 2,
     providers,
     models: [],
-    profiles: [],
     settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
   }) as Config
 
