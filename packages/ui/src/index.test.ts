@@ -14,7 +14,6 @@ describe("@launchkit/ui barrel", () => {
       "Modal",
       "IconButton",
       "FormField",
-      "ProviderCard",
       "ModelRow",
       "EmptyState",
       "RailItem",

@@ -2,7 +2,7 @@
 
 **Responsibility:** React atomic design system — pure, presentational components (atoms → templates) that the desktop pages compose.
 
-**Public API (barrel `src/index.ts`):** atoms (`Button`, `TextInput`, `Select`, `Badge`, `StatusDot`, `Spinner`, `Label`), molecules (`FormField`, `ProviderCard`, `ModelRow`, `EmptyState`), organisms (`ProviderList`, `ModelTable`, `HarnessForm`, `SessionTable`), templates (`AppShell`, `SettingsLayout`) — each re-exported via its level barrel and the package barrel.
+**Public API (barrel `src/index.ts`):** atoms (`Button`, `TextInput`, `Select`, `Badge`, `StatusDot`, `Spinner`, `Label`), molecules (`FormField`, `ModelRow`, `EmptyState`), organisms (`ProviderList`, `ModelTable`, `HarnessForm`, `SessionTable`), templates (`AppShell`, `SettingsLayout`) — each re-exported via its level barrel and the package barrel.
 
 **Depends on:** `@launchkit/types`, `@launchkit/utils` (prop shapes + pure formatting only; never `ipc`/`config`/`proxy`/`sessions`/`harnesses`md).
 

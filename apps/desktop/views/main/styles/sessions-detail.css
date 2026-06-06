@@ -1,0 +1,99 @@
+/* ─────────────────────── Sessions detail (terminal pane) ─────────────────── */
+/* The sessions detail fills the whole <main> pane: a dark, full-bleed column
+   holding the live terminal panes (one mounted-hidden per open session), an
+   optional replay (exit banner + read-only pane), or an empty state. (Replaces
+   the deleted tabbed TerminalPage — no tab strip; selection is the master list.) */
+
+/* The sessions detail is a full-bleed terminal surface — drop the centered
+   settings padding so the panes reach every edge of the detail pane.
+   overflow:hidden prevents main from scrolling the terminal surface. */
+main:has(> .lk-sessions-detail) {
+  padding: 0;
+  overflow: hidden;
+}
+
+.lk-sessions-detail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: #111216;
+  overflow: hidden;
+}
+
+/* The empty state ("No session selected") centers in the dark detail pane rather
+   than rendering as the default dashed settings card. */
+.lk-sessions-detail > div:has(> h2 + p):not([aria-label]) {
+  margin: auto;
+  background: transparent;
+  border: none;
+}
+
+/* The replay exit banner: a thin header strip above the read-only replay pane. */
+.lk-replay-banner {
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-4);
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid color-mix(in srgb, #000 35%, var(--sidebar-bg));
+  color: var(--sidebar-fg);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.01em;
+}
+
+/* C.2: The lk-replay wrapper stacks banner + pane host as flex children so the
+   pane host can grow to fill the remaining space (avoiding the old conflict
+   between flex:1 1 auto and height:100% on the same element). */
+.lk-replay {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* C.2: The replay pane host uses relative+flex instead of absolute+inset so the
+   banner above it is a normal flex sibling that takes its intrinsic height. */
+.lk-replay .lk-terminal-pane-host--replay {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  inset: auto;
+}
+
+.lk-terminal-panes {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.lk-terminal-pane-host {
+  position: absolute;
+  inset: 0;
+  padding: var(--space-3);
+}
+
+.lk-terminal-pane-host[hidden] {
+  display: none;
+}
+
+.lk-terminal-pane {
+  width: 100%;
+  height: 100%;
+}
+
+/* xterm fills its host; the viewport scrolls internally. */
+.lk-terminal-pane .xterm {
+  height: 100%;
+}
+
+/* Hide the xterm viewport scrollbar so the full pane width is usable text. Otherwise the ~15px
+   scrollbar gutter makes FitAddon's column count overshoot the visible width and the harness TUI
+   wraps its right-edge content by a few columns. Scrolling still works via wheel/keyboard. */
+.lk-terminal-pane .xterm-viewport {
+  scrollbar-width: none;
+}
+.lk-terminal-pane .xterm-viewport::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}

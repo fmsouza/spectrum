@@ -21,4 +21,14 @@ describe("SettingsLayout", () => {
     )
     expect(screen.getByText("body content")).toBeInTheDocument()
   })
+  it("marks the page, header and body with hooks", () => {
+    const { container } = render(
+      <SettingsLayout title="General">
+        <p>x</p>
+      </SettingsLayout>,
+    )
+    expect(container.querySelector(".lk-page")).not.toBeNull()
+    expect(container.querySelector(".lk-page__header")).not.toBeNull()
+    expect(container.querySelector(".lk-page__body")).not.toBeNull()
+  })
 })

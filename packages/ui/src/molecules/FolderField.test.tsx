@@ -32,4 +32,10 @@ describe("FolderField", () => {
     fireEvent.click(screen.getByRole("button", { name: /browse/i }))
     expect(onBrowse).toHaveBeenCalledTimes(1)
   })
+  it("lays input and Browse out in an lk-folder-field row", () => {
+    const { container } = render(
+      <FolderField id="cwd" value="" onChange={() => {}} onBrowse={() => {}} />,
+    )
+    expect(container.querySelector(".lk-row.lk-folder-field")).not.toBeNull()
+  })
 })

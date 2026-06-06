@@ -61,4 +61,15 @@ describe("Modal", () => {
     fireEvent.click(screen.getByText("body"))
     expect(onClose).not.toHaveBeenCalled()
   })
+  it("marks the dialog, header, close and body with hooks", () => {
+    const { container } = render(
+      <Modal title="T" open onClose={() => {}}>
+        <p>body</p>
+      </Modal>,
+    )
+    expect(container.querySelector("dialog.lk-modal")).not.toBeNull()
+    expect(container.querySelector(".lk-modal__header")).not.toBeNull()
+    expect(container.querySelector(".lk-modal__close")).not.toBeNull()
+    expect(container.querySelector(".lk-modal__body")).not.toBeNull()
+  })
 })
