@@ -1,0 +1,56 @@
+import { describe, expect, it } from "bun:test"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import type { Session } from "@launchkit/types"
+import { ProjectGroup } from "./ProjectGroup"
+
+const session = (id: string): Session => ({
+  id: id as Session["id"],
+  harnessId: "claude" as Session["harnessId"],
+  startedAt: "2026-06-07T10:00:00.000Z",
+})
+
+const baseProps = {
+  name: "api",
+  sessionCount: 12,
+  sessions: [session("s1"), session("s2")],
+  collapsed: false,
+  labelFor: () => ({ harnessName: "claude", model: "default" }),
+  onToggle: () => {},
+  onSelect: () => {},
+  onMore: () => {},
+}
+
+describe("ProjectGroup", () => {
+  it("renders the project name and session count in the header", () => {
+    render(<ProjectGroup {...baseProps} />)
+    expect(screen.getByText("api")).toBeTruthy()
+    expect(screen.getByText("12")).toBeTruthy()
+    cleanup()
+  })
+
+  it("hides session rows when collapsed", () => {
+    render(<ProjectGroup {...baseProps} collapsed />)
+    expect(screen.queryByText("s1")).toBeNull()
+    cleanup()
+  })
+
+  it("calls onToggle when the header is clicked", () => {
+    let toggled = false
+    render(<ProjectGroup {...baseProps} onToggle={() => { toggled = true }} />)
+    fireEvent.click(screen.getByRole("button", { name: /api/ }))
+    expect(toggled).toBe(true)
+    cleanup()
+  })
+
+  it("shows a Show-more button when more sessions exist than are loaded", () => {
+    render(<ProjectGroup {...baseProps} sessionCount={12} sessions={[session("s1"), session("s2")]} />)
+    expect(screen.getByText("Show 10 more")).toBeTruthy()
+    cleanup()
+  })
+
+  it("hides the Show-more button when all sessions are loaded", () => {
+    render(<ProjectGroup {...baseProps} sessionCount={2} sessions={[session("s1"), session("s2")]} />)
+    expect(screen.queryByText("Show 10 more")).toBeNull()
+    cleanup()
+  })
+})
