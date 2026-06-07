@@ -72,4 +72,34 @@ describe("ProjectGroup", () => {
     expect(screen.queryByText("Show 10 more")).toBeNull()
     cleanup()
   })
+
+  it("calls onMore when the Show-more button is clicked", () => {
+    let more = false
+    render(
+      <ProjectGroup
+        {...baseProps}
+        onMore={() => {
+          more = true
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByText("Show 10 more"))
+    expect(more).toBe(true)
+    cleanup()
+  })
+
+  it("calls onSelect with the session id when a row is clicked", () => {
+    let selected: string | undefined
+    render(
+      <ProjectGroup
+        {...baseProps}
+        onSelect={(id) => {
+          selected = id
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByText("s1"))
+    expect(selected).toBe("s1")
+    cleanup()
+  })
 })

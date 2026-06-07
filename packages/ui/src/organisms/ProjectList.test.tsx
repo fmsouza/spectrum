@@ -54,4 +54,25 @@ describe("ProjectList", () => {
     expect(clicked).toBe(true)
     cleanup()
   })
+
+  it("hides a collapsed project's rows", () => {
+    render(<ProjectList {...baseProps} collapsed={new Set(["prj_a"])} />)
+    expect(screen.queryByText("s1")).toBeNull()
+    cleanup()
+  })
+
+  it("calls onToggle with the project id when a group header is clicked", () => {
+    let toggled: string | undefined
+    render(
+      <ProjectList
+        {...baseProps}
+        onToggle={(id) => {
+          toggled = id
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: /api/ }))
+    expect(toggled).toBe("prj_a")
+    cleanup()
+  })
 })
