@@ -15,4 +15,14 @@ export const bundledMigrations: readonly BundledMigration[] = [
       "CREATE INDEX `idx_sessions_harnessId` ON `sessions` (`harnessId`);",
     ],
   },
+  {
+    tag: "0001_melted_richard_fisk",
+    when: 1780866608992,
+    statements: [
+      "CREATE TABLE `projects` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`name` text NOT NULL,\n\t`path` text NOT NULL,\n\t`createdAt` text NOT NULL\n);",
+      "CREATE UNIQUE INDEX `idx_projects_path` ON `projects` (`path`);",
+      "ALTER TABLE `sessions` ADD `projectId` text NOT NULL REFERENCES projects(id);",
+      "CREATE INDEX `idx_sessions_projectId` ON `sessions` (`projectId`);",
+    ],
+  },
 ] as const
