@@ -173,7 +173,7 @@ const AppInner = ({
   /**
    * A live session's pty exited: drop it from the open set so its dead live pane
    * unmounts (selecting it now renders the read-only replay), and refetch so the
-   * master moves it from Running to Recent.
+   * master reflects its ended state (exit badge) within its project group.
    */
   const onSessionExit = (id: SessionId): void => {
     closeSession(id)
