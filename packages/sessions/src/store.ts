@@ -125,7 +125,7 @@ export const createSessionStore = (deps: {
         startedAt,
         ...(input.modelId !== undefined ? { modelId: input.modelId } : {}),
         ...(input.name !== undefined ? { name: input.name } : {}),
-        ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
+        cwd: input.cwd,
       })
     },
 

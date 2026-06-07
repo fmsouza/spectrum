@@ -195,5 +195,6 @@ describe("createSessionStore on drizzle", () => {
     expect(r.ok).toBe(true)
     if (!r.ok) return
     expect(r.value).toHaveLength(1)
+    expect(r.value[0]?.cwd).toBe("/a")
   })
 })
