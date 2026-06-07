@@ -102,6 +102,16 @@
         "zod": "^3.24.0",
       },
     },
+    "packages/projects": {
+      "name": "@launchkit/projects",
+      "version": "0.1.0",
+      "dependencies": {
+        "@launchkit/db": "workspace:*",
+        "@launchkit/types": "workspace:*",
+        "@launchkit/utils": "workspace:*",
+        "drizzle-orm": "^0.45.2",
+      },
+    },
     "packages/proxy": {
       "name": "@launchkit/proxy",
       "version": "0.1.0",
@@ -344,6 +354,8 @@
     "@launchkit/harnesses": ["@launchkit/harnesses@workspace:packages/harnesses"],
 
     "@launchkit/ipc": ["@launchkit/ipc@workspace:packages/ipc"],
+
+    "@launchkit/projects": ["@launchkit/projects@workspace:packages/projects"],
 
     "@launchkit/proxy": ["@launchkit/proxy@workspace:packages/proxy"],
 
