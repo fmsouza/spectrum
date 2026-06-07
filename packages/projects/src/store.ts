@@ -1,3 +1,4 @@
+import { basename } from "node:path"
 import { type DbClient, projects, sessions, tryDb } from "@launchkit/db"
 import type { Project, ProjectId } from "@launchkit/types"
 import {
@@ -9,7 +10,6 @@ import {
   ok,
 } from "@launchkit/utils"
 import { eq, sql } from "drizzle-orm"
-import { basename } from "node:path"
 import type { ProjectError } from "./errors"
 
 export type { ProjectError } from "./errors"
@@ -53,7 +53,11 @@ export const createProjectStore = (deps: {
 
       const existing = asProjectError(
         tryDb(() =>
-          handle.select().from(projects).where(eq(projects.path, trimmed)).get(),
+          handle
+            .select()
+            .from(projects)
+            .where(eq(projects.path, trimmed))
+            .get(),
         ),
       )
       if (isErr(existing)) return existing
@@ -64,7 +68,10 @@ export const createProjectStore = (deps: {
       const name = basename(trimmed)
       const written = asProjectError(
         tryDb(() =>
-          handle.insert(projects).values({ id, name, path: trimmed, createdAt }).run(),
+          handle
+            .insert(projects)
+            .values({ id, name, path: trimmed, createdAt })
+            .run(),
         ),
       )
       if (isErr(written)) return written

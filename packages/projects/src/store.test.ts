@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "bun:test"
-import { createSqliteClient, runMigrations, sessions as sessionsTable } from "@launchkit/db"
+import {
+  createSqliteClient,
+  runMigrations,
+  sessions as sessionsTable,
+} from "@launchkit/db"
 import type { DbClient } from "@launchkit/db"
 import { createFixedClock, createSequentialIdGen } from "@launchkit/utils"
 import { type ProjectStore, createProjectStore } from "./store"
@@ -67,9 +71,24 @@ describe("ProjectStore.list", () => {
     db.handle
       .insert(sessionsTable)
       .values([
-        { id: "s1", harnessId: "claude", startedAt: "2026-06-07T10:00:00.000Z", projectId: api.value.id },
-        { id: "s2", harnessId: "claude", startedAt: "2026-06-07T11:00:00.000Z", projectId: api.value.id },
-        { id: "s3", harnessId: "claude", startedAt: "2026-06-07T12:00:00.000Z", projectId: web.value.id },
+        {
+          id: "s1",
+          harnessId: "claude",
+          startedAt: "2026-06-07T10:00:00.000Z",
+          projectId: api.value.id,
+        },
+        {
+          id: "s2",
+          harnessId: "claude",
+          startedAt: "2026-06-07T11:00:00.000Z",
+          projectId: api.value.id,
+        },
+        {
+          id: "s3",
+          harnessId: "claude",
+          startedAt: "2026-06-07T12:00:00.000Z",
+          projectId: web.value.id,
+        },
       ])
       .run()
 
