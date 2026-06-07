@@ -74,3 +74,54 @@
 .lk-session-row[data-selected="true"] .lk-session-row__meta {
   color: color-mix(in srgb, var(--text-muted) 80%, var(--accent-strong));
 }
+
+/* ── ProjectGroup: collapsible header + nested session rows. ── */
+.lk-project-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.lk-project-group__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.lk-project-group__header:hover {
+  background: var(--surface-inset);
+}
+
+.lk-project-group__toggle {
+  display: inline-block;
+  color: var(--text-faint);
+  transition: transform var(--dur) var(--ease);
+  transform: rotate(90deg);
+}
+
+.lk-project-group__toggle[data-collapsed="true"] {
+  transform: rotate(0deg);
+}
+
+.lk-project-group__name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lk-project-group__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-left: var(--space-2);
+}
