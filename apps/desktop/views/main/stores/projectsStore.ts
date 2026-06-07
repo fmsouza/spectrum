@@ -1,5 +1,5 @@
 import type { IpcError, IpcMethods } from "@launchkit/ipc"
-import type { Session } from "@launchkit/types"
+import type { ProjectId, Session } from "@launchkit/types"
 import type { Result } from "@launchkit/utils"
 import { type StoreApi, createStore } from "zustand/vanilla"
 import type { StoreDeps } from "./types"
@@ -58,7 +58,10 @@ export const createProjectsStore = (deps: StoreDeps): StoreApi<ProjectsStore> =>
     const loadSessions = async (projectId: string): Promise<void> => {
       const limit =
         get().sessionsByProject[projectId]?.limit ?? PROJECT_PAGE_SIZE
-      const r = await deps.client.getSessions({ projectId, limit })
+      const r = await deps.client.getSessions({
+        projectId: projectId as ProjectId,
+        limit,
+      })
       if (!r.ok) {
         set({ errorProjects: r.error })
         return

@@ -14,6 +14,9 @@ const running = {
   modelId: "m_1",
   startedAt: "2026-05-23T10:00:00.000Z",
 } as unknown as Session
+
+const project = { id: "prj_1", name: "demo", sessionCount: 1 }
+
 const fakeXterm = (): XtermInstance => ({
   open: () => {},
   write: () => {},
@@ -39,9 +42,12 @@ describe("SessionsView", () => {
     const { detail } = SessionsView({
       selectedSessionId: undefined,
       openSessionIds: [],
-      running: [running],
-      recent: [],
-      hasMore: false,
+      projects: [project],
+      sessionsByProject: { prj_1: [running] },
+      collapsed: new Set(),
+      allSessions: [running],
+      onToggle: () => {},
+      onMore: () => {},
       onSelect: () => {},
       onNew: () => {},
       onExit: () => {},
@@ -56,14 +62,17 @@ describe("SessionsView", () => {
     expect(screen.getByText(/no session selected/i)).toBeInTheDocument()
   })
 
-  it("renders the running sessions handed in via props in the master", () => {
+  it("renders the sessions handed in via props in the master as project groups", () => {
     const client = createFakeIpcClient({})
     const { master } = SessionsView({
       selectedSessionId: undefined,
       openSessionIds: [],
-      running: [running],
-      recent: [],
-      hasMore: false,
+      projects: [project],
+      sessionsByProject: { prj_1: [running] },
+      collapsed: new Set(),
+      allSessions: [running],
+      onToggle: () => {},
+      onMore: () => {},
       onSelect: () => {},
       onNew: () => {},
       onExit: () => {},
@@ -75,9 +84,10 @@ describe("SessionsView", () => {
         <div>{master}</div>
       </IpcClientProvider>,
     )
-    // The master no longer fetches — it renders the lists it is handed.
+    // The master renders project groups — no data fetching here.
     expect(screen.getByText(/claude · m_1/)).toBeInTheDocument()
     expect(client.calls.getSessions.length).toBe(0)
+    expect(client.calls.getProjects.length).toBe(0)
   })
 
   it("shows an exit banner above the replay for a selected ended session", async () => {
@@ -101,9 +111,12 @@ describe("SessionsView", () => {
       selectedSessionId: "s_done" as SessionId,
       // Not in the open set → renders the read-only replay (+ banner).
       openSessionIds: [],
-      running: [],
-      recent: [ended],
-      hasMore: false,
+      projects: [{ id: "prj_1", name: "demo", sessionCount: 1 }],
+      sessionsByProject: { prj_1: [ended] },
+      collapsed: new Set(),
+      allSessions: [ended],
+      onToggle: () => {},
+      onMore: () => {},
       onSelect: () => {},
       onNew: () => {},
       onExit: () => {},
@@ -148,9 +161,12 @@ describe("SessionsView", () => {
     const { detail } = SessionsView({
       selectedSessionId: "s_blank" as SessionId,
       openSessionIds: [],
-      running: [],
-      recent: [ended],
-      hasMore: false,
+      projects: [{ id: "prj_1", name: "demo", sessionCount: 1 }],
+      sessionsByProject: { prj_1: [ended] },
+      collapsed: new Set(),
+      allSessions: [ended],
+      onToggle: () => {},
+      onMore: () => {},
       onSelect: () => {},
       onNew: () => {},
       onExit: () => {},
@@ -180,9 +196,12 @@ describe("SessionsView", () => {
     const { detail } = SessionsView({
       selectedSessionId: "s_live" as SessionId,
       openSessionIds: ["s_live" as SessionId],
-      running: [running],
-      recent: [],
-      hasMore: false,
+      projects: [project],
+      sessionsByProject: { prj_1: [running] },
+      collapsed: new Set(),
+      allSessions: [running],
+      onToggle: () => {},
+      onMore: () => {},
       onSelect: () => {},
       onNew: () => {},
       onExit: () => {},

@@ -20,8 +20,8 @@ const v1Config = {
 }
 
 describe("migrations", () => {
-  it("ships ordered v1->v2, v2->v3, v3->v4, and v4->v5 migrations", () => {
-    expect(migrations).toHaveLength(4)
+  it("ships ordered v1->v2, v2->v3, v3->v4, v4->v5, and v5->v6 migrations", () => {
+    expect(migrations).toHaveLength(5)
     expect(migrations[0]?.from).toBe(1)
     expect(migrations[0]?.to).toBe(2)
     expect(migrations[1]?.from).toBe(2)
@@ -30,6 +30,8 @@ describe("migrations", () => {
     expect(migrations[2]?.to).toBe(4)
     expect(migrations[3]?.from).toBe(4)
     expect(migrations[3]?.to).toBe(5)
+    expect(migrations[4]?.from).toBe(5)
+    expect(migrations[4]?.to).toBe(6)
   })
 })
 
@@ -57,6 +59,7 @@ describe("runMigrations", () => {
         lastSelectedFolder: "",
         lastSelectedHarnessId: "",
         lastSelectedModelId: "",
+        collapsedProjects: [],
       },
     }
     expect(runMigrations(current)).toEqual({ ok: true, value: current })
@@ -185,7 +188,7 @@ describe("v4 → v5 (drop profiles)", () => {
     const result = runMigrations(raw)
     expect(result.ok).toBe(true)
     if (result.ok) {
-      expect(result.value.version).toBe(5)
+      expect(result.value.version).toBe(CURRENT_CONFIG_VERSION)
       expect("profiles" in result.value).toBe(false)
     }
   })

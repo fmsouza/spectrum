@@ -2,7 +2,7 @@ import { ModelRouteSchema, ProviderSchema } from "@launchkit/types"
 import { z } from "zod"
 
 /** Bump on any breaking config shape change; add a matching `Migration` (see migrations.ts). */
-export const CURRENT_CONFIG_VERSION = 5
+export const CURRENT_CONFIG_VERSION = 6
 
 /**
  * Process-wide settings. `proxyHost` is the literal loopback address — the proxy
@@ -15,6 +15,8 @@ export const SettingsSchema = z
     lastSelectedFolder: z.string().default(""),
     lastSelectedHarnessId: z.string().default(""),
     lastSelectedModelId: z.string().default(""),
+    /** Project IDs whose session group the user has collapsed in the sidebar. */
+    collapsedProjects: z.array(z.string()).default([]),
   })
   .strict()
 
