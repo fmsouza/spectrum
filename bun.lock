@@ -31,6 +31,7 @@
         "@launchkit/db": "workspace:*",
         "@launchkit/harnesses": "workspace:*",
         "@launchkit/ipc": "workspace:*",
+        "@launchkit/projects": "workspace:*",
         "@launchkit/proxy": "workspace:*",
         "@launchkit/pty": "workspace:*",
         "@launchkit/secrets": "workspace:*",

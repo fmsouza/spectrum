@@ -5,13 +5,15 @@ import type {
   LaunchParams,
   ResolvedHarnessLaunch,
 } from "@launchkit/harnesses"
+import type { ProjectStore } from "@launchkit/projects"
+import { createProjectStore } from "@launchkit/projects"
 import type {
   LanguageModelGateway,
   ProviderFactory,
   RunningProxy,
   RuntimeState,
 } from "@launchkit/proxy"
-import type { PtyError, TerminalManager } from "@launchkit/pty"
+import type { PtyError, SessionSink, TerminalManager } from "@launchkit/pty"
 import type { SecretStore } from "@launchkit/secrets"
 import type { SessionStore } from "@launchkit/sessions"
 import type { SessionId } from "@launchkit/types"
@@ -79,6 +81,7 @@ export interface AppContext {
   readonly config: ConfigStore
   readonly secrets: SecretStore
   readonly sessions: SessionStore
+  readonly projects: ProjectStore
   readonly registry: HarnessRegistry
   /** `launchHarness(realDeps)` partially applied — a single `(params) => Result<{ pid, exited }, unknown>`. */
   readonly launch: (
@@ -179,6 +182,7 @@ export interface CreateAppContextDeps {
   readonly runMigrations: typeof runMigrations
   readonly createSystemClock: typeof createSystemClock
   readonly createSessionStore: typeof createSessionStore
+  readonly createProjectStore: typeof createProjectStore
   readonly createDirHarnessFileSource: typeof createDirHarnessFileSource
   readonly createRegistry: typeof createRegistry
   readonly createPathCommandResolver: typeof createPathCommandResolver
@@ -218,6 +222,7 @@ const realDeps: CreateAppContextDeps = {
   runMigrations,
   createSystemClock,
   createSessionStore,
+  createProjectStore,
   createDirHarnessFileSource,
   createRegistry,
   createPathCommandResolver,
@@ -370,6 +375,38 @@ export const createAppContext = (
     idGen: deps.createCryptoIdGen(),
   })
 
+  const projects = deps.createProjectStore({
+    db: dbClient,
+    clock: deps.createSystemClock(),
+    idGen: deps.createCryptoIdGen(),
+  })
+
+  // Every embedded-terminal session must belong to a project. Resolve (or create) the project
+  // from the launch cwd, then create the session with its projectId. This is the single GUI
+  // orchestration seam — SessionStore.create stays pure (it just receives a projectId).
+  const sessionSink: SessionSink = {
+    create: (input) => {
+      const cwd = input.cwd ?? ""
+      const project = projects.findOrCreateByPath(cwd)
+      if (!project.ok)
+        return err({
+          kind: "db-failed",
+          detail:
+            project.error.kind === "invalid-path"
+              ? "a working directory is required"
+              : project.error.detail,
+        })
+      return sessions.create({
+        harnessId: input.harnessId,
+        projectId: project.value.id,
+        cwd,
+        ...(input.modelId !== undefined ? { modelId: input.modelId } : {}),
+        ...(input.name !== undefined ? { name: input.name } : {}),
+      })
+    },
+    close: sessions.close,
+  }
+
   // harnesses: registry from the user harness dir; launcher partially applied with real adapters
   const registry = deps.createRegistry({
     fileSource: deps.createDirHarnessFileSource(harnessDir),
@@ -403,7 +440,7 @@ export const createAppContext = (
   })
   const terminal = deps.createTerminalManager({
     pty: deps.createFfiPty(),
-    sessions: { create: sessions.create, close: sessions.close },
+    sessions: sessionSink,
     scrollback: scrollbackStore,
     send: () => {},
     capBytes: 1_000_000,
@@ -466,6 +503,7 @@ export const createAppContext = (
     config,
     secrets,
     sessions,
+    projects,
     registry,
     launch,
     resolveLaunch,
