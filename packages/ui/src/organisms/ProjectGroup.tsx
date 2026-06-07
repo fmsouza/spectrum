@@ -39,7 +39,11 @@ export const ProjectGroup = ({
         aria-expanded={!collapsed}
         onClick={() => onToggle()}
       >
-        <span className="lk-project-group__toggle" data-collapsed={collapsed} aria-hidden>
+        <span
+          className="lk-project-group__toggle"
+          data-collapsed={collapsed}
+          aria-hidden
+        >
           ▸
         </span>
         <span className="lk-project-group__name">{name}</span>

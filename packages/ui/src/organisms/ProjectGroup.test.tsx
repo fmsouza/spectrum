@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { Session } from "@launchkit/types"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { ProjectGroup } from "./ProjectGroup"
 
 const session = (id: string): Session => ({
@@ -36,20 +36,39 @@ describe("ProjectGroup", () => {
 
   it("calls onToggle when the header is clicked", () => {
     let toggled = false
-    render(<ProjectGroup {...baseProps} onToggle={() => { toggled = true }} />)
+    render(
+      <ProjectGroup
+        {...baseProps}
+        onToggle={() => {
+          toggled = true
+        }}
+      />,
+    )
     fireEvent.click(screen.getByRole("button", { name: /api/ }))
     expect(toggled).toBe(true)
     cleanup()
   })
 
   it("shows a Show-more button when more sessions exist than are loaded", () => {
-    render(<ProjectGroup {...baseProps} sessionCount={12} sessions={[session("s1"), session("s2")]} />)
+    render(
+      <ProjectGroup
+        {...baseProps}
+        sessionCount={12}
+        sessions={[session("s1"), session("s2")]}
+      />,
+    )
     expect(screen.getByText("Show 10 more")).toBeTruthy()
     cleanup()
   })
 
   it("hides the Show-more button when all sessions are loaded", () => {
-    render(<ProjectGroup {...baseProps} sessionCount={2} sessions={[session("s1"), session("s2")]} />)
+    render(
+      <ProjectGroup
+        {...baseProps}
+        sessionCount={2}
+        sessions={[session("s1"), session("s2")]}
+      />,
+    )
     expect(screen.queryByText("Show 10 more")).toBeNull()
     cleanup()
   })
