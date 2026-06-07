@@ -3,6 +3,7 @@ import {
   HarnessIdSchema,
   ModelIdSchema,
   ModelRouteSchema,
+  ProjectIdSchema,
   ProviderIdSchema,
   SdkProviderSchema,
   SessionIdSchema,
@@ -145,6 +146,7 @@ export const GetSessionsParamsSchema = z
   .object({
     harnessId: HarnessIdSchema.optional(),
     modelId: ModelIdSchema.optional(),
+    projectId: ProjectIdSchema.optional(),
     running: z.boolean().optional(),
     limit: z.number().int().positive().optional(),
     offset: z.number().int().nonnegative().optional(),
@@ -208,8 +210,29 @@ export const GetSettingsResultSchema = z
     lastSelectedFolder: z.string(),
     lastSelectedHarnessId: z.string(),
     lastSelectedModelId: z.string(),
+    collapsedProjects: z.array(z.string()),
   })
   .strict()
+
+// ── Projects ──────────────────────────────────────────────────────────────
+
+export const GetProjectsParamsSchema = z.undefined()
+/** Alphabetical (case-insensitive) by name; each carries its total session count. */
+export const GetProjectsResultSchema = z.array(
+  z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      path: z.string(),
+      sessionCount: z.number().int().nonnegative(),
+    })
+    .strict(),
+)
+
+export const SetCollapsedProjectsParamsSchema = z
+  .object({ ids: z.array(z.string()) })
+  .strict()
+export const SetCollapsedProjectsResultSchema = VoidSchema
 
 // ── The method → {params, result} schema map ──────────────────────────────────
 
@@ -299,6 +322,14 @@ export const IpcMethodSchemas = {
   getSettings: {
     params: GetSettingsParamsSchema,
     result: GetSettingsResultSchema,
+  },
+  getProjects: {
+    params: GetProjectsParamsSchema,
+    result: GetProjectsResultSchema,
+  },
+  setCollapsedProjects: {
+    params: SetCollapsedProjectsParamsSchema,
+    result: SetCollapsedProjectsResultSchema,
   },
 } as const
 

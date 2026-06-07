@@ -334,24 +334,27 @@ describe("GetSettingsParamsSchema", () => {
 })
 
 describe("GetSettingsResultSchema", () => {
-  it("parses a result carrying all three persisted fields", () => {
+  it("parses a result carrying all four persisted fields", () => {
     expect(
       GetSettingsResultSchema.parse({
         lastSelectedFolder: "/home/me/proj",
         lastSelectedHarnessId: "claude",
         lastSelectedModelId: "mdl_x",
+        collapsedProjects: [],
       }),
     ).toEqual({
       lastSelectedFolder: "/home/me/proj",
       lastSelectedHarnessId: "claude",
       lastSelectedModelId: "mdl_x",
+      collapsedProjects: [],
     })
   })
-  it("validates a getSettings result with all three persisted fields", () => {
+  it("validates a getSettings result with all four persisted fields", () => {
     const result = GetSettingsResultSchema.safeParse({
       lastSelectedFolder: "/p",
       lastSelectedHarnessId: "claude",
       lastSelectedModelId: "",
+      collapsedProjects: ["prj_1"],
     })
     expect(result.success).toBe(true)
   })
@@ -359,6 +362,7 @@ describe("GetSettingsResultSchema", () => {
     const result = GetSettingsResultSchema.safeParse({
       lastSelectedFolder: "/p",
       lastSelectedModelId: "",
+      collapsedProjects: [],
     })
     expect(result.success).toBe(false)
   })
@@ -371,6 +375,7 @@ describe("GetSettingsResultSchema", () => {
         lastSelectedFolder: "/x",
         lastSelectedHarnessId: "claude",
         lastSelectedModelId: "",
+        collapsedProjects: [],
         extra: 1,
       }).success,
     ).toBe(false)
@@ -401,6 +406,8 @@ describe("IpcMethodSchemas", () => {
       "getSessionScrollback",
       "listProviderModels",
       "getSettings",
+      "getProjects",
+      "setCollapsedProjects",
     ] as const
     for (const name of expected) {
       expect(IpcMethodSchemas[name]).toBeDefined()
