@@ -59,6 +59,7 @@
         "@launchkit/config": "workspace:*",
         "@launchkit/db": "workspace:*",
         "@launchkit/harnesses": "workspace:*",
+        "@launchkit/projects": "workspace:*",
         "@launchkit/proxy": "workspace:*",
         "@launchkit/secrets": "workspace:*",
         "@launchkit/sessions": "workspace:*",
