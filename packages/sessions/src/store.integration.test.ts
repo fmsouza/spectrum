@@ -18,16 +18,25 @@ describe("createSessionStore on drizzle", () => {
     const store = makeStore()
     const created = store.create({
       harnessId: "claude" as never,
+      projectId: "prj_x" as never,
       modelId: "mdl_default" as never,
+      cwd: "/x",
     })
     expect(isOk(created) && created.value).toEqual<
       | false
-      | { id: string; harnessId: string; modelId: string; startedAt: string }
+      | {
+          id: string
+          harnessId: string
+          modelId: string
+          startedAt: string
+          cwd: string
+        }
     >({
       id: "s_1",
       harnessId: "claude",
       modelId: "mdl_default",
       startedAt: "2026-05-23T10:00:00.000Z",
+      cwd: "/x",
     })
 
     const closed = store.close("s_1" as never, 0)
@@ -40,6 +49,7 @@ describe("createSessionStore on drizzle", () => {
           startedAt: string
           endedAt: string
           exitCode: number
+          cwd: string
         }
     >({
       id: "s_1",
@@ -48,6 +58,7 @@ describe("createSessionStore on drizzle", () => {
       startedAt: "2026-05-23T10:00:00.000Z",
       endedAt: "2026-05-23T10:00:00.000Z",
       exitCode: 0,
+      cwd: "/x",
     })
 
     const all = store.query()
@@ -66,8 +77,16 @@ describe("createSessionStore on drizzle", () => {
 
   it("filters by harnessId via the query builder", () => {
     const store = makeStore()
-    store.create({ harnessId: "claude" as never })
-    store.create({ harnessId: "codex" as never })
+    store.create({
+      harnessId: "claude" as never,
+      projectId: "prj_x" as never,
+      cwd: "/x",
+    })
+    store.create({
+      harnessId: "codex" as never,
+      projectId: "prj_x" as never,
+      cwd: "/x",
+    })
     const r = store.query({ harnessId: "codex" as never })
     expect(isOk(r) && r.value.map((s) => s.harnessId)).toEqual<
       false | readonly string[]
@@ -76,8 +95,16 @@ describe("createSessionStore on drizzle", () => {
 
   it("returns only open sessions when running is true and closed when false", () => {
     const store = makeStore()
-    store.create({ harnessId: "claude" as never })
-    store.create({ harnessId: "codex" as never })
+    store.create({
+      harnessId: "claude" as never,
+      projectId: "prj_x" as never,
+      cwd: "/x",
+    })
+    store.create({
+      harnessId: "codex" as never,
+      projectId: "prj_x" as never,
+      cwd: "/x",
+    })
     store.close("s_1" as never, 0)
     const open = store.query({ running: true })
     expect(isOk(open) && open.value.map((s) => s.id)).toEqual<
@@ -91,31 +118,82 @@ describe("createSessionStore on drizzle", () => {
 
   it("returns tail rows when query uses offset with no limit", () => {
     const store = makeStore()
-    store.create({ harnessId: "claude" as never })
-    store.create({ harnessId: "claude" as never })
-    store.create({ harnessId: "claude" as never })
+    store.create({
+      harnessId: "claude" as never,
+      projectId: "prj_x" as never,
+      cwd: "/x",
+    })
+    store.create({
+      harnessId: "claude" as never,
+      projectId: "prj_x" as never,
+      cwd: "/x",
+    })
+    store.create({
+      harnessId: "claude" as never,
+      projectId: "prj_x" as never,
+      cwd: "/x",
+    })
     const r = store.query({ offset: 1 })
     expect(isOk(r) && r.value.length).toBe(2)
   })
 
   it("limits and offsets the result when query paginates", () => {
     const store = makeStore()
-    store.create({ harnessId: "claude" as never })
-    store.create({ harnessId: "claude" as never })
-    store.create({ harnessId: "claude" as never })
+    store.create({
+      harnessId: "claude" as never,
+      projectId: "prj_x" as never,
+      cwd: "/x",
+    })
+    store.create({
+      harnessId: "claude" as never,
+      projectId: "prj_x" as never,
+      cwd: "/x",
+    })
+    store.create({
+      harnessId: "claude" as never,
+      projectId: "prj_x" as never,
+      cwd: "/x",
+    })
     const page = store.query({ limit: 1, offset: 1 })
     expect(isOk(page) && page.value.length).toBe(1)
   })
 
   it("reconciles orphaned open sessions to the clock timestamp", () => {
     const store = makeStore()
-    store.create({ harnessId: "claude" as never })
-    store.create({ harnessId: "codex" as never })
+    store.create({
+      harnessId: "claude" as never,
+      projectId: "prj_x" as never,
+      cwd: "/x",
+    })
+    store.create({
+      harnessId: "codex" as never,
+      projectId: "prj_x" as never,
+      cwd: "/x",
+    })
     const r = store.reconcileOrphaned()
     expect(isOk(r) && r.value).toBe(2)
     const stillOpen = store.query({ running: true })
     expect(isOk(stillOpen) && stillOpen.value.length).toBe(0)
     const again = store.reconcileOrphaned()
     expect(isOk(again) && again.value).toBe(0)
+  })
+
+  it("returns only sessions for the given projectId when filtered", () => {
+    const store = makeStore()
+    const a = store.create({
+      harnessId: "claude" as never,
+      projectId: "prj_a" as never,
+      cwd: "/a",
+    })
+    const b = store.create({
+      harnessId: "claude" as never,
+      projectId: "prj_b" as never,
+      cwd: "/b",
+    })
+    expect(a.ok && b.ok).toBe(true)
+    const r = store.query({ projectId: "prj_a" as never })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value).toHaveLength(1)
   })
 })
