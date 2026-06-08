@@ -58,6 +58,8 @@ const baseStubs = {
   }),
   getModels: async () => ({ ok: true as const, value: [] }),
   getProviders: async () => ({ ok: true as const, value: [] }),
+  getProjects: async () => ({ ok: true as const, value: [] }),
+  setCollapsedProjects: async () => ({ ok: true as const, value: null }),
 }
 
 describe("App view model", () => {
@@ -255,7 +257,7 @@ describe("App view model", () => {
     expect("cwd" in params).toBe(false)
   })
 
-  it("refetches sessions after a successful launch", async () => {
+  it("refetches projects after a successful launch", async () => {
     const client = createFakeIpcClient({
       ...baseStubs,
       getHarnesses: async () => ({
@@ -288,20 +290,23 @@ describe("App view model", () => {
         initialView="sessions"
       />,
     )
-    // The master fetches sessions on mount: two server-side queries (running +
-    // the first recent page).
-    await waitFor(() => expect(client.calls.getSessions.length).toBe(2))
+    // On mount, getProjects is called at least once.
+    await waitFor(() =>
+      expect(client.calls.getProjects.length).toBeGreaterThan(0),
+    )
+    const projectsCountBefore = client.calls.getProjects.length
     fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
     fireEvent.click(await screen.findByRole("button", { name: /launch/i }))
     await waitFor(() => expect(client.calls.launchHarness.length).toBe(1))
-    // After a successful launch the master must refetch BOTH resources so the
-    // new running session appears (the deleted DashboardPage used to do this).
+    // After a successful launch, projects are invalidated and refetched.
     await waitFor(() =>
-      expect(client.calls.getSessions.length).toBeGreaterThan(2),
+      expect(client.calls.getProjects.length).toBeGreaterThan(
+        projectsCountBefore,
+      ),
     )
   })
 
-  it("fetches running and the first recent page server-side on initial render", async () => {
+  it("fetches projects on initial render", async () => {
     const client = createFakeIpcClient(baseStubs)
     render(
       <App
@@ -311,20 +316,15 @@ describe("App view model", () => {
         initialView="sessions"
       />,
     )
-    // The shell now fetches running and ended sessions as two server-side
-    // queries (not one unfiltered call split client-side).
+    // The shell now fetches projects first; per-project session pages load lazily.
     await waitFor(() =>
-      expect(client.calls.getSessions).toContainEqual({ running: true }),
+      expect(client.calls.getProjects.length).toBeGreaterThan(0),
     )
-    expect(client.calls.getSessions).toContainEqual({
-      running: false,
-      limit: 20,
-    })
   })
 
-  it("requests the next recent page when View more is clicked", async () => {
-    // A full first page (length === limit) so the View-more button renders.
-    const page = Array.from({ length: 20 }, (_, i) => ({
+  it("requests the next page when 'Show 10 more' is clicked on a project group", async () => {
+    // Project reports 15 sessions; first page loads 10 → "Show 10 more" button renders.
+    const page = Array.from({ length: 10 }, (_, i) => ({
       id: `s_${i}`,
       harnessId: "claude",
       modelId: "m_1",
@@ -334,9 +334,13 @@ describe("App view model", () => {
     }))
     const client = createFakeIpcClient({
       ...baseStubs,
-      getSessions: async (params) => ({
+      getProjects: async () => ({
         ok: true as const,
-        value: params?.running === false ? page : [],
+        value: [{ id: "prj_1", name: "demo", path: "/demo", sessionCount: 15 }],
+      }),
+      getSessions: async () => ({
+        ok: true as const,
+        value: page,
       }),
     })
     render(
@@ -347,18 +351,20 @@ describe("App view model", () => {
         initialView="sessions"
       />,
     )
-    fireEvent.click(await screen.findByRole("button", { name: /view more/i }))
-    // Bumping the limit re-runs the recent query with the larger page size.
+    fireEvent.click(
+      await screen.findByRole("button", { name: /show 10 more/i }),
+    )
+    // Bumping the limit re-runs the session query with the larger page size.
     await waitFor(() =>
       expect(client.calls.getSessions).toContainEqual({
-        running: false,
-        limit: 40,
+        projectId: "prj_1",
+        limit: 20,
       }),
     )
   })
 
-  it("hides the View more button when the recent page is short", async () => {
-    // Fewer than the limit → not truncated → no View-more button.
+  it("hides the 'Show 10 more' button when all project sessions are loaded", async () => {
+    // Project reports 1 session; loaded page also has 1 → no more to load.
     const page = [
       {
         id: "s_0",
@@ -371,9 +377,13 @@ describe("App view model", () => {
     ]
     const client = createFakeIpcClient({
       ...baseStubs,
-      getSessions: async (params) => ({
+      getProjects: async () => ({
         ok: true as const,
-        value: params?.running === false ? page : [],
+        value: [{ id: "prj_1", name: "demo", path: "/demo", sessionCount: 1 }],
+      }),
+      getSessions: async () => ({
+        ok: true as const,
+        value: page,
       }),
     })
     render(
@@ -387,7 +397,7 @@ describe("App view model", () => {
     await waitFor(() =>
       expect(screen.getByText(/claude · m_1/)).toBeInTheDocument(),
     )
-    expect(screen.queryByRole("button", { name: /view more/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /show 10 more/i })).toBeNull()
   })
 
   it("transitions an open live session to replay when it exits", async () => {
@@ -399,11 +409,15 @@ describe("App view model", () => {
     }
     const ended = { ...live, endedAt: "2026-05-23T10:05:00.000Z" }
     // Before launch the session does not exist; after the exit refetch it is
-    // reported as ended so the master moves it to Recent.
+    // reported as ended so the master moves it to the project group.
     let exited = false
     const { client: terminalClient, fireExit } = controllableTerminalClient()
     const client = createFakeIpcClient({
       ...baseStubs,
+      getProjects: async () => ({
+        ok: true as const,
+        value: [{ id: "prj_1", name: "demo", path: "/demo", sessionCount: 1 }],
+      }),
       getSessions: async () => ({
         ok: true as const,
         value: exited ? [ended] : [live],
@@ -606,6 +620,7 @@ describe("App view model", () => {
           lastSelectedFolder: "/seed/dir",
           lastSelectedHarnessId: "",
           lastSelectedModelId: "",
+          collapsedProjects: [],
         },
       }),
     })
@@ -663,6 +678,7 @@ describe("App view model", () => {
           lastSelectedFolder: "/seed/dir",
           lastSelectedHarnessId: "codex",
           lastSelectedModelId: "mdl_fast",
+          collapsedProjects: [],
         },
       }),
     })

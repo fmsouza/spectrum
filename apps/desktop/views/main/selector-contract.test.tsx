@@ -400,6 +400,11 @@ const isDocumentedGap = (s: string): boolean => {
   // (open state). No rendered app state hovers the rail tooltip; the bubble's
   // appearance is verified by Tooltip.test.tsx. The .lk-tooltip wrapper IS checked.
   if (s === ".lk-tooltip__bubble") return true
+  // ProjectGroup toggle collapsed state variant — only present when a project is
+  // collapsed (data-collapsed="true"). The base .lk-project-group__toggle IS checked
+  // (from the expanded groups rendered in State 2a). Collapsing is verified by
+  // ProjectGroup.test.tsx.
+  if (s === '.lk-project-group__toggle[data-collapsed="true"]') return true
   return false
 }
 
@@ -416,6 +421,17 @@ const baseStubs = {
   }),
   getModels: async () => ({ ok: true as const, value: [] }),
   getProviders: async () => ({ ok: true as const, value: [] }),
+  getProjects: async () => ({ ok: true as const, value: [] }),
+  setCollapsedProjects: async () => ({ ok: true as const, value: null }),
+  getSettings: async () => ({
+    ok: true as const,
+    value: {
+      lastSelectedFolder: "",
+      lastSelectedHarnessId: "",
+      lastSelectedModelId: "",
+      collapsedProjects: [],
+    },
+  }),
 }
 
 afterEach(() => {
@@ -565,22 +581,31 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
     cleanup()
   }
 
-  // ── State 2a: Sessions view — running + recent sessions, failed session selected ─
+  // ── State 2a: Sessions view — project groups with sessions, failed session selected ─
   // Renders: .lk-session-row, .lk-session-row__line, .lk-session-row__sub,
-  //   .lk-session-row__meta, .lk-session-list, .lk-session-group, .lk-session-group__heading,
+  //   .lk-session-row__meta, .lk-session-list,
+  //   .lk-project-group, .lk-project-group__header, .lk-project-group__toggle,
+  //   .lk-project-group__name, .lk-project-group__body,
   //   span[data-tone="danger"] (exitCode:1 badge),
   //   .lk-sessions-detail (not matched by has() — see has-not bucket)
   {
+    const allSessions = [runningSession, failedSession, endedSession]
     const client = createFakeIpcClient({
       ...baseStubs,
-      getSessions: async (params) => ({
+      getProjects: async () => ({
         ok: true as const,
-        value:
-          params?.running === true
-            ? [runningSession]
-            : params?.running === false
-              ? [failedSession, endedSession]
-              : [],
+        value: [
+          {
+            id: "prj_1",
+            name: "demo",
+            path: "/demo",
+            sessionCount: allSessions.length,
+          },
+        ],
+      }),
+      getSessions: async () => ({
+        ok: true as const,
+        value: allSessions,
       }),
       // Empty scrollback so we get the empty-state (not replay pane) for the ended session
       getSessionScrollback: async () => ({
@@ -600,7 +625,8 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
       />,
     )
     await waitFor(() => {
-      // Wait for the session rows to appear
+      // Wait for the project group and session rows to appear
+      expect(container.querySelector(".lk-project-group")).not.toBeNull()
       expect(container.querySelector(".lk-session-row")).not.toBeNull()
     })
     containers.push(container.cloneNode(true) as ParentNode)
@@ -616,14 +642,13 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
     const bytesBase64 = "aGk="
     const client = createFakeIpcClient({
       ...baseStubs,
-      getSessions: async (params) => ({
+      getProjects: async () => ({
         ok: true as const,
-        value:
-          params?.running === true
-            ? []
-            : params?.running === false
-              ? [failedSession]
-              : [],
+        value: [{ id: "prj_1", name: "demo", path: "/demo", sessionCount: 1 }],
+      }),
+      getSessions: async () => ({
+        ok: true as const,
+        value: [failedSession],
       }),
       getSessionScrollback: async () => ({
         ok: true as const,

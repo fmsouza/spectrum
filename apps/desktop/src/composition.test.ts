@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import { createProjectStore } from "@launchkit/projects"
 import { err, ok } from "@launchkit/utils"
 import { createAppContext } from "./composition"
 import type { CreateAppContextDeps } from "./composition"
@@ -74,6 +75,7 @@ const makeFakeDeps = (): {
       url: "ws://localhost:12345/",
       stop: () => undefined,
     })) as never,
+    createProjectStore: createProjectStore,
   }
   return { deps, calls }
 }
@@ -314,5 +316,11 @@ describe("createAppContext wiring", () => {
     const { deps } = makeFakeDeps()
     const ctx = createAppContext(deps)
     expect(typeof ctx.pickFolder).toBe("function")
+  })
+
+  it("exposes a projects store on the context", () => {
+    const { deps } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+    expect(typeof ctx.projects.list).toBe("function")
   })
 })

@@ -54,7 +54,7 @@ describe("launch --name / --cwd", () => {
     expect(createInputs[0]?.cwd).toBe("/Users/fred/projects/app")
   })
 
-  it("omits name/cwd from the session input when the flags are absent", async () => {
+  it("omits name from the session input when --name flag is absent", async () => {
     const createInputs: SessionInput[] = []
     const base = makeFakeDeps({ harnesses: [claude] })
     const deps: CliDeps = {
@@ -68,10 +68,15 @@ describe("launch --name / --cwd", () => {
       },
     }
 
-    const result = await runCli(deps)(["launch", "claude"])
+    const result = await runCli(deps)([
+      "launch",
+      "claude",
+      "--cwd",
+      "/Users/fred/projects/app",
+    ])
 
     expect(result).toEqual({ ok: true, value: undefined })
     expect(createInputs[0]?.name).toBeUndefined()
-    expect(createInputs[0]?.cwd).toBeUndefined()
+    expect(createInputs[0]?.cwd).toBe("/Users/fred/projects/app")
   })
 })
