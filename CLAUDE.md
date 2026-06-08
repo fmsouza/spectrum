@@ -19,5 +19,9 @@ LaunchKit is a Bun + Electrobun desktop app (CLI + GUI) that proxies coding-agen
 ## Definition of Done (every task)
 Test-first (RED observed) → implemented (GREEN) → refactored → `bun run typecheck && bun run lint && bun test` all green → committed with a Conventional-Commits message. If you can't check every box, it's not done.
 
+## Package inventory (partial)
+- `@launchkit/sessions` — session history (depends on db, types, utils)
+- `@launchkit/projects` — project find-or-create + listing (depends on db, types, utils)
+
 ## Project skills
 `.claude/skills/launchkit-new-package` — creating a new internal package under `packages/`. Invoke it when it applies.

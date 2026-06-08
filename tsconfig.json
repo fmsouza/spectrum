@@ -7,6 +7,7 @@
     { "path": "packages/ui" },
     { "path": "packages/harnesses" },
     { "path": "packages/sessions" },
+    { "path": "packages/projects" },
     { "path": "packages/db" },
     { "path": "packages/ipc" }
   ]

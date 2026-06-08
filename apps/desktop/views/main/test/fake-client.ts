@@ -36,6 +36,8 @@ const METHOD_NAMES = [
   "getSessionScrollback",
   "listProviderModels",
   "getSettings",
+  "getProjects",
+  "setCollapsedProjects",
 ] as const satisfies ReadonlyArray<keyof IpcClient>
 
 /**

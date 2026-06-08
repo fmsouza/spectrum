@@ -33,6 +33,7 @@ describe("@launchkit/config barrel", () => {
         lastSelectedFolder: "",
         lastSelectedHarnessId: "",
         lastSelectedModelId: "",
+        collapsedProjects: [],
       },
     }
     const saved = await store.save(next)

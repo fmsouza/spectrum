@@ -92,6 +92,17 @@ export const launchCommand = async (
   const cwd = typeof flags.cwd === "string" ? flags.cwd : undefined
   const name = typeof flags.name === "string" ? flags.name : undefined
 
+  // cwd is required: every session must be associated with a project folder.
+  if (cwd === undefined || cwd.trim() === "") {
+    return err({ kind: "failed", detail: "launch requires --cwd" })
+  }
+
+  // Resolve (or create) the project for this working directory before we spawn anything.
+  const project = deps.projects.findOrCreateByPath(cwd)
+  if (isErr(project)) {
+    return err({ kind: "failed", detail: "could not resolve project" })
+  }
+
   // Build the launch route from the resolved model. No model ⇒ DIRECT (bypass): never probe or
   // start a proxy, and there is no proxy this run owns. A model id ⇒ PROXIED: ensure a proxy is
   // up and keep the handle for any ephemeral one we OWN (so we can stop it after the harness
@@ -104,7 +115,7 @@ export const launchCommand = async (
   const launched = deps.launch({
     harness,
     route,
-    ...(cwd !== undefined ? { cwd } : {}),
+    cwd,
     env: {},
   })
   if (isErr(launched)) {
@@ -115,9 +126,10 @@ export const launchCommand = async (
 
   const session = deps.sessions.create({
     harnessId: harness.id,
+    projectId: project.value.id,
+    cwd,
     ...(modelId !== undefined ? { modelId } : {}),
     ...(name !== undefined ? { name } : {}),
-    ...(cwd !== undefined ? { cwd } : {}),
   })
   if (isErr(session)) {
     owned?.stop()

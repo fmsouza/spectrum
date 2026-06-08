@@ -23,6 +23,7 @@ describe("SettingsSchema", () => {
       lastSelectedFolder: "",
       lastSelectedHarnessId: "",
       lastSelectedModelId: "",
+      collapsedProjects: [],
     })
   })
   it("rejects a non-loopback proxyHost so the proxy can never bind a public interface", () => {
@@ -75,6 +76,7 @@ describe("ConfigSchema", () => {
         lastSelectedFolder: "",
         lastSelectedHarnessId: "",
         lastSelectedModelId: "",
+        collapsedProjects: [],
       },
     }
     expect(ConfigSchema.parse(config)).toEqual(config)
@@ -116,13 +118,14 @@ describe("defaultConfig", () => {
         lastSelectedFolder: "",
         lastSelectedHarnessId: "",
         lastSelectedModelId: "",
+        collapsedProjects: [],
       },
     })
   })
   it("produces a config that satisfies ConfigSchema", () => {
     expect(ConfigSchema.safeParse(defaultConfig()).success).toBe(true)
   })
-  it("uses the bumped CURRENT_CONFIG_VERSION of 5", () => {
-    expect(CURRENT_CONFIG_VERSION).toBe(5)
+  it("uses the bumped CURRENT_CONFIG_VERSION of 6", () => {
+    expect(CURRENT_CONFIG_VERSION).toBe(6)
   })
 })

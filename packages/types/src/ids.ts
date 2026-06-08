@@ -12,5 +12,8 @@ export type HarnessId = z.infer<typeof HarnessIdSchema>
 export const SessionIdSchema = z.string().min(1).brand<"SessionId">()
 export type SessionId = z.infer<typeof SessionIdSchema>
 
+export const ProjectIdSchema = z.string().min(1).brand<"ProjectId">()
+export type ProjectId = z.infer<typeof ProjectIdSchema>
+
 export const SecretRefSchema = z.object({ ref: z.string().min(1) }).strict()
 export type SecretRef = z.infer<typeof SecretRefSchema>

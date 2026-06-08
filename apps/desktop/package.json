@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@launchkit/cli": "workspace:*",
+    "@launchkit/projects": "workspace:*",
     "@launchkit/config": "workspace:*",
     "@launchkit/db": "workspace:*",
     "@launchkit/harnesses": "workspace:*",

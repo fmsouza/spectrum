@@ -1,5 +1,6 @@
 import type { Session, SessionId } from "@launchkit/types"
-import { EmptyState, SessionList, Spinner } from "@launchkit/ui"
+import { EmptyState, ProjectList, Spinner } from "@launchkit/ui"
+import type { ProjectSummary } from "@launchkit/ui"
 import type { ReactElement, ReactNode } from "react"
 import { useSessionScrollback } from "../hooks/useSessionScrollback"
 import { type CreateTerminal, TerminalPane } from "../terminal/TerminalPane"
@@ -8,14 +9,12 @@ import type { TerminalClient } from "../terminal/terminalClient"
 export type SessionsViewInput = {
   readonly selectedSessionId?: SessionId
   readonly openSessionIds: readonly SessionId[]
-  /** Running sessions (`endedAt === undefined`), fetched by the shell. */
-  readonly running: readonly Session[]
-  /** Ended sessions, fetched by the shell. */
-  readonly recent: readonly Session[]
-  /** Whether the recent list is truncated (drives the "View more" button). */
-  readonly hasMore: boolean
-  /** Load the next page of ended sessions (bumps the recent limit in the shell). */
-  readonly onMore: () => void
+  readonly projects: readonly ProjectSummary[]
+  readonly sessionsByProject: Readonly<Record<string, readonly Session[]>>
+  readonly collapsed: ReadonlySet<string>
+  readonly allSessions: readonly Session[]
+  readonly onToggle: (projectId: string) => void
+  readonly onMore: (projectId: string) => void
   readonly onSelect: (id: SessionId) => void
   readonly onNew: () => void
   /**
@@ -28,38 +27,41 @@ export type SessionsViewInput = {
 }
 
 /**
- * The sessions master: renders the dumb `SessionList` from the running/recent
- * lists the shell fetched. Data enters via props (the `useSessions` hook lives
+ * The sessions master: renders the dumb `ProjectList` from the projects/sessions
+ * the shell fetched. Data enters via props (the `useProjects` hook lives
  * in the shell so a launch/exit can refetch it).
  */
 const SessionsMaster = ({
   selectedSessionId,
-  running,
-  recent,
-  hasMore,
+  projects,
+  sessionsByProject,
+  collapsed,
+  onToggle,
   onSelect,
   onMore,
   onNew,
 }: {
   readonly selectedSessionId?: SessionId
-  readonly running: readonly Session[]
-  readonly recent: readonly Session[]
-  readonly hasMore: boolean
+  readonly projects: readonly ProjectSummary[]
+  readonly sessionsByProject: Readonly<Record<string, readonly Session[]>>
+  readonly collapsed: ReadonlySet<string>
+  readonly onToggle: (projectId: string) => void
   readonly onSelect: (id: SessionId) => void
-  readonly onMore: () => void
+  readonly onMore: (projectId: string) => void
   readonly onNew: () => void
 }): ReactElement => (
-  <SessionList
-    running={running}
-    recent={recent}
+  <ProjectList
+    projects={projects}
+    sessionsByProject={sessionsByProject}
+    collapsed={collapsed}
+    {...(selectedSessionId === undefined
+      ? {}
+      : { selectedId: selectedSessionId })}
     labelFor={(s: Session) => ({
       harnessName: String(s.harnessId),
       model: s.modelId !== undefined ? String(s.modelId) : "default",
     })}
-    {...(selectedSessionId === undefined
-      ? {}
-      : { selectedId: selectedSessionId })}
-    hasMore={hasMore}
+    onToggle={onToggle}
     onSelect={onSelect}
     onMore={onMore}
     onNew={onNew}
@@ -164,16 +166,14 @@ const ReplayDetail = ({
 const SessionsDetail = ({
   selectedSessionId,
   openSessionIds,
-  running,
-  recent,
+  allSessions,
   onExit,
   terminalClient,
   createTerminal,
 }: {
   readonly selectedSessionId?: SessionId
   readonly openSessionIds: readonly SessionId[]
-  readonly running: readonly Session[]
-  readonly recent: readonly Session[]
+  readonly allSessions: readonly Session[]
   readonly onExit: (id: SessionId) => void
   readonly terminalClient: TerminalClient
   readonly createTerminal: CreateTerminal
@@ -182,9 +182,7 @@ const SessionsDetail = ({
     selectedSessionId !== undefined &&
     openSessionIds.includes(selectedSessionId)
   // Resolve the full selected session so the replay can show its exit banner.
-  const selectedSession = [...running, ...recent].find(
-    (s) => s.id === selectedSessionId,
-  )
+  const selectedSession = allSessions.find((s) => s.id === selectedSessionId)
 
   return (
     <div className="lk-sessions-detail">
@@ -227,16 +225,18 @@ const SessionsDetail = ({
 
 /**
  * Sessions master/detail factory for `AppShell`. The shell (`app.tsx`) owns the
- * selection + open-set state, the session list (via `useSessions`), and the
- * launch/exit flow; this view wires the dumb `SessionList` and the terminal
+ * selection + open-set state, the project/session list (via `useProjects`), and the
+ * launch/exit flow; this view wires the dumb `ProjectList` and the terminal
  * panes from the props it is handed.
  */
 export const SessionsView = ({
   selectedSessionId,
   openSessionIds,
-  running,
-  recent,
-  hasMore,
+  projects,
+  sessionsByProject,
+  collapsed,
+  allSessions,
+  onToggle,
   onMore,
   onSelect,
   onNew,
@@ -250,9 +250,10 @@ export const SessionsView = ({
   master: (
     <SessionsMaster
       {...(selectedSessionId === undefined ? {} : { selectedSessionId })}
-      running={running}
-      recent={recent}
-      hasMore={hasMore}
+      projects={projects}
+      sessionsByProject={sessionsByProject}
+      collapsed={collapsed}
+      onToggle={onToggle}
       onSelect={onSelect}
       onMore={onMore}
       onNew={onNew}
@@ -262,8 +263,7 @@ export const SessionsView = ({
     <SessionsDetail
       {...(selectedSessionId === undefined ? {} : { selectedSessionId })}
       openSessionIds={openSessionIds}
-      running={running}
-      recent={recent}
+      allSessions={allSessions}
       onExit={onExit}
       terminalClient={terminalClient}
       createTerminal={createTerminal}

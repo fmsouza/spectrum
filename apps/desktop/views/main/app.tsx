@@ -9,9 +9,9 @@ import { IpcClientProvider, useIpcClient } from "./IpcClientContext"
 import { createRealClients } from "./clients"
 import { useHarnesses } from "./hooks/useHarnesses"
 import { useModels } from "./hooks/useModels"
+import { useProjects } from "./hooks/useProjects"
 import { useProviders } from "./hooks/useProviders"
 import { useProxyStatus } from "./hooks/useProxyStatus"
-import { useSessions } from "./hooks/useSessions"
 import { StoreProvider, useStores } from "./stores/createStores"
 import { type LocationAdapter, windowLocationAdapter } from "./stores/location"
 import { encodeView } from "./stores/uiStore"
@@ -106,15 +106,10 @@ const AppInner = ({
     }
   }, [client])
 
-  // The session list lives here (not inside SessionsView) so a launch or an exit
-  // can refetch it: a new running session must appear and an exited one must
-  // move from Running to Recent. Two server-side queries: all running sessions
-  // (pinned group) + a paginated page of ended sessions.
-  const sessions = useSessions()
-  const refetchSessions = sessions.refetch
-  const runningSessions = sessions.running
-  const recentSessions = sessions.recent
-  const hasMore = sessions.hasMore
+  // The projects/sessions list lives here (not inside SessionsView) so a launch or an exit
+  // can refetch it: a new running session must appear in the right project group.
+  const projectsView = useProjects()
+  const refetchSessions = projectsView.refetch
 
   // Feed the new-session modal. These hooks load lazily and stay cheap when the
   // modal is closed (the data is just handed to a dumb component).
@@ -155,7 +150,7 @@ const AppInner = ({
     // Omit empty name/cwd so they're never sent as "" — the IPC `name` schema
     // accepts "" but a session created with name:"" then fails SessionSchema's
     // min(1) on the next getSessions, and an empty cwd is meaningless.
-    const r = await sessions.launch({
+    const r = await projectsView.launch({
       id: v.harnessId,
       ...(v.modelId !== undefined ? { modelId: v.modelId } : {}),
       ...(v.name.trim() ? { name: v.name } : {}),
@@ -178,7 +173,7 @@ const AppInner = ({
   /**
    * A live session's pty exited: drop it from the open set so its dead live pane
    * unmounts (selecting it now renders the read-only replay), and refetch so the
-   * master moves it from Running to Recent.
+   * master reflects its ended state (exit badge) within its project group.
    */
   const onSessionExit = (id: SessionId): void => {
     closeSession(id)
@@ -196,10 +191,12 @@ const AppInner = ({
             ? {}
             : { selectedSessionId: view.selectedSessionId }),
           openSessionIds,
-          running: runningSessions,
-          recent: recentSessions,
-          hasMore,
-          onMore: sessions.loadMore,
+          projects: projectsView.projects,
+          sessionsByProject: projectsView.sessionsByProject,
+          collapsed: projectsView.collapsed,
+          allSessions: projectsView.allSessions,
+          onToggle: projectsView.toggleCollapse,
+          onMore: projectsView.loadMore,
           onSelect: (id) =>
             navigate({ kind: "sessions", selectedSessionId: id }),
           onNew: () => {
