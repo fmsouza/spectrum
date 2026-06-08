@@ -1,3 +1,4 @@
+import { StoredEventSchema } from "@launchkit/agent-events"
 import {
   HarnessDefinitionSchema,
   HarnessIdSchema,
@@ -178,6 +179,21 @@ export const GetTerminalSocketUrlResultSchema = z
   .object({ url: z.string() })
   .strict()
 
+// The webview asks for the dedicated runner WebSocket URL (a loopback ws the bun side serves for the
+// canonical run-event stream — see apps/desktop/src/gui/runner-socket.ts) and connects to it directly.
+export const GetRunnerSocketUrlParamsSchema = z.undefined()
+export const GetRunnerSocketUrlResultSchema = z
+  .object({ url: z.string() })
+  .strict()
+
+// Replay: the full ordered canonical event log for a session, validated by StoredEventSchema.
+export const GetRunEventsParamsSchema = z
+  .object({ id: SessionIdSchema })
+  .strict()
+export const GetRunEventsResultSchema = z
+  .object({ events: z.array(StoredEventSchema) })
+  .strict()
+
 // ── Model discovery ───────────────────────────────────────────────────────
 
 export const ListProviderModelsParamsSchema = z
@@ -310,6 +326,14 @@ export const IpcMethodSchemas = {
   getTerminalSocketUrl: {
     params: GetTerminalSocketUrlParamsSchema,
     result: GetTerminalSocketUrlResultSchema,
+  },
+  getRunnerSocketUrl: {
+    params: GetRunnerSocketUrlParamsSchema,
+    result: GetRunnerSocketUrlResultSchema,
+  },
+  getRunEvents: {
+    params: GetRunEventsParamsSchema,
+    result: GetRunEventsResultSchema,
   },
   pickFolder: {
     params: PickFolderParamsSchema,

@@ -408,6 +408,8 @@ describe("IpcMethodSchemas", () => {
       "getSettings",
       "getProjects",
       "setCollapsedProjects",
+      "getRunnerSocketUrl",
+      "getRunEvents",
     ] as const
     for (const name of expected) {
       expect(IpcMethodSchemas[name]).toBeDefined()

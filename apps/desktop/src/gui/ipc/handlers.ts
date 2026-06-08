@@ -294,6 +294,10 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
 
     getTerminalSocketUrl: async () => ({ url: ctx.terminalSocketUrl }),
 
+    getRunnerSocketUrl: async () => fail("runner socket not yet wired"),
+
+    getRunEvents: async () => fail("run-store not yet wired"),
+
     getSettings: async () => {
       const config = await loadConfig()
       return {
