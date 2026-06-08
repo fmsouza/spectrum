@@ -36,7 +36,7 @@ export type TerminalPaneProps =
       /**
        * Called when the live session's pty exits. The shell uses this to drop
        * the id from the open set (unmounting this dead pane) and refetch the
-       * session list so it moves from Running to Recent. Optional: omit for
+       * session list so it reflects the ended state. Optional: omit for
        * panes that don't need the lifecycle transition.
        */
       readonly onExit?: () => void

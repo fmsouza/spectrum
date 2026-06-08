@@ -300,7 +300,30 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         lastSelectedFolder: config.settings.lastSelectedFolder,
         lastSelectedHarnessId: config.settings.lastSelectedHarnessId,
         lastSelectedModelId: config.settings.lastSelectedModelId,
+        collapsedProjects: config.settings.collapsedProjects,
       }
+    },
+
+    // ── Projects ──────────────────────────────────────────────────────────────
+    getProjects: async () => {
+      const result = ctx.projects.list()
+      if (!isOk(result)) return fail("could not list projects")
+      return result.value.map((p) => ({
+        id: p.id,
+        name: p.name,
+        path: p.path,
+        sessionCount: p.sessionCount,
+      }))
+    },
+
+    setCollapsedProjects: async ({ ids }) => {
+      const config = await loadConfig()
+      const saved = await ctx.config.save({
+        ...config,
+        settings: { ...config.settings, collapsedProjects: ids },
+      })
+      if (!isOk(saved)) return fail("could not save collapsed projects")
+      return null
     },
 
     // ── Dialogs ───────────────────────────────────────────────────────────────

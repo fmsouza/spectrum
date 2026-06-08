@@ -23,6 +23,7 @@ const configWithProvider = (): Config => ({
     lastSelectedFolder: "",
     lastSelectedHarnessId: "",
     lastSelectedModelId: "",
+    collapsedProjects: [],
   },
 })
 

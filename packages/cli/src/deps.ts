@@ -1,5 +1,6 @@
 import type { Config, ConfigStore } from "@launchkit/config"
 import type { LaunchParams } from "@launchkit/harnesses"
+import type { ProjectStore } from "@launchkit/projects"
 import type { RunningProxy, RuntimeState } from "@launchkit/proxy"
 import type { SecretStore } from "@launchkit/secrets"
 import type { SessionStore } from "@launchkit/sessions"
@@ -44,6 +45,7 @@ export type CliDeps = {
     start(opts: StartProxyDeps): RunningProxy
   }
   readonly sessions: SessionStore
+  readonly projects: ProjectStore
   /**
    * Holds the running proxy's per-run key so `launch` can reuse it (instead of minting a
    * mismatched one) when a proxy — typically the GUI's persistent one — is already up.

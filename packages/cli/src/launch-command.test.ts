@@ -50,7 +50,7 @@ describe("launch", () => {
           started = true
         },
       }),
-    )(["launch", "claude", "--model", "fast"])
+    )(["launch", "claude", "--model", "fast", "--cwd", "/tmp/proj"])
     expect(result).toEqual({ ok: true, value: undefined })
     expect(started).toBe(false) // proxy.start MUST NOT be called when one is already running
   })
@@ -70,7 +70,14 @@ describe("launch", () => {
       launchSpy: (p) => launchCalls.push(p),
     })
 
-    const result = await runCli(deps)(["launch", "claude", "--model", "fast"])
+    const result = await runCli(deps)([
+      "launch",
+      "claude",
+      "--model",
+      "fast",
+      "--cwd",
+      "/tmp/proj",
+    ])
 
     expect(result).toEqual({ ok: true, value: undefined })
     const route = launchCalls[0]?.route
@@ -93,7 +100,14 @@ describe("launch", () => {
       },
     })
 
-    const result = await runCli(deps)(["launch", "claude", "--model", "fast"])
+    const result = await runCli(deps)([
+      "launch",
+      "claude",
+      "--model",
+      "fast",
+      "--cwd",
+      "/tmp/proj",
+    ])
 
     expect(result).toEqual({ ok: true, value: undefined })
     expect(started).toBe(true)
@@ -110,7 +124,7 @@ describe("launch", () => {
           startCalls.push(opts)
         },
       }),
-    )(["launch", "claude", "--model", "fast"])
+    )(["launch", "claude", "--model", "fast", "--cwd", "/tmp/proj"])
     expect(result).toEqual({ ok: true, value: undefined })
     expect(startCalls).toHaveLength(1)
     expect(startCalls[0]?.host).toBe("127.0.0.1")
@@ -126,10 +140,12 @@ describe("launch", () => {
     let commandReturned = false
     const promise = runCli(
       makeFakeDeps({ harnesses: [claude], launchExited: exited }),
-    )(["launch", "claude", "--model", "fast"]).then((r) => {
-      commandReturned = true
-      return r
-    })
+    )(["launch", "claude", "--model", "fast", "--cwd", "/tmp/proj"]).then(
+      (r) => {
+        commandReturned = true
+        return r
+      },
+    )
 
     // Yield a full macrotask; the command must NOT have returned while the harness
     // (its `exited` promise) is still pending.
@@ -159,7 +175,7 @@ describe("launch", () => {
         launchExited: exited,
         proxyStopSpy: () => stopOrder.push("stop"),
       }),
-    )(["launch", "claude", "--model", "fast"])
+    )(["launch", "claude", "--model", "fast", "--cwd", "/tmp/proj"])
 
     await Promise.resolve()
     expect(stopOrder).toEqual([]) // not stopped while the harness is alive
@@ -182,7 +198,7 @@ describe("launch", () => {
           stopped = true
         },
       }),
-    )(["launch", "claude", "--model", "fast"])
+    )(["launch", "claude", "--model", "fast", "--cwd", "/tmp/proj"])
 
     expect(result).toEqual({ ok: true, value: undefined })
     expect(stopped).toBe(false) // a reused proxy is NOT owned by this run, so never stopped
@@ -203,7 +219,14 @@ describe("launch", () => {
       },
     })
 
-    const result = await runCli(deps)(["launch", "claude", "--model", "fast"])
+    const result = await runCli(deps)([
+      "launch",
+      "claude",
+      "--model",
+      "fast",
+      "--cwd",
+      "/tmp/proj",
+    ])
 
     expect(result).toEqual({ ok: true, value: undefined })
     expect(launchCalls).toHaveLength(1)
@@ -253,7 +276,12 @@ describe("launch", () => {
       },
     }
 
-    const result = await runCli(deps)(["launch", "claude"])
+    const result = await runCli(deps)([
+      "launch",
+      "claude",
+      "--cwd",
+      "/tmp/proj",
+    ])
 
     expect(result).toEqual({ ok: true, value: undefined })
     // Direct route, no proxy fields.
@@ -279,7 +307,7 @@ describe("launch", () => {
         proxyKey: SECRET_KEY,
         launchSpy: (p) => launchCalls.push(p),
       }),
-    )(["launch", "claude", "--model", "fast"])
+    )(["launch", "claude", "--model", "fast", "--cwd", "/tmp/proj"])
 
     // The key reaches the launcher (which puts it in the child env) ...
     const route = launchCalls[0]?.route
@@ -300,7 +328,7 @@ describe("launch", () => {
           error: { kind: "spawn-failed", detail: "ENOENT" },
         },
       }),
-    )(["launch", "claude", "--model", "fast"])
+    )(["launch", "claude", "--model", "fast", "--cwd", "/tmp/proj"])
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error.kind).toBe("failed")
@@ -312,6 +340,16 @@ describe("launch", () => {
         registryError: { kind: "read-failed", detail: "EACCES" },
       }),
     )(["launch", "claude"])
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error.kind).toBe("failed")
+  })
+
+  it("returns a failure when launching without a cwd", async () => {
+    const result = await runCli(makeFakeDeps({ harnesses: [claude] }))([
+      "launch",
+      "claude",
+    ])
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error.kind).toBe("failed")

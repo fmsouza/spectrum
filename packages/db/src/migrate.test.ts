@@ -38,6 +38,7 @@ describe("runMigrations", () => {
         "id",
         "modelId",
         "name",
+        "projectId",
         "startedAt",
       ].sort(),
     )
@@ -48,6 +49,8 @@ describe("runMigrations", () => {
       .map((r) => String((r as { name: unknown }).name))
     expect(indexes).toContain("idx_sessions_startedAt")
     expect(indexes).toContain("idx_sessions_harnessId")
+    expect(indexes).toContain("idx_sessions_projectId")
+    expect(indexes).toContain("idx_projects_path")
   })
 
   it("is idempotent — running migrations twice does not error", () => {
@@ -89,6 +92,7 @@ describe("runMigrations", () => {
         "id",
         "modelId",
         "name",
+        "projectId",
         "startedAt",
       ].sort(),
     )
@@ -96,12 +100,12 @@ describe("runMigrations", () => {
       .query("SELECT COUNT(*) AS n FROM sessions")
       .get() as { n: number }
     expect(remaining.n).toBe(0)
-    // 0000 is now tracked.
+    // 0000 and 0001 are now tracked.
     const tracked = client.connection
       .query("SELECT tag FROM __drizzle_migrations")
       .all()
       .map((row) => String((row as { tag: unknown }).tag))
-    expect(tracked).toEqual(["0000_sad_turbo"])
+    expect(tracked).toEqual(["0000_sad_turbo", "0001_melted_richard_fisk"])
   })
 
   it("tracks applied migrations in a tracking table, with no folder dependency", () => {

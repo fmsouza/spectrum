@@ -106,8 +106,26 @@ const v4ToV5: Migration = {
   },
 }
 
+/**
+ * v6 adds `settings.collapsedProjects` (an array of project IDs that the user has
+ * collapsed in the sidebar). The new field has a schema-level default of `[]`, so
+ * documents that existed at v5 simply gain the field with an empty array on first
+ * load. No data transformation is needed beyond bumping the version.
+ */
+const v5ToV6: Migration = {
+  from: 5,
+  to: 6,
+  migrate: (raw) => ({ ...raw, version: 6 }),
+}
+
 /** Ordered list of forward migrations. Append a new step whenever `CURRENT_CONFIG_VERSION` bumps. */
-export const migrations: readonly Migration[] = [v1ToV2, v2ToV3, v3ToV4, v4ToV5]
+export const migrations: readonly Migration[] = [
+  v1ToV2,
+  v2ToV3,
+  v3ToV4,
+  v4ToV5,
+  v5ToV6,
+]
 
 /**
  * Read `raw.version`, apply ordered migrations up to `CURRENT_CONFIG_VERSION`, then validate

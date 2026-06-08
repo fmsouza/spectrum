@@ -7,6 +7,7 @@ import {
 } from "@launchkit/config"
 import { createSqliteClient, runMigrations } from "@launchkit/db"
 import type { LaunchParams } from "@launchkit/harnesses"
+import { createProjectStore } from "@launchkit/projects"
 import {
   type RunningProxy,
   type RuntimeState,
@@ -73,6 +74,12 @@ export const makeFakeDeps = (over: FakeDepsOverrides = {}): CliDeps => {
     idGen: createSequentialIdGen(),
   })
 
+  const projects = createProjectStore({
+    db: client,
+    clock: createFixedClock(new Date("2026-05-23T10:00:00.000Z")),
+    idGen: createSequentialIdGen(),
+  })
+
   const runningProxy: RunningProxy = {
     hostname: "127.0.0.1",
     port: 4000,
@@ -85,6 +92,7 @@ export const makeFakeDeps = (over: FakeDepsOverrides = {}): CliDeps => {
     config,
     secrets,
     sessions,
+    projects,
     runtime,
     out,
     registry: {
