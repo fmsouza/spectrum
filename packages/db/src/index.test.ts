@@ -7,6 +7,7 @@ describe("@launchkit/db barrel", () => {
       [
         "createSqliteClient",
         "projects",
+        "runEvents",
         "runMigrations",
         "sessions",
         "tryDb",
