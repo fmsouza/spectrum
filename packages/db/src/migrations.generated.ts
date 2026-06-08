@@ -21,7 +21,10 @@ export const bundledMigrations: readonly BundledMigration[] = [
     statements: [
       "CREATE TABLE `projects` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`name` text NOT NULL,\n\t`path` text NOT NULL,\n\t`createdAt` text NOT NULL\n);",
       "CREATE UNIQUE INDEX `idx_projects_path` ON `projects` (`path`);",
-      "ALTER TABLE `sessions` ADD `projectId` text NOT NULL REFERENCES projects(id);",
+      "DROP TABLE `sessions`;",
+      "CREATE TABLE `sessions` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`harnessId` text NOT NULL,\n\t`modelId` text,\n\t`startedAt` text NOT NULL,\n\t`endedAt` text,\n\t`exitCode` integer,\n\t`name` text,\n\t`cwd` text,\n\t`projectId` text NOT NULL REFERENCES projects(id)\n);",
+      "CREATE INDEX `idx_sessions_startedAt` ON `sessions` (`startedAt`);",
+      "CREATE INDEX `idx_sessions_harnessId` ON `sessions` (`harnessId`);",
       "CREATE INDEX `idx_sessions_projectId` ON `sessions` (`projectId`);",
     ],
   },
