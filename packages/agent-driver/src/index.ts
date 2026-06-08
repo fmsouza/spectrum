@@ -5,6 +5,8 @@ export type {
   AgentStartInput,
   DriverError,
 } from "./driver"
+export type { FakeReaction, FakeScript } from "./fake-driver"
+export { createFakeDriver, demoScript } from "./fake-driver"
 export type { RunEventSink, SessionSink } from "./ports"
 export type { RunnerInbound, RunnerOutbound } from "./protocol"
 export { decodeRunnerInbound } from "./protocol"
