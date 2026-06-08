@@ -22,6 +22,7 @@ Test-first (RED observed) → implemented (GREEN) → refactored → `bun run ty
 ## Package inventory (partial)
 - `@launchkit/sessions` — session history (depends on db, types, utils)
 - `@launchkit/projects` — project find-or-create + listing (depends on db, types, utils)
+- `@launchkit/agent-events` — canonical event schemas + pure reducer (depends on types, utils; zero IO)
 
 ## Project skills
 `.claude/skills/launchkit-new-package` — creating a new internal package under `packages/`. Invoke it when it applies.

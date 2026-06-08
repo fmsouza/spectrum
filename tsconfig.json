@@ -9,6 +9,7 @@
     { "path": "packages/sessions" },
     { "path": "packages/projects" },
     { "path": "packages/db" },
-    { "path": "packages/ipc" }
+    { "path": "packages/ipc" },
+    { "path": "packages/agent-events" }
   ]
 }

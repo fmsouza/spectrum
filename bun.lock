@@ -52,6 +52,15 @@
         "bun-types": "latest",
       },
     },
+    "packages/agent-events": {
+      "name": "@launchkit/agent-events",
+      "version": "0.1.0",
+      "dependencies": {
+        "@launchkit/types": "workspace:*",
+        "@launchkit/utils": "workspace:*",
+        "zod": "^3.24.0",
+      },
+    },
     "packages/cli": {
       "name": "@launchkit/cli",
       "version": "0.1.0",
@@ -344,6 +353,8 @@
     "@inquirer/figures": ["@inquirer/figures@2.0.7", "", {}, "sha512-aJ8TBPOGB6f/2qziPfElISTCEd5XOYTFckA2SGjhNmiKzfK/u4ot3v0DUzGVdUnKjN10EqnnEPck36BkyfLnJw=="],
 
     "@inquirer/type": ["@inquirer/type@4.0.7", "", { "peerDependencies": { "@types/node": ">=18" }, "optionalPeers": ["@types/node"] }, "sha512-t28inv14nMQ1PhKpsJPY+kEs/c00qzeCOS2gTNRyTjG5d6qsVA2fItxW4hkvGZ5lvanGLdtCzVIx5dwdRpN1+g=="],
+
+    "@launchkit/agent-events": ["@launchkit/agent-events@workspace:packages/agent-events"],
 
     "@launchkit/biome-config": ["@launchkit/biome-config@workspace:tooling/biome-config"],
 
