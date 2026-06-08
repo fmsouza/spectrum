@@ -1,0 +1,143 @@
+import { describe, expect, it } from "bun:test"
+import { CanonicalEventSchema, StoredEventSchema, UsageSchema } from "./events"
+
+describe("UsageSchema", () => {
+  it("parses usage with required and optional fields", () => {
+    const parsed = UsageSchema.parse({
+      inputTokens: 10,
+      outputTokens: 5,
+      cachedInputTokens: 2,
+      costUsd: 0.01,
+    })
+    expect(parsed.inputTokens).toBe(10)
+    expect(parsed.cachedInputTokens).toBe(2)
+  })
+
+  it("rejects negative token counts", () => {
+    expect(
+      UsageSchema.safeParse({ inputTokens: -1, outputTokens: 0 }).success,
+    ).toBe(false)
+  })
+
+  it("rejects unknown keys (strict)", () => {
+    expect(
+      UsageSchema.safeParse({ inputTokens: 1, outputTokens: 1, extra: 1 })
+        .success,
+    ).toBe(false)
+  })
+})
+
+describe("CanonicalEventSchema", () => {
+  it("parses a runner-started event with parent + spawn linkage", () => {
+    const parsed = CanonicalEventSchema.parse({
+      type: "runner-started",
+      runnerId: "rnr_child",
+      parentRunnerId: "rnr_root",
+      spawnedByCallId: "call_1",
+      agentType: "Task",
+      title: "sub agent",
+      model: "claude",
+    })
+    expect(parsed.type).toBe("runner-started")
+  })
+
+  it("parses a minimal runner-started event (root)", () => {
+    const parsed = CanonicalEventSchema.parse({
+      type: "runner-started",
+      runnerId: "rnr_root",
+    })
+    expect(parsed.type).toBe("runner-started")
+  })
+
+  it("parses a tool-call-started event with opaque input", () => {
+    const parsed = CanonicalEventSchema.parse({
+      type: "tool-call-started",
+      runnerId: "rnr_root",
+      callId: "call_1",
+      tool: "Bash",
+      input: { command: "ls" },
+    })
+    expect(parsed.type).toBe("tool-call-started")
+  })
+
+  it("parses a file-change event mapping kind", () => {
+    const parsed = CanonicalEventSchema.parse({
+      type: "file-change",
+      runnerId: "rnr_root",
+      path: "/x/y.ts",
+      kind: "update",
+      diff: "@@",
+    })
+    expect(parsed.type).toBe("file-change")
+  })
+
+  it("parses an approval-requested event with a target", () => {
+    const parsed = CanonicalEventSchema.parse({
+      type: "approval-requested",
+      runnerId: "rnr_root",
+      requestId: "req_1",
+      target: { kind: "command", detail: "rm -rf" },
+    })
+    expect(parsed.type).toBe("approval-requested")
+  })
+
+  it("parses a usage event", () => {
+    const parsed = CanonicalEventSchema.parse({
+      type: "usage",
+      runnerId: "rnr_root",
+      usage: { inputTokens: 1, outputTokens: 2 },
+    })
+    expect(parsed.type).toBe("usage")
+  })
+
+  it("rejects an event with an unknown type", () => {
+    expect(
+      CanonicalEventSchema.safeParse({ type: "nope", runnerId: "rnr_root" })
+        .success,
+    ).toBe(false)
+  })
+
+  it("rejects a text-delta event missing text (strict shape)", () => {
+    expect(
+      CanonicalEventSchema.safeParse({
+        type: "text-delta",
+        runnerId: "rnr_root",
+        messageId: "m1",
+      }).success,
+    ).toBe(false)
+  })
+})
+
+describe("StoredEventSchema", () => {
+  it("parses a stored envelope wrapping a canonical event", () => {
+    const parsed = StoredEventSchema.parse({
+      seq: 0,
+      sessionId: "s_1",
+      ts: "2026-06-08T10:00:00.000Z",
+      event: {
+        type: "text-delta",
+        runnerId: "rnr_root",
+        messageId: "m1",
+        text: "hi",
+      },
+    })
+    expect(parsed.seq).toBe(0)
+    expect(parsed.event.type).toBe("text-delta")
+  })
+
+  it("rejects a stored envelope with a non-datetime ts", () => {
+    expect(
+      StoredEventSchema.safeParse({
+        seq: 0,
+        sessionId: "s_1",
+        ts: "yesterday",
+        event: {
+          type: "text-delta",
+          runnerId: "rnr_root",
+          messageId: "m1",
+          text: "hi",
+        },
+      }).success,
+    ).toBe(false)
+  })
+})
