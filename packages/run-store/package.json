@@ -11,5 +11,6 @@
     "@launchkit/types": "workspace:*",
     "@launchkit/utils": "workspace:*",
     "drizzle-orm": "^0.45.2"
-  }
+  },
+  "devDependencies": { "@launchkit/sessions": "workspace:*" }
 }

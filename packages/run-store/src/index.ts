@@ -1,1 +1,3 @@
-export const RUN_STORE_PACKAGE = "@launchkit/run-store" as const
+export type { RunStoreError } from "./errors"
+export type { RunStore } from "./store"
+export { createRunStore } from "./store"
