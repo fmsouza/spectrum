@@ -6,3 +6,5 @@ export type {
   DriverError,
 } from "./driver"
 export type { RunEventSink, SessionSink } from "./ports"
+export type { RunnerInbound, RunnerOutbound } from "./protocol"
+export { decodeRunnerInbound } from "./protocol"
