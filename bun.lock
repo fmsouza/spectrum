@@ -162,6 +162,17 @@
         "zod": "^3.25.76",
       },
     },
+    "packages/run-store": {
+      "name": "@launchkit/run-store",
+      "version": "0.1.0",
+      "dependencies": {
+        "@launchkit/agent-events": "workspace:*",
+        "@launchkit/db": "workspace:*",
+        "@launchkit/types": "workspace:*",
+        "@launchkit/utils": "workspace:*",
+        "drizzle-orm": "^0.45.2",
+      },
+    },
     "packages/secrets": {
       "name": "@launchkit/secrets",
       "version": "0.1.0",
@@ -373,6 +384,8 @@
     "@launchkit/proxy": ["@launchkit/proxy@workspace:packages/proxy"],
 
     "@launchkit/pty": ["@launchkit/pty@workspace:packages/pty"],
+
+    "@launchkit/run-store": ["@launchkit/run-store@workspace:packages/run-store"],
 
     "@launchkit/secrets": ["@launchkit/secrets@workspace:packages/secrets"],
 
