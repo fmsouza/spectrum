@@ -5,9 +5,13 @@ import { Composer } from "./Composer"
 describe("Composer", () => {
   it("calls onSend with the typed text when Send is clicked", () => {
     let sent: string | undefined
-    render(<Composer onSend={(t) => {
-      sent = t
-    }} />)
+    render(
+      <Composer
+        onSend={(t) => {
+          sent = t
+        }}
+      />,
+    )
     fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "do the thing" },
     })
@@ -18,9 +22,13 @@ describe("Composer", () => {
 
   it("does not call onSend for whitespace-only input", () => {
     let calls = 0
-    render(<Composer onSend={() => {
-      calls += 1
-    }} />)
+    render(
+      <Composer
+        onSend={() => {
+          calls += 1
+        }}
+      />,
+    )
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "   " } })
     fireEvent.click(screen.getByRole("button", { name: "Send" }))
     expect(calls).toBe(0)

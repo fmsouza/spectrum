@@ -19,13 +19,25 @@ export const ApprovalCard = ({
     <code className="lk-approval__detail">{item.target.detail}</code>
     {item.decision === undefined ? (
       <div className="lk-approval__actions">
-        <Button variant="primary" disabled={inert} onClick={() => onDecide("allow")}>
+        <Button
+          variant="primary"
+          disabled={inert}
+          onClick={() => onDecide("allow")}
+        >
           Approve
         </Button>
-        <Button variant="secondary" disabled={inert} onClick={() => onDecide("deny")}>
+        <Button
+          variant="secondary"
+          disabled={inert}
+          onClick={() => onDecide("deny")}
+        >
           Deny
         </Button>
-        <Button variant="secondary" disabled={inert} onClick={() => onDecide("allow-always")}>
+        <Button
+          variant="secondary"
+          disabled={inert}
+          onClick={() => onDecide("allow-always")}
+        >
           Always
         </Button>
       </div>

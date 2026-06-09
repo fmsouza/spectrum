@@ -18,9 +18,14 @@ describe("ApprovalCard", () => {
 
   it("calls onDecide with allow when Approve is clicked", () => {
     let decision: ApprovalDecision | undefined
-    render(<ApprovalCard item={pending} onDecide={(d) => {
-      decision = d
-    }} />)
+    render(
+      <ApprovalCard
+        item={pending}
+        onDecide={(d) => {
+          decision = d
+        }}
+      />,
+    )
     fireEvent.click(screen.getByRole("button", { name: "Approve" }))
     expect(decision).toBe("allow")
     cleanup()
@@ -28,9 +33,14 @@ describe("ApprovalCard", () => {
 
   it("calls onDecide with deny when Deny is clicked", () => {
     let decision: ApprovalDecision | undefined
-    render(<ApprovalCard item={pending} onDecide={(d) => {
-      decision = d
-    }} />)
+    render(
+      <ApprovalCard
+        item={pending}
+        onDecide={(d) => {
+          decision = d
+        }}
+      />,
+    )
     fireEvent.click(screen.getByRole("button", { name: "Deny" }))
     expect(decision).toBe("deny")
     cleanup()
@@ -38,9 +48,14 @@ describe("ApprovalCard", () => {
 
   it("calls onDecide with allow-always when Always is clicked", () => {
     let decision: ApprovalDecision | undefined
-    render(<ApprovalCard item={pending} onDecide={(d) => {
-      decision = d
-    }} />)
+    render(
+      <ApprovalCard
+        item={pending}
+        onDecide={(d) => {
+          decision = d
+        }}
+      />,
+    )
     fireEvent.click(screen.getByRole("button", { name: "Always" }))
     expect(decision).toBe("allow-always")
     cleanup()
