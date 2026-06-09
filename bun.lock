@@ -26,6 +26,7 @@
         "launchkit": "./src/cli.ts",
       },
       "dependencies": {
+        "@launchkit/agent-driver": "workspace:*",
         "@launchkit/cli": "workspace:*",
         "@launchkit/config": "workspace:*",
         "@launchkit/db": "workspace:*",

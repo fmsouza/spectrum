@@ -15,6 +15,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@launchkit/agent-driver": "workspace:*",
     "@launchkit/cli": "workspace:*",
     "@launchkit/projects": "workspace:*",
     "@launchkit/config": "workspace:*",
