@@ -1,7 +1,4 @@
-import type {
-  RunnerInbound,
-  RunnerOutbound,
-} from "@launchkit/agent-driver/protocol"
+import type { RunnerInbound, RunnerOutbound } from "@launchkit/agent-driver"
 import type { ApprovalDecision, StoredEvent } from "@launchkit/agent-events"
 import type { SessionId } from "@launchkit/types"
 

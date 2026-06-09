@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { RunnerOutbound } from "@launchkit/agent-driver/protocol"
+import type { RunnerOutbound } from "@launchkit/agent-driver"
 import type { StoredEvent } from "@launchkit/agent-events"
 import { SessionIdSchema } from "@launchkit/types"
 import { createRunnerClient } from "./runnerClient"
