@@ -12,6 +12,7 @@ import { useModels } from "./hooks/useModels"
 import { useProjects } from "./hooks/useProjects"
 import { useProviders } from "./hooks/useProviders"
 import { useProxyStatus } from "./hooks/useProxyStatus"
+import type { RunnerClient } from "./runner/runnerClient"
 import { StoreProvider, useStores } from "./stores/createStores"
 import { type LocationAdapter, windowLocationAdapter } from "./stores/location"
 import { encodeView } from "./stores/uiStore"
@@ -46,6 +47,12 @@ export type AppProps = {
    * (the real `createXterm`); tests pass a fake so xterm + its CSS never load.
    */
   readonly createTerminal: CreateTerminal
+  /**
+   * The runner transport client for native harness sessions. Injected so tests
+   * run without a real WebSocket; production builds the real one via
+   * `createRealClients` in `clients.ts`.
+   */
+  readonly runnerClient: RunnerClient
   /** Injected so the hash-sync effect is testable; defaults to window. */
   readonly location?: LocationAdapter
 }
@@ -55,6 +62,7 @@ type AppInnerProps = {
   readonly location: LocationAdapter
   readonly terminalClient: TerminalClient
   readonly createTerminal: CreateTerminal
+  readonly runnerClient: RunnerClient
 }
 
 /**
@@ -66,6 +74,7 @@ const AppInner = ({
   location,
   terminalClient,
   createTerminal,
+  runnerClient,
 }: AppInnerProps): ReactElement => {
   const client = useIpcClient()
   const uiStore = useStores().ui
@@ -209,6 +218,7 @@ const AppInner = ({
           onExit: onSessionExit,
           terminalClient,
           createTerminal,
+          runnerClient,
         })
 
   return (
@@ -246,6 +256,7 @@ export const App = ({
   initialView = "sessions",
   terminalClient,
   createTerminal,
+  runnerClient,
   location = windowLocationAdapter,
 }: AppProps): ReactElement => (
   <IpcClientProvider client={client}>
@@ -253,6 +264,7 @@ export const App = ({
       <AppInner
         terminalClient={terminalClient}
         createTerminal={createTerminal}
+        runnerClient={runnerClient}
         location={location}
       />
     </StoreProvider>
@@ -268,14 +280,15 @@ export const mount = async (): Promise<void> => {
   // test runner imports `App` directly and never calls `mount`.
   const { createXterm } = await import("./terminal/createXterm")
   // Build the ONE shared Electroview (carries IPC requests + the terminal pty
-  // channel) and get both clients from it. See `clients.ts`.
-  const { ipcClient, terminalClient } = await createRealClients()
+  // channel + runner socket) and get all clients from it. See `clients.ts`.
+  const { ipcClient, terminalClient, runnerClient } = await createRealClients()
   createRoot(container).render(
     <StrictMode>
       <App
         client={ipcClient}
         terminalClient={terminalClient}
         createTerminal={createXterm}
+        runnerClient={runnerClient}
         initialView={startView}
       />
     </StrictMode>,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 import type { SessionId } from "@launchkit/types"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { App } from "./app"
+import type { RunnerClient } from "./runner/runnerClient"
 import type { XtermInstance } from "./terminal/TerminalPane"
 import type { TerminalClient } from "./terminal/terminalClient"
 import { createFakeIpcClient } from "./test/fake-client"
@@ -15,6 +16,15 @@ const fakeTerminalClient: TerminalClient = {
   kill: () => {},
   dispatch: () => {},
 } as unknown as TerminalClient
+
+const fakeRunnerClient: RunnerClient = {
+  attach: () => {},
+  send: () => {},
+  approve: () => {},
+  interrupt: () => {},
+  dispatch: () => {},
+  onEvent: () => {},
+} as unknown as RunnerClient
 
 /**
  * A terminal client whose `onExit` registrations are captured so a test can fire
@@ -71,6 +81,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
       />,
     )
     await waitFor(() => expect(window.location.hash).toBe("#sessions"))
@@ -83,6 +94,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="settings/providers"
       />,
     )
@@ -98,6 +110,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="dashboard"
       />,
     )
@@ -111,6 +124,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
       />,
     )
     await waitFor(() => expect(window.location.hash).toBe("#sessions"))
@@ -146,6 +160,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -199,6 +214,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -245,6 +261,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -287,6 +304,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -313,6 +331,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -348,6 +367,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -391,6 +411,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -455,6 +476,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={terminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -528,6 +550,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -579,6 +602,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -629,6 +653,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -687,6 +712,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -730,6 +756,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -773,6 +800,7 @@ describe("App view model", () => {
         client={client}
         terminalClient={fakeTerminalClient}
         createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
