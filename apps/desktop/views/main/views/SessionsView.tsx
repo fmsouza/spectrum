@@ -3,8 +3,11 @@ import { EmptyState, ProjectList, Spinner } from "@launchkit/ui"
 import type { ProjectSummary } from "@launchkit/ui"
 import type { ReactElement, ReactNode } from "react"
 import { useSessionScrollback } from "../hooks/useSessionScrollback"
+import { isNativeHarness } from "../native/isNativeHarness"
+import type { RunnerClient } from "../runner/runnerClient"
 import { type CreateTerminal, TerminalPane } from "../terminal/TerminalPane"
 import type { TerminalClient } from "../terminal/terminalClient"
+import { RunDetail } from "./RunDetail"
 
 export type SessionsViewInput = {
   readonly selectedSessionId?: SessionId
@@ -24,6 +27,7 @@ export type SessionsViewInput = {
   readonly onExit: (id: SessionId) => void
   readonly terminalClient: TerminalClient
   readonly createTerminal: CreateTerminal
+  readonly runnerClient: RunnerClient
 }
 
 /**
@@ -162,6 +166,10 @@ const ReplayDetail = ({
  * pattern, replacing tab selection with the vertical session list. A selected
  * ended session (not in the open set) shows a read-only replay; nothing
  * selected shows an empty state.
+ *
+ * Native-backed sessions (e.g. the dev "demo" harness) are routed to
+ * `RunDetail` instead of the terminal; this is purely additive — non-native
+ * sessions render the terminal exactly as before.
  */
 const SessionsDetail = ({
   selectedSessionId,
@@ -170,6 +178,7 @@ const SessionsDetail = ({
   onExit,
   terminalClient,
   createTerminal,
+  runnerClient,
 }: {
   readonly selectedSessionId?: SessionId
   readonly openSessionIds: readonly SessionId[]
@@ -177,12 +186,33 @@ const SessionsDetail = ({
   readonly onExit: (id: SessionId) => void
   readonly terminalClient: TerminalClient
   readonly createTerminal: CreateTerminal
+  readonly runnerClient: RunnerClient
 }): ReactElement => {
   const selectedIsOpen =
     selectedSessionId !== undefined &&
     openSessionIds.includes(selectedSessionId)
   // Resolve the full selected session so the replay can show its exit banner.
   const selectedSession = allSessions.find((s) => s.id === selectedSessionId)
+
+  // Native-backed sessions render the native conversation (RunView/RunReplay)
+  // instead of the terminal. Selection mirrors the backend driver registry via
+  // the pure isNativeHarness predicate; terminal sessions are unchanged.
+  if (
+    selectedSession !== undefined &&
+    isNativeHarness(selectedSession.harnessId)
+  ) {
+    const isOpen = openSessionIds.includes(selectedSession.id)
+    return (
+      <div className="lk-sessions-detail">
+        <RunDetail
+          key={selectedSession.id}
+          mode={isOpen ? "live" : "replay"}
+          sessionId={selectedSession.id}
+          runnerClient={runnerClient}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="lk-sessions-detail">
@@ -243,6 +273,7 @@ export const SessionsView = ({
   onExit,
   terminalClient,
   createTerminal,
+  runnerClient,
 }: SessionsViewInput): {
   readonly master: ReactNode
   readonly detail: ReactNode
@@ -267,6 +298,7 @@ export const SessionsView = ({
       onExit={onExit}
       terminalClient={terminalClient}
       createTerminal={createTerminal}
+      runnerClient={runnerClient}
     />
   ),
 })

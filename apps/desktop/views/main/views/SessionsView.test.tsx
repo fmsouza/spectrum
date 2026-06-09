@@ -1,12 +1,33 @@
 import { describe, expect, it } from "bun:test"
+import type { RunnerOutbound } from "@launchkit/agent-driver"
+import type { StoredEvent } from "@launchkit/agent-events"
 import { bytesToBase64 } from "@launchkit/pty"
 import type { Session, SessionId } from "@launchkit/types"
-import { render, screen, waitFor } from "@testing-library/react"
+import { cleanup, render, screen, waitFor } from "@testing-library/react"
+import type React from "react"
 import { IpcClientProvider } from "../IpcClientContext"
+import type { RunnerClient } from "../runner/runnerClient"
 import type { XtermInstance } from "../terminal/TerminalPane"
 import type { TerminalClient } from "../terminal/terminalClient"
 import { createFakeIpcClient } from "../test/fake-client"
+import { renderWithProviders } from "../test/renderWithProviders"
 import { SessionsView } from "./SessionsView"
+
+// A minimal fake RunnerClient that tracks attach() calls (mirrors RunDetail.test's fake).
+const makeFakeRunner = (): RunnerClient & {
+  readonly attached: SessionId[]
+} => {
+  const attached: SessionId[] = []
+  return {
+    attached,
+    attach: (sid) => attached.push(sid),
+    send: () => {},
+    approve: () => {},
+    interrupt: () => {},
+    dispatch: (_m: RunnerOutbound) => {},
+    onEvent: (_sid, _cb: (event: StoredEvent) => void) => {},
+  }
+}
 
 const running = {
   id: "s_live",
@@ -53,6 +74,7 @@ describe("SessionsView", () => {
       onExit: () => {},
       terminalClient: fakeTerminalClient,
       createTerminal: fakeXterm,
+      runnerClient: makeFakeRunner(),
     })
     render(
       <IpcClientProvider client={client}>
@@ -78,6 +100,7 @@ describe("SessionsView", () => {
       onExit: () => {},
       terminalClient: fakeTerminalClient,
       createTerminal: fakeXterm,
+      runnerClient: makeFakeRunner(),
     })
     render(
       <IpcClientProvider client={client}>
@@ -122,6 +145,7 @@ describe("SessionsView", () => {
       onExit: () => {},
       terminalClient: fakeTerminalClient,
       createTerminal: fakeXterm,
+      runnerClient: makeFakeRunner(),
     })
     const { container } = render(
       <IpcClientProvider client={client}>
@@ -172,6 +196,7 @@ describe("SessionsView", () => {
       onExit: () => {},
       terminalClient: fakeTerminalClient,
       createTerminal: fakeXterm,
+      runnerClient: makeFakeRunner(),
     })
     const { container } = render(
       <IpcClientProvider client={client}>
@@ -193,6 +218,7 @@ describe("SessionsView", () => {
 
   it("keeps an open live pane mounted (hidden) keyed by session id", () => {
     const client = createFakeIpcClient({})
+    const runner = makeFakeRunner()
     const { detail } = SessionsView({
       selectedSessionId: "s_live" as SessionId,
       openSessionIds: ["s_live" as SessionId],
@@ -207,6 +233,7 @@ describe("SessionsView", () => {
       onExit: () => {},
       terminalClient: fakeTerminalClient,
       createTerminal: fakeXterm,
+      runnerClient: runner,
     })
     const { container } = render(
       <IpcClientProvider client={client}>
@@ -214,5 +241,61 @@ describe("SessionsView", () => {
       </IpcClientProvider>,
     )
     expect(container.querySelector('[data-session="s_live"]')).not.toBeNull()
+  })
+
+  it("renders the native RunDetail (live) for an open native session", () => {
+    const native: Session = {
+      id: "s_native" as Session["id"],
+      harnessId: "demo" as Session["harnessId"],
+      startedAt: "2026-06-08T10:00:00.000Z",
+    } as unknown as Session
+    const runner = makeFakeRunner()
+    const { detail } = SessionsView({
+      selectedSessionId: native.id,
+      openSessionIds: [native.id],
+      projects: [],
+      sessionsByProject: {},
+      collapsed: new Set(),
+      allSessions: [native],
+      onToggle: () => {},
+      onMore: () => {},
+      onSelect: () => {},
+      onNew: () => {},
+      onExit: () => {},
+      terminalClient: fakeTerminalClient,
+      createTerminal: fakeXterm,
+      runnerClient: runner,
+    })
+    renderWithProviders(detail as React.ReactElement, createFakeIpcClient({}))
+    expect(runner.attached).toEqual([native.id]) // native path attached, not a terminal pane
+    cleanup()
+  })
+
+  it("still renders a terminal pane (not RunDetail) for a non-native session", () => {
+    const term: Session = {
+      id: "s_term" as Session["id"],
+      harnessId: "claude" as Session["harnessId"],
+      startedAt: "2026-06-08T10:00:00.000Z",
+    } as unknown as Session
+    const runner = makeFakeRunner()
+    const { detail } = SessionsView({
+      selectedSessionId: term.id,
+      openSessionIds: [term.id],
+      projects: [],
+      sessionsByProject: {},
+      collapsed: new Set(),
+      allSessions: [term],
+      onToggle: () => {},
+      onMore: () => {},
+      onSelect: () => {},
+      onNew: () => {},
+      onExit: () => {},
+      terminalClient: fakeTerminalClient,
+      createTerminal: fakeXterm,
+      runnerClient: runner,
+    })
+    renderWithProviders(detail as React.ReactElement, createFakeIpcClient({}))
+    expect(runner.attached).toEqual([]) // terminal path: runner socket never attached
+    cleanup()
   })
 })
