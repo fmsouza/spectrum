@@ -44,6 +44,7 @@ const config = {
         "views/main/styles/sessions-master.css",
       "views/main/styles/sessions-detail.css":
         "views/main/styles/sessions-detail.css",
+      "views/main/styles/run-view.css": "views/main/styles/run-view.css",
       "views/main/styles/forms.css": "views/main/styles/forms.css",
       "views/main/styles/modal.css": "views/main/styles/modal.css",
       "views/main/styles/lists.css": "views/main/styles/lists.css",
