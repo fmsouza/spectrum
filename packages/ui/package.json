@@ -9,6 +9,7 @@
     "react": "^19",
     "react-dom": "^19",
     "@launchkit/types": "workspace:*",
-    "@launchkit/utils": "workspace:*"
+    "@launchkit/utils": "workspace:*",
+    "@launchkit/agent-events": "workspace:*"
   }
 }

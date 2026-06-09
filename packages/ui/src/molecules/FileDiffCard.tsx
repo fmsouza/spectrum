@@ -17,7 +17,7 @@ export const FileDiffCard = ({ item }: FileDiffCardProps): ReactElement => {
       <div className="lk-file-diff__path">{item.path}</div>
       {lines.length === 0 ? null : (
         <div className="lk-file-diff__body">
-          {lines.map((line, i) => (
+          {lines.map((line: string, i: number) => (
             <DiffLine key={`${i}-${line}`} text={line} />
           ))}
         </div>

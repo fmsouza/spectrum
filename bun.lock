@@ -219,6 +219,7 @@
       "name": "@launchkit/ui",
       "version": "0.1.0",
       "dependencies": {
+        "@launchkit/agent-events": "workspace:*",
         "@launchkit/types": "workspace:*",
         "@launchkit/utils": "workspace:*",
         "react": "^19",
