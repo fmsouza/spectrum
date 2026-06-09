@@ -1,7 +1,9 @@
+import type { RunnerInbound, RunnerOutbound } from "@launchkit/agent-driver"
 import { type IpcClient, createIpcClient } from "@launchkit/ipc"
 import type { PtyInbound, PtyOutbound } from "@launchkit/pty/protocol"
 import { Electroview, type RPCSchema } from "electrobun/view"
 import { type ElectrobunRpc, createElectrobunTransport } from "./ipc-client"
+import { type RunnerClient, createRunnerClient } from "./runner/runnerClient"
 import {
   type TerminalClient,
   createTerminalClient,
@@ -49,13 +51,48 @@ const createWsTerminalClient = (url: string): TerminalClient => {
 }
 
 /**
- * Construct the single Electroview (IPC requests only) and return both clients: the typed `IpcClient`
- * over Electrobun, and a `TerminalClient` over the dedicated terminal WebSocket whose URL is fetched
- * from the bun side via the `getTerminalSocketUrl` IPC method. Called once by `app.tsx`.
+ * Build a `RunnerClient` over a dedicated loopback WebSocket (served by the bun
+ * side — see apps/desktop/src/gui/runner-socket.ts). Mirrors the terminal socket:
+ * inbound `RunnerOutbound` frames are dispatched; outbound `RunnerInbound` frames
+ * are JSON-sent (buffered until open). Plain JSON — no base64.
+ */
+const createWsRunnerClient = (url: string): RunnerClient => {
+  const ws = new WebSocket(url)
+  const outbox: RunnerInbound[] = []
+  const send = (message: RunnerInbound): void => {
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message))
+    else outbox.push(message)
+  }
+  const client = createRunnerClient(send)
+  ws.addEventListener("open", () => {
+    while (outbox.length > 0) {
+      const next = outbox.shift()
+      if (next !== undefined) ws.send(JSON.stringify(next))
+    }
+  })
+  ws.addEventListener("message", (event: MessageEvent) => {
+    if (typeof event.data !== "string") return
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(event.data)
+    } catch {
+      return
+    }
+    client.dispatch(parsed as RunnerOutbound)
+  })
+  return client
+}
+
+/**
+ * Construct the single Electroview (IPC requests only) and return all clients: the typed `IpcClient`
+ * over Electrobun, a `TerminalClient` over the dedicated terminal WebSocket, and a `RunnerClient`
+ * over the dedicated runner WebSocket — both URLs fetched from the bun side via IPC. Called once by
+ * `app.tsx`.
  */
 export const createRealClients = async (): Promise<{
   ipcClient: IpcClient
   terminalClient: TerminalClient
+  runnerClient: RunnerClient
 }> => {
   const rpc = Electroview.defineRPC<EmptySchema>({
     maxRequestTime: Number.POSITIVE_INFINITY, // transport owns per-method timeouts
@@ -70,5 +107,9 @@ export const createRealClients = async (): Promise<{
     ? createWsTerminalClient(res.value.url)
     : // If the URL lookup fails the app still renders; the terminal just can't stream.
       createTerminalClient(() => {})
-  return { ipcClient, terminalClient }
+  const runnerRes = await ipcClient.getRunnerSocketUrl(undefined)
+  const runnerClient = runnerRes.ok
+    ? createWsRunnerClient(runnerRes.value.url)
+    : createRunnerClient(() => {})
+  return { ipcClient, terminalClient, runnerClient }
 }
