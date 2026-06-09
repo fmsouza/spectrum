@@ -1119,3 +1119,17 @@ describe("createIpcHandlers.launchHarness selection", () => {
     expect(terminalInputs).toHaveLength(0)
   })
 })
+
+describe("embedded terminal path is untouched for production harnesses", () => {
+  it("never routes claude to the runner when no driver is registered", async () => {
+    for (const id of ["claude"] as const) {
+      const { ctx, terminalInputs, runnerLaunchInputs } = makeCtx({
+        providers: [provider()],
+      })
+      const handlers = createIpcHandlers(ctx)
+      await handlers.launchHarness({ id: id as never })
+      expect(terminalInputs).toHaveLength(1)
+      expect(runnerLaunchInputs).toHaveLength(0)
+    }
+  })
+})
