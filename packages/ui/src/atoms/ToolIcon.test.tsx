@@ -16,7 +16,10 @@ describe("ToolIcon", () => {
 
   it("falls back to the default glyph key for an unknown tool", () => {
     render(<ToolIcon tool="Frobnicate" />)
-    expect(screen.getByLabelText("Frobnicate")).toHaveAttribute("data-tool", "default")
+    expect(screen.getByLabelText("Frobnicate")).toHaveAttribute(
+      "data-tool",
+      "default",
+    )
     cleanup()
   })
 })

@@ -17,7 +17,10 @@ describe("DiffLine", () => {
 
   it("renders any other line tagged as context", () => {
     render(<DiffLine text=" const x = 1" />)
-    expect(screen.getByText(" const x = 1", { trim: false })).toHaveAttribute("data-kind", "context")
+    expect(screen.getByText(" const x = 1", { trim: false })).toHaveAttribute(
+      "data-kind",
+      "context",
+    )
     cleanup()
   })
 })
