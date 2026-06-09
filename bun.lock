@@ -27,6 +27,7 @@
       },
       "dependencies": {
         "@launchkit/agent-driver": "workspace:*",
+        "@launchkit/agent-events": "workspace:*",
         "@launchkit/cli": "workspace:*",
         "@launchkit/config": "workspace:*",
         "@launchkit/db": "workspace:*",
@@ -35,6 +36,7 @@
         "@launchkit/projects": "workspace:*",
         "@launchkit/proxy": "workspace:*",
         "@launchkit/pty": "workspace:*",
+        "@launchkit/run-store": "workspace:*",
         "@launchkit/secrets": "workspace:*",
         "@launchkit/sessions": "workspace:*",
         "@launchkit/types": "workspace:*",

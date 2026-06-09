@@ -22,6 +22,13 @@ import type { Result } from "@launchkit/utils"
 import { mkdirSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
+import type { AgentDriver, RunManager } from "@launchkit/agent-driver"
+import {
+  createFakeDriver,
+  createRunManager,
+  demoScript,
+} from "@launchkit/agent-driver"
+import type { StoredEvent } from "@launchkit/agent-events"
 import {
   createCachedConfigStore,
   createFileConfigStore,
@@ -55,6 +62,7 @@ import {
   createFileScrollbackStore,
   createTerminalManager,
 } from "@launchkit/pty"
+import { createRunStore } from "@launchkit/run-store"
 import {
   createBunProcessRunner,
   createMacosSecurityBackend,
@@ -63,6 +71,12 @@ import {
 import { createSessionStore } from "@launchkit/sessions"
 import { createCryptoIdGen, createSystemClock } from "@launchkit/utils"
 import { err } from "@launchkit/utils"
+import {
+  DEMO_HARNESS_ID,
+  type DriverRegistry,
+  createDriverRegistry,
+} from "./gui/driver-registry"
+import { startRunnerSocket } from "./gui/runner-socket"
 import { startTerminalSocket } from "./gui/terminal-socket"
 
 /** Result of testing one provider's live connectivity (mirrors ipc TestProviderResult). */
@@ -141,6 +155,25 @@ export interface AppContext {
   readonly terminal: TerminalManager
   /** Loopback `ws://localhost:<port>/` the webview connects to for the PTY byte stream. */
   readonly terminalSocketUrl: string
+  /**
+   * The native run engine: starts an AgentDriver per launched native harness and streams its canonical
+   * events over a dedicated loopback WebSocket (`runnerSocketUrl`). Its `send` sink is a no-op until the
+   * runner socket binds it on connect. Twin of `terminal` for driver-backed harnesses.
+   */
+  readonly runner: RunManager
+  /** Loopback `ws://localhost:<port>/` the webview connects to for the canonical run-event stream. */
+  readonly runnerSocketUrl: string
+  /** Read a session's stored canonical event log for read-only replay (mirrors `readScrollback`). */
+  readonly runEvents: {
+    read(
+      id: SessionId,
+    ): Result<
+      readonly StoredEvent[],
+      { readonly kind: "db-failed"; readonly detail: string }
+    >
+  }
+  /** Which harnesses launch natively (a driver is registered) vs. via the embedded terminal. */
+  readonly driverRegistry: DriverRegistry
   /** Resolved settings paths (config + db + harness dir), surfaced for diagnostics/tests. */
   readonly paths: {
     readonly configFile: string
@@ -197,6 +230,12 @@ export interface CreateAppContextDeps {
   readonly createFfiPty: typeof createFfiPty
   readonly createTerminalManager: typeof createTerminalManager
   readonly startTerminalSocket: typeof startTerminalSocket
+  readonly createRunStore: typeof createRunStore
+  readonly createRunManager: typeof createRunManager
+  readonly startRunnerSocket: typeof startRunnerSocket
+  readonly createFakeDriver: typeof createFakeDriver
+  /** Set in dev to register the demo FakeDriver; production leaves it unset so the terminal path is unchanged. */
+  readonly demoHarnessEnabled: boolean
   readonly genProxyKey: () => string
 }
 
@@ -237,6 +276,11 @@ const realDeps: CreateAppContextDeps = {
   createFfiPty,
   createTerminalManager,
   startTerminalSocket,
+  createRunStore,
+  createRunManager,
+  startRunnerSocket,
+  createFakeDriver,
+  demoHarnessEnabled: process.env.LAUNCHKIT_DEMO_HARNESS === "1",
   genProxyKey: defaultGenProxyKey,
 }
 
@@ -449,6 +493,45 @@ export const createAppContext = (
   // The dedicated loopback WebSocket for the PTY byte stream binds `terminal`'s send sink on connect.
   const terminalSocketUrl = deps.startTerminalSocket(terminal).url
 
+  // Native run path (additive): structured canonical events persisted to the shared db and streamed
+  // over a second loopback socket. The RunStore structurally satisfies the RunManager's RunEventSink;
+  // sessionSink structurally satisfies its SessionSink.
+  const runStore = deps.createRunStore({
+    db: dbClient,
+    clock: deps.createSystemClock(),
+  })
+
+  // Dev-only: register the demo FakeDriver so the whole native path is exercisable. Production leaves
+  // the registry EMPTY so every real harness still launches via the embedded terminal, UNCHANGED.
+  const driverRegistry: DriverRegistry = deps.demoHarnessEnabled
+    ? createDriverRegistry({
+        [DEMO_HARNESS_ID]: deps.createFakeDriver({ script: demoScript }),
+      })
+    : createDriverRegistry({})
+
+  // One AgentDriver for the RunManager: route start() to the registered driver for the harness.
+  const routingDriver: AgentDriver = {
+    start: (input) => {
+      const driver = driverRegistry.get(input.harnessId)
+      if (driver === undefined)
+        return err({
+          kind: "start-failed",
+          detail: `no driver for harness ${String(input.harnessId)}`,
+        })
+      return driver.start(input)
+    },
+  }
+
+  const runner = deps.createRunManager({
+    driver: routingDriver,
+    sessions: sessionSink,
+    events: runStore,
+    clock: deps.createSystemClock(),
+    send: () => {},
+  })
+  // The dedicated loopback WebSocket for the run-event stream binds `runner`'s send sink on connect.
+  const runnerSocketUrl = deps.startRunnerSocket(runner).url
+
   // proxy settings resolved from the default config shape (loopback only, security.md)
   const settings = defaultConfig().settings
   const proxyPort = settings.proxyPort
@@ -522,6 +605,10 @@ export const createAppContext = (
     genProxyKey: deps.genProxyKey,
     terminal,
     terminalSocketUrl,
+    runner,
+    runnerSocketUrl,
+    runEvents: { read: runStore.read },
+    driverRegistry,
     pickFolder,
     readScrollback: scrollbackStore.read,
     paths: { configFile, dbFile, harnessDir },

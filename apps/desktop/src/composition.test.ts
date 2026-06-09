@@ -76,6 +76,24 @@ const makeFakeDeps = (): {
       stop: () => undefined,
     })) as never,
     createProjectStore: createProjectStore,
+    createRunStore: ((..._a: unknown[]) => {
+      calls.createRunStore = _a
+      return { append: () => ok({ seq: 0 }), read: () => ok([]) }
+    }) as never,
+    createRunManager: ((..._a: unknown[]) => {
+      calls.createRunManager = _a
+      return {
+        launch: () => ok({ sessionId: "s1" }),
+        handleInbound: () => undefined,
+        bindSend: () => undefined,
+      }
+    }) as never,
+    startRunnerSocket: (() => ({
+      url: "ws://localhost:23456/",
+      stop: () => undefined,
+    })) as never,
+    createFakeDriver: (() => ({ start: () => ok({}) })) as never,
+    demoHarnessEnabled: false,
   }
   return { deps, calls }
 }
@@ -322,5 +340,42 @@ describe("createAppContext wiring", () => {
     const { deps } = makeFakeDeps()
     const ctx = createAppContext(deps)
     expect(typeof ctx.projects.list).toBe("function")
+  })
+})
+
+describe("createAppContext native run path wiring", () => {
+  it("exposes a runner manager with launch/handleInbound/bindSend", () => {
+    const { deps } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+    expect(typeof ctx.runner.launch).toBe("function")
+    expect(typeof ctx.runner.handleInbound).toBe("function")
+    expect(typeof ctx.runner.bindSend).toBe("function")
+  })
+
+  it("exposes the runner socket url bound from startRunnerSocket", () => {
+    const { deps } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+    expect(ctx.runnerSocketUrl).toBe("ws://localhost:23456/")
+  })
+
+  it("builds the run store from the shared db client + a clock", () => {
+    const { deps, calls } = makeFakeDeps()
+    createAppContext(deps)
+    const args = calls.createRunStore?.[0] as { db?: unknown; clock?: unknown }
+    expect(args?.db).toEqual({ __stub: "dbClient" })
+    expect(args?.clock).toBeDefined()
+  })
+
+  it("exposes runEvents.read as a function for replay", () => {
+    const { deps } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+    expect(typeof ctx.runEvents.read).toBe("function")
+  })
+
+  it("registers NO native driver by default (production: terminal path unchanged)", () => {
+    const { deps } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+    expect(ctx.driverRegistry.isNative("demo" as never)).toBe(false)
+    expect(ctx.driverRegistry.isNative("claude" as never)).toBe(false)
   })
 })
