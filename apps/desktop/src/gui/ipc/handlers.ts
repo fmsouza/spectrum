@@ -241,6 +241,31 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       const safeName = name?.trim() ? name : undefined
       const safeCwd = cwd?.trim() ? cwd : undefined
 
+      // Launch selection (additive): a harness with a registered driver launches natively via the
+      // RunManager; every other harness falls through to the embedded-terminal path UNCHANGED.
+      if (ctx.driverRegistry.isNative(harness.id)) {
+        const launchedNative = ctx.runner.launch({
+          harnessId: harness.id,
+          ...(modelId === undefined ? {} : { modelId }),
+          env: { ...resolved.value.env, ...(env ?? {}) },
+          cwd: safeCwd ?? "",
+          ...(safeName === undefined ? {} : { name: safeName }),
+        })
+        if (!isOk(launchedNative))
+          return fail("failed to launch native harness")
+        // Persist the same prefill metadata as the terminal path (success only).
+        await ctx.config.save({
+          ...config,
+          settings: {
+            ...config.settings,
+            lastSelectedHarnessId: harness.id,
+            lastSelectedModelId: modelId ?? "",
+            ...(safeCwd === undefined ? {} : { lastSelectedFolder: safeCwd }),
+          },
+        })
+        return { sessionId: launchedNative.value.sessionId }
+      }
+
       // Merge caller-supplied env ON TOP of the resolved env (caller may add tokens/flags),
       // and thread the optional session metadata through. The manager owns Session creation.
       const opened = ctx.terminal.launch({
@@ -294,9 +319,14 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
 
     getTerminalSocketUrl: async () => ({ url: ctx.terminalSocketUrl }),
 
-    getRunnerSocketUrl: async () => fail("runner socket not yet wired"),
+    getRunnerSocketUrl: async () => ({ url: ctx.runnerSocketUrl }),
 
-    getRunEvents: async () => fail("run-store not yet wired"),
+    // ── Run events (canonical replay) ────────────────────────────────────────────
+    getRunEvents: async ({ id }) => {
+      const read = ctx.runEvents.read(id)
+      if (!isOk(read)) return fail("could not read run events")
+      return { events: [...read.value] }
+    },
 
     getSettings: async () => {
       const config = await loadConfig()

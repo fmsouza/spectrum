@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import type { StoredEvent } from "@launchkit/agent-events"
 import type { Config } from "@launchkit/config"
 import {
   createFakeCommandResolver,
@@ -66,6 +67,11 @@ const makeCtx = (
     lastSelectedFolder?: string
     lastSelectedHarnessId?: string
     lastSelectedModelId?: string
+    runEvents?: Result<
+      readonly StoredEvent[],
+      { readonly kind: "db-failed"; readonly detail: string }
+    >
+    nativeHarnessId?: string
   } = {},
 ): {
   ctx: AppContext
@@ -78,6 +84,8 @@ const makeCtx = (
   registryRemoves: string[]
   pickFolderCalls: unknown[]
   readScrollbackIds: string[]
+  runnerLaunchInputs: unknown[]
+  runEventsIds: string[]
 } => {
   const saves: Config[] = []
   const secretSets: string[] = []
@@ -88,6 +96,8 @@ const makeCtx = (
   const registryRemoves: string[] = []
   const pickFolderCalls: unknown[] = []
   const readScrollbackIds: string[] = []
+  const runnerLaunchInputs: unknown[] = []
+  const runEventsIds: string[] = []
   let current = baseConfig(
     over.providers ?? [provider()],
     over.lastSelectedFolder ?? "",
@@ -206,6 +216,36 @@ const makeCtx = (
       readScrollbackIds.push(id as string)
       return over.scrollback ?? ok(new Uint8Array())
     },
+    runner: {
+      launch: (input: unknown) => {
+        runnerLaunchInputs.push(input)
+        return ok({ sessionId: sampleSession.id })
+      },
+      handleInbound: () => undefined,
+      bindSend: () => undefined,
+    },
+    runnerSocketUrl: "ws://localhost:23456/",
+    runEvents: {
+      read: (id: unknown) => {
+        runEventsIds.push(id as string)
+        return (
+          over.runEvents ??
+          ok([
+            {
+              seq: 0,
+              sessionId: sampleSession.id,
+              ts: "2026-06-08T12:00:00.000Z",
+              event: { type: "runner-started", runnerId: "r_root" },
+            },
+          ])
+        )
+      },
+    },
+    driverRegistry: {
+      get: () => undefined,
+      isNative: (harnessId: unknown) =>
+        String(harnessId) === (over.nativeHarnessId ?? "__none__"),
+    },
   } as unknown as AppContext
 
   return {
@@ -219,6 +259,8 @@ const makeCtx = (
     registryRemoves,
     pickFolderCalls,
     readScrollbackIds,
+    runnerLaunchInputs,
+    runEventsIds,
   }
 }
 
@@ -1020,5 +1062,60 @@ describe("createIpcHandlers.getSessions (running + pagination)", () => {
     await handlers.getSessions({ running: undefined })
 
     expect(queries[0]).toEqual({})
+  })
+})
+
+describe("createIpcHandlers.getRunnerSocketUrl", () => {
+  it("returns the runner socket url from the context", async () => {
+    const { ctx } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+    const result = await handlers.getRunnerSocketUrl()
+    expect(result).toEqual({ url: "ws://localhost:23456/" })
+  })
+})
+
+describe("createIpcHandlers.getRunEvents", () => {
+  it("returns the stored events for the requested session", async () => {
+    const { ctx, runEventsIds } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+    const result = await handlers.getRunEvents({ id: "s_1" as never })
+    expect(result.events[0]?.event.type).toBe("runner-started")
+    expect(runEventsIds).toEqual(["s_1"])
+  })
+
+  it("throws so the server surfaces handler-failed when the read fails", async () => {
+    const { ctx } = makeCtx({
+      providers: [provider()],
+      runEvents: err({ kind: "db-failed", detail: "boom" }),
+    })
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.getRunEvents({ id: "s_x" as never }),
+    ).rejects.toThrow()
+  })
+})
+
+describe("createIpcHandlers.launchHarness selection", () => {
+  it("launches a NON-native harness via the terminal manager (unchanged path)", async () => {
+    const { ctx, terminalInputs, runnerLaunchInputs } = makeCtx({
+      providers: [provider()],
+    })
+    const handlers = createIpcHandlers(ctx)
+    const result = await handlers.launchHarness({ id: "claude" as never })
+    expect(result).toEqual({ sessionId: sampleSession.id })
+    expect(terminalInputs).toHaveLength(1)
+    expect(runnerLaunchInputs).toHaveLength(0)
+  })
+
+  it("launches a native (demo) harness via the runner manager, not the terminal", async () => {
+    const { ctx, terminalInputs, runnerLaunchInputs } = makeCtx({
+      providers: [provider()],
+      nativeHarnessId: "claude",
+    })
+    const handlers = createIpcHandlers(ctx)
+    const result = await handlers.launchHarness({ id: "claude" as never })
+    expect(result).toEqual({ sessionId: sampleSession.id })
+    expect(runnerLaunchInputs).toHaveLength(1)
+    expect(terminalInputs).toHaveLength(0)
   })
 })
