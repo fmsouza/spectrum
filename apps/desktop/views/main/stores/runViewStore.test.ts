@@ -1,0 +1,49 @@
+import { describe, expect, it } from "bun:test"
+import type { CanonicalEvent } from "@launchkit/agent-events"
+import { RunnerIdSchema, SessionIdSchema } from "@launchkit/types"
+import { createRunViewStore } from "./runViewStore"
+
+const sid = SessionIdSchema.parse("s_00000000-0000-4000-8000-000000000000")
+const root = RunnerIdSchema.parse("run_root")
+const child = RunnerIdSchema.parse("run_child")
+
+const noDeps = { client: {} as never }
+
+describe("runViewStore", () => {
+  it("folds a runner-started event into a RunState for the session", () => {
+    const store = createRunViewStore(noDeps)
+    const ev: CanonicalEvent = { type: "runner-started", runnerId: root }
+    store.getState().applyEvent(sid, ev)
+    const state = store.getState().byId[sid]
+    expect(state?.rootRunnerId).toBe(root)
+    expect(state?.runners.get(root)?.status).toBe("running")
+  })
+
+  it("accumulates a text-delta onto the runner's message item", () => {
+    const store = createRunViewStore(noDeps)
+    const events: readonly CanonicalEvent[] = [
+      { type: "runner-started", runnerId: root },
+      { type: "text-delta", runnerId: root, messageId: "m1", text: "Hel" },
+      { type: "text-delta", runnerId: root, messageId: "m1", text: "lo" },
+    ]
+    for (const e of events) store.getState().applyEvent(sid, e)
+    const item = store.getState().byId[sid]?.runners.get(root)?.items[0]
+    expect(item?.kind).toBe("message")
+    expect(item?.kind === "message" ? item.text : "").toBe("Hello")
+  })
+
+  it("reset clears a session's RunState", () => {
+    const store = createRunViewStore(noDeps)
+    store.getState().applyEvent(sid, { type: "runner-started", runnerId: root })
+    store.getState().reset(sid)
+    expect(store.getState().byId[sid]).toBeUndefined()
+  })
+
+  it("openSub records the open sub-runner and closeSub clears it", () => {
+    const store = createRunViewStore(noDeps)
+    store.getState().openSub(sid, child)
+    expect(store.getState().openSubBySession[sid]).toBe(child)
+    store.getState().closeSub(sid)
+    expect(store.getState().openSubBySession[sid]).toBeUndefined()
+  })
+})
