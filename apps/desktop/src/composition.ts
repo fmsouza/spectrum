@@ -71,6 +71,7 @@ import {
 import { createSessionStore } from "@launchkit/sessions"
 import { createCryptoIdGen, createSystemClock } from "@launchkit/utils"
 import { err } from "@launchkit/utils"
+import { withDemoHarness } from "./gui/demo-harness"
 import {
   DEMO_HARNESS_ID,
   type DriverRegistry,
@@ -452,9 +453,16 @@ export const createAppContext = (
   }
 
   // harnesses: registry from the user harness dir; launcher partially applied with real adapters
-  const registry = deps.createRegistry({
+  const baseRegistry = deps.createRegistry({
     fileSource: deps.createDirHarnessFileSource(harnessDir),
   })
+  // Dev-only (LAUNCHKIT_DEMO_HARNESS=1): surface a launchable `demo` harness — driven by the FakeDriver
+  // registered in the driver registry below — so the native conversation view is reachable from the New
+  // Session modal. Production (flag unset) leaves the harness registry untouched, so every real harness
+  // still launches into the embedded terminal exactly as before.
+  const registry = deps.demoHarnessEnabled
+    ? withDemoHarness(baseRegistry)
+    : baseRegistry
   // ONE resolver shared by both launch paths: the headless `launch` (CLI spawn) and the GUI's
   // `resolveLaunch` (resolve command + render proxy env, then hand to `terminal.launch`).
   const resolver = deps.createPathCommandResolver()
