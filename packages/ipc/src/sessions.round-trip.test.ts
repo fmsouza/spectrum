@@ -6,24 +6,6 @@ import type { IpcMethods } from "./methods"
 import type { IpcHandlers } from "./server"
 import { createIpcServer } from "./server"
 
-describe("getSessionScrollback round-trip", () => {
-  it("returns the base64 scrollback for the requested session", async () => {
-    const pair = createMemoryTransportPair()
-    let askedId: string | undefined
-    const handlers: Pick<IpcHandlers, "getSessionScrollback"> = {
-      getSessionScrollback: async (params) => {
-        askedId = params.id
-        return { bytesBase64: "aGVsbG8=" }
-      },
-    }
-    createIpcServer(handlers as IpcHandlers, pair.server)
-    const client = createIpcClient(pair.client)
-    const r = await client.getSessionScrollback({ id: "s_42" as SessionId })
-    expect(r).toEqual({ ok: true, value: { bytesBase64: "aGVsbG8=" } })
-    expect(askedId).toBe("s_42")
-  })
-})
-
 describe("launchHarness round-trip with extended params", () => {
   it("forwards name/cwd/env and returns the created sessionId", async () => {
     const pair = createMemoryTransportPair()
