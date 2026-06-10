@@ -155,7 +155,7 @@ export interface AppContext {
   readonly runner: RunManager
   /** Loopback `ws://localhost:<port>/` the webview connects to for the canonical run-event stream. */
   readonly runnerSocketUrl: string
-  /** Read a session's stored canonical event log for read-only replay (mirrors `readScrollback`). */
+  /** Read a session's stored canonical event log for read-only replay. */
   readonly runEvents: {
     read(
       id: SessionId,
@@ -215,7 +215,7 @@ export interface CreateAppContextDeps {
   readonly createFakeDriver: typeof createFakeDriver
   readonly createCodexDriver: typeof createCodexDriver
   readonly createOpencodeDriver: typeof createOpencodeDriver
-  /** Set in dev to register the demo FakeDriver; production leaves it unset so the terminal path is unchanged. */
+  /** Set in dev to register the demo FakeDriver harness; production leaves it unset. */
   readonly demoHarnessEnabled: boolean
   readonly genProxyKey: () => string
 }

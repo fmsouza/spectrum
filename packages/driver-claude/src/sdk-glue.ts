@@ -136,7 +136,7 @@ const makeInputStream = (): {
  *   node_modules), so without an explicit path `query()` throws "Claude Code executable not found".
  * - `baseEnv` (default `process.env`) is merged UNDER `input.env` — the spawned `claude` inherits the
  *   parent `PATH`/`HOME` (so it can resolve tools and read its auth/config dir) while the per-run proxy
- *   vars win. Mirrors the embedded-terminal spawn seam (`ffi-pty`'s `{ ...process.env, ...opts.env }`).
+ *   vars win (`{ ...process.env, ...input.env }`).
  */
 export const createClaudeAdapter = (deps: {
   loadSdk: () => Promise<ClaudeSdk>
