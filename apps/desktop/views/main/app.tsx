@@ -204,6 +204,7 @@ const AppInner = ({
           sessionsByProject: projectsView.sessionsByProject,
           collapsed: projectsView.collapsed,
           allSessions: projectsView.allSessions,
+          harnesses: harnesses.data ?? [],
           onToggle: projectsView.toggleCollapse,
           onMore: projectsView.loadMore,
           onSelect: (id) =>

@@ -3,7 +3,10 @@ import { EmptyState, ProjectList, Spinner } from "@launchkit/ui"
 import type { ProjectSummary } from "@launchkit/ui"
 import type { ReactElement, ReactNode } from "react"
 import { useSessionScrollback } from "../hooks/useSessionScrollback"
-import { isNativeHarness } from "../native/isNativeHarness"
+import {
+  type NativeFlaggedHarness,
+  isNativeHarness,
+} from "../native/isNativeHarness"
 import type { RunnerClient } from "../runner/runnerClient"
 import { type CreateTerminal, TerminalPane } from "../terminal/TerminalPane"
 import type { TerminalClient } from "../terminal/terminalClient"
@@ -16,6 +19,7 @@ export type SessionsViewInput = {
   readonly sessionsByProject: Readonly<Record<string, readonly Session[]>>
   readonly collapsed: ReadonlySet<string>
   readonly allSessions: readonly Session[]
+  readonly harnesses: readonly NativeFlaggedHarness[]
   readonly onToggle: (projectId: string) => void
   readonly onMore: (projectId: string) => void
   readonly onSelect: (id: SessionId) => void
@@ -175,6 +179,7 @@ const SessionsDetail = ({
   selectedSessionId,
   openSessionIds,
   allSessions,
+  harnesses,
   onExit,
   terminalClient,
   createTerminal,
@@ -183,6 +188,7 @@ const SessionsDetail = ({
   readonly selectedSessionId?: SessionId
   readonly openSessionIds: readonly SessionId[]
   readonly allSessions: readonly Session[]
+  readonly harnesses: readonly NativeFlaggedHarness[]
   readonly onExit: (id: SessionId) => void
   readonly terminalClient: TerminalClient
   readonly createTerminal: CreateTerminal
@@ -199,7 +205,7 @@ const SessionsDetail = ({
   // the pure isNativeHarness predicate; terminal sessions are unchanged.
   if (
     selectedSession !== undefined &&
-    isNativeHarness(selectedSession.harnessId)
+    isNativeHarness(selectedSession.harnessId, harnesses)
   ) {
     const isOpen = openSessionIds.includes(selectedSession.id)
     return (
@@ -266,6 +272,7 @@ export const SessionsView = ({
   sessionsByProject,
   collapsed,
   allSessions,
+  harnesses,
   onToggle,
   onMore,
   onSelect,
@@ -295,6 +302,7 @@ export const SessionsView = ({
       {...(selectedSessionId === undefined ? {} : { selectedSessionId })}
       openSessionIds={openSessionIds}
       allSessions={allSessions}
+      harnesses={harnesses}
       onExit={onExit}
       terminalClient={terminalClient}
       createTerminal={createTerminal}

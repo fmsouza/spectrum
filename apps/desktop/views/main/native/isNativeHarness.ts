@@ -1,13 +1,20 @@
 import type { HarnessId } from "@launchkit/types"
 
-/**
- * Harness ids that launch through the native `RunManager` (and so render the
- * native `RunView`) rather than the embedded terminal. Spec 1 registers only the
- * dev-only "demo" harness (the `FakeDriver`); real drivers add their id here as
- * each later spec lands. Mirrors the backend driver registry's membership; kept
- * pure so the webview never imports the backend.
- */
-const NATIVE_HARNESS_IDS: ReadonlySet<string> = new Set(["demo"])
+/** The minimal harness-view shape the predicate reads (a `native` flag keyed by id). */
+export interface NativeFlaggedHarness {
+  readonly id: string
+  readonly native: boolean
+}
 
-export const isNativeHarness = (harnessId: HarnessId | undefined): boolean =>
-  harnessId !== undefined && NATIVE_HARNESS_IDS.has(harnessId)
+/**
+ * Whether a harness launches through the native `RunManager` (rendering the native `RunView`) rather
+ * than the embedded terminal. DATA-DRIVEN from the loaded harness list (`getHarnesses` surfaces the
+ * backend driver registry's `native` flag) — the single source of truth is the backend registry, so
+ * this never hardcodes ids.
+ */
+export const isNativeHarness = (
+  harnessId: HarnessId | undefined,
+  harnesses: readonly NativeFlaggedHarness[],
+): boolean =>
+  harnessId !== undefined &&
+  (harnesses.find((h) => h.id === String(harnessId))?.native ?? false)
