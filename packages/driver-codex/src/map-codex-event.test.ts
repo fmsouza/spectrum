@@ -130,3 +130,81 @@ describe("mapCodexEvent — message + reasoning deltas", () => {
     ] satisfies CanonicalEvent[])
   })
 })
+
+describe("mapCodexEvent — command execution lifecycle", () => {
+  it("maps command item/started → tool-call-started(shell) with command + cwd input", () => {
+    const state = freshState()
+    const out = mapCodexEvent(fx.cmdStarted, state)
+    expect(out).toEqual([
+      {
+        type: "tool-call-started",
+        runnerId: root,
+        callId: "call_1",
+        tool: "shell",
+        input: { command: "ls -la", cwd: "/repo" },
+      },
+    ] satisfies CanonicalEvent[])
+  })
+
+  it("maps outputDelta → tool-output-delta on the registered callId", () => {
+    const state = freshState()
+    mapCodexEvent(fx.cmdStarted, state)
+    expect(mapCodexEvent(fx.cmdOutput, state)).toEqual([
+      {
+        type: "tool-output-delta",
+        runnerId: root,
+        callId: "call_1",
+        chunk: "total 8\n",
+      },
+    ] satisfies CanonicalEvent[])
+  })
+
+  it("maps a completed command → tool-call-finished(ok) with exitCode 0 and aggregated output", () => {
+    const state = freshState()
+    mapCodexEvent(fx.cmdStarted, state)
+    expect(mapCodexEvent(fx.cmdCompleted, state)).toEqual([
+      {
+        type: "tool-call-finished",
+        runnerId: root,
+        callId: "call_1",
+        status: "ok",
+        output: "total 8\n",
+        exitCode: 0,
+      },
+    ] satisfies CanonicalEvent[])
+  })
+
+  it("maps a failed command → tool-call-finished(error) carrying exitCode 1", () => {
+    const out = mapCodexEvent(fx.cmdFailed, freshState())
+    expect(out).toEqual([
+      {
+        type: "tool-call-finished",
+        runnerId: root,
+        callId: "call_1",
+        status: "error",
+        output: "",
+        exitCode: 1,
+      },
+    ] satisfies CanonicalEvent[])
+  })
+
+  it("maps a fileChange item → one file-change event per change with mapped kind", () => {
+    const out = mapCodexEvent(fx.fileChange, freshState())
+    expect(out).toEqual([
+      {
+        type: "file-change",
+        runnerId: root,
+        path: "src/a.ts",
+        kind: "update",
+        diff: "@@ -1 +1 @@",
+      },
+      {
+        type: "file-change",
+        runnerId: root,
+        path: "src/new.ts",
+        kind: "add",
+        diff: "+new",
+      },
+    ] satisfies CanonicalEvent[])
+  })
+})
