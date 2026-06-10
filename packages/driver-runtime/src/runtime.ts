@@ -60,6 +60,13 @@ export const createDriver = (deps: {
     }
 
     schedule(() => {
+      // Mark the root runner started BEFORE the adapter runs. This (a) renders the native
+      // conversation + composer immediately, so the user can send the first turn that a
+      // streaming-input harness (e.g. claude) needs before it emits anything, and (b) makes any
+      // startup failure visible: the `errored` event below now attaches to an existing runner
+      // instead of being dropped by the reducer. The harness's own `runner-started` (e.g. from
+      // claude's system/init) is a harmless re-emit — the reducer treats it idempotently.
+      emit({ type: "runner-started", runnerId: rootRunnerId })
       deps.adapter.start(input, ctx).then(
         (h) => {
           if (closed) {

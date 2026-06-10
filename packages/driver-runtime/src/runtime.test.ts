@@ -128,6 +128,54 @@ describe("createDriver", () => {
     })
   })
 
+  it("marks the root runner started up front (prod timing: onEvent registered before the scheduled start runs)", () => {
+    const fake = makeFakeAdapter()
+    let run: (() => void) | undefined
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      // Defer like queueMicrotask: the subscriber registers before the scheduled startup runs.
+      scheduler: (fn) => {
+        run = fn
+      },
+    })
+    const started = driver.start(startInput)
+    const seen: CanonicalEvent[] = []
+    if (started.ok) started.value.onEvent((e) => seen.push(e))
+    run?.()
+    expect(seen).toEqual([
+      { type: "runner-started", runnerId: "rnr_1" as RunnerId },
+    ])
+  })
+
+  it("a startup failure is now visible: root runner-started then runner-finished errored", () => {
+    const fake = makeFakeAdapter()
+    let run: (() => void) | undefined
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: (fn) => {
+        run = fn
+      },
+    })
+    const started = driver.start(startInput)
+    const seen: CanonicalEvent[] = []
+    if (started.ok) started.value.onEvent((e) => seen.push(e))
+    run?.()
+    fake.rejectStart(new Error("spawn failed"))
+    return Promise.resolve().then(() => {
+      expect(seen).toEqual([
+        { type: "runner-started", runnerId: "rnr_1" as RunnerId },
+        {
+          type: "runner-finished",
+          runnerId: "rnr_1" as RunnerId,
+          status: "errored",
+          error: "Error: spawn failed",
+        },
+      ])
+    })
+  })
+
   it("queues send before the handle exists and drains it on start success", async () => {
     const fake = makeFakeAdapter()
     const driver = createDriver({

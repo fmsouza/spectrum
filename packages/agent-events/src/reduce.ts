@@ -91,17 +91,20 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
     case "runner-started": {
       // `event.model` is intentionally not projected into RunnerState; it is
       // retained only in the StoredEvent envelope for audit / replay purposes.
+      // Idempotent re-emit: the runtime marks the root runner started up front and the harness
+      // may emit its own `runner-started` afterwards (e.g. claude's system/init). Preserve any
+      // items/title already accumulated so the in-flight conversation is not reset to empty.
+      const existing = state.runners.get(event.runnerId)
+      const title = event.title ?? existing?.title
+      const agentType = event.agentType ?? existing?.agentType
+      const parentRunnerId = event.parentRunnerId ?? existing?.parentRunnerId
       const runner: RunnerState = {
         id: event.runnerId,
         status: "running",
-        items: [],
-        ...(event.parentRunnerId !== undefined
-          ? { parentRunnerId: event.parentRunnerId }
-          : {}),
-        ...(event.agentType !== undefined
-          ? { agentType: event.agentType }
-          : {}),
-        ...(event.title !== undefined ? { title: event.title } : {}),
+        items: existing?.items ?? [],
+        ...(parentRunnerId !== undefined ? { parentRunnerId } : {}),
+        ...(agentType !== undefined ? { agentType } : {}),
+        ...(title !== undefined ? { title } : {}),
       }
       let next = withRunner(state, runner)
       if (

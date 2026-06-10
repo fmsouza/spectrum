@@ -51,6 +51,27 @@ describe("reduce — runner lifecycle", () => {
     expect(state.runners.has(rid("ghost"))).toBe(false)
     expect(state.runners.get(rid("root"))?.status).toBe("running")
   })
+
+  it("a re-emitted runner-started preserves the runner's existing items + title (idempotent)", () => {
+    // The runtime marks the root started up front; the harness re-emits runner-started later
+    // (e.g. claude's system/init). The accumulated conversation must NOT be reset.
+    const state = fold([
+      started("root", { title: "main" }),
+      {
+        type: "text-delta",
+        runnerId: rid("root"),
+        messageId: "m1",
+        text: "hello",
+      },
+      started("root"), // re-emit with no title
+    ])
+    const runner = state.runners.get(rid("root"))
+    expect(runner?.items).toEqual([
+      { kind: "message", messageId: "m1", role: "assistant", text: "hello" },
+    ])
+    expect(runner?.title).toBe("main")
+    expect(runner?.status).toBe("running")
+  })
 })
 
 describe("reduce — text/reasoning accumulation", () => {
