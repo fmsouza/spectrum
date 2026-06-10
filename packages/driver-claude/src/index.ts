@@ -5,3 +5,10 @@ export {
   initialClaudeMapState,
   mapClaudeMessage,
 } from "./map-claude-message"
+export { createClaudeDriver } from "./create-claude-driver"
+export {
+  type ClaudeSdk,
+  type ClaudeQuery,
+  type SdkOptions,
+  createClaudeAdapter,
+} from "./sdk-glue"
