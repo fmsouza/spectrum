@@ -12,6 +12,7 @@ import { type ModelsStore, createModelsStore } from "./modelsStore"
 import { type ProjectsStore, createProjectsStore } from "./projectsStore"
 import { type ProvidersStore, createProvidersStore } from "./providersStore"
 import { type ProxyStore, createProxyStore } from "./proxyStore"
+import { type RunViewStore, createRunViewStore } from "./runViewStore"
 import type { StoreDeps } from "./types"
 import { type UiStore, createUiStore } from "./uiStore"
 
@@ -23,6 +24,7 @@ export type Stores = {
   readonly harnesses: StoreApi<HarnessesStore>
   readonly projects: StoreApi<ProjectsStore>
   readonly ui: StoreApi<UiStore>
+  readonly runView: StoreApi<RunViewStore>
 }
 
 export type CreateStoresOptions = {
@@ -43,6 +45,7 @@ export const createStores = ({
     harnesses: createHarnessesStore(deps),
     projects: createProjectsStore(deps),
     ui: createUiStore(initialView),
+    runView: createRunViewStore(deps),
   }
 }
 

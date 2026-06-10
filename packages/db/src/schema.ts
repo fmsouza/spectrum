@@ -1,6 +1,7 @@
 import {
   index,
   integer,
+  primaryKey,
   sqliteTable,
   text,
   uniqueIndex,
@@ -41,5 +42,28 @@ export const sessions = sqliteTable(
     index("idx_sessions_startedAt").on(t.startedAt),
     index("idx_sessions_harnessId").on(t.harnessId),
     index("idx_sessions_projectId").on(t.projectId),
+  ],
+)
+
+/**
+ * Append-only canonical run events. One row per event; PRIMARY KEY (sessionId, seq)
+ * gives a monotonic per-session ordering. `payload` is the JSON of the domain event.
+ * Additive — existing data untouched.
+ */
+export const runEvents = sqliteTable(
+  "run_events",
+  {
+    sessionId: text("sessionId")
+      .notNull()
+      .references(() => sessions.id),
+    seq: integer("seq").notNull(),
+    runnerId: text("runnerId").notNull(),
+    type: text("type").notNull(),
+    payload: text("payload").notNull(),
+    ts: text("ts").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.sessionId, t.seq] }),
+    index("idx_run_events_runner").on(t.sessionId, t.runnerId),
   ],
 )

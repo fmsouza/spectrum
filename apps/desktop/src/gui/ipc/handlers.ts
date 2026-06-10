@@ -1,5 +1,4 @@
 import type { IpcHandlers, ProviderView } from "@launchkit/ipc"
-import { bytesToBase64 } from "@launchkit/pty"
 import type { ModelRoute, Provider, SecretRef } from "@launchkit/types"
 import { isOk } from "@launchkit/utils"
 import type { AppContext } from "../../composition"
@@ -183,32 +182,10 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
     getHarnesses: async () => {
       const listed = await ctx.registry.list()
       if (!isOk(listed)) return fail("could not list harnesses")
-      return [...listed.value]
-    },
-
-    addHarness: async (definition) => {
-      // User-defined harnesses are files on disk; the registry validates + persists (builtIn forced
-      // false, built-in id collisions rejected) and hot-reloads them on the next list.
-      const res = await ctx.registry.add(definition)
-      if (!isOk(res)) return fail("could not add harness")
-      // Return the NORMALIZED definition: registry.add forces builtIn:false on disk, so the reply
-      // must match what the next getHarnesses returns rather than echoing the raw caller input.
-      return { ...definition, builtIn: false }
-    },
-
-    updateHarness: async ({ id, input }) => {
-      // Update is an upsert by id: writeDefinition overwrites the existing file for this id.
-      const updated = { ...input, id }
-      const res = await ctx.registry.add(updated)
-      if (!isOk(res)) return fail("could not update harness")
-      // builtIn is forced false by the registry on persist; mirror that in the reply.
-      return { ...input, id, builtIn: false }
-    },
-
-    deleteHarness: async ({ id }) => {
-      const res = await ctx.registry.remove(String(id))
-      if (!isOk(res)) return fail("could not delete harness")
-      return null
+      return listed.value.map((def) => ({
+        ...def,
+        native: ctx.driverRegistry.isNative(def.id),
+      }))
     },
 
     launchHarness: async ({ id, modelId, name, cwd, env }) => {
@@ -241,25 +218,32 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       const safeName = name?.trim() ? name : undefined
       const safeCwd = cwd?.trim() ? cwd : undefined
 
-      // Merge caller-supplied env ON TOP of the resolved env (caller may add tokens/flags),
-      // and thread the optional session metadata through. The manager owns Session creation.
-      const opened = ctx.terminal.launch({
+      // Every launchable harness is native now — it launches through the RunManager. A harness
+      // without a registered driver has no way to run, so reject it rather than silently no-op.
+      if (!ctx.driverRegistry.isNative(harness.id))
+        return fail("harness has no native driver")
+
+      const launchedNative = ctx.runner.launch({
         harnessId: harness.id,
         ...(modelId === undefined ? {} : { modelId }),
-        command: resolved.value.command,
-        args: resolved.value.args,
         env: { ...resolved.value.env, ...(env ?? {}) },
+        cwd: safeCwd ?? "",
+        // The SDK-backed driver spawns this resolved `claude` binary directly — its own
+        // bundle-relative executable resolution finds no cli.js in the packaged app.
+        command: resolved.value.command,
+        // Forward the resolved launch args too: codex routes through the proxy ONLY via its
+        // `-c model_providers.launchkit.*` overrides (not env), so a native codex session needs
+        // them. Drivers that route via env ignore this.
+        args: resolved.value.args,
         ...(safeName === undefined ? {} : { name: safeName }),
-        ...(safeCwd === undefined ? {} : { cwd: safeCwd }),
       })
-      if (!isOk(opened)) return fail("failed to launch harness")
+      if (!isOk(launchedNative)) return fail("failed to launch native harness")
 
-      // Remember the launched harness/model/cwd so the New Session modal can
-      // prefill them next time. Persist on success only (a cancelled modal must
-      // not change the prefill). Harness & model are always recorded; the folder
-      // is only updated when a cwd was actually given (otherwise the previously
-      // remembered folder is kept). A save failure here is non-fatal — the
-      // session already launched.
+      // Remember the launched harness/model/cwd so the New Session modal can prefill them next
+      // time. Persist on success only (a cancelled modal must not change the prefill). Harness &
+      // model are always recorded; the folder is only updated when a cwd was actually given
+      // (otherwise the previously remembered folder is kept). A save failure here is non-fatal —
+      // the session already launched.
       await ctx.config.save({
         ...config,
         settings: {
@@ -269,8 +253,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
           ...(safeCwd === undefined ? {} : { lastSelectedFolder: safeCwd }),
         },
       })
-
-      return { sessionId: opened.value.sessionId }
+      return { sessionId: launchedNative.value.sessionId }
     },
 
     // ── Sessions & proxy ─────────────────────────────────────────────────────────────────
@@ -292,7 +275,14 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return { running, port: ctx.proxyPort }
     },
 
-    getTerminalSocketUrl: async () => ({ url: ctx.terminalSocketUrl }),
+    getRunnerSocketUrl: async () => ({ url: ctx.runnerSocketUrl }),
+
+    // ── Run events (canonical replay) ────────────────────────────────────────────
+    getRunEvents: async ({ id }) => {
+      const read = ctx.runEvents.read(id)
+      if (!isOk(read)) return fail("could not read run events")
+      return { events: [...read.value] }
+    },
 
     getSettings: async () => {
       const config = await loadConfig()
@@ -334,13 +324,6 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       )
       const first = selected[0]
       return first === undefined ? {} : { path: first }
-    },
-
-    // ── Session scrollback ────────────────────────────────────────────────────
-    getSessionScrollback: async ({ id }) => {
-      const read = ctx.readScrollback(id)
-      if (!isOk(read)) return fail("could not read session scrollback")
-      return { bytesBase64: bytesToBase64(read.value) }
     },
 
     // ── Model discovery ────────────────────────────────────────────────────────

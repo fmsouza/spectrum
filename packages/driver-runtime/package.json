@@ -1,0 +1,13 @@
+{
+  "name": "@launchkit/driver-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc --noEmit", "test": "bun test" },
+  "dependencies": {
+    "@launchkit/agent-driver": "workspace:*",
+    "@launchkit/agent-events": "workspace:*",
+    "@launchkit/utils": "workspace:*"
+  }
+}

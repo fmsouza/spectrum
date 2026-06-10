@@ -13,15 +13,24 @@ import type {
   RunningProxy,
   RuntimeState,
 } from "@launchkit/proxy"
-import type { PtyError, SessionSink, TerminalManager } from "@launchkit/pty"
 import type { SecretStore } from "@launchkit/secrets"
 import type { SessionStore } from "@launchkit/sessions"
 import type { SessionId } from "@launchkit/types"
 import type { Result } from "@launchkit/utils"
 
-import { mkdirSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
+import type {
+  AgentDriver,
+  RunManager,
+  SessionSink,
+} from "@launchkit/agent-driver"
+import {
+  createFakeDriver,
+  createRunManager,
+  demoScript,
+} from "@launchkit/agent-driver"
+import type { StoredEvent } from "@launchkit/agent-events"
 import {
   createCachedConfigStore,
   createFileConfigStore,
@@ -29,9 +38,13 @@ import {
   defaultConfig,
 } from "@launchkit/config"
 import { createSqliteClient, runMigrations } from "@launchkit/db"
+import { createClaudeDriver } from "@launchkit/driver-claude"
+import { createCodexDriver } from "@launchkit/driver-codex"
+import { createOpenclawDriver } from "@launchkit/driver-openclaw"
+import { createOpencodeDriver } from "@launchkit/driver-opencode"
 import {
   createBunProcessSpawner,
-  createDirHarnessFileSource,
+  createInMemoryHarnessFileSource,
   createPathCommandResolver,
   createRegistry,
   launchHarness,
@@ -49,12 +62,7 @@ import {
   loadSdk,
   startProxy,
 } from "@launchkit/proxy"
-import {
-  createBunScrollbackFs,
-  createFfiPty,
-  createFileScrollbackStore,
-  createTerminalManager,
-} from "@launchkit/pty"
+import { createRunStore } from "@launchkit/run-store"
 import {
   createBunProcessRunner,
   createMacosSecurityBackend,
@@ -63,7 +71,13 @@ import {
 import { createSessionStore } from "@launchkit/sessions"
 import { createCryptoIdGen, createSystemClock } from "@launchkit/utils"
 import { err } from "@launchkit/utils"
-import { startTerminalSocket } from "./gui/terminal-socket"
+import { withDemoHarness } from "./gui/demo-harness"
+import {
+  DEMO_HARNESS_ID,
+  type DriverRegistry,
+  createDriverRegistry,
+} from "./gui/driver-registry"
+import { startRunnerSocket } from "./gui/runner-socket"
 
 /** Result of testing one provider's live connectivity (mirrors ipc TestProviderResult). */
 export type ProviderTestResult = {
@@ -92,8 +106,8 @@ export interface AppContext {
   >
   /**
    * `resolveHarnessLaunch({ resolver })` partially applied: resolves a harness's command + renders
-   * its proxy env WITHOUT spawning. The GUI embedded-terminal path uses this (then hands the result
-   * to `ctx.terminal.launch`); the headless `ctx.launch` keeps owning the CLI spawn path.
+   * its proxy env WITHOUT spawning. The GUI native-run path uses this (then hands the result to
+   * `ctx.runner.launch`); the headless `ctx.launch` keeps owning the CLI spawn path.
    */
   readonly resolveLaunch: (
     params: LaunchParams,
@@ -134,13 +148,24 @@ export interface AppContext {
   /** Mints the per-run >=32-byte proxy key (security.md) when the shell starts an ephemeral proxy. */
   readonly genProxyKey: () => string
   /**
-   * The embedded-terminal engine for the GUI: allocates a real PTY per launched harness and streams
-   * its bytes over a dedicated loopback WebSocket (`terminalSocketUrl`). Its `send` sink is a no-op
-   * until the terminal socket binds it on connect. Unused by the CLI/`launch` headless path.
+   * The native run engine: starts an AgentDriver per launched harness and streams its canonical
+   * events over a dedicated loopback WebSocket (`runnerSocketUrl`). Its `send` sink is a no-op until the
+   * runner socket binds it on connect.
    */
-  readonly terminal: TerminalManager
-  /** Loopback `ws://localhost:<port>/` the webview connects to for the PTY byte stream. */
-  readonly terminalSocketUrl: string
+  readonly runner: RunManager
+  /** Loopback `ws://localhost:<port>/` the webview connects to for the canonical run-event stream. */
+  readonly runnerSocketUrl: string
+  /** Read a session's stored canonical event log for read-only replay. */
+  readonly runEvents: {
+    read(
+      id: SessionId,
+    ): Result<
+      readonly StoredEvent[],
+      { readonly kind: "db-failed"; readonly detail: string }
+    >
+  }
+  /** Which harnesses have a registered native driver (every launchable harness does). */
+  readonly driverRegistry: DriverRegistry
   /** Resolved settings paths (config + db + harness dir), surfaced for diagnostics/tests. */
   readonly paths: {
     readonly configFile: string
@@ -155,12 +180,6 @@ export interface AppContext {
   readonly pickFolder: (opts: {
     readonly startingFolder?: string
   }) => Promise<readonly string[]>
-  /**
-   * Read a session's captured terminal bytes from the file-backed scrollback store, for the
-   * read-only replay pane. Returns the raw bytes; the `getSessionScrollback` handler base64-encodes
-   * them.
-   */
-  readonly readScrollback: (id: SessionId) => Result<Uint8Array, PtyError>
 }
 
 /**
@@ -170,7 +189,6 @@ export interface AppContext {
  */
 export interface CreateAppContextDeps {
   readonly homeDir: typeof homedir
-  readonly mkdirSync: typeof mkdirSync
   readonly createFsConfigFile: typeof createFsConfigFile
   readonly createFileConfigStore: typeof createFileConfigStore
   readonly createCachedConfigStore: typeof createCachedConfigStore
@@ -183,7 +201,6 @@ export interface CreateAppContextDeps {
   readonly createSystemClock: typeof createSystemClock
   readonly createSessionStore: typeof createSessionStore
   readonly createProjectStore: typeof createProjectStore
-  readonly createDirHarnessFileSource: typeof createDirHarnessFileSource
   readonly createRegistry: typeof createRegistry
   readonly createPathCommandResolver: typeof createPathCommandResolver
   readonly createBunProcessSpawner: typeof createBunProcessSpawner
@@ -192,11 +209,14 @@ export interface CreateAppContextDeps {
   readonly loadSdk: typeof loadSdk
   readonly createRealGateway: typeof createRealGateway
   readonly createFileRuntimeState: typeof createFileRuntimeState
-  readonly createBunScrollbackFs: typeof createBunScrollbackFs
-  readonly createFileScrollbackStore: typeof createFileScrollbackStore
-  readonly createFfiPty: typeof createFfiPty
-  readonly createTerminalManager: typeof createTerminalManager
-  readonly startTerminalSocket: typeof startTerminalSocket
+  readonly createRunStore: typeof createRunStore
+  readonly createRunManager: typeof createRunManager
+  readonly startRunnerSocket: typeof startRunnerSocket
+  readonly createFakeDriver: typeof createFakeDriver
+  readonly createCodexDriver: typeof createCodexDriver
+  readonly createOpencodeDriver: typeof createOpencodeDriver
+  /** Set in dev to register the demo FakeDriver harness; production leaves it unset. */
+  readonly demoHarnessEnabled: boolean
   readonly genProxyKey: () => string
 }
 
@@ -210,7 +230,6 @@ const defaultGenProxyKey = (): string => {
 /** The real constructors, used when `createAppContext()` is called with no argument. */
 const realDeps: CreateAppContextDeps = {
   homeDir: homedir,
-  mkdirSync,
   createFsConfigFile,
   createFileConfigStore,
   createCachedConfigStore,
@@ -223,7 +242,6 @@ const realDeps: CreateAppContextDeps = {
   createSystemClock,
   createSessionStore,
   createProjectStore,
-  createDirHarnessFileSource,
   createRegistry,
   createPathCommandResolver,
   createBunProcessSpawner,
@@ -232,11 +250,13 @@ const realDeps: CreateAppContextDeps = {
   loadSdk,
   createRealGateway,
   createFileRuntimeState,
-  createBunScrollbackFs,
-  createFileScrollbackStore,
-  createFfiPty,
-  createTerminalManager,
-  startTerminalSocket,
+  createRunStore,
+  createRunManager,
+  startRunnerSocket,
+  createFakeDriver,
+  createCodexDriver,
+  createOpencodeDriver,
+  demoHarnessEnabled: process.env.LAUNCHKIT_DEMO_HARNESS === "1",
   genProxyKey: defaultGenProxyKey,
 }
 
@@ -325,7 +345,6 @@ export const createAppContext = (
   const configFile = join(configDir, "config.json")
   const dbFile = join(configDir, "launchkit.db")
   const harnessDir = join(configDir, "harnesses")
-  const scrollbackDir = join(configDir, "scrollback")
   const runtimeFile = join(configDir, "runtime.json")
 
   // config: cached( file( fs(configFile) ) ). Wrapped to keep a synchronous snapshot of the latest
@@ -381,9 +400,9 @@ export const createAppContext = (
     idGen: deps.createCryptoIdGen(),
   })
 
-  // Every embedded-terminal session must belong to a project. Resolve (or create) the project
-  // from the launch cwd, then create the session with its projectId. This is the single GUI
-  // orchestration seam — SessionStore.create stays pure (it just receives a projectId).
+  // Every launched session must belong to a project. Resolve (or create) the project from the
+  // launch cwd, then create the session with its projectId. This is the single GUI orchestration
+  // seam — SessionStore.create stays pure (it just receives a projectId).
   const sessionSink: SessionSink = {
     create: (input) => {
       const cwd = input.cwd ?? ""
@@ -407,12 +426,19 @@ export const createAppContext = (
     close: sessions.close,
   }
 
-  // harnesses: registry from the user harness dir; launcher partially applied with real adapters
-  const registry = deps.createRegistry({
-    fileSource: deps.createDirHarnessFileSource(harnessDir),
+  // harnesses: registry of the builtins only (custom user harnesses are no longer supported, so the
+  // file source is empty); launcher partially applied with real adapters.
+  const baseRegistry = deps.createRegistry({
+    fileSource: createInMemoryHarnessFileSource([]),
   })
+  // Dev-only (LAUNCHKIT_DEMO_HARNESS=1): surface a launchable `demo` harness — driven by the FakeDriver
+  // registered in the driver registry below — so the native conversation view is reachable from the New
+  // Session modal. Production (flag unset) lists only the builtin harnesses.
+  const registry = deps.demoHarnessEnabled
+    ? withDemoHarness(baseRegistry)
+    : baseRegistry
   // ONE resolver shared by both launch paths: the headless `launch` (CLI spawn) and the GUI's
-  // `resolveLaunch` (resolve command + render proxy env, then hand to `terminal.launch`).
+  // `resolveLaunch` (resolve command + render proxy env, then hand to `runner.launch`).
   const resolver = deps.createPathCommandResolver()
   const launch = deps.launchHarness({
     resolver,
@@ -430,24 +456,54 @@ export const createAppContext = (
   // runtime: persists only the running proxy's per-run key so the CLI can reuse it
   const runtime = deps.createFileRuntimeState(runtimeFile)
 
-  // terminal: the GUI embedded-terminal engine over a real FFI pty + the session store. Its `send`
-  // sink is a no-op until window.ts binds the real Electrobun `messages` channel via `bindSend`.
-  deps.mkdirSync(scrollbackDir, { recursive: true })
-  // Persisted per-session scrollback (read-only replay reads from here after a session ends).
-  const scrollbackStore = deps.createFileScrollbackStore({
-    dir: scrollbackDir,
-    fs: deps.createBunScrollbackFs(),
+  // Native run path: structured canonical events persisted to the shared db and streamed over a
+  // loopback socket. The RunStore structurally satisfies the RunManager's RunEventSink; sessionSink
+  // structurally satisfies its SessionSink.
+  const runStore = deps.createRunStore({
+    db: dbClient,
+    clock: deps.createSystemClock(),
   })
-  const terminal = deps.createTerminalManager({
-    pty: deps.createFfiPty(),
+
+  // Native drivers: `claude`, `codex`, `opencode`, `openclaw` all launch native via their drivers
+  // (openclaw is UNVERIFIED — no binary). The demo FakeDriver stays dev-gated
+  // (LAUNCHKIT_DEMO_HARNESS=1). Each driver injects its own effects so the logic stays unit-testable;
+  // the runtime owns the sync↔async bridge + lifecycle.
+  const idGen = deps.createCryptoIdGen()
+  const driverIdGen = deps.createCryptoIdGen()
+  const driverRegistry: DriverRegistry = createDriverRegistry({
+    claude: createClaudeDriver({ idGen }),
+    codex: deps.createCodexDriver({ idGen: driverIdGen }),
+    opencode: deps.createOpencodeDriver({ idGen: driverIdGen }),
+    // Plan 4 (UNVERIFIED): OpenClaw gateway driver. No installed binary / published @openclaw/sdk; the
+    // real connector throws (→ runner-finished:errored) until wired, but it routes native like the others.
+    openclaw: createOpenclawDriver({ idGen }),
+    ...(deps.demoHarnessEnabled
+      ? { [DEMO_HARNESS_ID]: deps.createFakeDriver({ script: demoScript }) }
+      : {}),
+  })
+
+  // One AgentDriver for the RunManager: route start() to the registered driver for the harness.
+  const routingDriver: AgentDriver = {
+    start: (input) => {
+      const driver = driverRegistry.get(input.harnessId)
+      if (driver === undefined)
+        return err({
+          kind: "start-failed",
+          detail: `no driver for harness ${String(input.harnessId)}`,
+        })
+      return driver.start(input)
+    },
+  }
+
+  const runner = deps.createRunManager({
+    driver: routingDriver,
     sessions: sessionSink,
-    scrollback: scrollbackStore,
+    events: runStore,
+    clock: deps.createSystemClock(),
     send: () => {},
-    capBytes: 1_000_000,
-    defaultSize: { cols: 80, rows: 24 },
   })
-  // The dedicated loopback WebSocket for the PTY byte stream binds `terminal`'s send sink on connect.
-  const terminalSocketUrl = deps.startTerminalSocket(terminal).url
+  // The dedicated loopback WebSocket for the run-event stream binds `runner`'s send sink on connect.
+  const runnerSocketUrl = deps.startRunnerSocket(runner).url
 
   // proxy settings resolved from the default config shape (loopback only, security.md)
   const settings = defaultConfig().settings
@@ -520,10 +576,11 @@ export const createAppContext = (
     proxyPort,
     proxyBaseUrl,
     genProxyKey: deps.genProxyKey,
-    terminal,
-    terminalSocketUrl,
+    runner,
+    runnerSocketUrl,
+    runEvents: { read: runStore.read },
+    driverRegistry,
     pickFolder,
-    readScrollback: scrollbackStore.read,
     paths: { configFile, dbFile, harnessDir },
   }
 }

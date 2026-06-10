@@ -1,3 +1,4 @@
+import { StoredEventSchema } from "@launchkit/agent-events"
 import {
   HarnessDefinitionSchema,
   HarnessIdSchema,
@@ -104,24 +105,17 @@ export const DeleteModelResultSchema = VoidSchema
 // ── Harnesses ─────────────────────────────────────────────────────────────────
 
 export const GetHarnessesParamsSchema = z.undefined()
-export const GetHarnessesResultSchema = z.array(HarnessDefinitionSchema)
 
-/** Add accepts a full definition (user-defined harnesses arrive as JSON shapes). */
-export const AddHarnessParamsSchema = HarnessDefinitionSchema
-export const AddHarnessResultSchema = HarnessDefinitionSchema
-
-export const UpdateHarnessParamsSchema = z
-  .object({
-    id: HarnessIdSchema,
-    input: HarnessDefinitionSchema.omit({ id: true }),
-  })
-  .strict()
-export const UpdateHarnessResultSchema = HarnessDefinitionSchema
-
-export const DeleteHarnessParamsSchema = z
-  .object({ id: HarnessIdSchema })
-  .strict()
-export const DeleteHarnessResultSchema = VoidSchema
+/**
+ * Harness-VIEW shape: each builtin harness definition plus a data-driven `native` flag derived from
+ * the backend driver registry (`driverRegistry.isNative`). Every launchable harness is native and
+ * renders the native RunView — single source of truth = the registry.
+ */
+export const HarnessViewSchema = HarnessDefinitionSchema.extend({
+  native: z.boolean(),
+})
+export type HarnessView = z.infer<typeof HarnessViewSchema>
+export const GetHarnessesResultSchema = z.array(HarnessViewSchema)
 
 export const LaunchHarnessParamsSchema = z
   .object({
@@ -133,8 +127,8 @@ export const LaunchHarnessParamsSchema = z
   })
   .strict()
 /**
- * Launching now opens an embedded terminal session via the TerminalManager (which creates the
- * Session internally), so the GUI only needs the new session's id back — not the full Session.
+ * Launching opens a native run session via the RunManager (which creates the Session internally),
+ * so the GUI only needs the new session's id back — not the full Session.
  */
 export const LaunchHarnessResultSchema = z
   .object({ sessionId: SessionIdSchema })
@@ -155,14 +149,6 @@ export const GetSessionsParamsSchema = z
   .optional()
 export const GetSessionsResultSchema = z.array(SessionSchema)
 
-// Scrollback bytes are base64-encoded for JSON transport (binary-safe over IPC).
-export const GetSessionScrollbackParamsSchema = z
-  .object({ id: SessionIdSchema })
-  .strict()
-export const GetSessionScrollbackResultSchema = z
-  .object({ bytesBase64: z.string() })
-  .strict()
-
 export const GetProxyStatusParamsSchema = z.undefined()
 export const GetProxyStatusResultSchema = z
   .object({
@@ -171,11 +157,19 @@ export const GetProxyStatusResultSchema = z
   })
   .strict()
 
-// The webview asks for the dedicated terminal WebSocket URL (a loopback ws the bun side serves for
-// the PTY byte stream — see apps/desktop/src/gui/terminal-socket.ts) and connects to it directly.
-export const GetTerminalSocketUrlParamsSchema = z.undefined()
-export const GetTerminalSocketUrlResultSchema = z
+// The webview asks for the dedicated runner WebSocket URL (a loopback ws the bun side serves for the
+// canonical run-event stream — see apps/desktop/src/gui/runner-socket.ts) and connects to it directly.
+export const GetRunnerSocketUrlParamsSchema = z.undefined()
+export const GetRunnerSocketUrlResultSchema = z
   .object({ url: z.string() })
+  .strict()
+
+// Replay: the full ordered canonical event log for a session, validated by StoredEventSchema.
+export const GetRunEventsParamsSchema = z
+  .object({ id: SessionIdSchema })
+  .strict()
+export const GetRunEventsResultSchema = z
+  .object({ events: z.array(StoredEventSchema) })
   .strict()
 
 // ── Model discovery ───────────────────────────────────────────────────────
@@ -279,18 +273,6 @@ export const IpcMethodSchemas = {
     params: GetHarnessesParamsSchema,
     result: GetHarnessesResultSchema,
   },
-  addHarness: {
-    params: AddHarnessParamsSchema,
-    result: AddHarnessResultSchema,
-  },
-  updateHarness: {
-    params: UpdateHarnessParamsSchema,
-    result: UpdateHarnessResultSchema,
-  },
-  deleteHarness: {
-    params: DeleteHarnessParamsSchema,
-    result: DeleteHarnessResultSchema,
-  },
   launchHarness: {
     params: LaunchHarnessParamsSchema,
     result: LaunchHarnessResultSchema,
@@ -299,17 +281,17 @@ export const IpcMethodSchemas = {
     params: GetSessionsParamsSchema,
     result: GetSessionsResultSchema,
   },
-  getSessionScrollback: {
-    params: GetSessionScrollbackParamsSchema,
-    result: GetSessionScrollbackResultSchema,
-  },
   getProxyStatus: {
     params: GetProxyStatusParamsSchema,
     result: GetProxyStatusResultSchema,
   },
-  getTerminalSocketUrl: {
-    params: GetTerminalSocketUrlParamsSchema,
-    result: GetTerminalSocketUrlResultSchema,
+  getRunnerSocketUrl: {
+    params: GetRunnerSocketUrlParamsSchema,
+    result: GetRunnerSocketUrlResultSchema,
+  },
+  getRunEvents: {
+    params: GetRunEventsParamsSchema,
+    result: GetRunEventsResultSchema,
   },
   pickFolder: {
     params: PickFolderParamsSchema,

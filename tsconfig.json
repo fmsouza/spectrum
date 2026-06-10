@@ -9,6 +9,14 @@
     { "path": "packages/sessions" },
     { "path": "packages/projects" },
     { "path": "packages/db" },
-    { "path": "packages/ipc" }
+    { "path": "packages/ipc" },
+    { "path": "packages/agent-events" },
+    { "path": "packages/run-store" },
+    { "path": "packages/agent-driver" },
+    { "path": "packages/driver-runtime" },
+    { "path": "packages/driver-claude" },
+    { "path": "packages/driver-codex" },
+    { "path": "packages/driver-opencode" },
+    { "path": "packages/driver-openclaw" }
   ]
 }

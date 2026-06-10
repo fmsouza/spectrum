@@ -28,4 +28,12 @@ export const bundledMigrations: readonly BundledMigration[] = [
       "CREATE INDEX `idx_sessions_projectId` ON `sessions` (`projectId`);",
     ],
   },
+  {
+    tag: "0002_glamorous_maximus",
+    when: 1780958298608,
+    statements: [
+      "CREATE TABLE `run_events` (\n\t`sessionId` text NOT NULL,\n\t`seq` integer NOT NULL,\n\t`runnerId` text NOT NULL,\n\t`type` text NOT NULL,\n\t`payload` text NOT NULL,\n\t`ts` text NOT NULL,\n\tPRIMARY KEY(`sessionId`, `seq`),\n\tFOREIGN KEY (`sessionId`) REFERENCES `sessions`(`id`) ON UPDATE no action ON DELETE no action\n);",
+      "CREATE INDEX `idx_run_events_runner` ON `run_events` (`sessionId`,`runnerId`);",
+    ],
+  },
 ] as const

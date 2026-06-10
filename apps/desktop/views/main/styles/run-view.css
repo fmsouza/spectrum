@@ -1,0 +1,450 @@
+/* ───────────────────────── Native conversation (RunView) ────────────────── */
+/* The native conversation replaces the terminal for native-backed sessions. It
+   fills the sessions detail as a split: a flexible conversation column (timeline
+   + composer) and an optional ~380px sub-runner pane that slides in on the right.
+   Tokens-driven; dark-mode follows tokens.css automatically. */
+
+.lk-run-view {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  min-height: 0;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.lk-run-view__main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.lk-run-view__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+/* The sub-runner pane: a fixed-width right column with its own border + scroll. */
+.lk-sub-runner-pane {
+  flex: 0 0 380px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.lk-sub-runner-pane__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.lk-sub-runner-pane__crumb {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+
+.lk-sub-runner-pane__readonly {
+  flex: 0 0 auto;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-inset);
+  color: var(--text-faint);
+}
+
+.lk-sub-runner-pane__close {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.lk-sub-runner-pane__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3);
+}
+
+/* ── Timeline + items ───────────────────────────────────────────────────── */
+.lk-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.lk-message-bubble {
+  align-self: flex-start;
+  max-width: 80%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: var(--text-base);
+}
+
+/* The user's own turns: right-aligned, accent-tinted (chat convention). */
+.lk-message-bubble[data-role="user"] {
+  align-self: flex-end;
+  background: var(--accent-soft, var(--surface-2));
+  border-color: var(--accent, var(--border-strong));
+}
+
+/* ── Markdown body inside a bubble (react-markdown renders real elements) ──── */
+.lk-markdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.lk-markdown > :first-child {
+  margin-top: 0;
+}
+.lk-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.lk-markdown p,
+.lk-markdown ul,
+.lk-markdown ol,
+.lk-markdown pre,
+.lk-markdown blockquote,
+.lk-markdown h1,
+.lk-markdown h2,
+.lk-markdown h3 {
+  margin: 0;
+}
+
+.lk-markdown ul,
+.lk-markdown ol {
+  padding-left: var(--space-4);
+}
+
+.lk-markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--surface-inset);
+  padding: 0 0.25em;
+  border-radius: var(--radius-xs, 3px);
+}
+
+.lk-markdown pre {
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-inset);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+
+.lk-markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.lk-markdown blockquote {
+  border-left: 2px solid var(--border-strong);
+  padding-left: var(--space-3);
+  color: var(--text-muted);
+}
+
+.lk-markdown a {
+  color: var(--accent, var(--text));
+  text-decoration: underline;
+}
+
+.lk-markdown table {
+  border-collapse: collapse;
+}
+.lk-markdown th,
+.lk-markdown td {
+  border: 1px solid var(--border);
+  padding: 0.15em 0.5em;
+}
+
+.lk-reasoning {
+  border-left: 2px solid var(--border-strong);
+  padding-left: var(--space-3);
+}
+
+.lk-reasoning__header {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  padding: 0;
+}
+
+.lk-reasoning__body {
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+}
+
+/* Tool call cards: a header row (status dot, icon, name, exit) over an optional
+   monospace output body. data-status tints the left edge. */
+.lk-tool-call {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.lk-tool-call[data-status="error"] {
+  border-color: var(--red);
+}
+
+.lk-tool-call__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.lk-tool-call__name {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  flex: 0 0 auto;
+}
+
+/* The inline command / file / skill detail next to the tool name (single line, truncated). */
+.lk-tool-call__summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.lk-tool-call__exit {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  font-size: var(--text-xs);
+}
+
+.lk-tool-call__output {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border);
+  background: var(--surface-inset);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.lk-tool-icon {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+/* File diff cards: path header + a monospace diff body of DiffLines. */
+.lk-file-diff {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.lk-file-diff__path {
+  padding: var(--space-1) var(--space-3);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.lk-file-diff__body {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.lk-diff-line {
+  padding: 0 var(--space-3);
+  white-space: pre;
+}
+
+.lk-diff-line[data-kind="add"] {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.lk-diff-line[data-kind="del"] {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+/* Inline approval card with approve/deny/always actions. */
+.lk-approval {
+  border: 1px solid var(--amber);
+  border-radius: var(--radius-sm);
+  background: var(--amber-soft);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.lk-approval__title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.lk-approval__detail {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  word-break: break-all;
+}
+
+.lk-approval__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.lk-approval__resolved {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Openable sub-runner card (status dot + title + Open). */
+.lk-sub-runner-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.lk-sub-runner-card__title {
+  font-size: var(--text-sm);
+}
+
+.lk-sub-runner-card__open {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: var(--text-xs);
+}
+
+/* Usage footer + token counts. */
+.lk-usage-footer {
+  display: flex;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+}
+
+.lk-usage-footer__cost {
+  margin-left: auto;
+}
+
+/* Composer: a flat input row pinned under the conversation column. */
+.lk-composer {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.lk-composer__input {
+  flex: 1 1 auto;
+  min-height: 2.5rem;
+  resize: vertical;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+}
+
+.lk-composer__input:disabled {
+  opacity: 0.6;
+}
+
+/* ── Typing / working indicator (3 bouncing dots) ───────────────────────────── */
+.lk-typing {
+  display: flex;
+  justify-content: center;
+  gap: 0.3rem;
+  /* Match the timeline's inter-item gap above, so it isn't crowded against the last message. */
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+
+.lk-typing__dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--text-faint);
+  animation: lk-typing-bounce 1.2s infinite ease-in-out both;
+}
+
+.lk-typing__dot:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.lk-typing__dot:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes lk-typing-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* The conversation is selectable so messages can be copied (Cmd/Ctrl+C). */
+.lk-run-view__scroll,
+.lk-sub-runner-pane__body {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: auto;
+}

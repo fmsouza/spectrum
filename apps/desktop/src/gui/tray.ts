@@ -30,9 +30,9 @@ export interface TrayActions {
 
 /**
  * Build the tray menu from the live registry + proxy status, render it through the seam, and route
- * clicks: `open` → openWindow, `quit` → quit, `launch:<id>` → open an embedded terminal session for
- * that harness as a DEFAULT launch (= bypass the proxy) — reusing the SAME path as
- * `createIpcHandlers.launchHarness` (`ctx.resolveLaunch(...)` then `ctx.terminal.launch(...)`; the
+ * clicks: `open` → openWindow, `quit` → quit, `launch:<id>` → open a native run session for that
+ * harness as a DEFAULT launch (= bypass the proxy) — reusing the SAME path as
+ * `createIpcHandlers.launchHarness` (`ctx.resolveLaunch(...)` then `ctx.runner.launch(...)`; the
  * manager owns session creation). Thin by design: all the menu shape lives in the pure
  * `buildTrayMenu`; this only assembles + dispatches.
  */
@@ -48,30 +48,33 @@ export const mountTray = async (
   const menu = buildTrayMenu({ harnesses, proxyRunning })
 
   /**
-   * Launch a harness by id via the shared embedded-terminal path (mirrors the IPC handler):
-   * resolve the command (DEFAULT launch = bypass, so no proxy env is rendered), then
-   * `ctx.terminal.launch` (which creates the Session itself — so we do NOT call `ctx.sessions.create`).
-   * On success, bring the window forward so the user sees the new terminal tab; never block on exit.
+   * Launch a harness by id via the shared native-run path (mirrors the IPC handler): resolve the
+   * command (DEFAULT launch = bypass, so no proxy env is rendered), then `ctx.runner.launch` (which
+   * creates the Session itself — so we do NOT call `ctx.sessions.create`). On success, bring the
+   * window forward so the user sees the new session; never block on exit. A harness without a
+   * registered native driver is skipped (there is no other way to run it).
    */
   const launchById = async (harnessId: string): Promise<void> => {
     const list = await ctx.registry.list()
     if (!isOk(list)) return
     const harness = list.value.find((h) => String(h.id) === harnessId)
     if (harness === undefined) return
+    if (!ctx.driverRegistry.isNative(harness.id)) return
 
     // A tray quick-launch is a DEFAULT launch: bypass the proxy (route kind "direct").
     const resolved = ctx.resolveLaunch({ harness, route: { kind: "direct" } })
     if (!isOk(resolved)) return
 
-    const opened = ctx.terminal.launch({
+    const opened = ctx.runner.launch({
       harnessId: harness.id,
+      cwd: "",
       command: resolved.value.command,
       args: resolved.value.args,
       env: resolved.value.env,
     })
-    if (!isOk(opened)) return // pty failed → no session was recorded by the manager
+    if (!isOk(opened)) return // driver failed → no session was recorded by the manager
 
-    actions.openWindow() // surface the window so the new terminal tab is visible
+    actions.openWindow() // surface the window so the new session is visible
   }
 
   const onClick = (clickId: string): void => {
