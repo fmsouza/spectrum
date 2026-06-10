@@ -15,6 +15,7 @@
     { "path": "packages/agent-driver" },
     { "path": "packages/driver-runtime" },
     { "path": "packages/driver-claude" },
-    { "path": "packages/driver-codex" }
+    { "path": "packages/driver-codex" },
+    { "path": "packages/driver-opencode" }
   ]
 }

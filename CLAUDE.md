@@ -28,6 +28,7 @@ Test-first (RED observed) → implemented (GREEN) → refactored → `bun run ty
 - `@launchkit/driver-runtime` — reusable driver core: createDriver(adapter) → AgentDriver (depends on agent-driver, agent-events, utils; no harness SDK)
 - `@launchkit/driver-claude` — Claude Code driver: createClaudeDriver + pure mapClaudeMessage (depends on driver-runtime, agent-events, agent-driver, utils, @anthropic-ai/claude-agent-sdk)
 - `@launchkit/driver-codex` — Codex driver over `codex app-server`: createCodexDriver + pure mapCodexEvent + CODEX_APP_SERVER_VERSION (depends on driver-runtime, agent-events, agent-driver, types, utils)
+- `@launchkit/driver-opencode` — OpenCode server adapter over driver-runtime: createOpencodeDriver + pure mapOpencodeEvent (depends on driver-runtime, agent-events, agent-driver, utils, @opencode-ai/sdk)
 
 ## Project skills
 `.claude/skills/launchkit-new-package` — creating a new internal package under `packages/`. Invoke it when it applies.
