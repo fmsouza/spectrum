@@ -195,7 +195,11 @@ describe("createClaudeAdapter", () => {
     // it asked for approval against the root runner with a command target
     expect(approvals).toHaveLength(1)
     approvals[0]?.resolve("allow")
-    await expect(resultP).resolves.toEqual({ behavior: "allow" })
+    // The SDK requires `updatedInput` on allow — we echo the original tool input unchanged.
+    await expect(resultP).resolves.toEqual({
+      behavior: "allow",
+      updatedInput: { command: "rm -rf build" },
+    })
 
     const denyP = canUseTool(
       "Bash",

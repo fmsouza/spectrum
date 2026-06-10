@@ -19,7 +19,9 @@ export interface SdkUserInput {
 export type SdkPermissionResult =
   | {
       readonly behavior: "allow"
-      readonly updatedInput?: Record<string, unknown>
+      // The SDK REQUIRES this (it validates the result with zod): the tool input to run with, possibly
+      // modified. We pass the original input unchanged.
+      readonly updatedInput: Record<string, unknown>
     }
   | {
       readonly behavior: "deny"
@@ -61,11 +63,11 @@ export interface ClaudeSdk {
 /** Map a canonical approval decision → the SDK's PermissionResult. */
 const toPermissionResult = (
   decision: ApprovalDecision,
-  _input: Record<string, unknown>,
+  input: Record<string, unknown>,
 ): SdkPermissionResult =>
   decision === "deny"
     ? { behavior: "deny", message: "Denied by user" }
-    : { behavior: "allow" } // allow + allow-always both proceed
+    : { behavior: "allow", updatedInput: input } // allow + allow-always both proceed
 
 /** Infer an ApprovalTarget from the tool name + input (command/file/tool). */
 const targetFor = (
