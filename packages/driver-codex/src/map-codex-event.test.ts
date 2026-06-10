@@ -83,3 +83,50 @@ describe("mapCodexEvent — thread/turn lifecycle", () => {
     ] satisfies CanonicalEvent[])
   })
 })
+
+describe("mapCodexEvent — message + reasoning deltas", () => {
+  it("assigns a stable canonical messageId per agentMessage item on item/started", () => {
+    const state = freshState()
+    mapCodexEvent(fx.agentMsgStarted, state) // registers it_msg -> msg_1 (emits nothing)
+    const out = mapCodexEvent(fx.agentMsgDelta, state)
+    expect(out).toEqual([
+      { type: "text-delta", runnerId: root, messageId: "msg_1", text: "Hello" },
+    ] satisfies CanonicalEvent[])
+  })
+
+  it("registers an agentMessage item/started without emitting", () => {
+    const state = freshState()
+    expect(mapCodexEvent(fx.agentMsgStarted, state)).toEqual([])
+  })
+
+  it("maps an agentMessage delta with no prior item/started by minting a messageId on demand", () => {
+    const out = mapCodexEvent(fx.agentMsgDelta, freshState())
+    expect(out).toEqual([
+      { type: "text-delta", runnerId: root, messageId: "msg_1", text: "Hello" },
+    ] satisfies CanonicalEvent[])
+  })
+
+  it("maps item/reasoning/textDelta to a reasoning-delta keyed by the reasoning itemId", () => {
+    const out = mapCodexEvent(fx.reasoningDelta, freshState())
+    expect(out).toEqual([
+      {
+        type: "reasoning-delta",
+        runnerId: root,
+        messageId: "msg_1",
+        text: "thinking",
+      },
+    ] satisfies CanonicalEvent[])
+  })
+
+  it("maps item/reasoning/summaryTextDelta to a reasoning-delta", () => {
+    const out = mapCodexEvent(fx.reasoningSummaryDelta, freshState())
+    expect(out).toEqual([
+      {
+        type: "reasoning-delta",
+        runnerId: root,
+        messageId: "msg_1",
+        text: "summary",
+      },
+    ] satisfies CanonicalEvent[])
+  })
+})
