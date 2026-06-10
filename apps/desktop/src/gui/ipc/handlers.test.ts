@@ -743,6 +743,22 @@ describe("createIpcHandlers.launchHarness", () => {
   })
 })
 
+describe("createIpcHandlers.getHarnesses", () => {
+  it("getHarnesses sets native from the driver registry", async () => {
+    const { ctx } = makeCtx({ nativeHarnessId: "claude" })
+    const handlers = createIpcHandlers(ctx)
+    const harnesses = await handlers.getHarnesses(undefined)
+    expect(harnesses.find((h) => h.id === "claude")?.native).toBe(true)
+  })
+
+  it("getHarnesses sets native=false for harnesses with no registered driver", async () => {
+    const { ctx } = makeCtx({ nativeHarnessId: "__none__" })
+    const handlers = createIpcHandlers(ctx)
+    const harnesses = await handlers.getHarnesses(undefined)
+    expect(harnesses.every((h) => h.native === false)).toBe(true)
+  })
+})
+
 describe("createIpcHandlers.addHarness", () => {
   it("persists via the registry and returns the definition", async () => {
     const { ctx, registryAdds } = makeCtx()

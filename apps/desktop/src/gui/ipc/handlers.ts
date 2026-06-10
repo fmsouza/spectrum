@@ -183,7 +183,10 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
     getHarnesses: async () => {
       const listed = await ctx.registry.list()
       if (!isOk(listed)) return fail("could not list harnesses")
-      return [...listed.value]
+      return listed.value.map((def) => ({
+        ...def,
+        native: ctx.driverRegistry.isNative(def.id),
+      }))
     },
 
     addHarness: async (definition) => {

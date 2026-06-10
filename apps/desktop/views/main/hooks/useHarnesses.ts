@@ -1,11 +1,11 @@
-import type { HarnessDefinition } from "@launchkit/types"
+import type { HarnessView } from "@launchkit/ipc"
 import { useEffect } from "react"
 import { useStore } from "zustand"
 import { useStores } from "../stores/createStores"
 import type { HarnessesStore } from "../stores/harnessesStore"
 import type { AsyncResource } from "./useAsyncResource"
 
-export type UseHarnesses = AsyncResource<readonly HarnessDefinition[]> & {
+export type UseHarnesses = AsyncResource<readonly HarnessView[]> & {
   readonly add: HarnessesStore["add"]
   readonly update: HarnessesStore["update"]
   readonly remove: HarnessesStore["remove"]

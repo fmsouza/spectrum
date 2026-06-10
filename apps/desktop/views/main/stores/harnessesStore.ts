@@ -1,5 +1,5 @@
-import type { IpcError, IpcMethods } from "@launchkit/ipc"
-import type { HarnessDefinition, HarnessId } from "@launchkit/types"
+import type { HarnessView, IpcError, IpcMethods } from "@launchkit/ipc"
+import type { HarnessId } from "@launchkit/types"
 import type { Result } from "@launchkit/utils"
 import { type StoreApi, createStore } from "zustand/vanilla"
 import { type ResourceState, createResource } from "./resource"
@@ -8,7 +8,7 @@ import type { StoreDeps } from "./types"
 type AddInput = IpcMethods["addHarness"]["params"]
 type UpdateInput = IpcMethods["updateHarness"]["params"]["input"]
 
-export type HarnessesStore = ResourceState<readonly HarnessDefinition[]> & {
+export type HarnessesStore = ResourceState<readonly HarnessView[]> & {
   readonly add: (input: AddInput) => Promise<Result<void, IpcError>>
   readonly update: (
     id: HarnessId,
@@ -21,7 +21,7 @@ export const createHarnessesStore = (
   deps: StoreDeps,
 ): StoreApi<HarnessesStore> =>
   createStore<HarnessesStore>()((set, get) => ({
-    ...createResource<readonly HarnessDefinition[]>(
+    ...createResource<readonly HarnessView[]>(
       () => deps.client.getHarnesses(undefined),
       (patch) => set(patch),
       () => get().data,

@@ -1,16 +1,17 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { HarnessDefinition } from "@launchkit/types"
+import type { HarnessView } from "@launchkit/ipc"
 import { createFakeIpcClient } from "../test/fake-client"
 import { createHarnessesStore } from "./harnessesStore"
 
-const def = {
+const def: HarnessView = {
   id: "claude",
   name: "Claude Code",
   command: "claude",
   apiFormat: "anthropic",
   envTemplate: {},
   builtIn: true,
-} as unknown as HarnessDefinition
+  native: false,
+}
 
 describe("createHarnessesStore", () => {
   it("loads harness definitions via fetch", async () => {

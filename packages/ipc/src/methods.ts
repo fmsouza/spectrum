@@ -105,7 +105,17 @@ export const DeleteModelResultSchema = VoidSchema
 // ── Harnesses ─────────────────────────────────────────────────────────────────
 
 export const GetHarnessesParamsSchema = z.undefined()
-export const GetHarnessesResultSchema = z.array(HarnessDefinitionSchema)
+
+/**
+ * Harness-VIEW shape: each builtin/user harness definition plus a data-driven `native` flag derived
+ * from the backend driver registry (`driverRegistry.isNative`). The webview routes native harnesses to
+ * the native RunView and the rest to the embedded terminal — single source of truth = the registry.
+ */
+export const HarnessViewSchema = HarnessDefinitionSchema.extend({
+  native: z.boolean(),
+})
+export type HarnessView = z.infer<typeof HarnessViewSchema>
+export const GetHarnessesResultSchema = z.array(HarnessViewSchema)
 
 /** Add accepts a full definition (user-defined harnesses arrive as JSON shapes). */
 export const AddHarnessParamsSchema = HarnessDefinitionSchema
