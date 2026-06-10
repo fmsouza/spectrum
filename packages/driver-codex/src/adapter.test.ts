@@ -166,22 +166,26 @@ describe("createCodexAdapter.start", () => {
     })
   })
 
-  it("spawns `app-server` followed by the resolved harness args (proxy `-c` overrides)", async () => {
+  it("spawns `app-server` with ONLY the `-c` overrides, dropping the terminal `-m <model>` flag", async () => {
     const ft = makeFakeTransport()
     ft.fake.setResult("thread/start", { thread: { id: "th_1" } })
     const ctx = makeCtx()
     await makeAdapter(ft).start(
       {
         ...startInput,
+        // The full resolved codex args: `-c` provider overrides PLUS the TUI `-m <model>`.
         args: [
           "-c",
           "model_provider=launchkit",
           "-c",
           "model_providers.launchkit.base_url=http://127.0.0.1:4000/v1",
+          "-m",
+          "minimax-m3",
         ],
       },
       ctx.ctx,
     )
+    // app-server rejects `-m`; the model is sent via thread/start instead.
     expect(ft.fake.createDeps()?.args).toEqual([
       "app-server",
       "-c",

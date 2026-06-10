@@ -83,6 +83,23 @@ const fileDetail = (params: unknown): string => {
   return typeof p.itemId === "string" ? p.itemId : "file change"
 }
 
+/**
+ * Keep only the `-c key=value` config overrides from the harness-resolved args. The terminal `codex`
+ * command also carries `-m <model>` (TUI model select), which `codex app-server` REJECTS ("unexpected
+ * argument '-m'") — app-server takes the model via `thread/start` instead. The `-c` provider overrides
+ * (model_providers.launchkit.*) DO apply to app-server, so forward exactly those. PURE.
+ */
+const appServerArgs = (args: readonly string[]): string[] => {
+  const out: string[] = []
+  for (let i = 0; i < args.length; i += 1) {
+    if (args[i] === "-c" && i + 1 < args.length) {
+      out.push("-c", args[i + 1] as string)
+      i += 1
+    }
+  }
+  return out
+}
+
 /** Build the parent-env merge for the spawned `codex app-server` (proxy/per-run vars win). */
 const mergedEnv = (
   baseEnv: () => Record<string, string | undefined>,
@@ -176,9 +193,10 @@ export const createCodexAdapter = (
 
     const transport = createTransport({
       command,
-      // `app-server` then the harness-resolved overrides (`-c model_providers.launchkit.*`) so the
-      // app-server routes through the LaunchKit proxy exactly like the terminal `codex` path does.
-      args: ["app-server", ...(input.args ?? [])],
+      // `app-server` then ONLY the `-c` provider overrides (`model_providers.launchkit.*`) so it routes
+      // through the LaunchKit proxy. The terminal path's `-m <model>` is dropped (app-server rejects it;
+      // the model is sent via thread/start below).
+      args: ["app-server", ...appServerArgs(input.args ?? [])],
       cwd: input.cwd,
       env: mergedEnv(deps.baseEnv ?? (() => process.env), input.env),
       idGen: deps.idGen,
