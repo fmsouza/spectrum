@@ -148,27 +148,23 @@ export const mapCodexEvent = (
     case "turn/started":
       return []
     case "turn/completed": {
+      // A turn ending is NOT the session ending — the app-server stays alive for the next turn/start.
+      // Emit `turn-finished` (the runner keeps running, the composer stays enabled). A failed turn's
+      // message is surfaced as assistant text so the user sees why. Session-fatal errors arrive via the
+      // separate `error` notification (below) and still end the runner.
       const { threadId, turn } = notif.params
       const runnerId = runnerFor(threadId, state)
-      switch (turn.status) {
-        case "completed":
-          return [{ type: "runner-finished", runnerId, status: "completed" }]
-        case "interrupted":
-          return [{ type: "runner-finished", runnerId, status: "interrupted" }]
-        case "failed":
-          return [
-            {
-              type: "runner-finished",
-              runnerId,
-              status: "errored",
-              ...(turn.error?.message !== undefined
-                ? { error: turn.error.message }
-                : {}),
-            },
-          ]
-        default:
-          return []
-      }
+      if (turn.status === "inProgress") return []
+      const events: CanonicalEvent[] = []
+      if (turn.status === "failed" && turn.error?.message !== undefined)
+        events.push({
+          type: "text-delta",
+          runnerId,
+          messageId: state.nextMessageId(),
+          text: `⚠️ ${turn.error.message}`,
+        })
+      events.push({ type: "turn-finished", runnerId })
+      return events
     }
     case "thread/tokenUsage/updated": {
       const last = notif.params.tokenUsage.last

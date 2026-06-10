@@ -30,29 +30,30 @@ describe("mapCodexEvent — thread/turn lifecycle", () => {
     expect(mapCodexEvent(fx.turnStarted, freshState())).toEqual([])
   })
 
-  it("maps turn/completed (status completed) to runner-finished(completed) on the root", () => {
+  it("maps turn/completed (status completed) to turn-finished (the session stays alive for the next turn)", () => {
     const out = mapCodexEvent(fx.turnCompleted, freshState())
     expect(out).toEqual([
-      { type: "runner-finished", runnerId: root, status: "completed" },
+      { type: "turn-finished", runnerId: root },
     ] satisfies CanonicalEvent[])
   })
 
-  it("maps turn/completed (status failed) to runner-finished(errored) carrying the error message", () => {
+  it("maps turn/completed (status failed) to the error as assistant text + turn-finished (not session end)", () => {
     const out = mapCodexEvent(fx.turnFailed, freshState())
     expect(out).toEqual([
       {
-        type: "runner-finished",
+        type: "text-delta",
         runnerId: root,
-        status: "errored",
-        error: "boom",
+        messageId: "msg_1",
+        text: "⚠️ boom",
       },
+      { type: "turn-finished", runnerId: root },
     ] satisfies CanonicalEvent[])
   })
 
-  it("maps turn/completed (status interrupted) to runner-finished(interrupted)", () => {
+  it("maps turn/completed (status interrupted) to turn-finished", () => {
     const out = mapCodexEvent(fx.turnInterrupted, freshState())
     expect(out).toEqual([
-      { type: "runner-finished", runnerId: root, status: "interrupted" },
+      { type: "turn-finished", runnerId: root },
     ] satisfies CanonicalEvent[])
   })
 
@@ -244,11 +245,7 @@ describe("mapCodexEvent — Collab sub-agents", () => {
     mapCodexEvent(fx.collabSpawn, state) // registers th_child -> rnr_child
     const out = mapCodexEvent(fx.childTurnCompleted, state)
     expect(out).toEqual([
-      {
-        type: "runner-finished",
-        runnerId: "rnr_child" as RunnerId,
-        status: "completed",
-      },
+      { type: "turn-finished", runnerId: "rnr_child" as RunnerId },
     ] satisfies CanonicalEvent[])
   })
 

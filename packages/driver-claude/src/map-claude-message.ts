@@ -145,16 +145,15 @@ const mapResultUsage = (msg: SdkResultMessage): Usage => ({
   ...(msg.total_cost_usd !== undefined ? { costUsd: msg.total_cost_usd } : {}),
 })
 
+// A `result` message ends a TURN, not the session — claude's streaming-input session stays alive for
+// follow-up turns. Emit `turn-finished` (keeps the runner running so the composer stays enabled); a
+// genuinely fatal failure surfaces via the glue's iterator-catch → runner-finished:"errored".
 const mapResult = (
   msg: SdkResultMessage,
   state: ClaudeMapState,
 ): CanonicalEvent[] => [
   { type: "usage", runnerId: state.rootRunnerId, usage: mapResultUsage(msg) },
-  {
-    type: "runner-finished",
-    runnerId: state.rootRunnerId,
-    status: msg.is_error ? "errored" : "completed",
-  },
+  { type: "turn-finished", runnerId: state.rootRunnerId },
 ]
 
 /**

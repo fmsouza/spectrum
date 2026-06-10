@@ -49,9 +49,6 @@ describe("createClaudeDriver", () => {
     started.value.onEvent((e) => seen.push(e))
     await new Promise((r) => setTimeout(r, 20))
     expect(seen[0]).toMatchObject({ type: "runner-started", model: "claude-x" })
-    expect(seen.at(-1)).toMatchObject({
-      type: "runner-finished",
-      status: "completed",
-    })
+    expect(seen.at(-1)).toMatchObject({ type: "turn-finished" })
   })
 })

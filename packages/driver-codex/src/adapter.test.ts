@@ -225,9 +225,7 @@ describe("createCodexAdapter.start", () => {
         turn: { id: "tn_1", items: [], status: "completed", error: null },
       },
     })
-    expect(ctx.emitted).toEqual([
-      { type: "runner-finished", runnerId: root, status: "completed" },
-    ])
+    expect(ctx.emitted).toEqual([{ type: "turn-finished", runnerId: root }])
   })
 
   it("routes a command-approval server request through ctx.requestApproval and replies accept on allow", async () => {

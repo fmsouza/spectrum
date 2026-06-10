@@ -118,7 +118,7 @@ describe("mapClaudeMessage", () => {
     ])
   })
 
-  it("maps a success result → usage then runner-finished completed on the root", () => {
+  it("maps a success result → usage then turn-finished on the root (the session stays alive)", () => {
     const out = mapClaudeMessage(resultSuccess, makeState())
     expect(out).toEqual([
       {
@@ -131,18 +131,14 @@ describe("mapClaudeMessage", () => {
           costUsd: 0.0123,
         },
       },
-      { type: "runner-finished", runnerId: ROOT, status: "completed" },
+      { type: "turn-finished", runnerId: ROOT },
     ])
   })
 
-  it("maps an error result → runner-finished errored on the root", () => {
+  it("maps an error result → turn-finished too (a turn error does not end the session; fatal errors come via the iterator catch)", () => {
     const out = mapClaudeMessage(resultError, makeState())
-    const finished = out.find((e) => e.type === "runner-finished")
-    expect(finished).toEqual({
-      type: "runner-finished",
-      runnerId: ROOT,
-      status: "errored",
-    })
+    expect(out.find((e) => e.type === "runner-finished")).toBeUndefined()
+    expect(out.at(-1)).toEqual({ type: "turn-finished", runnerId: ROOT })
   })
 
   it("returns no events for an unrecognized message type (defensive)", () => {

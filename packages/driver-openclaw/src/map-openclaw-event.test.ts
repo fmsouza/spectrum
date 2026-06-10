@@ -142,7 +142,7 @@ describe("mapOpenclawEvent", () => {
     ])
   })
 
-  it("buffers usage and emits it on run.completed alongside runner-finished(completed)", () => {
+  it("buffers usage and emits it on run.completed, then turn-finished (the session stays alive)", () => {
     const state = mkState()
     mapOpenclawEvent(runStartedFixture, state)
     expect(mapOpenclawEvent(usageFixture, state)).toEqual([
@@ -153,22 +153,21 @@ describe("mapOpenclawEvent", () => {
       },
     ])
     const done = mapOpenclawEvent(runCompletedFixture, state)
-    expect(done).toEqual([
-      { type: "runner-finished", runnerId: ROOT, status: "completed" },
-    ])
+    expect(done).toEqual([{ type: "turn-finished", runnerId: ROOT }])
   })
 
-  it("maps run.failed to runner-finished(errored) with the error detail", () => {
+  it("maps run.failed to the error as assistant text + turn-finished (a failed turn does not end the session)", () => {
     const state = mkState()
     mapOpenclawEvent(runStartedFixture, state)
     const out = mapOpenclawEvent(runFailedFixture, state)
     expect(out).toEqual([
       {
-        type: "runner-finished",
+        type: "text-delta",
         runnerId: ROOT,
-        status: "errored",
-        error: "provider timeout",
+        messageId: "run-error-s-root",
+        text: "⚠️ provider timeout",
       },
+      { type: "turn-finished", runnerId: ROOT },
     ])
   })
 

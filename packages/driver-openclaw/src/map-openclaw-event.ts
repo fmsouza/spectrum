@@ -179,25 +179,27 @@ export const mapOpenclawEvent = (
       return [{ type: "usage", runnerId: runner, usage }]
     }
     case "run.completed": {
+      // A run is a TURN, not the session — the Gateway stays connected for follow-up turns. Emit
+      // `turn-finished` so the runner keeps running + the composer stays enabled. Session-fatal errors
+      // arrive via the separate `error` event (below) and still end the runner.
       const runner =
         runnerFor(state, event.payload.sessionKey) ?? state.rootRunnerId
-      return [
-        { type: "runner-finished", runnerId: runner, status: "completed" },
-      ]
+      return [{ type: "turn-finished", runnerId: runner }]
     }
     case "run.failed": {
+      // A failed turn ends the turn (not the session); surface the error as assistant text.
       const runner =
         runnerFor(state, event.payload.sessionKey) ?? state.rootRunnerId
-      return [
-        {
-          type: "runner-finished",
+      const events: CanonicalEvent[] = []
+      if (event.payload.error !== undefined)
+        events.push({
+          type: "text-delta",
           runnerId: runner,
-          status: "errored",
-          ...(event.payload.error !== undefined
-            ? { error: event.payload.error }
-            : {}),
-        },
-      ]
+          messageId: `run-error-${event.payload.sessionKey}`,
+          text: `⚠️ ${event.payload.error}`,
+        })
+      events.push({ type: "turn-finished", runnerId: runner })
+      return events
     }
     case "error": {
       const runner =
