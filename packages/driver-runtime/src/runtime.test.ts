@@ -1,0 +1,336 @@
+import { describe, expect, it } from "bun:test"
+import type { CanonicalEvent, RunnerId } from "@launchkit/agent-events"
+import { createSequentialIdGen } from "@launchkit/utils"
+import type { AdapterCtx, AdapterHandle, DriverAdapter } from "./adapter"
+import { createDriver } from "./runtime"
+
+const sync = (fn: () => void): void => fn()
+
+// A controllable fake adapter: capture the ctx, resolve/reject start on demand, record handle calls.
+const makeFakeAdapter = (): {
+  adapter: DriverAdapter
+  resolveStart: () => void
+  rejectStart: (err: unknown) => void
+  ctx: () => AdapterCtx
+  sent: readonly string[]
+  interrupts: number
+  closes: number
+} => {
+  let resolve!: (h: AdapterHandle) => void
+  let reject!: (e: unknown) => void
+  let captured: AdapterCtx | undefined
+  const sent: string[] = []
+  const state = { interrupts: 0, closes: 0 }
+  const handle: AdapterHandle = {
+    send: (t) => {
+      sent.push(t)
+    },
+    interrupt: () => {
+      state.interrupts += 1
+    },
+    close: () => {
+      state.closes += 1
+    },
+  }
+  const adapter: DriverAdapter = {
+    start: (_input, ctx) => {
+      captured = ctx
+      return new Promise<AdapterHandle>((res, rej) => {
+        resolve = res
+        reject = rej
+      })
+    },
+  }
+  return {
+    adapter,
+    resolveStart: () => resolve(handle),
+    rejectStart: (e) => reject(e),
+    ctx: () => {
+      if (captured === undefined) throw new Error("start not called")
+      return captured
+    },
+    get sent() {
+      return sent
+    },
+    get interrupts() {
+      return state.interrupts
+    },
+    get closes() {
+      return state.closes
+    },
+  }
+}
+
+const startInput = {
+  harnessId: "claude" as never,
+  cwd: "/tmp",
+  env: {},
+}
+
+describe("createDriver", () => {
+  it("returns ok(session) synchronously and exposes a minted root runner id", () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    expect(started.ok).toBe(true)
+    if (started.ok) expect(started.value.rootRunnerId).toBe("rnr_1" as RunnerId)
+  })
+
+  it("emits the events the adapter pushes via ctx.emit to the single subscriber", () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    const seen: CanonicalEvent[] = []
+    if (started.ok) started.value.onEvent((e) => seen.push(e))
+    fake.ctx().emit({
+      type: "runner-started",
+      runnerId: fake.ctx().rootRunnerId,
+      model: "claude-x",
+    })
+    expect(seen).toEqual([
+      {
+        type: "runner-started",
+        runnerId: "rnr_1" as RunnerId,
+        model: "claude-x",
+      },
+    ])
+  })
+
+  it("surfaces a startup failure as runner-finished errored on the root runner", () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    const seen: CanonicalEvent[] = []
+    if (started.ok) started.value.onEvent((e) => seen.push(e))
+    fake.rejectStart(new Error("spawn failed"))
+    // microtask flush for the rejected promise's .catch under the sync scheduler
+    return Promise.resolve().then(() => {
+      expect(seen).toEqual([
+        {
+          type: "runner-finished",
+          runnerId: "rnr_1" as RunnerId,
+          status: "errored",
+          error: "Error: spawn failed",
+        },
+      ])
+    })
+  })
+
+  it("queues send before the handle exists and drains it on start success", async () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    // send BEFORE the adapter resolves → queued, not yet forwarded
+    expect(started.value.send({ text: "hello" }).ok).toBe(true)
+    expect(fake.sent).toEqual([])
+    fake.resolveStart()
+    await Promise.resolve()
+    expect(fake.sent).toEqual(["hello"]) // drained into the handle
+  })
+
+  it("forwards send directly once the handle exists", async () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    fake.resolveStart()
+    await Promise.resolve()
+    started.value.send({ text: "second" })
+    expect(fake.sent).toEqual(["second"])
+  })
+
+  it("resolves a pending requestApproval when respondApproval is called, emitting approval-resolved", async () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    const seen: CanonicalEvent[] = []
+    started.value.onEvent((e) => seen.push(e))
+    const decisionP = fake.ctx().requestApproval(fake.ctx().rootRunnerId, {
+      kind: "command",
+      detail: "rm -rf x",
+    })
+    // requestApproval emitted approval-requested with a minted requestId (apr_2, since rnr_1 consumed _1)
+    expect(seen).toEqual([
+      {
+        type: "approval-requested",
+        runnerId: "rnr_1" as RunnerId,
+        requestId: "apr_2",
+        target: { kind: "command", detail: "rm -rf x" },
+      },
+    ])
+    const r = started.value.respondApproval("apr_2", "allow")
+    expect(r.ok).toBe(true)
+    const decision = await decisionP
+    expect(decision).toBe("allow")
+    expect(seen[1]).toEqual({
+      type: "approval-resolved",
+      runnerId: "rnr_1" as RunnerId,
+      requestId: "apr_2",
+      decision: "allow",
+      by: "user",
+    })
+  })
+
+  it("treats respondApproval for an unknown requestId as a no-op ok", () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    expect(started.value.respondApproval("apr_unknown", "deny").ok).toBe(true)
+  })
+
+  it("mints a fresh runner id from ctx.newRunnerId for sub-agents", () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    driver.start(startInput)
+    expect(fake.ctx().rootRunnerId).toBe("rnr_1" as RunnerId)
+    expect(fake.ctx().newRunnerId()).toBe("rnr_2" as RunnerId)
+  })
+
+  it("forwards interrupt to the handle once it exists", async () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    fake.resolveStart()
+    await Promise.resolve()
+    started.value.interrupt()
+    expect(fake.interrupts).toBe(1)
+  })
+
+  it("closes the handle and is idempotent (close twice → handle reaped exactly once)", async () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    fake.resolveStart()
+    await Promise.resolve()
+    expect(started.value.close().ok).toBe(true)
+    expect(started.value.close().ok).toBe(true)
+    expect(fake.closes).toBe(1) // handle reaped exactly once; second close is a no-op
+  })
+
+  it("(I2) close before the adapter start resolves still reaps the handle exactly once", async () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    // close BEFORE the adapter's start promise resolves
+    started.value.close()
+    expect(fake.closes).toBe(0) // handle doesn't exist yet
+    // now resolve start — runtime hits `if (closed) { h.close(); return }`
+    fake.resolveStart()
+    await Promise.resolve()
+    expect(fake.closes).toBe(1) // handle reaped exactly once in the closed-flag guard
+  })
+
+  it("(M1) a second onEvent registration replaces the first subscriber", () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    const seen1: CanonicalEvent[] = []
+    const seen2: CanonicalEvent[] = []
+    started.value.onEvent((e) => seen1.push(e))
+    started.value.onEvent((e) => seen2.push(e))
+    // emit an event via the adapter ctx — only the second subscriber should receive it
+    fake.ctx().emit({
+      type: "runner-started",
+      runnerId: fake.ctx().rootRunnerId,
+      model: "claude-x",
+    })
+    expect(seen1).toEqual([]) // first subscriber was replaced
+    expect(seen2).toHaveLength(1) // second subscriber received the event
+  })
+
+  it("(M2) ctx.emit with no subscriber registered drops silently and later onEvent does not replay it", () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    // emit BEFORE any onEvent is registered — should not throw
+    expect(() => {
+      fake.ctx().emit({
+        type: "runner-started",
+        runnerId: fake.ctx().rootRunnerId,
+        model: "claude-x",
+      })
+    }).not.toThrow()
+    // now register a subscriber — the dropped event must NOT be replayed
+    const seen: CanonicalEvent[] = []
+    started.value.onEvent((e) => seen.push(e))
+    expect(seen).toEqual([])
+  })
+
+  it("(M3) interrupt queued before the handle exists is drained exactly once on start resolve", async () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    // interrupt BEFORE the adapter resolves → queued, not yet forwarded
+    started.value.interrupt()
+    expect(fake.interrupts).toBe(0)
+    // resolve start — queue is drained into the handle
+    fake.resolveStart()
+    await Promise.resolve()
+    expect(fake.interrupts).toBe(1)
+  })
+})
