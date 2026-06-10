@@ -176,7 +176,9 @@ export const createCodexAdapter = (
 
     const transport = createTransport({
       command,
-      args: ["app-server"],
+      // `app-server` then the harness-resolved overrides (`-c model_providers.launchkit.*`) so the
+      // app-server routes through the LaunchKit proxy exactly like the terminal `codex` path does.
+      args: ["app-server", ...(input.args ?? [])],
       cwd: input.cwd,
       env: mergedEnv(deps.baseEnv ?? (() => process.env), input.env),
       idGen: deps.idGen,

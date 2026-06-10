@@ -20,6 +20,10 @@ const root = "rnr_root" as RunnerId
 type OutgoingCall = ["request", string, unknown] | ["notify", string, unknown]
 type Reply = { id: string | number; result?: unknown; error?: unknown }
 
+type CreateTransportDeps = Parameters<
+  NonNullable<CreateCodexAdapterDeps["createTransport"]>
+>[0]
+
 interface FakeTransport {
   readonly transport: JsonRpcTransport
   readonly outgoing: OutgoingCall[]
@@ -29,6 +33,7 @@ interface FakeTransport {
   closed(): boolean
   setResult(method: string, result: unknown): void
   setReject(method: string, message: string): void
+  createDeps(): CreateTransportDeps | undefined
 }
 
 /** A fake JsonRpcTransport that records outgoing calls + lets the test push server frames. */
@@ -43,6 +48,7 @@ const makeFakeTransport = (): {
   let isClosed = false
   let onNotification: ((n: NotificationFrame) => void) | undefined
   let onServerRequest: ((r: ServerRequestFrame) => void) | undefined
+  let createDeps: CreateTransportDeps | undefined
 
   const transport: JsonRpcTransport = {
     dispatcher: {
@@ -78,11 +84,13 @@ const makeFakeTransport = (): {
     closed: () => isClosed,
     setResult: (method, result) => results.set(method, result),
     setReject: (method, message) => rejects.set(method, message),
+    createDeps: () => createDeps,
   }
 
   const factory: NonNullable<CreateCodexAdapterDeps["createTransport"]> = (
     deps,
   ) => {
+    createDeps = deps
     onNotification = deps.onNotification
     onServerRequest = deps.onServerRequest
     return transport
@@ -156,6 +164,39 @@ describe("createCodexAdapter.start", () => {
       runnerId: root,
       model: "gpt-5",
     })
+  })
+
+  it("spawns `app-server` followed by the resolved harness args (proxy `-c` overrides)", async () => {
+    const ft = makeFakeTransport()
+    ft.fake.setResult("thread/start", { thread: { id: "th_1" } })
+    const ctx = makeCtx()
+    await makeAdapter(ft).start(
+      {
+        ...startInput,
+        args: [
+          "-c",
+          "model_provider=launchkit",
+          "-c",
+          "model_providers.launchkit.base_url=http://127.0.0.1:4000/v1",
+        ],
+      },
+      ctx.ctx,
+    )
+    expect(ft.fake.createDeps()?.args).toEqual([
+      "app-server",
+      "-c",
+      "model_provider=launchkit",
+      "-c",
+      "model_providers.launchkit.base_url=http://127.0.0.1:4000/v1",
+    ])
+  })
+
+  it("spawns just `app-server` when no harness args are provided", async () => {
+    const ft = makeFakeTransport()
+    ft.fake.setResult("thread/start", { thread: { id: "th_1" } })
+    const ctx = makeCtx()
+    await makeAdapter(ft).start(startInput, ctx.ctx)
+    expect(ft.fake.createDeps()?.args).toEqual(["app-server"])
   })
 
   it("rejects start when thread/start rejects", async () => {

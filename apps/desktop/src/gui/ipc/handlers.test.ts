@@ -1138,6 +1138,9 @@ describe("createIpcHandlers.launchHarness selection", () => {
     expect(runnerLaunchInputs[0]).toMatchObject({
       command: "/usr/local/bin/claude",
     })
+    // The resolved launch args are forwarded too (codex needs them for proxy routing; env-routed
+    // harnesses ignore them).
+    expect(runnerLaunchInputs[0]).toHaveProperty("args")
   })
 })
 

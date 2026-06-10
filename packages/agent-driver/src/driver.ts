@@ -25,6 +25,13 @@ export interface AgentStartInput {
    * `CommandResolver` the terminal path uses, so there is one source of truth for "where is claude".
    */
   readonly command?: string
+  /**
+   * The harness-resolved launch args (the same the terminal path spawns with). A driver whose proxy
+   * routing lives in CLI args rather than env needs these — e.g. codex routes only through a provider
+   * declared via `-c model_providers.launchkit.*` overrides; without them a native codex session
+   * ignores the LaunchKit proxy. Drivers that route via env (claude/opencode/openclaw) ignore this.
+   */
+  readonly args?: readonly string[]
 }
 
 export interface AgentSession {

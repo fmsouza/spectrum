@@ -255,6 +255,10 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
           // The SDK-backed driver spawns this resolved `claude` binary directly — its own
           // bundle-relative executable resolution finds no cli.js in the packaged app.
           command: resolved.value.command,
+          // Forward the resolved launch args too: codex routes through the proxy ONLY via its
+          // `-c model_providers.launchkit.*` overrides (not env), so a native codex session needs
+          // them. Drivers that route via env ignore this.
+          args: resolved.value.args,
           ...(safeName === undefined ? {} : { name: safeName }),
         })
         if (!isOk(launchedNative))

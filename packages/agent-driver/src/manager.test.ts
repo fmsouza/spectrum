@@ -180,8 +180,15 @@ describe("createRunManager.launch", () => {
     }
     const { deps } = makeDeps(scriptOf([]))
     const manager = createRunManager({ ...deps, driver: capturingDriver })
-    manager.launch({ harnessId, cwd: "/tmp", env: {}, command: "/abs/claude" })
+    manager.launch({
+      harnessId,
+      cwd: "/tmp",
+      env: {},
+      command: "/abs/claude",
+      args: ["app-server", "-c", "x=1"],
+    })
     expect(captured?.command).toBe("/abs/claude")
+    expect(captured?.args).toEqual(["app-server", "-c", "x=1"])
   })
 
   it("closes the session even when the final event fails to persist", () => {
