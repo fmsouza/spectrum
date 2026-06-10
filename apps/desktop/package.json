@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@launchkit/agent-driver": "workspace:*",
+    "@launchkit/driver-claude": "workspace:*",
     "@launchkit/agent-events": "workspace:*",
     "@launchkit/run-store": "workspace:*",
     "@launchkit/cli": "workspace:*",

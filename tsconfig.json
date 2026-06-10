@@ -13,6 +13,7 @@
     { "path": "packages/agent-events" },
     { "path": "packages/run-store" },
     { "path": "packages/agent-driver" },
-    { "path": "packages/driver-runtime" }
+    { "path": "packages/driver-runtime" },
+    { "path": "packages/driver-claude" }
   ]
 }

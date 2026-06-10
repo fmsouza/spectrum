@@ -26,6 +26,7 @@ Test-first (RED observed) → implemented (GREEN) → refactored → `bun run ty
 - `@launchkit/run-store` — append-only run-event persistence (depends on db, agent-events, types, utils)
 - `@launchkit/agent-driver` — driver seam + run manager + socket protocol + FakeDriver (depends on agent-events, types, utils)
 - `@launchkit/driver-runtime` — reusable driver core: createDriver(adapter) → AgentDriver (depends on agent-driver, agent-events, utils; no harness SDK)
+- `@launchkit/driver-claude` — Claude Code driver: createClaudeDriver + pure mapClaudeMessage (depends on driver-runtime, agent-events, agent-driver, utils, @anthropic-ai/claude-agent-sdk)
 
 ## Project skills
 `.claude/skills/launchkit-new-package` — creating a new internal package under `packages/`. Invoke it when it applies.
