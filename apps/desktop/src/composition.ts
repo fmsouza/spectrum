@@ -38,6 +38,7 @@ import {
 import { createSqliteClient, runMigrations } from "@launchkit/db"
 import { createClaudeDriver } from "@launchkit/driver-claude"
 import { createCodexDriver } from "@launchkit/driver-codex"
+import { createOpenclawDriver } from "@launchkit/driver-openclaw"
 import { createOpencodeDriver } from "@launchkit/driver-opencode"
 import {
   createBunProcessSpawner,
@@ -516,7 +517,8 @@ export const createAppContext = (
     clock: deps.createSystemClock(),
   })
 
-  // Native drivers (hard cutover): `claude` + `codex` always launch native via their drivers. The demo
+  // Native drivers (hard cutover): `claude`, `codex`, `opencode`, `openclaw` always launch native via
+  // their drivers (openclaw is UNVERIFIED — no binary). The demo
   // FakeDriver stays dev-gated (LAUNCHKIT_DEMO_HARNESS=1). Each driver injects its own effects so the
   // logic stays unit-testable; the runtime owns the sync↔async bridge + lifecycle.
   const idGen = deps.createCryptoIdGen()
@@ -525,6 +527,9 @@ export const createAppContext = (
     claude: createClaudeDriver({ idGen }),
     codex: deps.createCodexDriver({ idGen: driverIdGen }),
     opencode: deps.createOpencodeDriver({ idGen: driverIdGen }),
+    // Plan 4 (UNVERIFIED): OpenClaw gateway driver. No installed binary / published @openclaw/sdk; the
+    // real connector throws (→ runner-finished:errored) until wired, but it routes native like the others.
+    openclaw: createOpenclawDriver({ idGen }),
     ...(deps.demoHarnessEnabled
       ? { [DEMO_HARNESS_ID]: deps.createFakeDriver({ script: demoScript }) }
       : {}),

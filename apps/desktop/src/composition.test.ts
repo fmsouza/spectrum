@@ -393,6 +393,19 @@ describe("createAppContext native run path wiring", () => {
     expect(ctx.driverRegistry.isNative("opencode" as never)).toBe(true)
   })
 
+  it("registers the openclaw native driver and routes openclaw native", () => {
+    const ctx = createAppContext(makeFakeDeps().deps)
+    expect(ctx.driverRegistry.isNative("openclaw" as never)).toBe(true)
+  })
+
+  it("surfaces native:true for openclaw via the driver registry (getHarnesses maps def -> {..., native})", () => {
+    // getHarnesses maps each builtin definition -> { ...def, native: driverRegistry.isNative(def.id) }.
+    // The `openclaw` builtin is always listed (packages/harnesses builtinHarnesses); here we assert the
+    // native flag it gets is true now that the driver is registered.
+    const ctx = createAppContext(makeFakeDeps().deps)
+    expect(ctx.driverRegistry.isNative("openclaw" as never)).toBe(true)
+  })
+
   it("registers the native claude driver even without the demo flag (hard cutover)", () => {
     const ctx = createAppContext({
       ...makeFakeDeps().deps,
