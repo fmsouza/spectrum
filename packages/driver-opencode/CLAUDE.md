@@ -20,3 +20,16 @@ spawn; `@opencode-ai/sdk` is loaded lazily ONLY inside `realOpencodeConnect`).
 **Local rules:** types are zod-first; `mapOpencodeEvent` is PURE + fully fixture-tested; the GLOBAL SSE
 stream is filtered by `sessionID` (filter client-side, reconcile on reconnect); guard the #6573
 subagent-over-REST hang with a watchdog timeout + kill; no `any`; no import of the proxy/UI/other drivers.
+
+**Verification status (2026-06-10, macOS arm64, opencode 1.16.2 / @opencode-ai/sdk 1.17.3) — VERIFIED
+(headless driver smoke):** drove the REAL `createOpencodeDriver` (no fake `connect`), so the live
+`@opencode-ai/sdk` connector started a loopback `opencode serve` (`createOpencode`, `port: 0`), created a
+session, subscribed the GLOBAL SSE bus, sent a prompt, and the pure mapper translated live events →
+canonical. Confirmed: server-start + session-create + global-SSE-subscribe; root `runner-started` flows;
+`message.part.updated`(text)→`text-delta`; `session.idle`→`turn-finished`; `session.error`→
+`runner-finished:"errored"` (no hang on failure); clean `server.close()` teardown (no orphan process). A
+raw-SDK confirmation with an authed free model (`opencode/deepseek-v4-flash-free`) streamed a real
+assistant `"PONG"` turn then idle, proving the same wire shapes the mapper consumes. The #6573
+subagent-over-REST hang is guarded by the idle watchdog (unit-tested with an injected timer); not triggered
+live in this smoke. GUI New-Session click-through + a permission round-trip + a real tool run remain the
+manual follow-up. Full write-up in the gitignored `docs/superpowers/MANUAL-VERIFICATION.md`.
