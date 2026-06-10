@@ -149,6 +149,38 @@ describe("createOpencodeAdapter", () => {
     expect(t.emitted).toContainEqual({ type: "runner-started", runnerId: ROOT })
   })
 
+  it("passes a launchkit proxy provider config to connect when the proxy env is present", async () => {
+    const t = setup()
+    await t.adapter.start(
+      {
+        ...START,
+        env: {
+          OPENAI_BASE_URL: "http://127.0.0.1:4000/v1",
+          OPENAI_API_KEY: "rk_1",
+          OPENAI_MODEL: "minimax-m3",
+        },
+      },
+      t.ctx,
+    )
+    expect(t.connectCfg?.config).toEqual({
+      provider: {
+        launchkit: {
+          npm: "@ai-sdk/openai-compatible",
+          name: "LaunchKit",
+          options: { baseURL: "http://127.0.0.1:4000/v1", apiKey: "rk_1" },
+          models: { "minimax-m3": {} },
+        },
+      },
+      model: "launchkit/minimax-m3",
+    })
+  })
+
+  it("omits the proxy config on the direct route (no proxy env)", async () => {
+    const t = setup()
+    await t.adapter.start(START, t.ctx)
+    expect(t.connectCfg?.config).toBeUndefined()
+  })
+
   it("sends the initial prompt to the root session via session.prompt", async () => {
     const t = setup()
     await t.adapter.start(START, t.ctx)

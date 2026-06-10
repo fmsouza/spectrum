@@ -6,7 +6,11 @@ import type {
   DriverAdapter,
 } from "@launchkit/driver-runtime"
 import { mapOpencodeEvent, newOpencodeMapState } from "./map-opencode-event"
-import type { OpencodeConnect, OpencodeConnectConfig } from "./transport"
+import {
+  type OpencodeConnect,
+  type OpencodeConnectConfig,
+  buildOpencodeProxyConfig,
+} from "./transport"
 
 export interface OpencodeAdapterDeps {
   /** Start/connect `opencode serve` + client (injected; real impl wraps @opencode-ai/sdk). */
@@ -27,10 +31,12 @@ export interface OpencodeAdapterDeps {
 
 const readConfig = (input: AgentStartInput): OpencodeConnectConfig => {
   const baseUrl = input.env.OPENCODE_BASE_URL
+  const config = buildOpencodeProxyConfig(input.env)
   return {
     cwd: input.cwd,
     env: input.env,
     ...(baseUrl !== undefined ? { baseUrl } : {}),
+    ...(config !== undefined ? { config } : {}),
   }
 }
 

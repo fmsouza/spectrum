@@ -191,13 +191,58 @@ export interface OpencodeServer {
   close(): void
 }
 
-/** The connection target rendered from AgentStartInput (cwd + optional explicit baseUrl/port). */
+/**
+ * A minimal `opencode` config declaring a single OpenAI-compatible provider pointed at the LaunchKit
+ * proxy (a typed subset of the SDK's `Config`). The SDK serializes this into `OPENCODE_CONFIG_CONTENT`
+ * for the spawned `opencode serve`, so it is how the per-run proxy reaches the server — `createOpencode`
+ * exposes no `env` option, and `opencode serve` is spawned with the parent `process.env` only.
+ */
+export interface OpencodeProxyConfig {
+  readonly provider: {
+    readonly launchkit: {
+      readonly npm: string
+      readonly name: string
+      readonly options: { readonly baseURL: string; readonly apiKey?: string }
+      readonly models: Readonly<Record<string, Readonly<Record<string, never>>>>
+    }
+  }
+  readonly model: string
+}
+
+/**
+ * Build an `OpencodeProxyConfig` from the rendered proxy env (`OPENAI_BASE_URL`/`OPENAI_API_KEY`/
+ * `OPENAI_MODEL`). Returns `undefined` for the direct (non-proxied) route where those are absent, so the
+ * server falls back to opencode's own provider config. PURE.
+ */
+export const buildOpencodeProxyConfig = (
+  env: Readonly<Record<string, string>>,
+): OpencodeProxyConfig | undefined => {
+  const baseURL = env.OPENAI_BASE_URL
+  const model = env.OPENAI_MODEL
+  if (baseURL === undefined || model === undefined) return undefined
+  const apiKey = env.OPENAI_API_KEY
+  return {
+    provider: {
+      launchkit: {
+        npm: "@ai-sdk/openai-compatible",
+        name: "LaunchKit",
+        options: { baseURL, ...(apiKey !== undefined ? { apiKey } : {}) },
+        models: { [model]: {} },
+      },
+    },
+    model: `launchkit/${model}`,
+  }
+}
+
+/** The connection target rendered from AgentStartInput (cwd + optional explicit baseUrl/port + proxy config). */
 export interface OpencodeConnectConfig {
   readonly cwd: string
   /** Optional pre-running server base URL; when absent, the connector starts `opencode serve` on loopback. */
   readonly baseUrl?: string
   readonly port?: number
   readonly env: Readonly<Record<string, string>>
+  /** The proxy provider config injected into the spawned server (absent on the direct route). */
+  readonly config?: OpencodeProxyConfig
 }
 
 /**

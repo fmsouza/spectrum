@@ -115,10 +115,18 @@ const realOpencodeConnect: OpencodeConnect = async (
     })
     return { client: adaptClient(client as never, config.cwd) }
   }
-  const { client, server } = await sdk.createOpencode({
+  // Pass the proxy provider config: the SDK serializes it into OPENCODE_CONFIG_CONTENT for the
+  // spawned `opencode serve` (its only env channel — createOpencode takes no `env`). The cast to the
+  // SDK's broad `ServerOptions` is the SDK-boundary seam (our typed subset → its `Config`), confined
+  // here like adaptClient.
+  const serverOptions = {
     hostname: "127.0.0.1",
     port: config.port ?? 0,
-  })
+    ...(config.config !== undefined ? { config: config.config } : {}),
+  }
+  const { client, server } = await sdk.createOpencode(
+    serverOptions as Parameters<typeof sdk.createOpencode>[0],
+  )
   return {
     client: adaptClient(client as never, config.cwd),
     server: { url: server.url, close: () => server.close() } as OpencodeServer,
