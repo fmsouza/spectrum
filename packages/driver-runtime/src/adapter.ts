@@ -1,0 +1,37 @@
+import type { AgentStartInput } from "@launchkit/agent-driver"
+import type {
+  ApprovalDecision,
+  ApprovalTarget,
+  CanonicalEvent,
+  RunnerId,
+} from "@launchkit/agent-events"
+
+/** A live, mapped handle to a started harness. Methods are fire-and-forget (errors surface as events). */
+export interface AdapterHandle {
+  /** A follow-up user turn. */
+  send(text: string): void
+  /** Stop the current turn (top-level). */
+  interrupt(): void
+  /** Terminate the process / disconnect the server (idempotent). */
+  close(): void
+}
+
+/** What the runtime gives the adapter: a push channel + the approval bridge + runner-id minting. */
+export interface AdapterCtx {
+  /** Push a mapped canonical event into the run's stream (persisted + forwarded by the RunManager). */
+  emit(event: CanonicalEvent): void
+  /** Emit `approval-requested` and resolve when the user answers (`run-approve` → respondApproval). */
+  requestApproval(
+    runnerId: RunnerId,
+    target: ApprovalTarget,
+  ): Promise<ApprovalDecision>
+  /** Mint a fresh RunnerId (the root is minted by the runtime and exposed as `rootRunnerId`). */
+  newRunnerId(): RunnerId
+  /** The root runner id (already minted by the runtime before `start` is called). */
+  readonly rootRunnerId: RunnerId
+}
+
+/** One per harness. `start` does the real async spawn/connect and returns a live handle. */
+export interface DriverAdapter {
+  start(input: AgentStartInput, ctx: AdapterCtx): Promise<AdapterHandle>
+}

@@ -109,6 +109,15 @@
         "drizzle-kit": "^0.31.0",
       },
     },
+    "packages/driver-runtime": {
+      "name": "@launchkit/driver-runtime",
+      "version": "0.1.0",
+      "dependencies": {
+        "@launchkit/agent-driver": "workspace:*",
+        "@launchkit/agent-events": "workspace:*",
+        "@launchkit/utils": "workspace:*",
+      },
+    },
     "packages/harnesses": {
       "name": "@launchkit/harnesses",
       "version": "0.1.0",
@@ -394,6 +403,8 @@
     "@launchkit/config": ["@launchkit/config@workspace:packages/config"],
 
     "@launchkit/db": ["@launchkit/db@workspace:packages/db"],
+
+    "@launchkit/driver-runtime": ["@launchkit/driver-runtime@workspace:packages/driver-runtime"],
 
     "@launchkit/harnesses": ["@launchkit/harnesses@workspace:packages/harnesses"],
 
