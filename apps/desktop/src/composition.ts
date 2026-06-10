@@ -38,6 +38,7 @@ import {
 import { createSqliteClient, runMigrations } from "@launchkit/db"
 import { createClaudeDriver } from "@launchkit/driver-claude"
 import { createCodexDriver } from "@launchkit/driver-codex"
+import { createOpencodeDriver } from "@launchkit/driver-opencode"
 import {
   createBunProcessSpawner,
   createDirHarnessFileSource,
@@ -238,6 +239,7 @@ export interface CreateAppContextDeps {
   readonly startRunnerSocket: typeof startRunnerSocket
   readonly createFakeDriver: typeof createFakeDriver
   readonly createCodexDriver: typeof createCodexDriver
+  readonly createOpencodeDriver: typeof createOpencodeDriver
   /** Set in dev to register the demo FakeDriver; production leaves it unset so the terminal path is unchanged. */
   readonly demoHarnessEnabled: boolean
   readonly genProxyKey: () => string
@@ -285,6 +287,7 @@ const realDeps: CreateAppContextDeps = {
   startRunnerSocket,
   createFakeDriver,
   createCodexDriver,
+  createOpencodeDriver,
   demoHarnessEnabled: process.env.LAUNCHKIT_DEMO_HARNESS === "1",
   genProxyKey: defaultGenProxyKey,
 }
@@ -521,6 +524,7 @@ export const createAppContext = (
   const driverRegistry: DriverRegistry = createDriverRegistry({
     claude: createClaudeDriver({ idGen }),
     codex: deps.createCodexDriver({ idGen: driverIdGen }),
+    opencode: deps.createOpencodeDriver({ idGen: driverIdGen }),
     ...(deps.demoHarnessEnabled
       ? { [DEMO_HARNESS_ID]: deps.createFakeDriver({ script: demoScript }) }
       : {}),

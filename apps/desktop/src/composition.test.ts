@@ -96,6 +96,7 @@ const makeFakeDeps = (): {
     })) as never,
     createFakeDriver: (() => ({ start: () => ok({}) })) as never,
     createCodexDriver: (() => ({ start: () => ok({}) })) as never,
+    createOpencodeDriver: (() => ({ start: () => ok({}) })) as never,
     demoHarnessEnabled: false,
   }
   return { deps, calls }
@@ -385,6 +386,11 @@ describe("createAppContext native run path wiring", () => {
   it("routes the codex harness natively (driver registered)", () => {
     const ctx = createAppContext(makeFakeDeps().deps)
     expect(ctx.driverRegistry.isNative("codex" as never)).toBe(true)
+  })
+
+  it("registers the opencode native driver and routes opencode native", () => {
+    const ctx = createAppContext(makeFakeDeps().deps)
+    expect(ctx.driverRegistry.isNative("opencode" as never)).toBe(true)
   })
 
   it("registers the native claude driver even without the demo flag (hard cutover)", () => {
