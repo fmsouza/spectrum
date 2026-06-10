@@ -37,6 +37,7 @@ import {
 } from "@launchkit/config"
 import { createSqliteClient, runMigrations } from "@launchkit/db"
 import { createClaudeDriver } from "@launchkit/driver-claude"
+import { createCodexDriver } from "@launchkit/driver-codex"
 import {
   createBunProcessSpawner,
   createDirHarnessFileSource,
@@ -236,6 +237,7 @@ export interface CreateAppContextDeps {
   readonly createRunManager: typeof createRunManager
   readonly startRunnerSocket: typeof startRunnerSocket
   readonly createFakeDriver: typeof createFakeDriver
+  readonly createCodexDriver: typeof createCodexDriver
   /** Set in dev to register the demo FakeDriver; production leaves it unset so the terminal path is unchanged. */
   readonly demoHarnessEnabled: boolean
   readonly genProxyKey: () => string
@@ -282,6 +284,7 @@ const realDeps: CreateAppContextDeps = {
   createRunManager,
   startRunnerSocket,
   createFakeDriver,
+  createCodexDriver,
   demoHarnessEnabled: process.env.LAUNCHKIT_DEMO_HARNESS === "1",
   genProxyKey: defaultGenProxyKey,
 }
@@ -510,12 +513,14 @@ export const createAppContext = (
     clock: deps.createSystemClock(),
   })
 
-  // Native drivers (hard cutover): `claude` always launches native via createClaudeDriver. The demo
+  // Native drivers (hard cutover): `claude` + `codex` always launch native via their drivers. The demo
   // FakeDriver stays dev-gated (LAUNCHKIT_DEMO_HARNESS=1). Each driver injects its own effects so the
   // logic stays unit-testable; the runtime owns the sync↔async bridge + lifecycle.
   const idGen = deps.createCryptoIdGen()
+  const driverIdGen = deps.createCryptoIdGen()
   const driverRegistry: DriverRegistry = createDriverRegistry({
     claude: createClaudeDriver({ idGen }),
+    codex: deps.createCodexDriver({ idGen: driverIdGen }),
     ...(deps.demoHarnessEnabled
       ? { [DEMO_HARNESS_ID]: deps.createFakeDriver({ script: demoScript }) }
       : {}),

@@ -32,6 +32,7 @@
         "@launchkit/config": "workspace:*",
         "@launchkit/db": "workspace:*",
         "@launchkit/driver-claude": "workspace:*",
+        "@launchkit/driver-codex": "workspace:*",
         "@launchkit/harnesses": "workspace:*",
         "@launchkit/ipc": "workspace:*",
         "@launchkit/projects": "workspace:*",
