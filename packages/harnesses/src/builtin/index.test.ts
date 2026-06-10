@@ -55,7 +55,9 @@ describe("builtinHarnesses", () => {
   it("wires opencode to the OpenAI env vars with proxy tokens", () => {
     expect(opencode.apiFormat).toBe("openai")
     expect(opencode.envTemplate).toEqual({
-      OPENAI_BASE_URL: "{{proxyUrl}}",
+      // `/v1`: the native driver feeds this into an openai-compatible provider that appends
+      // `/chat/completions`, so the base must point at the proxy's OpenAI API root.
+      OPENAI_BASE_URL: "{{proxyUrl}}/v1",
       OPENAI_API_KEY: "{{proxyKey}}",
       OPENAI_MODEL: "{{model}}",
     })

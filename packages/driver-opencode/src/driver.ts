@@ -91,7 +91,10 @@ const adaptClient = (
     },
     event: {
       subscribe: async (): Promise<OpencodeEventStream> => {
-        const sub = await sdkClient.event.subscribe()
+        // Scope the SSE stream to the session's directory. `opencode serve` is spawned with the APP's
+        // cwd, not the project's, so an unscoped `/event` subscribes to the wrong project and receives
+        // only `server.*` infra events — never this session's message/part/idle events.
+        const sub = await sdkClient.event.subscribe({ query: { directory } })
         // The SDK's stream yields the raw Event objects; the mapper tolerates unknown types defensively.
         return { stream: sub.stream as AsyncIterable<OpencodeEvent> }
       },

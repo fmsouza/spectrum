@@ -103,7 +103,7 @@ export const createOpencodeAdapter = (
 
     const subscription = await client.event.subscribe()
 
-    // Detached drain of the GLOBAL bus (filtered by the mapper).
+    // Detached drain of the (directory-scoped) bus, filtered by the mapper.
     void (async () => {
       for await (const event of subscription.stream) {
         if (closed) return
