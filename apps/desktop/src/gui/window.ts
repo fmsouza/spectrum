@@ -17,8 +17,9 @@ export interface WindowOptions {
 /**
  * The Electrobun seam, injected so the logic is testable without a real window. `createWindow`
  * opens the BrowserWindow; `makeTransport` builds a `ServerTransport` over the Electrobun message
- * bus for that window; `wireServer` registers the validated IPC handlers on it. (The PTY byte stream
- * runs over a separate loopback WebSocket — see terminal-socket.ts — not this Electrobun seam.)
+ * bus for that window; `wireServer` registers the validated IPC handlers on it. (The canonical
+ * run-event stream runs over a separate loopback WebSocket — see runner-socket.ts — not this
+ * Electrobun seam.)
  */
 export interface OpenWindowDeps {
   readonly createWindow: (opts: WindowOptions) => unknown
@@ -98,9 +99,9 @@ export const realOpenWindowDeps: OpenWindowDeps = {
     // has run, so deferring window creation past this dynamic import is safe.
     void import("electrobun/bun").then(
       ({ BrowserWindow, defineElectrobunRPC }) => {
-        // Electrobun carries only the IPC requests now. The PTY byte stream runs over a dedicated
-        // loopback WebSocket (see terminal-socket.ts) — far lower latency + lossless, which the
-        // harness TUIs need — so there is no `messages` channel or outbound bind here anymore.
+        // Electrobun carries only the IPC requests now. The canonical run-event stream runs over a
+        // dedicated loopback WebSocket (see runner-socket.ts), so there is no `messages` channel or
+        // outbound bind here anymore.
         const rpc = defineElectrobunRPC("bun", {
           maxRequestTime: 5000,
           handlers: { requests: {}, messages: {} },

@@ -20,6 +20,7 @@ const PARTIALS = [
   "shell.css",
   "sessions-master.css",
   "sessions-detail.css",
+  "run-view.css",
   "forms.css",
   "modal.css",
   "lists.css",
@@ -82,6 +83,9 @@ describe("views/main stylesheet partials wiring", () => {
       new URL("./styles/sessions-detail.css", import.meta.url),
     ).text()
 
+    const runView = await Bun.file(
+      new URL("./styles/run-view.css", import.meta.url),
+    ).text()
     expect(tokens).toContain("--master-w")
     expect(tokens).toContain("prefers-color-scheme")
     expect(controls).toContain("[data-variant=")
@@ -90,9 +94,8 @@ describe("views/main stylesheet partials wiring", () => {
     expect(shell).toContain('nav[aria-label="Primary"]')
     expect(sessionsMaster).toContain(".lk-session-row")
     expect(sessionsDetail).toContain(".lk-sessions-detail")
-    expect(sessionsDetail).toContain(".lk-terminal-panes")
-    expect(sessionsDetail).toContain(".lk-terminal-pane-host")
-    expect(sessionsDetail).toContain(".lk-terminal-pane")
-    expect(sessionsDetail).toContain(".lk-replay")
+    expect(runView).toContain(".lk-run-view")
+    expect(runView).toContain(".lk-sub-runner-pane")
+    expect(runView).toContain(".lk-timeline")
   })
 })

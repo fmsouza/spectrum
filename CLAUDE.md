@@ -22,6 +22,14 @@ Test-first (RED observed) → implemented (GREEN) → refactored → `bun run ty
 ## Package inventory (partial)
 - `@launchkit/sessions` — session history (depends on db, types, utils)
 - `@launchkit/projects` — project find-or-create + listing (depends on db, types, utils)
+- `@launchkit/agent-events` — canonical event schemas + pure reducer (depends on types, utils; zero IO)
+- `@launchkit/run-store` — append-only run-event persistence (depends on db, agent-events, types, utils)
+- `@launchkit/agent-driver` — driver seam + run manager + socket protocol + FakeDriver (depends on agent-events, types, utils)
+- `@launchkit/driver-runtime` — reusable driver core: createDriver(adapter) → AgentDriver (depends on agent-driver, agent-events, utils; no harness SDK)
+- `@launchkit/driver-claude` — Claude Code driver: createClaudeDriver + pure mapClaudeMessage (depends on driver-runtime, agent-events, agent-driver, utils, @anthropic-ai/claude-agent-sdk)
+- `@launchkit/driver-codex` — Codex driver over `codex app-server`: createCodexDriver + pure mapCodexEvent + CODEX_APP_SERVER_VERSION (depends on driver-runtime, agent-events, agent-driver, types, utils)
+- `@launchkit/driver-opencode` — OpenCode server adapter over driver-runtime: createOpencodeDriver + pure mapOpencodeEvent (depends on driver-runtime, agent-events, agent-driver, utils, @opencode-ai/sdk)
+- `@launchkit/driver-openclaw` — OpenClaw gateway adapter over driver-runtime (UNVERIFIED; depends on driver-runtime, agent-events, agent-driver, utils)
 
 ## Project skills
 `.claude/skills/launchkit-new-package` — creating a new internal package under `packages/`. Invoke it when it applies.

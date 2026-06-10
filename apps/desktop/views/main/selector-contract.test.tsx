@@ -25,9 +25,6 @@
  *     and the sessions-detail dark-override. Also: main:has(> .lk-sessions-detail)
  *     which uses `:has()` directly (not well-supported in happy-dom).
  *
- *   XTERM_BUCKET — .xterm*, xterm-viewport, xterm-screen selectors —
- *     the fake terminal never builds real xterm DOM; unreachable by design.
- *
  *   DATA_ATTR_VARIANT_BUCKET — `[data-gap="N"]`, `[data-align="…"]`,
  *     `[data-justify="…"]`, `[data-wrap]` on `.lk-stack`/`.lk-row` — these
  *     attribute variants are only present when a prop is explicitly passed.
@@ -40,12 +37,12 @@
  *
  * States rendered:
  *   1. Sessions view — empty (no sessions, nothing selected)
- *   2. Sessions view — running + recent sessions, one selected (ended → replay empty-state)
+ *   2. Sessions view — running + recent sessions, one selected
  *   3. New-session modal open (harness + model seed data)
  *   4. Settings General page (proxy running → StatusDot green)
  *   5. Settings Providers page (one provider → Providers table, td span[data-tone] badges)
  *   6. Settings Models page (one model in table, Add-model form open → lk-form-actions)
- *   7. Settings Harnesses page (built-in + custom, HarnessForm open → form + lk-field)
+ *   7. Settings Harnesses page (read-only built-in list)
  *
  * Coverage gaps (documented):
  *   - `span[role="status"][aria-busy="true"]` (Spinner) — only shown briefly
@@ -66,33 +63,21 @@ import type { HarnessDefinition, ModelRoute, Session } from "@launchkit/types"
 import { act, cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { render } from "@testing-library/react"
 import { App } from "./app"
-import type { XtermInstance } from "./terminal/TerminalPane"
-import type { TerminalClient } from "./terminal/terminalClient"
+import type { RunnerClient } from "./runner/runnerClient"
 import { createFakeIpcClient } from "./test/fake-client"
 
 // ---------------------------------------------------------------------------
 // Fakes (mirror what app.test.tsx uses)
 // ---------------------------------------------------------------------------
 
-const fakeTerminalClient: TerminalClient = {
-  onData: () => {},
-  onExit: () => {},
-  sendInput: () => {},
-  sendResize: () => {},
+const fakeRunnerClient: RunnerClient = {
   attach: () => {},
-  kill: () => {},
+  send: () => {},
+  approve: () => {},
+  interrupt: () => {},
   dispatch: () => {},
-} as unknown as TerminalClient
-
-const fakeXterm = (): XtermInstance => ({
-  open: () => {},
-  write: () => {},
-  onData: () => {},
-  fit: () => ({ cols: 80, rows: 24 }),
-  cols: 80,
-  rows: 24,
-  dispose: () => {},
-})
+  onEvent: () => {},
+} as unknown as RunnerClient
 
 // ---------------------------------------------------------------------------
 // Seed fixtures (minimal valid shapes from existing test files)
@@ -105,15 +90,6 @@ const harness: HarnessDefinition = {
   apiFormat: "anthropic",
   envTemplate: { ANTHROPIC_BASE_URL: "{{proxyUrl}}" },
   builtIn: true,
-} as unknown as HarnessDefinition
-
-const customHarness: HarnessDefinition = {
-  id: "mytool",
-  name: "My Tool",
-  command: "mytool",
-  apiFormat: "openai",
-  envTemplate: {},
-  builtIn: false,
 } as unknown as HarnessDefinition
 
 const provider: ProviderView = {
@@ -361,14 +337,6 @@ const isHasNotBucket = (s: string): boolean =>
   /:not\(\s*:has/.test(s) || (s.includes(":has(") && s.includes(">"))
 
 /**
- * xterm DOM is only built by the real xterm library, never by the fake terminal.
- */
-const isXtermBucket = (s: string): boolean =>
-  s.includes(".xterm") ||
-  s.includes("xterm-viewport") ||
-  s.includes("xterm-screen")
-
-/**
  * Selectors that are documented coverage gaps for the test states:
  *
  *   - Primitive attribute variants (.lk-stack[data-gap="N"], [data-align="…"], etc.)
@@ -393,9 +361,6 @@ const isDocumentedGap = (s: string): boolean => {
   if (s === 'span[role="status"][aria-busy="true"]') return true
   // FormField error — requires a server-side validation failure propagated to the form
   if (s === ".lk-field__error") return true
-  // Terminal pane host [hidden] — requires 2+ concurrent open sessions so one is hidden;
-  // the base .lk-terminal-pane-host is checked; hiding is exercised by TerminalPane unit tests
-  if (s === ".lk-terminal-pane-host[hidden]") return true
   // Tooltip bubble — only present in the DOM while the trigger is hovered/focused
   // (open state). No rendered app state hovers the rail tooltip; the bubble's
   // appearance is verified by Tooltip.test.tsx. The .lk-tooltip wrapper IS checked.
@@ -451,7 +416,6 @@ describe("selector contract: no dead selectors in the live UI", () => {
     const globalBucket: string[] = []
     const pseudoBucket: string[] = []
     const hasNotBucket: string[] = []
-    const xtermBucket: string[] = []
     const docGapBucket: string[] = []
     const checked: string[] = []
     const dead: string[] = []
@@ -463,25 +427,19 @@ describe("selector contract: no dead selectors in the live UI", () => {
         continue
       }
 
-      // 2. xterm bucket (fake terminal, by design)
-      if (isXtermBucket(rawSel)) {
-        xtermBucket.push(rawSel)
-        continue
-      }
-
-      // 3. :not(:has()) / :has() compound bucket (happy-dom engine bug)
+      // 2. :not(:has()) / :has() compound bucket (happy-dom engine bug)
       if (isHasNotBucket(rawSel)) {
         hasNotBucket.push(rawSel)
         continue
       }
 
-      // 4. Documented coverage gap bucket
+      // 3. Documented coverage gap bucket
       if (isDocumentedGap(rawSel)) {
         docGapBucket.push(rawSel)
         continue
       }
 
-      // 5. Strip trailing state pseudos and use the base selector
+      // 4. Strip trailing state pseudos and use the base selector
       const baseSelector = stripStatePseudos(rawSel)
       const selectorToCheck = baseSelector ?? rawSel
 
@@ -489,7 +447,7 @@ describe("selector contract: no dead selectors in the live UI", () => {
         pseudoBucket.push(rawSel)
       }
 
-      // 6. Try to match across all containers
+      // 5. Try to match across all containers
       let found = false
       for (const container of containers) {
         try {
@@ -529,10 +487,6 @@ describe("selector contract: no dead selectors in the live UI", () => {
       hasNotBucket,
     )
     console.log(
-      `xterm bucket (fake terminal, by design): ${xtermBucket.length}`,
-      xtermBucket,
-    )
-    console.log(
       `Documented-gap bucket (verified by unit tests; see file header): ${docGapBucket.length}`,
       docGapBucket,
     )
@@ -569,8 +523,7 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
     const { container } = render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -607,19 +560,13 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
         ok: true as const,
         value: allSessions,
       }),
-      // Empty scrollback so we get the empty-state (not replay pane) for the ended session
-      getSessionScrollback: async () => ({
-        ok: true as const,
-        value: { bytesBase64: "" },
-      }),
       getHarnesses: async () => ({ ok: true as const, value: [harness] }),
       getModels: async () => ({ ok: true as const, value: [model] }),
     })
     const { container } = render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         // Select the failedSession so its danger badge renders in the row
         initialView={`sessions/${failedSession.id}`}
       />,
@@ -628,86 +575,6 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
       // Wait for the project group and session rows to appear
       expect(container.querySelector(".lk-project-group")).not.toBeNull()
       expect(container.querySelector(".lk-session-row")).not.toBeNull()
-    })
-    containers.push(container.cloneNode(true) as ParentNode)
-    cleanup()
-  }
-
-  // ── State 2b: Sessions view — ended session selected with non-empty scrollback ─
-  // Renders: .lk-replay, .lk-replay .lk-terminal-pane-host--replay, .lk-replay-banner,
-  //   .lk-terminal-pane (the replay terminal pane itself)
-  {
-    // Non-empty base64 bytes so the replay pane renders (not the "No recorded output" empty-state)
-    // "hi" in base64
-    const bytesBase64 = "aGk="
-    const client = createFakeIpcClient({
-      ...baseStubs,
-      getProjects: async () => ({
-        ok: true as const,
-        value: [{ id: "prj_1", name: "demo", path: "/demo", sessionCount: 1 }],
-      }),
-      getSessions: async () => ({
-        ok: true as const,
-        value: [failedSession],
-      }),
-      getSessionScrollback: async () => ({
-        ok: true as const,
-        value: { bytesBase64 },
-      }),
-      getHarnesses: async () => ({ ok: true as const, value: [harness] }),
-      getModels: async () => ({ ok: true as const, value: [model] }),
-    })
-    const { container } = render(
-      <App
-        client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
-        // Selecting an ended session that's NOT in openSessionIds → replay path
-        initialView={`sessions/${failedSession.id}`}
-      />,
-    )
-    await waitFor(() => {
-      // Wait for the replay structure to render (scrollback loads → .lk-replay mounts)
-      expect(container.querySelector(".lk-replay")).not.toBeNull()
-    })
-    containers.push(container.cloneNode(true) as ParentNode)
-    cleanup()
-  }
-
-  // ── State 2c: Live session open (terminal pane hosts) ────────────────────
-  // Renders: .lk-terminal-pane-host, .lk-terminal-pane-host[hidden], .lk-terminal-pane
-  // This requires a launched session so its id enters openSessionIds.
-  {
-    const client = createFakeIpcClient({
-      ...baseStubs,
-      getSessions: async () => ({ ok: true as const, value: [] }),
-      getHarnesses: async () => ({ ok: true as const, value: [harness] }),
-      getModels: async () => ({ ok: true as const, value: [model] }),
-      launchHarness: async () => ({
-        ok: true as const,
-        value: { sessionId: "s_live" },
-      }),
-    })
-    const { container, getByRole } = render(
-      <App
-        client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
-        initialView="sessions"
-      />,
-    )
-    await waitFor(() => {
-      expect(container.querySelector(".lk-shell")).not.toBeNull()
-    })
-    // Launch a session to get the terminal pane host into openSessionIds
-    fireEvent.click(getByRole("button", { name: /new session/i }))
-    await waitFor(() => {
-      expect(container.querySelector("dialog[aria-modal]")).not.toBeNull()
-    })
-    fireEvent.click(getByRole("button", { name: /launch/i }))
-    await waitFor(() => {
-      // After launch, the live pane host should render
-      expect(container.querySelector(".lk-terminal-pane-host")).not.toBeNull()
     })
     containers.push(container.cloneNode(true) as ParentNode)
     cleanup()
@@ -723,8 +590,7 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
     const { container, getByRole } = render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -751,8 +617,7 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
     const { container } = render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="settings/general"
       />,
     )
@@ -773,8 +638,7 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
     const { container } = render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="settings/providers"
       />,
     )
@@ -799,8 +663,7 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
     const { container, getByRole } = render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="settings/models"
       />,
     )
@@ -819,20 +682,19 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
     cleanup()
   }
 
-  // ── State 7: Settings — Harnesses page (built-in + custom + HarnessForm) ─
+  // ── State 7: Settings — Harnesses page (read-only built-in list) ─────────
   {
     const client = createFakeIpcClient({
       ...baseStubs,
       getHarnesses: async () => ({
         ok: true as const,
-        value: [harness, customHarness],
+        value: [harness],
       }),
     })
     const { container } = render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="settings/harnesses"
       />,
     )
@@ -840,19 +702,6 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
       expect(container.querySelector(".lk-list")).not.toBeNull()
     })
     containers.push(container.cloneNode(true) as ParentNode)
-    // Also open HarnessForm for the form + lk-field + lk-form-actions
-    const addCustomBtn = Array.from(
-      container.querySelectorAll<HTMLButtonElement>("button[data-variant]"),
-    ).find((b) => b.textContent?.toLowerCase().includes("add custom"))
-    if (addCustomBtn !== undefined) {
-      await act(async () => {
-        fireEvent.click(addCustomBtn)
-      })
-      await waitFor(() => {
-        expect(container.querySelector("form")).not.toBeNull()
-      })
-      containers.push(container.cloneNode(true) as ParentNode)
-    }
     cleanup()
   }
 

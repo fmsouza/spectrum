@@ -17,3 +17,6 @@ export type ProjectId = z.infer<typeof ProjectIdSchema>
 
 export const SecretRefSchema = z.object({ ref: z.string().min(1) }).strict()
 export type SecretRef = z.infer<typeof SecretRefSchema>
+
+export const RunnerIdSchema = z.string().min(1).brand<"RunnerId">()
+export type RunnerId = z.infer<typeof RunnerIdSchema>

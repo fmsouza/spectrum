@@ -26,18 +26,16 @@ const METHOD_NAMES = [
   "updateModel",
   "deleteModel",
   "getHarnesses",
-  "addHarness",
-  "updateHarness",
-  "deleteHarness",
   "launchHarness",
   "getSessions",
   "getProxyStatus",
   "pickFolder",
-  "getSessionScrollback",
   "listProviderModels",
   "getSettings",
   "getProjects",
   "setCollapsedProjects",
+  "getRunnerSocketUrl",
+  "getRunEvents",
 ] as const satisfies ReadonlyArray<keyof IpcClient>
 
 /**

@@ -1,0 +1,351 @@
+import { describe, expect, it } from "bun:test"
+import type { AgentStartInput } from "@launchkit/agent-driver"
+import type {
+  ApprovalDecision,
+  ApprovalTarget,
+  CanonicalEvent,
+  RunnerId,
+} from "@launchkit/agent-events"
+import { createOpencodeAdapter } from "./adapter"
+import { S_ROOT } from "./fixtures/opencode-events"
+import type {
+  OpencodeClient,
+  OpencodeConnectConfig,
+  OpencodeEvent,
+  OpencodeEventStream,
+} from "./transport"
+
+const ROOT = "rnr_root" as RunnerId
+
+const START: AgentStartInput = {
+  harnessId: "opencode" as never,
+  cwd: "/work",
+  env: {},
+  initialPrompt: "do the thing",
+}
+
+// A controllable fake event stream: push events, then end.
+class FakeStream implements OpencodeEventStream {
+  private readonly queue: OpencodeEvent[] = []
+  private done = false
+  private wake: (() => void) | undefined
+  push(e: OpencodeEvent): void {
+    this.queue.push(e)
+    this.wake?.()
+  }
+  end(): void {
+    this.done = true
+    this.wake?.()
+  }
+  get stream(): AsyncIterable<OpencodeEvent> {
+    const self = this
+    return {
+      async *[Symbol.asyncIterator]() {
+        for (;;) {
+          while (self.queue.length > 0) {
+            const next = self.queue.shift()
+            if (next !== undefined) yield next
+          }
+          if (self.done) return
+          await new Promise<void>((r) => {
+            self.wake = r
+          })
+        }
+      },
+    }
+  }
+}
+
+const setup = (decision: ApprovalDecision = "allow") => {
+  const emitted: CanonicalEvent[] = []
+  const fakeStream = new FakeStream()
+  const prompts: Array<{ id: string; text: string }> = []
+  const aborts: string[] = []
+  const replies: Array<{ id: string; permissionID: string; response: string }> =
+    []
+  let createdParent: string | undefined
+  let serverClosed = false
+  let connectCfg: OpencodeConnectConfig | undefined
+
+  const client: OpencodeClient = {
+    session: {
+      create: async ({ body }) => {
+        createdParent = body.parentID
+        return { id: S_ROOT }
+      },
+      prompt: async ({ path, body }) => {
+        prompts.push({
+          id: path.id,
+          text: body.parts.map((p) => p.text).join(""),
+        })
+      },
+      abort: async ({ path }) => {
+        aborts.push(path.id)
+      },
+      permissions: async ({ path, body }) => {
+        replies.push({
+          id: path.id,
+          permissionID: path.permissionID,
+          response: body.response,
+        })
+      },
+    },
+    event: { subscribe: async () => fakeStream },
+  }
+
+  const ctx = {
+    rootRunnerId: ROOT,
+    emit: (e: CanonicalEvent) => emitted.push(e),
+    newRunnerId: (): RunnerId => "rnr_child" as RunnerId,
+    requestApproval: async (
+      _r: RunnerId,
+      _t: ApprovalTarget,
+    ): Promise<ApprovalDecision> => decision,
+  }
+
+  const adapter = createOpencodeAdapter({
+    connect: async (config) => {
+      connectCfg = config
+      return {
+        client,
+        server: {
+          url: "http://127.0.0.1:4096",
+          close: () => {
+            serverClosed = true
+          },
+        },
+      }
+    },
+    // No-op watchdog for the deterministic tests (timeout path covered separately).
+    watchdogMs: 0,
+  })
+
+  return {
+    adapter,
+    ctx,
+    fakeStream,
+    emitted,
+    prompts,
+    aborts,
+    replies,
+    get createdParent() {
+      return createdParent
+    },
+    get serverClosed() {
+      return serverClosed
+    },
+    get connectCfg() {
+      return connectCfg
+    },
+  }
+}
+
+describe("createOpencodeAdapter", () => {
+  it("connects with cwd from AgentStartInput, creates a root session (no parentID), and emits root runner-started", async () => {
+    const t = setup()
+    await t.adapter.start(START, t.ctx)
+    expect(t.connectCfg).toMatchObject({ cwd: "/work" })
+    expect(t.createdParent).toBeUndefined()
+    expect(t.emitted).toContainEqual({ type: "runner-started", runnerId: ROOT })
+  })
+
+  it("passes a launchkit proxy provider config to connect when the proxy env is present", async () => {
+    const t = setup()
+    await t.adapter.start(
+      {
+        ...START,
+        env: {
+          OPENAI_BASE_URL: "http://127.0.0.1:4000/v1",
+          OPENAI_API_KEY: "rk_1",
+          OPENAI_MODEL: "minimax-m3",
+        },
+      },
+      t.ctx,
+    )
+    expect(t.connectCfg?.config).toEqual({
+      provider: {
+        launchkit: {
+          npm: "@ai-sdk/openai-compatible",
+          name: "LaunchKit",
+          options: { baseURL: "http://127.0.0.1:4000/v1", apiKey: "rk_1" },
+          models: { "minimax-m3": {} },
+        },
+      },
+      model: "launchkit/minimax-m3",
+    })
+  })
+
+  it("omits the proxy config on the direct route (no proxy env)", async () => {
+    const t = setup()
+    await t.adapter.start(START, t.ctx)
+    expect(t.connectCfg?.config).toBeUndefined()
+  })
+
+  it("sends the initial prompt to the root session via session.prompt", async () => {
+    const t = setup()
+    await t.adapter.start(START, t.ctx)
+    expect(t.prompts).toContainEqual({ id: S_ROOT, text: "do the thing" })
+  })
+
+  it("emits mapped canonical events from the (filtered) global stream", async () => {
+    const t = setup()
+    await t.adapter.start(START, t.ctx)
+    t.fakeStream.push({
+      type: "message.part.updated",
+      properties: {
+        part: {
+          id: "p",
+          sessionID: S_ROOT,
+          messageID: "m",
+          type: "text",
+          text: "hi",
+        },
+      },
+    })
+    t.fakeStream.end()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(t.emitted).toContainEqual({
+      type: "text-delta",
+      runnerId: ROOT,
+      messageId: "m",
+      text: "hi",
+    })
+  })
+
+  it("filters out events for an unrelated session", async () => {
+    const t = setup()
+    await t.adapter.start(START, t.ctx)
+    t.fakeStream.push({
+      type: "message.part.updated",
+      properties: {
+        part: {
+          id: "p",
+          sessionID: "ses_other",
+          messageID: "m",
+          type: "text",
+          text: "nope",
+        },
+      },
+    })
+    t.fakeStream.end()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(t.emitted.some((e) => e.type === "text-delta")).toBe(false)
+  })
+
+  it("bridges permission.updated through ctx.requestApproval and replies (allow -> once)", async () => {
+    const t = setup("allow")
+    await t.adapter.start(START, t.ctx)
+    t.fakeStream.push({
+      type: "permission.updated",
+      properties: {
+        id: "perm_1",
+        type: "bash",
+        sessionID: S_ROOT,
+        title: "t",
+        pattern: "rm",
+      },
+    })
+    t.fakeStream.end()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(t.emitted).toContainEqual({
+      type: "approval-requested",
+      runnerId: ROOT,
+      requestId: "perm_1",
+      target: { kind: "command", detail: "rm" },
+    })
+    expect(t.replies).toEqual([
+      { id: S_ROOT, permissionID: "perm_1", response: "once" },
+    ])
+  })
+
+  it("emits exactly one approval-requested per permission (no duplicate)", async () => {
+    const t = setup("allow")
+    await t.adapter.start(START, t.ctx)
+    t.fakeStream.push({
+      type: "permission.updated",
+      properties: {
+        id: "perm_1",
+        type: "bash",
+        sessionID: S_ROOT,
+        title: "t",
+        pattern: "rm",
+      },
+    })
+    t.fakeStream.end()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(
+      t.emitted.filter((e) => e.type === "approval-requested"),
+    ).toHaveLength(1)
+  })
+
+  it("handle.send prompts; interrupt aborts; close stops the server", async () => {
+    const t = setup()
+    const handle = await t.adapter.start(START, t.ctx)
+    handle.send("again")
+    handle.interrupt()
+    handle.close()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(t.prompts).toContainEqual({ id: S_ROOT, text: "again" })
+    expect(t.aborts).toContain(S_ROOT)
+    expect(t.serverClosed).toBe(true)
+  })
+
+  it("fires the #6573 watchdog: finishes the root errored + closes the server when no session.idle arrives", async () => {
+    // Use a manual timer so the test is deterministic (no real delay).
+    let fire: (() => void) | undefined
+    const t = (() => {
+      const emitted: CanonicalEvent[] = []
+      const fakeStream = new FakeStream()
+      let serverClosed = false
+      const client: OpencodeClient = {
+        session: {
+          create: async () => ({ id: S_ROOT }),
+          prompt: async () => {},
+          abort: async () => {},
+          permissions: async () => {},
+        },
+        event: { subscribe: async () => fakeStream },
+      }
+      const ctx = {
+        rootRunnerId: ROOT,
+        emit: (e: CanonicalEvent) => emitted.push(e),
+        newRunnerId: (): RunnerId => "rnr_child" as RunnerId,
+        requestApproval: async (): Promise<ApprovalDecision> => "allow",
+      }
+      const adapter = createOpencodeAdapter({
+        connect: async () => ({
+          client,
+          server: {
+            url: "u",
+            close: () => {
+              serverClosed = true
+            },
+          },
+        }),
+        watchdogMs: 5,
+        setTimer: (fn) => {
+          fire = fn
+          return 0 as unknown as ReturnType<typeof setTimeout>
+        },
+        clearTimer: () => {},
+      })
+      return {
+        adapter,
+        ctx,
+        fakeStream,
+        emitted,
+        get serverClosed() {
+          return serverClosed
+        },
+      }
+    })()
+    await t.adapter.start(START, t.ctx) // arms the watchdog (initialPrompt present)
+    fire?.()
+    expect(
+      t.emitted.some(
+        (e) => e.type === "runner-finished" && e.status === "errored",
+      ),
+    ).toBe(true)
+    expect(t.serverClosed).toBe(true)
+  })
+})

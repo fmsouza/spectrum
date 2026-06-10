@@ -47,14 +47,15 @@ const makeCtx = (
   over: {
     harnesses?: readonly HarnessDefinition[]
     proxyRunning?: boolean
-    terminalOk?: boolean
+    runnerOk?: boolean
+    nativeHarnessId?: string
   } = {},
 ): {
   ctx: AppContext
-  terminalInputs: unknown[]
+  runnerInputs: unknown[]
   sessionInputs: unknown[]
 } => {
-  const terminalInputs: unknown[] = []
+  const runnerInputs: unknown[] = []
   const sessionInputs: unknown[] = []
   const resolveLaunch = resolveHarnessLaunch({
     resolver: createFakeCommandResolver({ claude: "/usr/local/bin/claude" }),
@@ -62,16 +63,21 @@ const makeCtx = (
   const ctx = {
     registry: { list: async () => ok(over.harnesses ?? [harness]) },
     resolveLaunch,
+    driverRegistry: {
+      get: () => undefined,
+      isNative: (harnessId: unknown) =>
+        String(harnessId) === (over.nativeHarnessId ?? "claude"),
+    },
     runtime: {
       readProxyKey: async () => null,
       writeProxyKey: async () => ok(undefined),
       clear: async () => undefined,
     },
-    terminal: {
+    runner: {
       launch: (input: unknown) => {
-        terminalInputs.push(input)
-        return over.terminalOk === false
-          ? err({ kind: "pty-open-failed", detail: "ENOENT" })
+        runnerInputs.push(input)
+        return over.runnerOk === false
+          ? err({ kind: "start-failed", detail: "no driver" })
           : ok({ sessionId: sampleSession.id })
       },
       handleInbound: () => undefined,
@@ -103,7 +109,7 @@ const makeCtx = (
       save: async () => ok(undefined),
     },
   } as unknown as AppContext
-  return { ctx, terminalInputs, sessionInputs }
+  return { ctx, runnerInputs, sessionInputs }
 }
 
 /**
@@ -157,8 +163,8 @@ describe("mountTray", () => {
     })
   })
 
-  it("opens a DEFAULT (bypass) terminal session and focuses the window when a Launch item is clicked", async () => {
-    const { ctx, terminalInputs, sessionInputs } = makeCtx({
+  it("opens a DEFAULT (bypass) native run session and focuses the window when a Launch item is clicked", async () => {
+    const { ctx, runnerInputs, sessionInputs } = makeCtx({
       harnesses: [harness],
     })
     const openWindow = mock(() => {})
@@ -168,10 +174,10 @@ describe("mountTray", () => {
     click("launch:claude")
     await flushMicrotasks() // let the detached launchById promises settle
 
-    // Same path as the IPC handler: resolve then ctx.terminal.launch — the manager owns the session.
+    // Same path as the IPC handler: resolve then ctx.runner.launch — the manager owns the session.
     // A tray quick-launch is a DEFAULT launch = bypass the proxy (route kind "direct").
-    expect(terminalInputs).toHaveLength(1)
-    const input = terminalInputs[0] as Record<string, unknown> & {
+    expect(runnerInputs).toHaveLength(1)
+    const input = runnerInputs[0] as Record<string, unknown> & {
       env: Record<string, string>
     }
     expect(input.harnessId).toBe(harness.id)
@@ -184,7 +190,7 @@ describe("mountTray", () => {
     expect("ANTHROPIC_API_KEY" in input.env).toBe(false)
     // The handler must NOT create a session directly (the manager does it).
     expect(sessionInputs).toEqual([])
-    // The window is brought forward so the user sees the new terminal tab.
+    // The window is brought forward so the user sees the new session.
     expect(openWindow).toHaveBeenCalledTimes(1)
   })
 
@@ -210,10 +216,10 @@ describe("mountTray", () => {
     expect(quit).toHaveBeenCalledTimes(1)
   })
 
-  it("does not record a session when the terminal fails to open", async () => {
+  it("does not record a session when the runner fails to launch", async () => {
     const { ctx, sessionInputs } = makeCtx({
       harnesses: [harness],
-      terminalOk: false,
+      runnerOk: false,
     })
     const { deps, click } = captureTray()
 
@@ -221,6 +227,20 @@ describe("mountTray", () => {
     click("launch:claude")
     await flushMicrotasks() // let the detached launchById promises settle
 
-    expect(sessionInputs).toEqual([]) // pty failed → no session recorded
+    expect(sessionInputs).toEqual([]) // driver failed → no session recorded
+  })
+
+  it("does not launch a harness with no native driver", async () => {
+    const { ctx, runnerInputs } = makeCtx({
+      harnesses: [harness],
+      nativeHarnessId: "__none__",
+    })
+    const { deps, click } = captureTray()
+
+    await mountTray(ctx, { openWindow: () => {}, quit: () => {} }, deps)
+    click("launch:claude")
+    await flushMicrotasks()
+
+    expect(runnerInputs).toEqual([])
   })
 })

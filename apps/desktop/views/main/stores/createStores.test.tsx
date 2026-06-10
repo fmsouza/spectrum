@@ -16,6 +16,16 @@ const Probe = (): ReactElement => {
   )
 }
 
+const RunViewProbe = (): ReactElement => {
+  const store = useStores().runView
+  const apply = useStore(store, (s) => s.applyEvent)
+  return (
+    <button type="button" onClick={() => {}}>
+      {typeof apply === "function" ? "wired" : "missing"}
+    </button>
+  )
+}
+
 describe("StoreProvider", () => {
   it("provides stores that read through to the injected client", async () => {
     const client = createFakeIpcClient({
@@ -31,6 +41,15 @@ describe("StoreProvider", () => {
     )
     screen.getByRole("button").click()
     await waitFor(() => expect(screen.getByText("running")).toBeInTheDocument())
+  })
+
+  it("provides a runView store of reduced RunState", () => {
+    render(
+      <StoreProvider client={createFakeIpcClient({})}>
+        <RunViewProbe />
+      </StoreProvider>,
+    )
+    expect(screen.getByText("wired")).toBeInTheDocument()
   })
 
   it("throws when useStores is used without a provider", () => {
