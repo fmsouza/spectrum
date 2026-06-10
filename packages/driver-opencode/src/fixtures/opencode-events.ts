@@ -23,7 +23,7 @@ export const textPartFixture: OpencodeEvent = {
   },
 }
 
-export const toolPartSequenceFixture: readonly OpencodeEvent[] = [
+export const toolPartSequenceFixture = [
   {
     type: "message.part.updated",
     properties: {
@@ -78,7 +78,7 @@ export const toolPartSequenceFixture: readonly OpencodeEvent[] = [
       },
     },
   },
-] as const
+] satisfies readonly OpencodeEvent[]
 
 export const toolPartErrorFixture: OpencodeEvent = {
   type: "message.part.updated",

@@ -67,17 +67,29 @@ const toolPart = z
   })
   .passthrough()
 
-// Any other part type (reasoning/file/agent/step-*) — tolerated, mapped to [] by mapOpencodeEvent.
+// Any other part type (reasoning/file/agent/step-*/…) — tolerated, mapped to [] by mapOpencodeEvent.
+// Enumerated as literals (Research §6) so the `part` union stays a proper discriminated union (TS
+// narrows on `part.type`); a never-seen part type would simply fail this arm and the schema as a whole.
 const otherPart = z
   .object({
     id: z.string(),
     sessionID: z.string(),
     messageID: z.string(),
-    type: z.string(),
+    type: z.enum([
+      "reasoning",
+      "file",
+      "step-start",
+      "step-finish",
+      "snapshot",
+      "patch",
+      "agent",
+      "retry",
+      "compaction",
+    ]),
   })
   .passthrough()
 
-const part = z.union([textPart, toolPart, otherPart])
+const part = z.discriminatedUnion("type", [textPart, toolPart, otherPart])
 
 const sessionInfo = z
   .object({
