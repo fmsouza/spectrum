@@ -1,8 +1,10 @@
 import { describe, expect, it } from "bun:test"
+import { claude } from "@launchkit/harnesses"
 import { createProjectStore } from "@launchkit/projects"
 import { err, ok } from "@launchkit/utils"
 import { createAppContext } from "./composition"
 import type { CreateAppContextDeps } from "./composition"
+import { DEMO_HARNESS_ID } from "./gui/driver-registry"
 
 /** Record which constructor saw which argument, returning inert stand-ins. */
 const makeFakeDeps = (): {
@@ -377,5 +379,27 @@ describe("createAppContext native run path wiring", () => {
     const ctx = createAppContext(deps)
     expect(ctx.driverRegistry.isNative("demo" as never)).toBe(false)
     expect(ctx.driverRegistry.isNative("claude" as never)).toBe(false)
+  })
+
+  it("makes the demo harness launchable AND native when the demo flag is set (both registries agree)", async () => {
+    // The bug this guards: the demo *driver* was registered but no demo *harness* was listed, so the
+    // native view was unreachable. With the flag on, the harness registry must LIST `demo` (so the New
+    // Session modal offers it) AND the driver registry must mark it native (so it routes to RunDetail).
+    const deps: CreateAppContextDeps = {
+      ...makeFakeDeps().deps,
+      demoHarnessEnabled: true,
+      // a real-ish base registry so the withDemoHarness decorator can append to its list
+      createRegistry: (() => ({
+        list: async () => ok([claude]),
+        add: async () => ok(undefined),
+        remove: async () => ok(undefined),
+      })) as never,
+    }
+    const ctx = createAppContext(deps)
+    const listed = await ctx.registry.list()
+    const ids = listed.ok ? listed.value.map((h) => h.id) : []
+    expect(ids).toContain(DEMO_HARNESS_ID)
+    expect(ids).toContain("claude")
+    expect(ctx.driverRegistry.isNative(DEMO_HARNESS_ID as never)).toBe(true)
   })
 })
