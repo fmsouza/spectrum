@@ -36,6 +36,7 @@ import {
   defaultConfig,
 } from "@launchkit/config"
 import { createSqliteClient, runMigrations } from "@launchkit/db"
+import { createClaudeDriver } from "@launchkit/driver-claude"
 import {
   createBunProcessSpawner,
   createDirHarnessFileSource,
@@ -509,13 +510,16 @@ export const createAppContext = (
     clock: deps.createSystemClock(),
   })
 
-  // Dev-only: register the demo FakeDriver so the whole native path is exercisable. Production leaves
-  // the registry EMPTY so every real harness still launches via the embedded terminal, UNCHANGED.
-  const driverRegistry: DriverRegistry = deps.demoHarnessEnabled
-    ? createDriverRegistry({
-        [DEMO_HARNESS_ID]: deps.createFakeDriver({ script: demoScript }),
-      })
-    : createDriverRegistry({})
+  // Native drivers (hard cutover): `claude` always launches native via createClaudeDriver. The demo
+  // FakeDriver stays dev-gated (LAUNCHKIT_DEMO_HARNESS=1). Each driver injects its own effects so the
+  // logic stays unit-testable; the runtime owns the sync↔async bridge + lifecycle.
+  const idGen = deps.createCryptoIdGen()
+  const driverRegistry: DriverRegistry = createDriverRegistry({
+    claude: createClaudeDriver({ idGen }),
+    ...(deps.demoHarnessEnabled
+      ? { [DEMO_HARNESS_ID]: deps.createFakeDriver({ script: demoScript }) }
+      : {}),
+  })
 
   // One AgentDriver for the RunManager: route start() to the registered driver for the harness.
   const routingDriver: AgentDriver = {

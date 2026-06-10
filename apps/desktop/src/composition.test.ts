@@ -374,11 +374,20 @@ describe("createAppContext native run path wiring", () => {
     expect(typeof ctx.runEvents.read).toBe("function")
   })
 
-  it("registers NO native driver by default (production: terminal path unchanged)", () => {
+  it("registers the claude driver as native by default (hard cutover)", () => {
     const { deps } = makeFakeDeps()
     const ctx = createAppContext(deps)
     expect(ctx.driverRegistry.isNative("demo" as never)).toBe(false)
-    expect(ctx.driverRegistry.isNative("claude" as never)).toBe(false)
+    expect(ctx.driverRegistry.isNative("claude" as never)).toBe(true)
+  })
+
+  it("registers the native claude driver even without the demo flag (hard cutover)", () => {
+    const ctx = createAppContext({
+      ...makeFakeDeps().deps,
+      demoHarnessEnabled: false,
+    })
+    expect(ctx.driverRegistry.isNative("claude" as never)).toBe(true)
+    expect(ctx.driverRegistry.isNative("demo" as never)).toBe(false)
   })
 
   it("makes the demo harness launchable AND native when the demo flag is set (both registries agree)", async () => {
