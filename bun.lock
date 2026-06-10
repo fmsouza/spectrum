@@ -135,6 +135,17 @@
         "@launchkit/utils": "workspace:*",
       },
     },
+    "packages/driver-openclaw": {
+      "name": "@launchkit/driver-openclaw",
+      "version": "0.1.0",
+      "dependencies": {
+        "@launchkit/agent-driver": "workspace:*",
+        "@launchkit/agent-events": "workspace:*",
+        "@launchkit/driver-runtime": "workspace:*",
+        "@launchkit/utils": "workspace:*",
+        "zod": "^3.24.0",
+      },
+    },
     "packages/driver-opencode": {
       "name": "@launchkit/driver-opencode",
       "version": "0.1.0",
@@ -467,6 +478,8 @@
     "@launchkit/driver-claude": ["@launchkit/driver-claude@workspace:packages/driver-claude"],
 
     "@launchkit/driver-codex": ["@launchkit/driver-codex@workspace:packages/driver-codex"],
+
+    "@launchkit/driver-openclaw": ["@launchkit/driver-openclaw@workspace:packages/driver-openclaw"],
 
     "@launchkit/driver-opencode": ["@launchkit/driver-opencode@workspace:packages/driver-opencode"],
 
