@@ -1,11 +1,30 @@
 import { describe, expect, it } from "bun:test"
 import type { IdGen } from "@launchkit/utils"
-import { createJsonRpcDispatcher } from "./transport"
+import { createJsonRpcDispatcher, isCodexStderrNoise } from "./transport"
 
 const seqIds = (): IdGen => {
   let n = 0
   return { next: (p) => `${p === "apr" ? "apr" : "rpc"}_${++n}` }
 }
+
+describe("isCodexStderrNoise", () => {
+  it("drops the benign repeating model-list refresh warning", () => {
+    expect(
+      isCodexStderrNoise(
+        "ERROR codex_models_manager::manager: failed to refresh available models: stream disconnected before completion",
+      ),
+    ).toBe(true)
+  })
+
+  it("keeps real codex stderr (errors we want to see)", () => {
+    expect(
+      isCodexStderrNoise(
+        "ERROR codex_core::tools::router: error=Provide either message or items, but not both",
+      ),
+    ).toBe(false)
+    expect(isCodexStderrNoise("")).toBe(false)
+  })
+})
 
 describe("createJsonRpcDispatcher — framing + routing", () => {
   it("serializes a request as one newline-delimited JSON line", () => {

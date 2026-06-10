@@ -202,6 +202,15 @@ export const createStdioJsonRpcTransport = (deps: {
   }
 }
 
+/**
+ * Benign, repeating `codex app-server` stderr lines that LaunchKit drops (forwarding everything else).
+ * codex polls the provider's `/models` for its model PICKER, expecting an Ollama-style `{models:[…]}`;
+ * the LaunchKit proxy serves the OpenAI-standard `{data:[…]}`, so the refresh fails every ~15s. LaunchKit
+ * sets the model explicitly via `thread/start`, so the picker is unused and the warning is pure noise.
+ */
+export const isCodexStderrNoise = (line: string): boolean =>
+  line.includes("failed to refresh available models")
+
 /** The real Bun spawn behind the `SpawnFn` seam — the only `Bun.spawn` call site in this package. */
 export const createBunSpawn = (): SpawnFn => (opts) => {
   const proc = Bun.spawn([opts.command, ...opts.args], {
@@ -209,9 +218,25 @@ export const createBunSpawn = (): SpawnFn => (opts) => {
     env: opts.env,
     stdin: "pipe",
     stdout: "pipe",
-    stderr: "inherit",
+    stderr: "pipe",
   })
   const decoder = new TextDecoder()
+  // Forward app-server stderr to ours, line-buffered, minus the known-benign model-refresh noise.
+  void (async () => {
+    const reader = proc.stderr.getReader()
+    let buf = ""
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (value === undefined) continue
+      buf += decoder.decode(value, { stream: true })
+      const lines = buf.split("\n")
+      buf = lines.pop() ?? ""
+      for (const line of lines)
+        if (!isCodexStderrNoise(line)) process.stderr.write(`${line}\n`)
+    }
+    if (buf.length > 0 && !isCodexStderrNoise(buf)) process.stderr.write(buf)
+  })()
   return {
     writeStdin: (data) => {
       proc.stdin.write(data)
