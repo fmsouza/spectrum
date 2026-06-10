@@ -405,9 +405,11 @@
 
 /* ── Typing / working indicator (3 bouncing dots) ───────────────────────────── */
 .lk-typing {
-  align-self: flex-start;
-  display: inline-flex;
+  display: flex;
+  justify-content: center;
   gap: 0.3rem;
+  /* Match the timeline's inter-item gap above, so it isn't crowded against the last message. */
+  margin-top: var(--space-3);
   padding: var(--space-2) var(--space-3);
 }
 

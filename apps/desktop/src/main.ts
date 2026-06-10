@@ -3,6 +3,7 @@ import { type ProxyHandle, type RunAppDeps, runApp } from "./app"
 import { cliDepsFrom } from "./cli-deps"
 import type { createAppContext } from "./composition"
 import { detectMode } from "./detect-mode"
+import { mountAppMenu } from "./gui/app-menu"
 import { mountTray } from "./gui/tray"
 import { openWindow } from "./gui/window"
 
@@ -63,6 +64,9 @@ export const buildRealDeps = (
     openWindow:
       overrides.openWindow ??
       ((): void => {
+        // The native Edit menu (Copy/Paste/Cut/Select All) is REQUIRED for clipboard shortcuts to
+        // reach the webview — without it Cmd+C/V do nothing in the conversation + composer.
+        mountAppMenu()
         openWindow(ctx)
         void mountTray(ctx, {
           openWindow: () => openWindow(ctx),
