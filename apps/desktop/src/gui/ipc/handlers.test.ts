@@ -5,7 +5,6 @@ import {
   createFakeCommandResolver,
   resolveHarnessLaunch,
 } from "@launchkit/harnesses"
-import { bytesToBase64 } from "@launchkit/pty"
 import type {
   HarnessId,
   ModelId,
@@ -58,12 +57,9 @@ const makeCtx = (
     proxyPort?: number
     session?: Session
     launchOk?: boolean
-    terminalOk?: boolean
+    runnerOk?: boolean
     proxyKeyStored?: string | null
-    registryAddOk?: boolean
-    registryRemoveOk?: boolean
     pickFolderResult?: readonly string[]
-    scrollback?: Result<Uint8Array, { readonly kind: string }>
     lastSelectedFolder?: string
     lastSelectedHarnessId?: string
     lastSelectedModelId?: string
@@ -79,11 +75,7 @@ const makeCtx = (
   secretSets: string[]
   launchParams: unknown[]
   sessionInputs: unknown[]
-  terminalInputs: unknown[]
-  registryAdds: unknown[]
-  registryRemoves: string[]
   pickFolderCalls: unknown[]
-  readScrollbackIds: string[]
   runnerLaunchInputs: unknown[]
   runEventsIds: string[]
 } => {
@@ -91,11 +83,7 @@ const makeCtx = (
   const secretSets: string[] = []
   const launchParams: unknown[] = []
   const sessionInputs: unknown[] = []
-  const terminalInputs: unknown[] = []
-  const registryAdds: unknown[] = []
-  const registryRemoves: string[] = []
   const pickFolderCalls: unknown[] = []
-  const readScrollbackIds: string[] = []
   const runnerLaunchInputs: unknown[] = []
   const runEventsIds: string[] = []
   let current = baseConfig(
@@ -160,16 +148,6 @@ const makeCtx = (
       writeProxyKey: async () => ok(undefined),
       clear: async () => undefined,
     },
-    terminal: {
-      launch: (input: unknown) => {
-        terminalInputs.push(input)
-        return over.terminalOk === false
-          ? err({ kind: "pty-open-failed", detail: "ENOENT" })
-          : ok({ sessionId: sampleSession.id })
-      },
-      handleInbound: () => undefined,
-      bindSend: () => undefined,
-    },
     resolveLaunch,
     registry: {
       list: async () =>
@@ -187,18 +165,6 @@ const makeCtx = (
             builtIn: true,
           },
         ]),
-      add: async (definition: unknown) => {
-        registryAdds.push(definition)
-        return over.registryAddOk === false
-          ? err({ kind: "write-failed", detail: "EACCES" })
-          : ok(undefined)
-      },
-      remove: async (id: string) => {
-        registryRemoves.push(id)
-        return over.registryRemoveOk === false
-          ? err({ kind: "write-failed", detail: "EACCES" })
-          : ok(undefined)
-      },
     },
     genProxyKey: () => "test-key",
     factory: {},
@@ -212,14 +178,12 @@ const makeCtx = (
       pickFolderCalls.push(opts)
       return over.pickFolderResult ?? []
     },
-    readScrollback: (id: unknown) => {
-      readScrollbackIds.push(id as string)
-      return over.scrollback ?? ok(new Uint8Array())
-    },
     runner: {
       launch: (input: unknown) => {
         runnerLaunchInputs.push(input)
-        return ok({ sessionId: sampleSession.id })
+        return over.runnerOk === false
+          ? err({ kind: "start-failed", detail: "no driver" })
+          : ok({ sessionId: sampleSession.id })
       },
       handleInbound: () => undefined,
       bindSend: () => undefined,
@@ -244,7 +208,7 @@ const makeCtx = (
     driverRegistry: {
       get: () => undefined,
       isNative: (harnessId: unknown) =>
-        String(harnessId) === (over.nativeHarnessId ?? "__none__"),
+        String(harnessId) === (over.nativeHarnessId ?? "claude"),
     },
   } as unknown as AppContext
 
@@ -254,28 +218,11 @@ const makeCtx = (
     secretSets,
     launchParams,
     sessionInputs,
-    terminalInputs,
-    registryAdds,
-    registryRemoves,
     pickFolderCalls,
-    readScrollbackIds,
     runnerLaunchInputs,
     runEventsIds,
   }
 }
-
-const sampleHarness = {
-  id: "my-tool",
-  name: "My Tool",
-  command: "my-tool",
-  apiFormat: "openai",
-  envTemplate: {
-    OPENAI_BASE_URL: "{{proxyUrl}}",
-    OPENAI_API_KEY: "{{proxyKey}}",
-    OPENAI_MODEL: "{{model}}",
-  },
-  builtIn: false,
-} as const
 
 const sampleSession: Session = {
   id: "s_1",
@@ -546,8 +493,8 @@ describe("createIpcHandlers models CRUD", () => {
 })
 
 describe("createIpcHandlers.launchHarness", () => {
-  it("with a modelId resolves a proxied launch and threads the modelId to the terminal", async () => {
-    const { ctx, terminalInputs } = makeCtx({
+  it("with a modelId resolves a proxied launch and threads the modelId to the runner", async () => {
+    const { ctx, runnerLaunchInputs } = makeCtx({
       providers: [provider()],
       proxyKeyStored: "stored-run-key",
       proxyPort: 4000,
@@ -559,10 +506,10 @@ describe("createIpcHandlers.launchHarness", () => {
       modelId: "mdl_x" as ModelId,
     })
 
-    // The terminal manager owns session creation; the handler returns only the sessionId.
+    // The run manager owns session creation; the handler returns only the sessionId.
     expect(result).toEqual({ sessionId: sampleSession.id })
-    expect(terminalInputs).toHaveLength(1)
-    const input = terminalInputs[0] as {
+    expect(runnerLaunchInputs).toHaveLength(1)
+    const input = runnerLaunchInputs[0] as {
       harnessId: string
       modelId?: string
       command: string
@@ -579,7 +526,7 @@ describe("createIpcHandlers.launchHarness", () => {
   })
 
   it("without a modelId launches direct (bypass) with no proxy env and no modelId on the session", async () => {
-    const { ctx, terminalInputs } = makeCtx({
+    const { ctx, runnerLaunchInputs } = makeCtx({
       providers: [provider()],
       proxyKeyStored: "stored-run-key",
       proxyPort: 4000,
@@ -588,10 +535,10 @@ describe("createIpcHandlers.launchHarness", () => {
 
     await handlers.launchHarness({ id: "claude" as HarnessId })
 
-    const input = terminalInputs[0] as Record<string, unknown> & {
+    const input = runnerLaunchInputs[0] as Record<string, unknown> & {
       env: Record<string, string>
     }
-    // Bypass: the terminal must not carry a modelId ...
+    // Bypass: the runner must not carry a modelId ...
     expect("modelId" in input).toBe(false)
     // ... and the direct route renders NO proxy env (the harness uses native creds).
     expect("ANTHROPIC_BASE_URL" in input.env).toBe(false)
@@ -599,7 +546,7 @@ describe("createIpcHandlers.launchHarness", () => {
     expect("ANTHROPIC_MODEL" in input.env).toBe(false)
   })
 
-  it("does NOT create a duplicate session directly — the terminal manager owns it", async () => {
+  it("does NOT create a duplicate session directly — the run manager owns it", async () => {
     const { ctx, sessionInputs } = makeCtx({ providers: [provider()] })
     const handlers = createIpcHandlers(ctx)
 
@@ -612,7 +559,7 @@ describe("createIpcHandlers.launchHarness", () => {
   })
 
   it("falls back to a freshly minted proxy key when none is stored (routed launch)", async () => {
-    const { ctx, terminalInputs } = makeCtx({
+    const { ctx, runnerLaunchInputs } = makeCtx({
       providers: [provider()],
       proxyKeyStored: null,
     })
@@ -623,12 +570,25 @@ describe("createIpcHandlers.launchHarness", () => {
       modelId: "mdl_x" as ModelId,
     })
 
-    const input = terminalInputs[0] as { env: Record<string, string> }
+    const input = runnerLaunchInputs[0] as { env: Record<string, string> }
     expect(input.env.ANTHROPIC_API_KEY).toBe("test-key") // ctx.genProxyKey()
   })
 
-  it("throws so the server surfaces handler-failed when terminal.launch errors", async () => {
-    const { ctx } = makeCtx({ providers: [provider()], terminalOk: false })
+  it("throws so the server surfaces handler-failed when the harness has no native driver", async () => {
+    const { ctx, runnerLaunchInputs } = makeCtx({
+      providers: [provider()],
+      nativeHarnessId: "__none__",
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.launchHarness({ id: "claude" as HarnessId }),
+    ).rejects.toThrow()
+    expect(runnerLaunchInputs).toHaveLength(0)
+  })
+
+  it("throws so the server surfaces handler-failed when runner.launch errors", async () => {
+    const { ctx } = makeCtx({ providers: [provider()], runnerOk: false })
     const handlers = createIpcHandlers(ctx)
 
     await expect(
@@ -712,7 +672,7 @@ describe("createIpcHandlers.launchHarness", () => {
   it("does not persist harness/model when the launch fails", async () => {
     const { ctx, saves } = makeCtx({
       providers: [provider()],
-      terminalOk: false,
+      runnerOk: false,
     })
     const handlers = createIpcHandlers(ctx)
 
@@ -726,7 +686,7 @@ describe("createIpcHandlers.launchHarness", () => {
   it("does not persist lastSelectedFolder when the launch fails", async () => {
     const { ctx, saves } = makeCtx({
       providers: [provider()],
-      terminalOk: false,
+      runnerOk: false,
     })
     const handlers = createIpcHandlers(ctx)
 
@@ -756,99 +716,6 @@ describe("createIpcHandlers.getHarnesses", () => {
     const handlers = createIpcHandlers(ctx)
     const harnesses = await handlers.getHarnesses(undefined)
     expect(harnesses.every((h) => h.native === false)).toBe(true)
-  })
-})
-
-describe("createIpcHandlers.addHarness", () => {
-  it("persists via the registry and returns the definition", async () => {
-    const { ctx, registryAdds } = makeCtx()
-    const handlers = createIpcHandlers(ctx)
-
-    const result = await handlers.addHarness(sampleHarness as never)
-
-    expect(result).toEqual(sampleHarness)
-    expect(registryAdds).toEqual([sampleHarness])
-  })
-
-  it("returns the persisted definition with builtIn forced to false", async () => {
-    const { ctx } = makeCtx()
-    const handlers = createIpcHandlers(ctx)
-    // A webview could send builtIn:true; the registry persists builtIn:false, so the
-    // handler reply must match what disk holds, not the raw caller input.
-    const spoofed = { ...sampleHarness, builtIn: true } as const
-
-    const result = await handlers.addHarness(spoofed as never)
-
-    expect(result.builtIn).toBe(false)
-  })
-
-  it("throws so the server surfaces handler-failed when the registry rejects", async () => {
-    const { ctx } = makeCtx({ registryAddOk: false })
-    const handlers = createIpcHandlers(ctx)
-
-    await expect(handlers.addHarness(sampleHarness as never)).rejects.toThrow()
-  })
-})
-
-describe("createIpcHandlers.updateHarness", () => {
-  it("upserts via registry.add and returns the updated definition", async () => {
-    const { ctx, registryAdds } = makeCtx()
-    const handlers = createIpcHandlers(ctx)
-    const { id, ...input } = sampleHarness
-
-    const result = await handlers.updateHarness({
-      id: id as never,
-      input: input as never,
-    })
-
-    expect(result).toEqual(sampleHarness)
-    expect(registryAdds).toEqual([sampleHarness])
-  })
-
-  it("returns the updated definition with builtIn forced to false", async () => {
-    const { ctx } = makeCtx()
-    const handlers = createIpcHandlers(ctx)
-    const { id, ...rest } = sampleHarness
-    // input arrives with builtIn:true; the registry persists builtIn:false, so the reply must too.
-    const input = { ...rest, builtIn: true } as const
-
-    const result = await handlers.updateHarness({
-      id: id as never,
-      input: input as never,
-    })
-
-    expect(result.builtIn).toBe(false)
-  })
-
-  it("throws so the server surfaces handler-failed when the registry rejects", async () => {
-    const { ctx } = makeCtx({ registryAddOk: false })
-    const handlers = createIpcHandlers(ctx)
-    const { id, ...input } = sampleHarness
-
-    await expect(
-      handlers.updateHarness({ id: id as never, input: input as never }),
-    ).rejects.toThrow()
-  })
-})
-
-describe("createIpcHandlers.deleteHarness", () => {
-  it("calls registry.remove and returns null on success", async () => {
-    const { ctx, registryRemoves } = makeCtx()
-    const handlers = createIpcHandlers(ctx)
-
-    const result = await handlers.deleteHarness({ id: "my-tool" as never })
-
-    expect(result).toBeNull()
-    expect(registryRemoves).toEqual(["my-tool"])
-  })
-
-  it("throws so the server surfaces handler-failed when removal fails", async () => {
-    const { ctx } = makeCtx({ registryRemoveOk: false })
-    const handlers = createIpcHandlers(ctx)
-
-    await expect(
-      handlers.deleteHarness({ id: "my-tool" as never }),
-    ).rejects.toThrow()
   })
 })
 
@@ -930,34 +797,11 @@ describe("createIpcHandlers.pickFolder", () => {
   })
 })
 
-// ── D.4 getSessionScrollback ──────────────────────────────────────────────────
-
-describe("createIpcHandlers.getSessionScrollback", () => {
-  it("base64-encodes the session's captured bytes into bytesBase64 when reading scrollback", async () => {
-    const bytes = new Uint8Array([0, 65, 200, 255])
-    const { ctx, readScrollbackIds } = makeCtx({ scrollback: ok(bytes) })
-    const handlers = createIpcHandlers(ctx)
-
-    const result = await handlers.getSessionScrollback({ id: "s_1" as never })
-
-    expect(result).toEqual({ bytesBase64: bytesToBase64(bytes) })
-    expect(readScrollbackIds).toEqual(["s_1"])
-  })
-
-  it("throws so the server surfaces handler-failed when the read fails", async () => {
-    const { ctx } = makeCtx({ scrollback: err({ kind: "not-found" }) })
-    const handlers = createIpcHandlers(ctx)
-    await expect(
-      handlers.getSessionScrollback({ id: "s_x" as never }),
-    ).rejects.toThrow()
-  })
-})
-
 // ── D.5 launchHarness session metadata + getSessions pagination ───────────────
 
 describe("createIpcHandlers.launchHarness (session metadata)", () => {
-  it("threads name, cwd, and extra env into terminal.launch", async () => {
-    const { ctx, terminalInputs } = makeCtx({ providers: [provider()] })
+  it("threads name, cwd, and extra env into runner.launch", async () => {
+    const { ctx, runnerLaunchInputs } = makeCtx({ providers: [provider()] })
     const handlers = createIpcHandlers(ctx)
 
     await handlers.launchHarness({
@@ -968,7 +812,7 @@ describe("createIpcHandlers.launchHarness (session metadata)", () => {
       env: { EXTRA: "1" },
     })
 
-    const input = terminalInputs[0] as {
+    const input = runnerLaunchInputs[0] as {
       name?: string
       cwd?: string
       env: Record<string, string>
@@ -980,19 +824,20 @@ describe("createIpcHandlers.launchHarness (session metadata)", () => {
     expect(input.env.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:4000")
   })
 
-  it("omits name/cwd when not supplied (exactOptionalPropertyTypes safe)", async () => {
-    const { ctx, terminalInputs } = makeCtx({ providers: [provider()] })
+  it("omits name when not supplied (exactOptionalPropertyTypes safe)", async () => {
+    const { ctx, runnerLaunchInputs } = makeCtx({ providers: [provider()] })
     const handlers = createIpcHandlers(ctx)
 
     await handlers.launchHarness({ id: "claude" as never })
 
-    const input = terminalInputs[0] as Record<string, unknown>
+    const input = runnerLaunchInputs[0] as Record<string, unknown>
     expect("name" in input).toBe(false)
-    expect("cwd" in input).toBe(false)
+    // The runner always receives a cwd (defaulting to "" when none was given).
+    expect(input.cwd).toBe("")
   })
 
   it("coerces empty/blank name and cwd to omitted (never creates a session named '')", async () => {
-    const { ctx, terminalInputs } = makeCtx({ providers: [provider()] })
+    const { ctx, runnerLaunchInputs } = makeCtx({ providers: [provider()] })
     const handlers = createIpcHandlers(ctx)
 
     await handlers.launchHarness({
@@ -1001,9 +846,10 @@ describe("createIpcHandlers.launchHarness (session metadata)", () => {
       cwd: "   ",
     })
 
-    const input = terminalInputs[0] as Record<string, unknown>
+    const input = runnerLaunchInputs[0] as Record<string, unknown>
     expect("name" in input).toBe(false)
-    expect("cwd" in input).toBe(false)
+    // A blank cwd is coerced to "" (never a whitespace path).
+    expect(input.cwd).toBe("")
   })
 })
 
@@ -1112,19 +958,8 @@ describe("createIpcHandlers.getRunEvents", () => {
 })
 
 describe("createIpcHandlers.launchHarness selection", () => {
-  it("launches a NON-native harness via the terminal manager (unchanged path)", async () => {
-    const { ctx, terminalInputs, runnerLaunchInputs } = makeCtx({
-      providers: [provider()],
-    })
-    const handlers = createIpcHandlers(ctx)
-    const result = await handlers.launchHarness({ id: "claude" as never })
-    expect(result).toEqual({ sessionId: sampleSession.id })
-    expect(terminalInputs).toHaveLength(1)
-    expect(runnerLaunchInputs).toHaveLength(0)
-  })
-
-  it("launches a native (demo) harness via the runner manager, not the terminal", async () => {
-    const { ctx, terminalInputs, runnerLaunchInputs } = makeCtx({
+  it("launches a native harness via the runner manager", async () => {
+    const { ctx, runnerLaunchInputs } = makeCtx({
       providers: [provider()],
       nativeHarnessId: "claude",
     })
@@ -1132,7 +967,6 @@ describe("createIpcHandlers.launchHarness selection", () => {
     const result = await handlers.launchHarness({ id: "claude" as never })
     expect(result).toEqual({ sessionId: sampleSession.id })
     expect(runnerLaunchInputs).toHaveLength(1)
-    expect(terminalInputs).toHaveLength(0)
     // The resolved claude executable is forwarded so the SDK driver spawns it directly (its own
     // bundle-relative resolution finds no cli.js in the packaged app).
     expect(runnerLaunchInputs[0]).toMatchObject({
@@ -1142,18 +976,16 @@ describe("createIpcHandlers.launchHarness selection", () => {
     // harnesses ignore them).
     expect(runnerLaunchInputs[0]).toHaveProperty("args")
   })
-})
 
-describe("embedded terminal path is untouched for production harnesses", () => {
-  it("never routes claude to the runner when no driver is registered", async () => {
-    for (const id of ["claude"] as const) {
-      const { ctx, terminalInputs, runnerLaunchInputs } = makeCtx({
-        providers: [provider()],
-      })
-      const handlers = createIpcHandlers(ctx)
-      await handlers.launchHarness({ id: id as never })
-      expect(terminalInputs).toHaveLength(1)
-      expect(runnerLaunchInputs).toHaveLength(0)
-    }
+  it("rejects a harness with no native driver instead of launching", async () => {
+    const { ctx, runnerLaunchInputs } = makeCtx({
+      providers: [provider()],
+      nativeHarnessId: "__none__",
+    })
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.launchHarness({ id: "claude" as never }),
+    ).rejects.toThrow()
+    expect(runnerLaunchInputs).toHaveLength(0)
   })
 })

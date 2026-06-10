@@ -20,7 +20,6 @@ const makeFakeDeps = (): {
     }
   const deps: CreateAppContextDeps = {
     homeDir: () => "/home/tester",
-    mkdirSync: record("mkdirSync") as never,
     createFsConfigFile: record("createFsConfigFile") as never,
     createFileConfigStore: record("createFileConfigStore") as never,
     createCachedConfigStore: record("createCachedConfigStore") as never,
@@ -46,7 +45,6 @@ const makeFakeDeps = (): {
         reconcileOrphaned: () => ok(0),
       }
     }) as never,
-    createDirHarnessFileSource: record("createDirHarnessFileSource") as never,
     createRegistry: record("createRegistry") as never,
     createPathCommandResolver: record("createPathCommandResolver") as never,
     createBunProcessSpawner: record("createBunProcessSpawner") as never,
@@ -59,24 +57,6 @@ const makeFakeDeps = (): {
     createRealGateway: record("createRealGateway") as never,
     createFileRuntimeState: record("createFileRuntimeState") as never,
     genProxyKey: () => "fixed-test-key",
-    createBunScrollbackFs: record("createBunScrollbackFs") as never,
-    createFileScrollbackStore: ((..._a: unknown[]) => {
-      calls.createFileScrollbackStore = _a
-      return { read: () => ok(new Uint8Array()) }
-    }) as never,
-    createFfiPty: (() => ({ open: () => ok({}) })) as never,
-    createTerminalManager: ((..._a: unknown[]) => {
-      calls.createTerminalManager = _a
-      return {
-        launch: () => ok({ sessionId: "s1" }),
-        handleInbound: () => undefined,
-        bindSend: () => undefined,
-      }
-    }) as never,
-    startTerminalSocket: (() => ({
-      url: "ws://localhost:12345/",
-      stop: () => undefined,
-    })) as never,
     createProjectStore: createProjectStore,
     createRunStore: ((..._a: unknown[]) => {
       calls.createRunStore = _a
@@ -241,16 +221,15 @@ describe("createAppContext wiring", () => {
     expect(calls.runMigrations?.[0]).toEqual({ __stub: "dbClient" })
   })
 
-  it("builds the harness registry from a directory file source at the resolved harness dir", () => {
+  it("builds the harness registry from an in-memory (builtins-only) file source", () => {
     const { deps, calls } = makeFakeDeps()
     createAppContext(deps)
 
-    expect(calls.createDirHarnessFileSource?.[0] as string).toContain(
-      "/home/tester/.config/launchkit/harnesses",
-    )
-    expect(calls.createRegistry?.[0]).toEqual({
-      fileSource: { __stub: "createDirHarnessFileSource" },
-    })
+    const arg = calls.createRegistry?.[0] as { fileSource?: unknown }
+    // No directory file source is wired (custom user harnesses are gone); the registry receives an
+    // in-memory file source so it lists only the builtins.
+    expect(typeof arg.fileSource).toBe("object")
+    expect(arg.fileSource).not.toBeNull()
   })
 
   it("partially applies launchHarness with the real resolver + spawner", () => {
@@ -281,57 +260,6 @@ describe("createAppContext wiring", () => {
     // default config settings: 127.0.0.1:4000
     expect(ctx.proxyBaseUrl).toBe("http://127.0.0.1:4000")
     expect(ctx.proxyPort).toBe(4000)
-  })
-
-  it("builds the terminal manager from an ffi pty + the session store's create/close and exposes it", () => {
-    const { deps, calls } = makeFakeDeps()
-    const ctx = createAppContext(deps)
-
-    // the manager is wired with the ffi pty adapter, the session sink, and the defaults
-    const managerArgs = calls.createTerminalManager?.[0] as {
-      pty: unknown
-      sessions: { create: unknown; close: unknown }
-      scrollback: unknown
-      send: unknown
-      capBytes: number
-      defaultSize: { cols: number; rows: number }
-    }
-    expect(typeof managerArgs.pty).toBe("object")
-    expect(typeof managerArgs.sessions.create).toBe("function")
-    expect(typeof managerArgs.sessions.close).toBe("function")
-    expect(typeof managerArgs.scrollback).toBe("object")
-    expect(typeof managerArgs.send).toBe("function")
-    expect(managerArgs.capBytes).toBe(1_000_000)
-    expect(managerArgs.defaultSize).toEqual({ cols: 80, rows: 24 })
-
-    // and the wired manager is exposed on the context
-    expect(typeof ctx.terminal.launch).toBe("function")
-    expect(typeof ctx.terminal.handleInbound).toBe("function")
-    expect(typeof ctx.terminal.bindSend).toBe("function")
-
-    // mkdirSync was called to ensure the scrollback dir exists before first use
-    expect(calls.mkdirSync?.[0] as string).toContain(
-      "/home/tester/.config/launchkit/scrollback",
-    )
-    expect(calls.mkdirSync?.[1]).toEqual({ recursive: true })
-  })
-
-  it("builds the file scrollback store under the config dir and injects it into the terminal manager", () => {
-    const { deps, calls } = makeFakeDeps()
-    const ctx = createAppContext(deps)
-
-    expect(
-      (calls.createFileScrollbackStore?.[0] as { dir: string }).dir,
-    ).toContain("/home/tester/.config/launchkit/scrollback")
-    expect(
-      (calls.createFileScrollbackStore?.[0] as { fs: unknown }).fs,
-    ).toEqual({ __stub: "createBunScrollbackFs" })
-    const managerArgs = calls.createTerminalManager?.[0] as {
-      scrollback: unknown
-    }
-    expect(managerArgs.scrollback).toEqual({ read: expect.any(Function) })
-    // The store's read is exposed for the scrollback handler.
-    expect(typeof ctx.readScrollback).toBe("function")
   })
 
   it("exposes a pickFolder function on the context", () => {

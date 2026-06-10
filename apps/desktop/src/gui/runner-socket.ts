@@ -19,7 +19,7 @@ interface SocketLike {
 /**
  * The pure message-handling core of the runner socket, extracted so it is unit-tested without a live
  * `Bun.serve`. `open` binds the manager's send sink to the socket; `message` zod-decodes inbound JSON
- * (`RunnerInbound`) and forwards it to `manager.handleInbound`. Mirrors terminal-socket.ts.
+ * (`RunnerInbound`) and forwards it to `manager.handleInbound`.
  */
 export const makeRunnerSocketHandlers = (
   manager: RunManager,
@@ -51,9 +51,9 @@ export const makeRunnerSocketHandlers = (
 
 /**
  * A dedicated loopback WebSocket carrying the canonical run-event stream, separate from Electrobun's
- * RPC and from the terminal socket. One webview ⇒ one connection. `RunnerInbound` frames route to
- * `manager.handleInbound`; `manager.bindSend` is pointed at the live socket so `RunnerOutbound` is
- * pushed straight to the webview. Structurally identical to terminal-socket.ts.
+ * RPC. One webview ⇒ one connection. `RunnerInbound` frames route to `manager.handleInbound`;
+ * `manager.bindSend` is pointed at the live socket so `RunnerOutbound` is pushed straight to the
+ * webview.
  */
 export const startRunnerSocket = (manager: RunManager): RunnerSocket => {
   const handlers = makeRunnerSocketHandlers(manager)

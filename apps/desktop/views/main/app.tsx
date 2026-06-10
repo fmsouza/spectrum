@@ -1,5 +1,4 @@
 import type { IpcClient, IpcError } from "@launchkit/ipc"
-import type { SessionId } from "@launchkit/types"
 import { type AppMode, AppShell, NewSessionModal } from "@launchkit/ui"
 import type { NewSessionValues } from "@launchkit/ui"
 import { type ReactElement, StrictMode, useEffect, useState } from "react"
@@ -16,8 +15,6 @@ import type { RunnerClient } from "./runner/runnerClient"
 import { StoreProvider, useStores } from "./stores/createStores"
 import { type LocationAdapter, windowLocationAdapter } from "./stores/location"
 import { encodeView } from "./stores/uiStore"
-import type { CreateTerminal } from "./terminal/TerminalPane"
-import type { TerminalClient } from "./terminal/terminalClient"
 import { SessionsView } from "./views/SessionsView"
 import { SettingsView } from "./views/SettingsView"
 
@@ -38,16 +35,6 @@ export type AppProps = {
   /** The initial view, as a raw hash string (e.g. `settings/providers`). */
   readonly initialView?: string
   /**
-   * The terminal transport client. Injected so tests run without an Electroview;
-   * production builds the real one via `createRealClients` in `clients.ts`.
-   */
-  readonly terminalClient: TerminalClient
-  /**
-   * The xterm factory for terminal panes. Injected from `mount()` in production
-   * (the real `createXterm`); tests pass a fake so xterm + its CSS never load.
-   */
-  readonly createTerminal: CreateTerminal
-  /**
    * The runner transport client for native harness sessions. Injected so tests
    * run without a real WebSocket; production builds the real one via
    * `createRealClients` in `clients.ts`.
@@ -60,8 +47,6 @@ export type AppProps = {
 /** Props for the data-aware inner shell (rendered inside `IpcClientProvider`). */
 type AppInnerProps = {
   readonly location: LocationAdapter
-  readonly terminalClient: TerminalClient
-  readonly createTerminal: CreateTerminal
   readonly runnerClient: RunnerClient
 }
 
@@ -70,12 +55,7 @@ type AppInnerProps = {
  * `useProxyStatus`) and the view factories' hooks all run INSIDE the
  * `IpcClientProvider` that `App` mounts.
  */
-const AppInner = ({
-  location,
-  terminalClient,
-  createTerminal,
-  runnerClient,
-}: AppInnerProps): ReactElement => {
+const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   const client = useIpcClient()
   const uiStore = useStores().ui
   const view = useStore(uiStore, (s) => s.view)
@@ -83,7 +63,6 @@ const AppInner = ({
   const modalOpen = useStore(uiStore, (s) => s.modalOpen)
   const navigate = useStore(uiStore, (s) => s.navigate)
   const openSession = useStore(uiStore, (s) => s.openSession)
-  const closeSession = useStore(uiStore, (s) => s.closeSession)
   const setModalOpen = useStore(uiStore, (s) => s.setModalOpen)
   // A launch failure to surface inside the modal (so the user isn't left staring
   // at a silently-failed "New session"). Cleared when the modal (re)opens, on
@@ -115,10 +94,9 @@ const AppInner = ({
     }
   }, [client])
 
-  // The projects/sessions list lives here (not inside SessionsView) so a launch or an exit
+  // The projects/sessions list lives here (not inside SessionsView) so a launch
   // can refetch it: a new running session must appear in the right project group.
   const projectsView = useProjects()
-  const refetchSessions = projectsView.refetch
 
   // Feed the new-session modal. These hooks load lazily and stay cheap when the
   // modal is closed (the data is just handed to a dumb component).
@@ -179,16 +157,6 @@ const AppInner = ({
     // sessions.launch already invalidates both groups on success.
   }
 
-  /**
-   * A live session's pty exited: drop it from the open set so its dead live pane
-   * unmounts (selecting it now renders the read-only replay), and refetch so the
-   * master reflects its ended state (exit badge) within its project group.
-   */
-  const onSessionExit = (id: SessionId): void => {
-    closeSession(id)
-    refetchSessions()
-  }
-
   const { master, detail } =
     view.kind === "settings"
       ? SettingsView({
@@ -204,7 +172,6 @@ const AppInner = ({
           sessionsByProject: projectsView.sessionsByProject,
           collapsed: projectsView.collapsed,
           allSessions: projectsView.allSessions,
-          harnesses: harnesses.data ?? [],
           onToggle: projectsView.toggleCollapse,
           onMore: projectsView.loadMore,
           onSelect: (id) =>
@@ -216,9 +183,6 @@ const AppInner = ({
             setLaunchError(undefined)
             setModalOpen(true)
           },
-          onExit: onSessionExit,
-          terminalClient,
-          createTerminal,
           runnerClient,
         })
 
@@ -255,19 +219,12 @@ const AppInner = ({
 export const App = ({
   client,
   initialView = "sessions",
-  terminalClient,
-  createTerminal,
   runnerClient,
   location = windowLocationAdapter,
 }: AppProps): ReactElement => (
   <IpcClientProvider client={client}>
     <StoreProvider client={client} initialView={initialView}>
-      <AppInner
-        terminalClient={terminalClient}
-        createTerminal={createTerminal}
-        runnerClient={runnerClient}
-        location={location}
-      />
+      <AppInner runnerClient={runnerClient} location={location} />
     </StoreProvider>
   </IpcClientProvider>
 )
@@ -277,18 +234,13 @@ export const mount = async (): Promise<void> => {
   const container = document.getElementById("root")
   if (container === null) throw new Error("missing #root element")
   const startView = window.location.hash.replace(/^#/, "")
-  // Dynamic import keeps xterm (and its CSS) out of the test module graph: the
-  // test runner imports `App` directly and never calls `mount`.
-  const { createXterm } = await import("./terminal/createXterm")
-  // Build the ONE shared Electroview (carries IPC requests + the terminal pty
-  // channel + runner socket) and get all clients from it. See `clients.ts`.
-  const { ipcClient, terminalClient, runnerClient } = await createRealClients()
+  // Build the ONE shared Electroview (carries IPC requests + the runner socket)
+  // and get all clients from it. See `clients.ts`.
+  const { ipcClient, runnerClient } = await createRealClients()
   createRoot(container).render(
     <StrictMode>
       <App
         client={ipcClient}
-        terminalClient={terminalClient}
-        createTerminal={createXterm}
         runnerClient={runnerClient}
         initialView={startView}
       />

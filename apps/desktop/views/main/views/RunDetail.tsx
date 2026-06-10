@@ -129,7 +129,7 @@ const ReplayRunDetail = ({
  * The native conversation detail. `RunDetail` owns ALL data: live mode connects
  * the runner WS client (attach + reduce each frame into `runViewStore`); replay
  * mode folds `getRunEvents` once and renders read-only. The dumb `RunView` only
- * receives props. Mirrors the `TerminalPane` live/replay duality.
+ * receives props.
  */
 export const RunDetail = ({
   mode,
