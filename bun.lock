@@ -122,6 +122,17 @@
         "zod": "^3.24.0",
       },
     },
+    "packages/driver-codex": {
+      "name": "@launchkit/driver-codex",
+      "version": "0.1.0",
+      "dependencies": {
+        "@launchkit/agent-driver": "workspace:*",
+        "@launchkit/agent-events": "workspace:*",
+        "@launchkit/driver-runtime": "workspace:*",
+        "@launchkit/types": "workspace:*",
+        "@launchkit/utils": "workspace:*",
+      },
+    },
     "packages/driver-runtime": {
       "name": "@launchkit/driver-runtime",
       "version": "0.1.0",
@@ -440,6 +451,8 @@
     "@launchkit/db": ["@launchkit/db@workspace:packages/db"],
 
     "@launchkit/driver-claude": ["@launchkit/driver-claude@workspace:packages/driver-claude"],
+
+    "@launchkit/driver-codex": ["@launchkit/driver-codex@workspace:packages/driver-codex"],
 
     "@launchkit/driver-runtime": ["@launchkit/driver-runtime@workspace:packages/driver-runtime"],
 
