@@ -44,7 +44,11 @@ export const ConversationTimeline = ({
         switch (item.kind) {
           case "message":
             return (
-              <MessageBubble key={`m-${item.messageId}`} text={item.text} />
+              <MessageBubble
+                key={`m-${item.messageId}`}
+                text={item.text}
+                author={item.role}
+              />
             )
           case "reasoning":
             return (

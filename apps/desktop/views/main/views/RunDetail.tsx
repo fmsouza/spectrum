@@ -24,6 +24,7 @@ const LiveRunDetail = ({
   const store = useStores().runView
   const runState = useStore(store, (s) => s.byId[sessionId])
   const openSubId = useStore(store, (s) => s.openSubBySession[sessionId])
+  const busy = useStore(store, (s) => s.busyBySession[sessionId] ?? false)
   const applyEvent = useStore(store, (s) => s.applyEvent)
   const openSub = useStore(store, (s) => s.openSub)
   const closeSub = useStore(store, (s) => s.closeSub)
@@ -61,6 +62,7 @@ const LiveRunDetail = ({
       onDecide={(requestId, decision) =>
         runnerClient.approve(sessionId, requestId, decision)
       }
+      busy={busy}
     />
   )
 }

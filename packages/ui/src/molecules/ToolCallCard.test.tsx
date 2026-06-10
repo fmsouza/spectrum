@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { ToolCallItem } from "@launchkit/agent-events"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { ToolCallCard } from "./ToolCallCard"
+import { ToolCallCard, toolCallSummary } from "./ToolCallCard"
 
 const item: ToolCallItem = {
   kind: "tool-call",
@@ -38,6 +38,33 @@ describe("ToolCallCard", () => {
       "ok",
     )
     cleanup()
+  })
+
+  it("shows the shell command inline in the header", () => {
+    render(
+      <ToolCallCard
+        item={{
+          kind: "tool-call",
+          callId: "c2",
+          tool: "Bash",
+          input: { command: "ls -la /repo", cwd: "/repo" },
+          status: "running",
+        }}
+        expanded={false}
+        onToggle={() => {}}
+      />,
+    )
+    expect(screen.getByText("ls -la /repo")).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("summarizes by input shape: command, then file path, then skill/name", () => {
+    expect(toolCallSummary({ command: "echo hi" })).toBe("echo hi")
+    expect(toolCallSummary({ file_path: "src/a.ts" })).toBe("src/a.ts")
+    expect(toolCallSummary({ command: "brainstorming" })).toBe("brainstorming")
+    expect(toolCallSummary({ name: "explore" })).toBe("explore")
+    expect(toolCallSummary(undefined)).toBeUndefined()
+    expect(toolCallSummary({ foo: 1 })).toBeUndefined()
   })
 
   it("calls onToggle when the header is clicked", () => {

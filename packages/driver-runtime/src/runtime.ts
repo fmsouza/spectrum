@@ -93,6 +93,15 @@ export const createDriver = (deps: {
         cb = next
       },
       send: (turn) => {
+        // Echo the user's turn into the canonical log so it renders as their own message bubble
+        // (harnesses don't report the user's input back uniformly). Persisted + forwarded like any event.
+        emit({
+          type: "text-delta",
+          runnerId: rootRunnerId,
+          messageId: deps.idGen.next("msg"),
+          text: turn.text,
+          role: "user",
+        })
         runOrQueue((h) => h.send(turn.text))
         return ok(undefined)
       },

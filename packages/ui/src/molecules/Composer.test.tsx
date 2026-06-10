@@ -50,4 +50,37 @@ describe("Composer", () => {
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled()
     cleanup()
   })
+
+  it("sends on Enter and clears the field", () => {
+    let sent: string | undefined
+    render(
+      <Composer
+        onSend={(t) => {
+          sent = t
+        }}
+      />,
+    )
+    const box = screen.getByRole("textbox") as HTMLTextAreaElement
+    fireEvent.change(box, { target: { value: "ship it" } })
+    fireEvent.keyDown(box, { key: "Enter" })
+    expect(sent).toBe("ship it")
+    expect(box.value).toBe("")
+    cleanup()
+  })
+
+  it("does NOT send on Shift+Enter (newline instead)", () => {
+    let calls = 0
+    render(
+      <Composer
+        onSend={() => {
+          calls += 1
+        }}
+      />,
+    )
+    const box = screen.getByRole("textbox")
+    fireEvent.change(box, { target: { value: "line one" } })
+    fireEvent.keyDown(box, { key: "Enter", shiftKey: true })
+    expect(calls).toBe(0)
+    cleanup()
+  })
 })

@@ -96,8 +96,87 @@
   border-radius: var(--radius-md);
   background: var(--surface);
   border: 1px solid var(--border);
-  white-space: pre-wrap;
   font-size: var(--text-base);
+}
+
+/* The user's own turns: right-aligned, accent-tinted (chat convention). */
+.lk-message-bubble[data-role="user"] {
+  align-self: flex-end;
+  background: var(--accent-soft, var(--surface-2));
+  border-color: var(--accent, var(--border-strong));
+}
+
+/* ── Markdown body inside a bubble (react-markdown renders real elements) ──── */
+.lk-markdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.lk-markdown > :first-child {
+  margin-top: 0;
+}
+.lk-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.lk-markdown p,
+.lk-markdown ul,
+.lk-markdown ol,
+.lk-markdown pre,
+.lk-markdown blockquote,
+.lk-markdown h1,
+.lk-markdown h2,
+.lk-markdown h3 {
+  margin: 0;
+}
+
+.lk-markdown ul,
+.lk-markdown ol {
+  padding-left: var(--space-4);
+}
+
+.lk-markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--surface-inset);
+  padding: 0 0.25em;
+  border-radius: var(--radius-xs, 3px);
+}
+
+.lk-markdown pre {
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-inset);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+
+.lk-markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.lk-markdown blockquote {
+  border-left: 2px solid var(--border-strong);
+  padding-left: var(--space-3);
+  color: var(--text-muted);
+}
+
+.lk-markdown a {
+  color: var(--accent, var(--text));
+  text-decoration: underline;
+}
+
+.lk-markdown table {
+  border-collapse: collapse;
+}
+.lk-markdown th,
+.lk-markdown td {
+  border: 1px solid var(--border);
+  padding: 0.15em 0.5em;
 }
 
 .lk-reasoning {
@@ -150,10 +229,24 @@
 .lk-tool-call__name {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
+  flex: 0 0 auto;
+}
+
+/* The inline command / file / skill detail next to the tool name (single line, truncated). */
+.lk-tool-call__summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
 }
 
 .lk-tool-call__exit {
   margin-left: auto;
+  flex: 0 0 auto;
   color: var(--text-faint);
   font-size: var(--text-xs);
 }
@@ -308,4 +401,48 @@
 
 .lk-composer__input:disabled {
   opacity: 0.6;
+}
+
+/* ── Typing / working indicator (3 bouncing dots) ───────────────────────────── */
+.lk-typing {
+  align-self: flex-start;
+  display: inline-flex;
+  gap: 0.3rem;
+  padding: var(--space-2) var(--space-3);
+}
+
+.lk-typing__dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--text-faint);
+  animation: lk-typing-bounce 1.2s infinite ease-in-out both;
+}
+
+.lk-typing__dot:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.lk-typing__dot:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes lk-typing-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* The conversation is selectable so messages can be copied (Cmd/Ctrl+C). */
+.lk-run-view__scroll,
+.lk-sub-runner-pane__body {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: auto;
 }

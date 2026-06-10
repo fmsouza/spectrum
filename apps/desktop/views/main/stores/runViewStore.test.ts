@@ -39,6 +39,29 @@ describe("runViewStore", () => {
     expect(store.getState().byId[sid]).toBeUndefined()
   })
 
+  it("tracks busy: a user turn sets it; the root turn/runner finishing clears it", () => {
+    const store = createRunViewStore(noDeps)
+    const apply = (e: CanonicalEvent): void =>
+      store.getState().applyEvent(sid, e)
+    apply({ type: "runner-started", runnerId: root })
+    expect(store.getState().busyBySession[sid] ?? false).toBe(false)
+    apply({
+      type: "text-delta",
+      runnerId: root,
+      messageId: "u1",
+      text: "go",
+      role: "user",
+    })
+    expect(store.getState().busyBySession[sid]).toBe(true)
+    apply({ type: "text-delta", runnerId: root, messageId: "a1", text: "ok" })
+    expect(store.getState().busyBySession[sid]).toBe(true)
+    // a sub-runner finishing must NOT clear the root's busy
+    apply({ type: "runner-finished", runnerId: child, status: "completed" })
+    expect(store.getState().busyBySession[sid]).toBe(true)
+    apply({ type: "turn-finished", runnerId: root })
+    expect(store.getState().busyBySession[sid]).toBe(false)
+  })
+
   it("openSub records the open sub-runner and closeSub clears it", () => {
     const store = createRunViewStore(noDeps)
     store.getState().openSub(sid, child)

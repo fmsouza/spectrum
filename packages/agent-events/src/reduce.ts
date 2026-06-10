@@ -12,7 +12,7 @@ export type RunnerStatus = "running" | "completed" | "errored" | "interrupted"
 export type MessageItem = {
   kind: "message"
   messageId: string
-  role: "assistant"
+  role: "user" | "assistant"
   text: string
 }
 export type ReasoningItem = {
@@ -148,7 +148,7 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
             {
               kind: "message",
               messageId: event.messageId,
-              role: "assistant",
+              role: event.role ?? "assistant",
               text: event.text,
             },
           ]

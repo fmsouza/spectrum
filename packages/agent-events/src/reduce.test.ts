@@ -97,6 +97,22 @@ describe("reduce — text/reasoning accumulation", () => {
     ])
   })
 
+  it("stamps a message with role:user when the text-delta carries role user (the user's own turn)", () => {
+    const state = fold([
+      started("root"),
+      {
+        type: "text-delta",
+        runnerId: rid("root"),
+        messageId: "u1",
+        text: "do the thing",
+        role: "user",
+      },
+    ])
+    expect(state.runners.get(rid("root"))?.items).toEqual([
+      { kind: "message", messageId: "u1", role: "user", text: "do the thing" },
+    ])
+  })
+
   it("interleaves two concurrent messageIds on the same runner without mixing their text", () => {
     const state = fold([
       started("root"),

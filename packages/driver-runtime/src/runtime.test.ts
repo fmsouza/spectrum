@@ -193,6 +193,27 @@ describe("createDriver", () => {
     expect(fake.sent).toEqual(["hello"]) // drained into the handle
   })
 
+  it("emits the user's turn as a role:user text-delta on the root runner when sending", () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    const seen: CanonicalEvent[] = []
+    started.value.onEvent((e) => seen.push(e))
+    started.value.send({ text: "do the thing" })
+    expect(seen).toContainEqual({
+      type: "text-delta",
+      runnerId: "rnr_1" as RunnerId,
+      messageId: "msg_2",
+      text: "do the thing",
+      role: "user",
+    })
+  })
+
   it("forwards send directly once the handle exists", async () => {
     const fake = makeFakeAdapter()
     const driver = createDriver({

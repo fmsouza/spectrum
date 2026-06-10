@@ -57,6 +57,9 @@ export const CanonicalEventSchema = z.discriminatedUnion("type", [
       runnerId: RunnerIdSchema,
       messageId: z.string(),
       text: z.string(),
+      // Who authored the message. Defaults to "assistant" (harness output). The runtime stamps
+      // "user" on the turns the user sends, so they render as their own bubbles in the timeline.
+      role: z.enum(["user", "assistant"]).optional(),
     })
     .strict(),
   z
