@@ -208,3 +208,56 @@ describe("mapCodexEvent — command execution lifecycle", () => {
     ] satisfies CanonicalEvent[])
   })
 })
+
+describe("mapCodexEvent — Collab sub-agents", () => {
+  it("maps a spawnAgent collab tool call to a child runner-started under the root", () => {
+    const state = freshState() // newRunnerId() -> "rnr_child"
+    const out = mapCodexEvent(fx.collabSpawn, state)
+    expect(out).toEqual([
+      {
+        type: "runner-started",
+        runnerId: "rnr_child" as RunnerId,
+        parentRunnerId: root,
+        spawnedByCallId: "it_collab",
+        agentType: "codex-subagent",
+      },
+    ] satisfies CanonicalEvent[])
+    expect(state.runnerIds.get("th_child")).toBe("rnr_child")
+  })
+
+  it("ignores non-spawn collab tools (sendInput/wait/closeAgent) — no canonical event", () => {
+    const sendInput = {
+      ...fx.collabSpawn,
+      params: {
+        ...fx.collabSpawn.params,
+        item: {
+          ...(fx.collabSpawn.params as never as { item: object }).item,
+          tool: "sendInput",
+        },
+      },
+    } as never
+    expect(mapCodexEvent(sendInput, freshState())).toEqual([])
+  })
+
+  it("attributes a turn/completed on the child thread to the CHILD runner after the spawn registered it", () => {
+    const state = freshState()
+    mapCodexEvent(fx.collabSpawn, state) // registers th_child -> rnr_child
+    const out = mapCodexEvent(fx.childTurnCompleted, state)
+    expect(out).toEqual([
+      {
+        type: "runner-finished",
+        runnerId: "rnr_child" as RunnerId,
+        status: "completed",
+      },
+    ] satisfies CanonicalEvent[])
+  })
+
+  it("handles an unknown item type defensively (no throw, no event)", () => {
+    expect(mapCodexEvent(fx.unknownItemStarted, freshState())).toEqual([])
+  })
+
+  it("handles an unknown notification method defensively (no throw, no event)", () => {
+    const unknown = { method: "totally/unknown", params: {} } as never
+    expect(mapCodexEvent(unknown, freshState())).toEqual([])
+  })
+})
