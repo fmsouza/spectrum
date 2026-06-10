@@ -100,12 +100,16 @@ describe("runMigrations", () => {
       .query("SELECT COUNT(*) AS n FROM sessions")
       .get() as { n: number }
     expect(remaining.n).toBe(0)
-    // 0000 and 0001 are now tracked.
+    // 0000, 0001 and 0002 are now tracked.
     const tracked = client.connection
       .query("SELECT tag FROM __drizzle_migrations")
       .all()
       .map((row) => String((row as { tag: unknown }).tag))
-    expect(tracked).toEqual(["0000_sad_turbo", "0001_melted_richard_fisk"])
+    expect(tracked).toEqual([
+      "0000_sad_turbo",
+      "0001_melted_richard_fisk",
+      "0002_glamorous_maximus",
+    ])
   })
 
   it("tracks applied migrations in a tracking table, with no folder dependency", () => {

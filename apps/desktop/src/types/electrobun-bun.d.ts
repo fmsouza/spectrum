@@ -65,6 +65,27 @@ export type MenuItemConfig =
       hidden?: boolean
     }
 
+/** A native application/context-menu item (role-based items map to NSResponder selectors). */
+export type ApplicationMenuItemConfig =
+  | { type: "divider" | "separator" }
+  | {
+      type?: "normal"
+      label?: string
+      role?: string
+      action?: string
+      tooltip?: string
+      accelerator?: string
+      enabled?: boolean
+      checked?: boolean
+      hidden?: boolean
+      submenu?: ApplicationMenuItemConfig[]
+    }
+
+/** The bun-side application-menu namespace we consume. */
+export const ApplicationMenu: {
+  setApplicationMenu(menu: ApplicationMenuItemConfig[]): void
+}
+
 export interface TrayOptions {
   title?: string
   image?: string

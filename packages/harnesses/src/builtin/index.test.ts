@@ -55,7 +55,9 @@ describe("builtinHarnesses", () => {
   it("wires opencode to the OpenAI env vars with proxy tokens", () => {
     expect(opencode.apiFormat).toBe("openai")
     expect(opencode.envTemplate).toEqual({
-      OPENAI_BASE_URL: "{{proxyUrl}}",
+      // `/v1`: the native driver feeds this into an openai-compatible provider that appends
+      // `/chat/completions`, so the base must point at the proxy's OpenAI API root.
+      OPENAI_BASE_URL: "{{proxyUrl}}/v1",
       OPENAI_API_KEY: "{{proxyKey}}",
       OPENAI_MODEL: "{{model}}",
     })
@@ -71,9 +73,23 @@ describe("builtinHarnesses", () => {
     expect(args).toContain('wire_api="responses"')
     expect(args).toContain("{{model}}")
   })
+})
 
-  it("wires openclaw to the Anthropic env vars", () => {
-    expect(openclaw.apiFormat).toBe("anthropic")
-    expect(openclaw.envTemplate).toEqual(claude.envTemplate)
+describe("openclaw (gateway, re-architected)", () => {
+  it("does NOT render ANTHROPIC_BASE_URL (OpenClaw ignores it; it reads ~/.openclaw/openclaw.json)", () => {
+    expect(openclaw.envTemplate.ANTHROPIC_BASE_URL).toBeUndefined()
+  })
+
+  it("carries no proxy env at all (the driver connects to the gateway directly, not via the proxy)", () => {
+    const values = Object.values(openclaw.envTemplate)
+    for (const v of values) {
+      expect(v).not.toContain("{{proxyUrl}}")
+      expect(v).not.toContain("{{proxyKey}}")
+    }
+  })
+
+  it("still parses through HarnessDefinitionSchema and stays builtIn", () => {
+    expect(HarnessDefinitionSchema.safeParse(openclaw).success).toBe(true)
+    expect(openclaw.builtIn).toBe(true)
   })
 })

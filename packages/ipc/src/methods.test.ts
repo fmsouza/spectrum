@@ -1,10 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type {
-  HarnessId,
-  ModelId,
-  ProviderId,
-  SessionId,
-} from "@launchkit/types"
+import type { HarnessId, ModelId, ProviderId } from "@launchkit/types"
 import {
   AddModelParamsSchema,
   AddModelResultSchema,
@@ -13,8 +8,6 @@ import {
   DeleteModelResultSchema,
   GetModelsParamsSchema,
   GetModelsResultSchema,
-  GetSessionScrollbackParamsSchema,
-  GetSessionScrollbackResultSchema,
   GetSessionsParamsSchema,
   GetSettingsParamsSchema,
   GetSettingsResultSchema,
@@ -300,33 +293,6 @@ describe("PickFolderResultSchema", () => {
   })
 })
 
-describe("GetSessionScrollbackParamsSchema", () => {
-  it("parses an object carrying the session id", () => {
-    expect(
-      GetSessionScrollbackParamsSchema.parse({ id: "s_1" as SessionId }),
-    ).toEqual({ id: "s_1" as SessionId })
-  })
-  it("rejects extra keys", () => {
-    expect(
-      GetSessionScrollbackParamsSchema.safeParse({
-        id: "s_1" as SessionId,
-        extra: 1,
-      }).success,
-    ).toBe(false)
-  })
-})
-
-describe("GetSessionScrollbackResultSchema", () => {
-  it("parses a base64 byte payload", () => {
-    expect(
-      GetSessionScrollbackResultSchema.parse({ bytesBase64: "aGk=" }),
-    ).toEqual({ bytesBase64: "aGk=" })
-  })
-  it("rejects a result missing bytesBase64", () => {
-    expect(GetSessionScrollbackResultSchema.safeParse({}).success).toBe(false)
-  })
-})
-
 describe("GetSettingsParamsSchema", () => {
   it("parses undefined params", () => {
     expect(GetSettingsParamsSchema.parse(undefined)).toBeUndefined()
@@ -396,18 +362,16 @@ describe("IpcMethodSchemas", () => {
       "updateModel",
       "deleteModel",
       "getHarnesses",
-      "addHarness",
-      "updateHarness",
-      "deleteHarness",
       "launchHarness",
       "getSessions",
       "getProxyStatus",
       "pickFolder",
-      "getSessionScrollback",
       "listProviderModels",
       "getSettings",
       "getProjects",
       "setCollapsedProjects",
+      "getRunnerSocketUrl",
+      "getRunEvents",
     ] as const
     for (const name of expected) {
       expect(IpcMethodSchemas[name]).toBeDefined()

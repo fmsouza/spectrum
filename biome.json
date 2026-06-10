@@ -9,6 +9,7 @@
       "**/.turbo/**",
       "**/node_modules/**",
       "**/src/migrations/**",
+      "packages/driver-codex/src/bindings/**",
       "apps/desktop/views/main/xterm.css"
     ]
   }

@@ -21,7 +21,6 @@ describe("@launchkit/ui barrel", () => {
       "SessionRow",
       "ProviderList",
       "ModelTable",
-      "HarnessForm",
       "ProjectGroup",
       "ProjectList",
       "SettingsNav",

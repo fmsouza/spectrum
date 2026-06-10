@@ -1,53 +1,17 @@
 import { describe, expect, it } from "bun:test"
-import type { SessionId } from "@launchkit/types"
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { App } from "./app"
-import type { XtermInstance } from "./terminal/TerminalPane"
-import type { TerminalClient } from "./terminal/terminalClient"
+import type { RunnerClient } from "./runner/runnerClient"
 import { createFakeIpcClient } from "./test/fake-client"
 
-const fakeTerminalClient: TerminalClient = {
-  onData: () => {},
-  onExit: () => {},
-  sendInput: () => {},
-  sendResize: () => {},
+const fakeRunnerClient: RunnerClient = {
   attach: () => {},
-  kill: () => {},
+  send: () => {},
+  approve: () => {},
+  interrupt: () => {},
   dispatch: () => {},
-} as unknown as TerminalClient
-
-/**
- * A terminal client whose `onExit` registrations are captured so a test can fire
- * the exit for a given session id and drive the live→replay transition.
- */
-const controllableTerminalClient = (): {
-  readonly client: TerminalClient
-  readonly fireExit: (id: SessionId, code: number) => void
-} => {
-  const exits = new Map<SessionId, (code: number) => void>()
-  const client = {
-    onData: () => {},
-    onExit: (id: SessionId, cb: (code: number) => void) => {
-      exits.set(id, cb)
-    },
-    sendInput: () => {},
-    sendResize: () => {},
-    attach: () => {},
-    kill: () => {},
-    dispatch: () => {},
-  } as unknown as TerminalClient
-  return { client, fireExit: (id, code) => exits.get(id)?.(code) }
-}
-
-const fakeXterm = (): XtermInstance => ({
-  open: () => {},
-  write: () => {},
-  onData: () => {},
-  fit: () => ({ cols: 80, rows: 24 }),
-  cols: 80,
-  rows: 24,
-  dispose: () => {},
-})
+  onEvent: () => {},
+} as unknown as RunnerClient
 
 const baseStubs = {
   getSessions: async () => ({ ok: true as const, value: [] }),
@@ -66,13 +30,7 @@ describe("App view model", () => {
   it("defaults to the sessions view and writes #sessions to the hash", async () => {
     window.location.hash = ""
     const client = createFakeIpcClient(baseStubs)
-    render(
-      <App
-        client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
-      />,
-    )
+    render(<App client={client} runnerClient={fakeRunnerClient} />)
     await waitFor(() => expect(window.location.hash).toBe("#sessions"))
   })
 
@@ -81,8 +39,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="settings/providers"
       />,
     )
@@ -96,8 +53,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="dashboard"
       />,
     )
@@ -106,13 +62,7 @@ describe("App view model", () => {
 
   it("renders the AppShell in sessions mode by default", async () => {
     const client = createFakeIpcClient(baseStubs)
-    render(
-      <App
-        client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
-      />,
-    )
+    render(<App client={client} runnerClient={fakeRunnerClient} />)
     await waitFor(() => expect(window.location.hash).toBe("#sessions"))
   })
 
@@ -144,8 +94,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -197,8 +146,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -243,8 +191,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -285,8 +232,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -311,8 +257,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -346,8 +291,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -389,8 +333,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -398,108 +341,6 @@ describe("App view model", () => {
       expect(screen.getByText(/claude · m_1/)).toBeInTheDocument(),
     )
     expect(screen.queryByRole("button", { name: /show 10 more/i })).toBeNull()
-  })
-
-  it("transitions an open live session to replay when it exits", async () => {
-    const live = {
-      id: "s_new",
-      harnessId: "claude",
-      modelId: "m_1",
-      startedAt: "2026-05-23T10:00:00.000Z",
-    }
-    const ended = { ...live, endedAt: "2026-05-23T10:05:00.000Z" }
-    // Before launch the session does not exist; after the exit refetch it is
-    // reported as ended so the master moves it to the project group.
-    let exited = false
-    const { client: terminalClient, fireExit } = controllableTerminalClient()
-    const client = createFakeIpcClient({
-      ...baseStubs,
-      getProjects: async () => ({
-        ok: true as const,
-        value: [{ id: "prj_1", name: "demo", path: "/demo", sessionCount: 1 }],
-      }),
-      getSessions: async () => ({
-        ok: true as const,
-        value: exited ? [ended] : [live],
-      }),
-      getSessionScrollback: async () => ({
-        ok: true as const,
-        // Non-empty bytes so the replay pane (not the new empty-state) renders;
-        // this test asserts the live→replay pane transition, see Bug 2.
-        value: { bytesBase64: "aGk=" },
-      }),
-      getHarnesses: async () => ({
-        ok: true as const,
-        value: [
-          {
-            id: "claude",
-            name: "Claude Code",
-            command: "claude",
-            apiFormat: "anthropic",
-            envTemplate: {},
-            builtIn: true,
-          },
-        ],
-      }),
-      getModels: async () => ({
-        ok: true as const,
-        value: [{ id: "m_1", providerId: "p_openai", providerModel: "gpt-4o" }],
-      }),
-      launchHarness: async () => ({
-        ok: true as const,
-        value: { sessionId: "s_new" },
-      }),
-    })
-    const { container } = render(
-      <App
-        client={client}
-        terminalClient={terminalClient}
-        createTerminal={fakeXterm}
-        initialView="sessions"
-      />,
-    )
-    // Launch + select the live session: a live pane host (the wrapper that keeps
-    // the pane mounted/hidden) mounts for it.
-    fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
-    fireEvent.click(await screen.findByRole("button", { name: /launch/i }))
-    await waitFor(() => expect(window.location.hash).toBe("#sessions/s_new"))
-    await waitFor(() =>
-      expect(
-        container.querySelector(
-          ".lk-terminal-pane-host:not(.lk-terminal-pane-host--replay)",
-        ),
-      ).not.toBeNull(),
-    )
-    // Sanity: no replay pane yet — the live pane is wrapped in a host, so a
-    // direct child of lk-sessions-detail is not a terminal pane.
-    expect(
-      container.querySelector(".lk-sessions-detail > .lk-terminal-pane"),
-    ).toBeNull()
-
-    // The session exits: its dead live pane host must unmount and the read-only
-    // replay pane must render instead (it is no longer in the open set). Wrap in
-    // act because firing the exit synchronously drives React state updates.
-    exited = true
-    act(() => fireExit("s_new" as SessionId, 0))
-    await waitFor(() =>
-      expect(
-        container.querySelector(
-          ".lk-terminal-pane-host:not(.lk-terminal-pane-host--replay)",
-        ),
-      ).toBeNull(),
-    )
-    await waitFor(() =>
-      expect(client.calls.getSessionScrollback.length).toBeGreaterThan(0),
-    )
-    // The replay pane is wrapped inside lk-replay > lk-terminal-pane-host--replay;
-    // it renders once the scrollback resolves into state.
-    await waitFor(() =>
-      expect(
-        container.querySelector(
-          '.lk-terminal-pane-host--replay .lk-terminal-pane[data-session="s_new"]',
-        ),
-      ).not.toBeNull(),
-    )
   })
 
   it("refetches getModels (and getHarnesses) when the new-session modal is opened (Fix #1)", async () => {
@@ -526,8 +367,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -577,8 +417,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -627,8 +466,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -685,8 +523,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -728,8 +565,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
@@ -771,8 +607,7 @@ describe("App view model", () => {
     render(
       <App
         client={client}
-        terminalClient={fakeTerminalClient}
-        createTerminal={fakeXterm}
+        runnerClient={fakeRunnerClient}
         initialView="sessions"
       />,
     )
