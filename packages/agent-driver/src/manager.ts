@@ -12,6 +12,8 @@ export interface RunLaunchInput {
   readonly cwd: string
   readonly env: Readonly<Record<string, string>>
   readonly initialPrompt?: string
+  /** The harness-resolved absolute executable, forwarded to `driver.start` (see `AgentStartInput.command`). */
+  readonly command?: string
 }
 
 export interface RunManagerDeps {
@@ -63,6 +65,7 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
       ...(input.initialPrompt !== undefined
         ? { initialPrompt: input.initialPrompt }
         : {}),
+      ...(input.command !== undefined ? { command: input.command } : {}),
     })
     if (isErr(started)) {
       deps.sessions.close(id, 1)

@@ -125,12 +125,21 @@ const makeInputStream = (): {
 }
 
 /**
- * Build the Claude `DriverAdapter`. `loadSdk` lazily loads `@anthropic-ai/claude-agent-sdk` (injected so
- * tests pass a fake `query`); `pathToClaudeExecutable` overrides the bundled `claude` binary location.
+ * Build the Claude `DriverAdapter`.
+ *
+ * - `loadSdk` lazily loads `@anthropic-ai/claude-agent-sdk` (injected so tests pass a fake `query`).
+ * - The Claude executable is taken from `input.command` (the harness-resolved absolute `claude`),
+ *   falling back to `deps.pathToClaudeExecutable`. This is REQUIRED in the bundled app: the SDK's own
+ *   default resolution is bundle-relative and finds no `cli.js` (the packaged binary ships no
+ *   node_modules), so without an explicit path `query()` throws "Claude Code executable not found".
+ * - `baseEnv` (default `process.env`) is merged UNDER `input.env` — the spawned `claude` inherits the
+ *   parent `PATH`/`HOME` (so it can resolve tools and read its auth/config dir) while the per-run proxy
+ *   vars win. Mirrors the embedded-terminal spawn seam (`ffi-pty`'s `{ ...process.env, ...opts.env }`).
  */
 export const createClaudeAdapter = (deps: {
   loadSdk: () => Promise<ClaudeSdk>
   pathToClaudeExecutable?: string
+  baseEnv?: () => Record<string, string | undefined>
 }): DriverAdapter => ({
   start: async (
     input: AgentStartInput,
@@ -144,18 +153,19 @@ export const createClaudeAdapter = (deps: {
     const state = initialClaudeMapState(ctx.rootRunnerId)
     state.newRunnerId = ctx.newRunnerId
 
+    const executable = input.command ?? deps.pathToClaudeExecutable
     const query = sdk.query({
       prompt: inputStream.stream,
       options: {
         cwd: input.cwd,
-        env: input.env,
+        env: { ...(deps.baseEnv?.() ?? {}), ...input.env },
         ...(input.modelId !== undefined
           ? { model: String(input.modelId) }
           : {}),
         abortController: abort,
         permissionMode: "default",
-        ...(deps.pathToClaudeExecutable !== undefined
-          ? { pathToClaudeCodeExecutable: deps.pathToClaudeExecutable }
+        ...(executable !== undefined
+          ? { pathToClaudeCodeExecutable: executable }
           : {}),
         canUseTool: async (toolName, toolInput) => {
           const decision = await ctx.requestApproval(

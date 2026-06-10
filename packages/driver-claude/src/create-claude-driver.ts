@@ -11,18 +11,22 @@ const defaultLoadSdk = async (): Promise<ClaudeSdk> => {
 }
 
 /**
- * The Claude Code `AgentDriver`. Wraps `createClaudeAdapter` in the shared runtime. `loadSdk` +
- * `scheduler` are injectable for tests; production uses the real lazy SDK import + queueMicrotask.
+ * The Claude Code `AgentDriver`. Wraps `createClaudeAdapter` in the shared runtime. `loadSdk`,
+ * `baseEnv`, and `scheduler` are injectable for tests; production uses the real lazy SDK import,
+ * the process environment, and queueMicrotask. `baseEnv` is the parent env merged under the per-run
+ * proxy env so the spawned `claude` inherits `PATH`/`HOME` (see `createClaudeAdapter`).
  */
 export const createClaudeDriver = (deps: {
   readonly idGen: IdGen
   readonly loadSdk?: () => Promise<ClaudeSdk>
   readonly pathToClaudeExecutable?: string
+  readonly baseEnv?: () => Record<string, string | undefined>
   readonly scheduler?: (fn: () => void) => void
 }): AgentDriver =>
   createDriver({
     adapter: createClaudeAdapter({
       loadSdk: deps.loadSdk ?? defaultLoadSdk,
+      baseEnv: deps.baseEnv ?? (() => process.env),
       ...(deps.pathToClaudeExecutable !== undefined
         ? { pathToClaudeExecutable: deps.pathToClaudeExecutable }
         : {}),

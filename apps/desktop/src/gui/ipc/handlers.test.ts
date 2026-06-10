@@ -1133,6 +1133,11 @@ describe("createIpcHandlers.launchHarness selection", () => {
     expect(result).toEqual({ sessionId: sampleSession.id })
     expect(runnerLaunchInputs).toHaveLength(1)
     expect(terminalInputs).toHaveLength(0)
+    // The resolved claude executable is forwarded so the SDK driver spawns it directly (its own
+    // bundle-relative resolution finds no cli.js in the packaged app).
+    expect(runnerLaunchInputs[0]).toMatchObject({
+      command: "/usr/local/bin/claude",
+    })
   })
 })
 

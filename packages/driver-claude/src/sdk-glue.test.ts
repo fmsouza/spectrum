@@ -108,6 +108,49 @@ describe("createClaudeAdapter", () => {
     expect(opts.cwd).toBe("/work")
   })
 
+  it("merges baseEnv UNDER input.env so claude inherits PATH/HOME but the proxy env wins", async () => {
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({
+      loadSdk: async () => fake.sdk,
+      baseEnv: () => ({
+        PATH: "/usr/bin",
+        HOME: "/home/me",
+        ANTHROPIC_BASE_URL: "stale-should-be-overridden",
+      }),
+    })
+    await adapter.start(input, makeCtx([], []))
+    const env = fake.capturedOptions().env ?? {}
+    expect(env.PATH).toBe("/usr/bin")
+    expect(env.HOME).toBe("/home/me")
+    // input.env (the per-run proxy vars) wins over the inherited base env
+    expect(env.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:4000")
+    expect(env.ANTHROPIC_AUTH_TOKEN).toBe("k")
+  })
+
+  it("passes input.command as pathToClaudeCodeExecutable (the SDK's bundle-relative default is unusable when packaged)", async () => {
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    await adapter.start(
+      { ...input, command: "/abs/bin/claude" },
+      makeCtx([], []),
+    )
+    expect(fake.capturedOptions().pathToClaudeCodeExecutable).toBe(
+      "/abs/bin/claude",
+    )
+  })
+
+  it("falls back to deps.pathToClaudeExecutable when input.command is absent", async () => {
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({
+      loadSdk: async () => fake.sdk,
+      pathToClaudeExecutable: "/dep/claude",
+    })
+    await adapter.start(input, makeCtx([], []))
+    expect(fake.capturedOptions().pathToClaudeCodeExecutable).toBe(
+      "/dep/claude",
+    )
+  })
+
   it("pumps each yielded SDK message through mapClaudeMessage into ctx.emit", async () => {
     const fake = makeFakeSdk([
       { type: "system", subtype: "init", model: "claude-x" },

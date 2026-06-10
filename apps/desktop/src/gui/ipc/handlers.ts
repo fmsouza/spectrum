@@ -252,6 +252,9 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
           ...(modelId === undefined ? {} : { modelId }),
           env: { ...resolved.value.env, ...(env ?? {}) },
           cwd: safeCwd ?? "",
+          // The SDK-backed driver spawns this resolved `claude` binary directly — its own
+          // bundle-relative executable resolution finds no cli.js in the packaged app.
+          command: resolved.value.command,
           ...(safeName === undefined ? {} : { name: safeName }),
         })
         if (!isOk(launchedNative))

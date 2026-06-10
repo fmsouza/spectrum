@@ -10,6 +10,7 @@ import {
   SessionIdSchema,
 } from "@launchkit/types"
 import { createFixedClock, err, ok } from "@launchkit/utils"
+import type { AgentDriver, AgentStartInput } from "./driver"
 import { createFakeDriver } from "./fake-driver"
 import type { FakeScript } from "./fake-driver"
 import { createRunManager } from "./manager"
@@ -160,6 +161,27 @@ describe("createRunManager.launch", () => {
     const manager = createRunManager(deps)
     manager.launch({ harnessId, name: "run x", cwd: "/work", env: {} })
     expect(created).toContainEqual({ harnessId, name: "run x", cwd: "/work" })
+  })
+
+  it("forwards the resolved command to driver.start", () => {
+    let captured: AgentStartInput | undefined
+    const capturingDriver: AgentDriver = {
+      start: (i) => {
+        captured = i
+        return ok({
+          rootRunnerId: root,
+          onEvent: () => undefined,
+          send: () => ok(undefined),
+          respondApproval: () => ok(undefined),
+          interrupt: () => ok(undefined),
+          close: () => ok(undefined),
+        })
+      },
+    }
+    const { deps } = makeDeps(scriptOf([]))
+    const manager = createRunManager({ ...deps, driver: capturingDriver })
+    manager.launch({ harnessId, cwd: "/tmp", env: {}, command: "/abs/claude" })
+    expect(captured?.command).toBe("/abs/claude")
   })
 
   it("closes the session even when the final event fails to persist", () => {

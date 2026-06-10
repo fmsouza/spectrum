@@ -18,6 +18,13 @@ export interface AgentStartInput {
   readonly cwd: string
   readonly env: Readonly<Record<string, string>>
   readonly initialPrompt?: string
+  /**
+   * The harness-resolved absolute executable (e.g. the `claude` binary). A driver that spawns its
+   * harness via an SDK needs this because the SDK's own bundle-relative executable resolution breaks
+   * once the app is bundled (no node_modules / cli.js in the packaged binary). Sourced from the same
+   * `CommandResolver` the terminal path uses, so there is one source of truth for "where is claude".
+   */
+  readonly command?: string
 }
 
 export interface AgentSession {
