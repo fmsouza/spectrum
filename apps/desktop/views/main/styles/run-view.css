@@ -466,6 +466,16 @@
   border-color: var(--border-strong);
 }
 
+.lk-composer__action[data-action="stop"]:hover {
+  border-color: var(--text-faint);
+  background: var(--surface-inset);
+}
+
+.lk-composer__action:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
 .lk-composer__action:disabled {
   opacity: 0.45;
   cursor: not-allowed;

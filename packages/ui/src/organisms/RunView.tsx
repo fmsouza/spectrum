@@ -21,6 +21,7 @@ export type RunViewProps = {
   /** Show the typing indicator + keep the feed pinned to the bottom while a turn is in flight. */
   readonly busy?: boolean
   readonly inert?: boolean
+  readonly onInterrupt?: () => void
 }
 
 /** A length proxy for the feed's content so streaming text (not just new items) triggers autoscroll. */
@@ -48,6 +49,7 @@ export const RunView = ({
   onDecide,
   busy = false,
   inert = false,
+  onInterrupt,
 }: RunViewProps): ReactElement => {
   const scrollRef = useRef<HTMLDivElement>(null)
   // Autoscroll: pin the feed to the latest message as items stream in (and when the dots appear).
@@ -71,7 +73,12 @@ export const RunView = ({
           />
           {busy ? <TypingIndicator /> : null}
         </div>
-        <Composer onSend={onSend} disabled={inert} />
+        <Composer
+          onSend={onSend}
+          disabled={inert}
+          busy={busy}
+          {...(onInterrupt === undefined ? {} : { onInterrupt })}
+        />
       </section>
       {openRunner === undefined ? null : (
         <SubRunnerPane

@@ -62,6 +62,7 @@ const LiveRunDetail = ({
       onDecide={(requestId, decision) =>
         runnerClient.approve(sessionId, requestId, decision)
       }
+      onInterrupt={() => runnerClient.interrupt(sessionId)}
       busy={busy}
     />
   )

@@ -86,4 +86,20 @@ describe("RunView", () => {
     expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled()
     cleanup()
   })
+
+  it("forwards onInterrupt to the composer stop button when busy", () => {
+    let interrupted = 0
+    render(
+      <RunView
+        {...base}
+        busy
+        onInterrupt={() => {
+          interrupted += 1
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Stop run" }))
+    expect(interrupted).toBe(1)
+    cleanup()
+  })
 })

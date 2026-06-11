@@ -90,6 +90,40 @@ describe("RunDetail (live)", () => {
     expect(runner.sends).toEqual(["go"])
     cleanup()
   })
+
+  it("shows stop button while busy and clicking it calls interrupt", async () => {
+    const interrupted: SessionId[] = []
+    const base = makeFakeRunner()
+    const runner: typeof base = {
+      ...base,
+      interrupt: (sid) => interrupted.push(sid),
+    }
+    renderWithProviders(
+      <RunDetail mode="live" sessionId={id} runnerClient={runner} />,
+      createFakeIpcClient({}),
+    )
+    runner.push(
+      stored(0, { type: "runner-started", runnerId: "run_root" as never }),
+    )
+    // A user text-delta sets busy=true in the runViewStore
+    runner.push(
+      stored(1, {
+        type: "text-delta",
+        runnerId: "run_root" as never,
+        messageId: "m1",
+        text: "Hello",
+        role: "user",
+      }),
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Stop run" }),
+      ).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Stop run" }))
+    expect(interrupted).toEqual([id])
+    cleanup()
+  })
 })
 
 describe("RunDetail (replay)", () => {
