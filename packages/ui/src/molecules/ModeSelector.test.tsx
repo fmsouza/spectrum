@@ -53,6 +53,21 @@ describe("ModeSelector", () => {
     cleanup()
   })
 
+  it("closes on Escape while focus is still on the pill", () => {
+    render(
+      <ModeSelector
+        mode="manual"
+        supportedModes={["manual", "plan"]}
+        onChange={() => {}}
+      />,
+    )
+    const pill = screen.getByRole("button", { name: /manual approval/i })
+    fireEvent.click(pill)
+    fireEvent.keyDown(pill, { key: "Escape" })
+    expect(screen.queryByRole("menu")).toBeNull()
+    cleanup()
+  })
+
   it("marks the current mode checked in the menu", () => {
     render(
       <ModeSelector

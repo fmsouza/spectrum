@@ -44,7 +44,14 @@ export const ModeSelector = ({
   const [open, setOpen] = useState(false)
   const current = MODE_META[mode]
   return (
-    <div className="lk-mode-selector">
+    // Escape is handled on the wrapper so it works whether focus sits on the
+    // pill (just opened by click) or inside the menu.
+    <div
+      className="lk-mode-selector"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") setOpen(false)
+      }}
+    >
       <button
         type="button"
         className="lk-mode-selector__pill"
@@ -58,13 +65,7 @@ export const ModeSelector = ({
         <Icon name="chevron-down" size={12} />
       </button>
       {open ? (
-        <div
-          className="lk-mode-selector__menu"
-          role="menu"
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setOpen(false)
-          }}
-        >
+        <div className="lk-mode-selector__menu" role="menu">
           {supportedModes.map((m) => (
             <button
               key={m}
