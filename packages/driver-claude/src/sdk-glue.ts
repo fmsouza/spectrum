@@ -41,6 +41,7 @@ export interface SdkOptions {
   readonly abortController?: AbortController
   readonly permissionMode?: string
   readonly pathToClaudeCodeExecutable?: string
+  readonly resume?: string
   readonly canUseTool?: (
     toolName: string,
     input: Record<string, unknown>,
@@ -153,73 +154,142 @@ export const createClaudeAdapter = (deps: {
     ctx: AdapterCtx,
   ): Promise<AdapterHandle> => {
     const sdk = await deps.loadSdk()
-    const inputStream = makeInputStream()
-    const abort = new AbortController()
-    // Seed the first turn from initialPrompt so the live session has something to do.
-    if (input.initialPrompt !== undefined) inputStream.push(input.initialPrompt)
     const state = initialClaudeMapState(ctx.rootRunnerId)
     state.newRunnerId = ctx.newRunnerId
 
     const executable = input.command ?? deps.pathToClaudeExecutable
-    const query = sdk.query({
-      prompt: inputStream.stream,
-      options: {
-        cwd: input.cwd,
-        env: { ...(deps.baseEnv?.() ?? {}), ...input.env },
-        ...(input.modelId !== undefined
-          ? { model: String(input.modelId) }
-          : {}),
-        abortController: abort,
-        permissionMode: toClaudePermissionMode(
-          input.permissionMode ?? "manual",
-        ),
-        ...(executable !== undefined
-          ? { pathToClaudeCodeExecutable: executable }
-          : {}),
-        canUseTool: async (toolName, toolInput) => {
-          const decision = await ctx.requestApproval(
-            ctx.rootRunnerId,
-            targetFor(toolName, toolInput),
-          )
-          return toPermissionResult(
-            decision,
-            toolInput as Record<string, unknown>,
-          )
-        },
-      },
-    })
 
-    // Pump the SDK message stream → canonical events. A thrown iterator ends the run as errored.
-    void (async () => {
-      try {
-        for await (const msg of query) {
-          for (const event of mapClaudeMessage(msg, state)) ctx.emit(event)
-        }
-      } catch (err) {
-        ctx.emit({
-          type: "runner-finished",
-          runnerId: ctx.rootRunnerId,
-          status: "errored",
-          error: String(err),
-        })
-      }
-    })()
-
+    /** Mutable refs shared across launch closures. */
+    let claudeSessionId: string | undefined
     let closed = false
+    let restarting = false
+
+    /** The active query triple (replaced on restart). */
+    let current: {
+      query: ClaudeQuery
+      inputStream: ReturnType<typeof makeInputStream>
+      abort: AbortController
+    }
+
+    /**
+     * Build a fresh inputStream + AbortController + sdk.query and start its pump loop.
+     * `permissionMode` is the SDK permission string; `resume` is the claude session id to
+     * resume (absent on the initial launch).
+     */
+    const launch = (
+      permissionMode: string,
+      resume?: string,
+    ): typeof current => {
+      const inputStream = makeInputStream()
+      const abort = new AbortController()
+
+      const query = sdk.query({
+        prompt: inputStream.stream,
+        options: {
+          cwd: input.cwd,
+          env: { ...(deps.baseEnv?.() ?? {}), ...input.env },
+          ...(input.modelId !== undefined
+            ? { model: String(input.modelId) }
+            : {}),
+          abortController: abort,
+          permissionMode,
+          ...(executable !== undefined
+            ? { pathToClaudeCodeExecutable: executable }
+            : {}),
+          ...(resume !== undefined ? { resume } : {}),
+          canUseTool: async (toolName, toolInput) => {
+            const decision = await ctx.requestApproval(
+              ctx.rootRunnerId,
+              targetFor(toolName, toolInput),
+            )
+            return toPermissionResult(
+              decision,
+              toolInput as Record<string, unknown>,
+            )
+          },
+        },
+      })
+
+      // Pump the SDK message stream → canonical events.
+      void (async () => {
+        try {
+          for await (const msg of query) {
+            // Capture the claude session id from the init message so we can resume later.
+            if (
+              msg.type === "system" &&
+              "subtype" in msg &&
+              msg.subtype === "init" &&
+              "session_id" in msg &&
+              typeof msg.session_id === "string"
+            ) {
+              claudeSessionId = msg.session_id
+            }
+            for (const event of mapClaudeMessage(msg, state)) ctx.emit(event)
+          }
+        } catch (err) {
+          // Swallow errors that are caused by tearing down the current query during a
+          // restart or close — they must NOT emit runner-finished errored.
+          if (closed || restarting) return
+          ctx.emit({
+            type: "runner-finished",
+            runnerId: ctx.rootRunnerId,
+            status: "errored",
+            error: String(err),
+          })
+        }
+      })()
+
+      return { query, inputStream, abort }
+    }
+
+    /**
+     * Tear down the current query and relaunch with a new permission mode.
+     * The new query resumes the same claude session so history is preserved.
+     */
+    const restart = (permissionMode: string): void => {
+      if (closed) return
+      restarting = true
+      current.inputStream.end()
+      current.abort.abort()
+      current.query.close()
+      current = launch(permissionMode, claudeSessionId)
+      restarting = false
+    }
+
+    // Launch with the initial permission mode.
+    const initialMode = toClaudePermissionMode(input.permissionMode ?? "manual")
+    current = launch(initialMode)
+    // Seed the first turn from initialPrompt so the live session has something to do.
+    // The prompt queue is drained asynchronously so pushing after launch() is safe.
+    if (input.initialPrompt !== undefined)
+      current.inputStream.push(input.initialPrompt)
+
     return {
-      send: (text) => inputStream.push(text),
+      send: (text) => current.inputStream.push(text),
       setMode: (mode) => {
-        void query.setPermissionMode?.(toClaudePermissionMode(mode))
+        const native = toClaudePermissionMode(mode)
+        const attempt = current.query.setPermissionMode?.(native)
+        if (attempt === undefined) {
+          // SDK without live switching: relaunch with the new mode.
+          restart(native)
+        } else {
+          attempt.catch(() => {
+            // The SDK refuses some in-place switches (e.g. into bypassPermissions when the
+            // process wasn't launched with --dangerously-skip-permissions): relaunch and
+            // resume the same claude session with the new mode instead.
+            restart(native)
+          })
+        }
       },
       interrupt: () => {
-        void query.interrupt()
+        void current.query.interrupt()
       },
       close: () => {
         if (closed) return
         closed = true
-        inputStream.end()
-        abort.abort()
-        query.close()
+        current.inputStream.end()
+        current.abort.abort()
+        current.query.close()
       },
     }
   },

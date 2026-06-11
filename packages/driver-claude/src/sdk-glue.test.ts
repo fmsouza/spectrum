@@ -81,6 +81,111 @@ const makeFakeSdk = (
   }
 }
 
+// --- multi-query fake SDK for restart tests ---------------------------------------------
+/** Per-query record captured by the multi-query fake. */
+interface QueryRecord {
+  options: SdkOptions | undefined
+  pushedPrompts: unknown[]
+  closes: number
+  setPermissionModeCalls: string[]
+  /** Resolve to unblock the query iterator (simulates close). */
+  unblock: () => void
+  /** Push a message into the query's scripted stream (post-creation). */
+  pushMsg: (msg: SdkMessageLike) => void
+}
+
+/**
+ * A multi-query fake SDK that records every `query()` call independently.
+ * Each call gets its own record so tests can assert on the second (restart) query.
+ *
+ * `setPermissionModeBehavior` controls what `setPermissionMode` does:
+ *   - `"resolve"` → the call resolves normally (in-place switch)
+ *   - `"reject"`  → the call rejects with the bypass-permissions error
+ *   - `"absent"`  → `setPermissionMode` is not present on the query object
+ */
+const makeMultiQueryFakeSdk = (
+  setPermissionModeBehavior: "resolve" | "reject" | "absent",
+): {
+  sdk: ClaudeSdk
+  queries: QueryRecord[]
+} => {
+  const queries: QueryRecord[] = []
+
+  const query = (args: {
+    prompt: AsyncIterable<unknown>
+    options?: SdkOptions
+  }): ClaudeQuery => {
+    const done = defer<void>()
+    const msgQueue: SdkMessageLike[] = []
+    let msgWake: (() => void) | null = null
+
+    const record: QueryRecord = {
+      options: args.options,
+      pushedPrompts: [],
+      closes: 0,
+      setPermissionModeCalls: [],
+      unblock: () => done.resolve(),
+      pushMsg: (msg) => {
+        msgQueue.push(msg)
+        msgWake?.()
+        msgWake = null
+      },
+    }
+    queries.push(record)
+
+    // Drain the streaming-input prompt.
+    void (async () => {
+      for await (const m of args.prompt) record.pushedPrompts.push(m)
+    })()
+
+    const iterator = (async function* (): AsyncGenerator<SdkMessageLike> {
+      while (true) {
+        while (msgQueue.length > 0) {
+          const msg = msgQueue.shift()
+          if (msg !== undefined) yield msg
+        }
+        // Race: either a new message arrives or done resolves.
+        const raceWake = new Promise<void>((r) => {
+          msgWake = r
+        })
+        // If done already resolved, stop.
+        let finished = false
+        done.promise.then(() => {
+          finished = true
+          msgWake?.()
+          msgWake = null
+        })
+        await raceWake
+        if (finished && msgQueue.length === 0) break
+      }
+    })()
+
+    const setPermissionMode =
+      setPermissionModeBehavior === "absent"
+        ? undefined
+        : async (mode: string) => {
+            record.setPermissionModeCalls.push(mode)
+            if (setPermissionModeBehavior === "reject") {
+              throw new Error(
+                "Cannot set permission mode to bypassPermissions because the session was not launched with --dangerously-skip-permissions",
+              )
+            }
+          }
+
+    const q: ClaudeQuery = Object.assign(iterator, {
+      interrupt: async () => {},
+      close: () => {
+        record.closes += 1
+        done.resolve()
+      },
+      ...(setPermissionMode !== undefined ? { setPermissionMode } : {}),
+    })
+    return q
+  }
+
+  return { sdk: { query }, queries }
+}
+
 const ROOT = "rnr_root" as RunnerId
 const makeCtx = (
   emitted: CanonicalEvent[],
@@ -256,5 +361,92 @@ describe("createClaudeAdapter", () => {
     // setPermissionMode is async/fire-and-forget; wait a tick for the promise to settle
     await new Promise((r) => setTimeout(r, 0))
     expect(fake.setPermissionModeCalls).toEqual(["bypassPermissions"])
+  })
+
+  // --- restart-on-rejection tests ---------------------------------------------------------
+
+  it("restarts the query with resume and the new mode when setPermissionMode rejects", async () => {
+    const { sdk, queries } = makeMultiQueryFakeSdk("reject")
+    const adapter = createClaudeAdapter({ loadSdk: async () => sdk })
+    const emitted: CanonicalEvent[] = []
+    const handle = await adapter.start(input, makeCtx(emitted, []))
+
+    // Push an init message so the glue captures the claude session id.
+    queries[0]?.pushMsg({
+      type: "system",
+      subtype: "init",
+      model: "m",
+      session_id: "sess_abc",
+    })
+    await new Promise((r) => setTimeout(r, 10))
+
+    handle.setMode?.("bypass")
+    // Allow the rejection handler microtask to run, then the restart to happen.
+    await new Promise((r) => setTimeout(r, 20))
+
+    // Two query() calls: the original and the restarted one.
+    expect(queries).toHaveLength(2)
+    // Second call carries the new permissionMode and the captured session id.
+    expect(queries[1]?.options?.permissionMode).toBe("bypassPermissions")
+    expect(queries[1]?.options?.resume).toBe("sess_abc")
+    // No runner-finished errored event must have been emitted during the restart.
+    const erroredEvents = emitted.filter(
+      (e) => e.type === "runner-finished" && e.status === "errored",
+    )
+    expect(erroredEvents).toHaveLength(0)
+  })
+
+  it("switches in place when setPermissionMode resolves", async () => {
+    const { sdk, queries } = makeMultiQueryFakeSdk("resolve")
+    const adapter = createClaudeAdapter({ loadSdk: async () => sdk })
+    const handle = await adapter.start(input, makeCtx([], []))
+
+    handle.setMode?.("plan")
+    await new Promise((r) => setTimeout(r, 10))
+
+    // Only one query() call — no restart happened.
+    expect(queries).toHaveLength(1)
+    expect(queries[0]?.setPermissionModeCalls).toEqual(["plan"])
+  })
+
+  it("routes send to the new input stream after a restart", async () => {
+    const { sdk, queries } = makeMultiQueryFakeSdk("reject")
+    const adapter = createClaudeAdapter({ loadSdk: async () => sdk })
+    const handle = await adapter.start(input, makeCtx([], []))
+
+    queries[0]?.pushMsg({
+      type: "system",
+      subtype: "init",
+      model: "m",
+      session_id: "sess_xyz",
+    })
+    await new Promise((r) => setTimeout(r, 10))
+
+    handle.setMode?.("bypass")
+    await new Promise((r) => setTimeout(r, 20))
+
+    // After restart, send should go to the second query's input stream.
+    handle.send("hi after restart")
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(queries).toHaveLength(2)
+    const secondPrompts = queries[1]?.pushedPrompts ?? []
+    expect(secondPrompts).toContainEqual({
+      type: "user",
+      message: { role: "user", content: "hi after restart" },
+      parent_tool_use_id: null,
+    })
+  })
+
+  it("restarts immediately when the SDK has no setPermissionMode", async () => {
+    const { sdk, queries } = makeMultiQueryFakeSdk("absent")
+    const adapter = createClaudeAdapter({ loadSdk: async () => sdk })
+    const handle = await adapter.start(input, makeCtx([], []))
+
+    handle.setMode?.("bypass")
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(queries).toHaveLength(2)
+    expect(queries[1]?.options?.permissionMode).toBe("bypassPermissions")
   })
 })
