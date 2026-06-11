@@ -4,6 +4,7 @@ import type {
   ApprovalTarget,
   CanonicalEvent,
   Json,
+  PermissionMode,
   Usage,
 } from "./events"
 
@@ -60,6 +61,7 @@ export type RunnerState = {
   status: RunnerStatus
   items: TimelineItem[]
   usage?: Usage
+  supportedModes?: readonly PermissionMode[]
 }
 export type RunState = {
   rootRunnerId?: RunnerId
@@ -98,6 +100,7 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
       const title = event.title ?? existing?.title
       const agentType = event.agentType ?? existing?.agentType
       const parentRunnerId = event.parentRunnerId ?? existing?.parentRunnerId
+      const supportedModes = event.supportedModes ?? existing?.supportedModes
       const runner: RunnerState = {
         id: event.runnerId,
         status: "running",
@@ -105,6 +108,7 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
         ...(parentRunnerId !== undefined ? { parentRunnerId } : {}),
         ...(agentType !== undefined ? { agentType } : {}),
         ...(title !== undefined ? { title } : {}),
+        ...(supportedModes !== undefined ? { supportedModes } : {}),
       }
       let next = withRunner(state, runner)
       if (
