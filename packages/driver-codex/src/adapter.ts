@@ -1,5 +1,5 @@
 import type { AgentStartInput } from "@launchkit/agent-driver"
-import type { ApprovalDecision } from "@launchkit/agent-events"
+import type { ApprovalDecision, PermissionMode } from "@launchkit/agent-events"
 import type {
   AdapterCtx,
   AdapterHandle,
@@ -7,6 +7,7 @@ import type {
 } from "@launchkit/driver-runtime"
 import type { IdGen } from "@launchkit/utils"
 import { type CodexMapState, mapCodexEvent } from "./map-codex-event"
+import { CODEX_SUPPORTED_MODES, toCodexTurnPolicy } from "./permission-mode"
 import {
   M_INITIALIZE,
   M_INITIALIZED,
@@ -137,6 +138,7 @@ export const createCodexAdapter = (
     }
 
     let activeTurnId: string | undefined
+    let mode: PermissionMode = input.permissionMode ?? "manual"
 
     const handleServerRequest = (r: ServerRequestFrame): void => {
       const dispatcher = transport.dispatcher
@@ -231,6 +233,7 @@ export const createCodexAdapter = (
         .request(M_TURN_START, {
           threadId,
           input: [textInput(input.initialPrompt)],
+          ...toCodexTurnPolicy(mode),
         })
         .catch((err: unknown) => {
           ctx.emit({
@@ -255,6 +258,7 @@ export const createCodexAdapter = (
             : dispatcher.request(M_TURN_START, {
                 threadId,
                 input: [textInput(text)],
+                ...toCodexTurnPolicy(mode),
               })
         void turn.catch((err: unknown) => {
           ctx.emit({
@@ -264,6 +268,9 @@ export const createCodexAdapter = (
             error: String(err),
           })
         })
+      },
+      setMode: (m) => {
+        mode = m // turn/steer takes no policy; applied on the next turn/start
       },
       interrupt: () => {
         if (activeTurnId !== undefined) {
@@ -279,4 +286,5 @@ export const createCodexAdapter = (
       },
     }
   },
+  supportedModes: CODEX_SUPPORTED_MODES,
 })
