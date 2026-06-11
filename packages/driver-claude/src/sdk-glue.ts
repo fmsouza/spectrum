@@ -162,13 +162,19 @@ export const createClaudeAdapter = (deps: {
     /** Mutable refs shared across launch closures. */
     let claudeSessionId: string | undefined
     let closed = false
-    let restarting = false
+    /**
+     * When setMode is called before system:init delivers a session id we cannot resume
+     * yet, so we store the requested mode here and apply it once the id is known.
+     */
+    let pendingRestartMode: string | undefined
 
-    /** The active query triple (replaced on restart). */
+    /** The active query quadruple (replaced on restart). */
     let current: {
       query: ClaudeQuery
       inputStream: ReturnType<typeof makeInputStream>
       abort: AbortController
+      /** Mark this launch stale so its pump's catch does not emit runner-finished errored. */
+      markStale: () => void
     }
 
     /**
@@ -182,6 +188,12 @@ export const createClaudeAdapter = (deps: {
     ): typeof current => {
       const inputStream = makeInputStream()
       const abort = new AbortController()
+      // Per-launch stale flag: set by restart() BEFORE tearing down this query so the
+      // old pump's catch fires AFTER stale is true and swallows the teardown error.
+      let stale = false
+      const markStale = (): void => {
+        stale = true
+      }
 
       const query = sdk.query({
         prompt: inputStream.stream,
@@ -223,13 +235,19 @@ export const createClaudeAdapter = (deps: {
               typeof msg.session_id === "string"
             ) {
               claudeSessionId = msg.session_id
+              // Apply any mode switch that was requested before the session id was known.
+              if (pendingRestartMode !== undefined) {
+                const mode = pendingRestartMode
+                pendingRestartMode = undefined
+                restart(mode)
+              }
             }
             for (const event of mapClaudeMessage(msg, state)) ctx.emit(event)
           }
         } catch (err) {
           // Swallow errors that are caused by tearing down the current query during a
           // restart or close — they must NOT emit runner-finished errored.
-          if (closed || restarting) return
+          if (closed || stale) return
           ctx.emit({
             type: "runner-finished",
             runnerId: ctx.rootRunnerId,
@@ -239,7 +257,7 @@ export const createClaudeAdapter = (deps: {
         }
       })()
 
-      return { query, inputStream, abort }
+      return { query, inputStream, abort, markStale }
     }
 
     /**
@@ -248,12 +266,13 @@ export const createClaudeAdapter = (deps: {
      */
     const restart = (permissionMode: string): void => {
       if (closed) return
-      restarting = true
+      // Mark the OLD launch stale BEFORE teardown so its pump's catch (which fires
+      // asynchronously as a microtask) sees stale=true and does not emit errored.
+      current.markStale()
       current.inputStream.end()
       current.abort.abort()
       current.query.close()
       current = launch(permissionMode, claudeSessionId)
-      restarting = false
     }
 
     // Launch with the initial permission mode.
@@ -268,16 +287,32 @@ export const createClaudeAdapter = (deps: {
       send: (text) => current.inputStream.push(text),
       setMode: (mode) => {
         const native = toClaudePermissionMode(mode)
+        // Capture the current query at the time of this setMode call.
+        // This guards Finding 3: if a newer restart already happened by the time
+        // the rejection fires, current.query !== q and we skip the stale restart.
+        const q = current.query
         const attempt = current.query.setPermissionMode?.(native)
         if (attempt === undefined) {
           // SDK without live switching: relaunch with the new mode.
+          // The absent-setPermissionMode path is synchronous; restart immediately regardless
+          // of whether a session id exists (the new session will simply start fresh).
           restart(native)
         } else {
           attempt.catch(() => {
             // The SDK refuses some in-place switches (e.g. into bypassPermissions when the
             // process wasn't launched with --dangerously-skip-permissions): relaunch and
             // resume the same claude session with the new mode instead.
-            restart(native)
+            // Guard (Finding 3): if a newer restart already replaced current.query, skip —
+            // the new query will get its own setMode if the user switches again.
+            if (current.query !== q) return
+            // Guard (Finding 2): if system:init hasn't arrived yet we have no session id
+            // to resume with, so the conversation would be silently dropped. Defer until
+            // the session id is known; the pump picks it up after system:init.
+            if (claudeSessionId === undefined) {
+              pendingRestartMode = native
+            } else {
+              restart(native)
+            }
           })
         }
       },

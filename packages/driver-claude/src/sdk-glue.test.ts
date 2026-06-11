@@ -102,9 +102,14 @@ interface QueryRecord {
  *   - `"resolve"` → the call resolves normally (in-place switch)
  *   - `"reject"`  → the call rejects with the bypass-permissions error
  *   - `"absent"`  → `setPermissionMode` is not present on the query object
+ *
+ * `throwOnClose` — when true, closing/aborting the query's iterator throws an
+ * AbortError-like error instead of completing cleanly (simulates the real SDK
+ * throwing when the abort controller fires while the `for await` is running).
  */
 const makeMultiQueryFakeSdk = (
   setPermissionModeBehavior: "resolve" | "reject" | "absent",
+  throwOnClose = false,
 ): {
   sdk: ClaudeSdk
   queries: QueryRecord[]
@@ -118,6 +123,7 @@ const makeMultiQueryFakeSdk = (
     const done = defer<void>()
     const msgQueue: SdkMessageLike[] = []
     let msgWake: (() => void) | null = null
+    let shouldThrow = false
 
     const record: QueryRecord = {
       options: args.options,
@@ -148,7 +154,7 @@ const makeMultiQueryFakeSdk = (
         const raceWake = new Promise<void>((r) => {
           msgWake = r
         })
-        // If done already resolved, stop.
+        // If done already resolved, stop or throw.
         let finished = false
         done.promise.then(() => {
           finished = true
@@ -156,7 +162,12 @@ const makeMultiQueryFakeSdk = (
           msgWake = null
         })
         await raceWake
-        if (finished && msgQueue.length === 0) break
+        if (finished && msgQueue.length === 0) {
+          if (shouldThrow) {
+            throw new Error("AbortError: The operation was aborted.")
+          }
+          break
+        }
       }
     })()
 
@@ -176,6 +187,7 @@ const makeMultiQueryFakeSdk = (
       interrupt: async () => {},
       close: () => {
         record.closes += 1
+        if (throwOnClose) shouldThrow = true
         done.resolve()
       },
       ...(setPermissionMode !== undefined ? { setPermissionMode } : {}),
@@ -448,5 +460,167 @@ describe("createClaudeAdapter", () => {
 
     expect(queries).toHaveLength(2)
     expect(queries[1]?.options?.permissionMode).toBe("bypassPermissions")
+  })
+
+  // --- Finding 1: stale-pump race ---------------------------------------------------------
+
+  it("does not emit errored when the old query throws on teardown during a restart", async () => {
+    // throwOnClose=true: the first query's iterator throws an AbortError-like error
+    // when close() fires, simulating the real SDK behaviour.
+    const { sdk, queries } = makeMultiQueryFakeSdk("reject", true)
+    const adapter = createClaudeAdapter({ loadSdk: async () => sdk })
+    const emitted: CanonicalEvent[] = []
+    const handle = await adapter.start(input, makeCtx(emitted, []))
+
+    // Capture the session id so restart can resume.
+    queries[0]?.pushMsg({
+      type: "system",
+      subtype: "init",
+      model: "m",
+      session_id: "sess_throw",
+    })
+    await new Promise((r) => setTimeout(r, 10))
+
+    handle.setMode?.("bypass")
+    // Give the rejection handler, the restart, AND the old pump's catch time to all run.
+    await new Promise((r) => setTimeout(r, 30))
+
+    // There must be NO runner-finished errored event — the throw came from teardown.
+    const erroredEvents = emitted.filter(
+      (e) => e.type === "runner-finished" && e.status === "errored",
+    )
+    expect(erroredEvents).toHaveLength(0)
+    // And we still got a second query (the restart happened).
+    expect(queries).toHaveLength(2)
+  })
+
+  // --- Finding 2: setMode before session id is known -------------------------------------
+
+  it("defers the restart until the session id is known", async () => {
+    const { sdk, queries } = makeMultiQueryFakeSdk("reject")
+    const adapter = createClaudeAdapter({ loadSdk: async () => sdk })
+    const handle = await adapter.start(input, makeCtx([], []))
+
+    // Call setMode BEFORE system:init has been received (claudeSessionId === undefined).
+    handle.setMode?.("bypass")
+    await new Promise((r) => setTimeout(r, 20))
+
+    // Should NOT have launched a second query yet — we can't resume without a session id.
+    expect(queries).toHaveLength(1)
+
+    // Now deliver the init message so the glue captures the session id.
+    queries[0]?.pushMsg({
+      type: "system",
+      subtype: "init",
+      model: "m",
+      session_id: "sess_deferred",
+    })
+    await new Promise((r) => setTimeout(r, 30))
+
+    // NOW the deferred restart should have fired with resume + the new mode.
+    expect(queries).toHaveLength(2)
+    expect(queries[1]?.options?.permissionMode).toBe("bypassPermissions")
+    expect(queries[1]?.options?.resume).toBe("sess_deferred")
+  })
+
+  // --- Finding 3: rapid double setMode → stale rejection ---------------------------------
+
+  it("ignores a stale rejection after a newer restart already happened", async () => {
+    // We need two rejections that we can resolve in controlled order.
+    // Use a custom SDK where setPermissionMode rejects with a controllable deferred.
+    const queries: QueryRecord[] = []
+    const rejectDeferreds: Array<{ reject: (e: Error) => void }> = []
+
+    const sdk: ClaudeSdk = {
+      query: (args) => {
+        const done = defer<void>()
+        const msgQueue: SdkMessageLike[] = []
+        let msgWake: (() => void) | null = null
+
+        const record: QueryRecord = {
+          options: args.options,
+          pushedPrompts: [],
+          closes: 0,
+          setPermissionModeCalls: [],
+          unblock: () => done.resolve(),
+          pushMsg: (msg) => {
+            msgQueue.push(msg)
+            msgWake?.()
+            msgWake = null
+          },
+        }
+        queries.push(record)
+
+        void (async () => {
+          for await (const m of args.prompt) record.pushedPrompts.push(m)
+        })()
+
+        const iterator = (async function* (): AsyncGenerator<SdkMessageLike> {
+          while (true) {
+            while (msgQueue.length > 0) {
+              const msg = msgQueue.shift()
+              if (msg !== undefined) yield msg
+            }
+            const raceWake = new Promise<void>((r) => {
+              msgWake = r
+            })
+            let finished = false
+            done.promise.then(() => {
+              finished = true
+              msgWake?.()
+              msgWake = null
+            })
+            await raceWake
+            if (finished && msgQueue.length === 0) break
+          }
+        })()
+
+        const q: ClaudeQuery = Object.assign(iterator, {
+          interrupt: async () => {},
+          close: () => {
+            record.closes += 1
+            done.resolve()
+          },
+          setPermissionMode: async (mode: string) => {
+            record.setPermissionModeCalls.push(mode)
+            // Each call to setPermissionMode gets its own controllable deferred rejection.
+            await new Promise<void>((_resolve, reject) => {
+              rejectDeferreds.push({ reject })
+            })
+          },
+        })
+        return q
+      },
+    }
+
+    const adapter = createClaudeAdapter({ loadSdk: async () => sdk })
+    const handle = await adapter.start(input, makeCtx([], []))
+
+    // Push session id so restarts can resume.
+    queries[0]?.pushMsg({
+      type: "system",
+      subtype: "init",
+      model: "m",
+      session_id: "sess_rapid",
+    })
+    await new Promise((r) => setTimeout(r, 10))
+
+    // Two rapid setMode calls — both hit setPermissionMode before either rejects.
+    handle.setMode?.("bypass")
+    handle.setMode?.("plan")
+    await new Promise((r) => setTimeout(r, 10))
+
+    // Now reject the FIRST setPermissionMode — this should trigger restart #1.
+    rejectDeferreds[0]?.reject(new Error("rejected-first"))
+    await new Promise((r) => setTimeout(r, 20))
+
+    // Now reject the SECOND setPermissionMode — this is stale (a newer restart already
+    // happened), so it must NOT trigger a third query.
+    rejectDeferreds[1]?.reject(new Error("rejected-second"))
+    await new Promise((r) => setTimeout(r, 20))
+
+    // Exactly TWO queries: the original + one restart.
+    // A third query would mean the stale rejection triggered an extra restart.
+    expect(queries).toHaveLength(2)
   })
 })
