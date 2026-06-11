@@ -129,6 +129,9 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
       case "run-interrupt":
         agent.interrupt()
         return
+      case "run-set-mode":
+        agent.setMode?.(message.mode)
+        return
       default:
         // Compile-time exhaustiveness: a new RunnerInbound variant fails the build here.
         message satisfies never

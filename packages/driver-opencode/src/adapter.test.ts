@@ -4,9 +4,10 @@ import type {
   ApprovalDecision,
   ApprovalTarget,
   CanonicalEvent,
+  PermissionMode,
   RunnerId,
 } from "@launchkit/agent-events"
-import { createOpencodeAdapter } from "./adapter"
+import { OPENCODE_SUPPORTED_MODES, createOpencodeAdapter } from "./adapter"
 import { S_ROOT } from "./fixtures/opencode-events"
 import type {
   OpencodeClient,
@@ -93,14 +94,30 @@ const setup = (decision: ApprovalDecision = "allow") => {
     event: { subscribe: async () => fakeStream },
   }
 
+  let aprSeq = 0
   const ctx = {
     rootRunnerId: ROOT,
     emit: (e: CanonicalEvent) => emitted.push(e),
     newRunnerId: (): RunnerId => "rnr_child" as RunnerId,
+    /**
+     * Mirror the real runtime's ctx.requestApproval: emit an approval-requested with a
+     * minted apr_* requestId THEN resolve to the configured decision.  This is the
+     * regression guard — previously the fake silently swallowed the emit, hiding the
+     * duplicate that the mapper was also producing.
+     */
     requestApproval: async (
-      _r: RunnerId,
-      _t: ApprovalTarget,
-    ): Promise<ApprovalDecision> => decision,
+      r: RunnerId,
+      t: ApprovalTarget,
+    ): Promise<ApprovalDecision> => {
+      const requestId = `apr_${++aprSeq}`
+      emitted.push({
+        type: "approval-requested",
+        runnerId: r,
+        requestId,
+        target: t,
+      })
+      return decision
+    },
   }
 
   const adapter = createOpencodeAdapter({
@@ -136,6 +153,89 @@ const setup = (decision: ApprovalDecision = "allow") => {
     },
     get connectCfg() {
       return connectCfg
+    },
+  }
+}
+
+/**
+ * Extended setup for permission-mode tests: captures full prompt bodies (including `agent`)
+ * and counts `requestApproval` calls.
+ */
+const setupMode = (
+  permissionMode: PermissionMode,
+  decision: ApprovalDecision = "allow",
+) => {
+  const emitted: CanonicalEvent[] = []
+  const fakeStream = new FakeStream()
+  const promptBodies: Array<{
+    id: string
+    parts: ReadonlyArray<{ type: "text"; text: string }>
+    agent?: string
+  }> = []
+  const replies: Array<{ id: string; permissionID: string; response: string }> =
+    []
+  let approvalCallCount = 0
+
+  const client: OpencodeClient = {
+    session: {
+      create: async () => ({ id: S_ROOT }),
+      prompt: async ({ path, body }) => {
+        promptBodies.push({ id: path.id, parts: body.parts, agent: body.agent })
+      },
+      abort: async () => {},
+      permissions: async ({ path, body }) => {
+        replies.push({
+          id: path.id,
+          permissionID: path.permissionID,
+          response: body.response,
+        })
+      },
+    },
+    event: { subscribe: async () => fakeStream },
+  }
+
+  const ctx = {
+    rootRunnerId: ROOT,
+    emit: (e: CanonicalEvent) => emitted.push(e),
+    newRunnerId: (): RunnerId => "rnr_child" as RunnerId,
+    requestApproval: async (
+      _r: RunnerId,
+      _t: ApprovalTarget,
+    ): Promise<ApprovalDecision> => {
+      approvalCallCount++
+      return decision
+    },
+  }
+
+  const startInput = (
+    override?: Partial<AgentStartInput>,
+  ): AgentStartInput => ({
+    harnessId: "opencode" as never,
+    cwd: "/work",
+    env: {},
+    initialPrompt: "init",
+    permissionMode,
+    ...override,
+  })
+
+  const adapter = createOpencodeAdapter({
+    connect: async () => ({
+      client,
+      server: { url: "http://127.0.0.1:4096", close: () => {} },
+    }),
+    watchdogMs: 0,
+  })
+
+  return {
+    adapter,
+    ctx,
+    fakeStream,
+    emitted,
+    promptBodies,
+    replies,
+    startInput,
+    get approvalCallCount() {
+      return approvalCallCount
     },
   }
 }
@@ -247,10 +347,12 @@ describe("createOpencodeAdapter", () => {
     })
     t.fakeStream.end()
     await new Promise((r) => setTimeout(r, 0))
+    // approval-requested comes from the runtime bridge (ctx.requestApproval), NOT from the mapper.
+    // The runtime mints its own apr_* requestId; perm_1 is the opencode id used only for the REST reply.
     expect(t.emitted).toContainEqual({
       type: "approval-requested",
       runnerId: ROOT,
-      requestId: "perm_1",
+      requestId: "apr_1",
       target: { kind: "command", detail: "rm" },
     })
     expect(t.replies).toEqual([
@@ -288,6 +390,85 @@ describe("createOpencodeAdapter", () => {
     expect(t.prompts).toContainEqual({ id: S_ROOT, text: "again" })
     expect(t.aborts).toContain(S_ROOT)
     expect(t.serverClosed).toBe(true)
+  })
+
+  // --- Permission-mode tests ---
+
+  it("supportedModes equals OPENCODE_SUPPORTED_MODES constant", () => {
+    const t = setup()
+    expect(t.adapter.supportedModes).toEqual(OPENCODE_SUPPORTED_MODES)
+  })
+
+  it("replies always to permissions without asking when mode is bypass", async () => {
+    const t = setupMode("bypass")
+    await t.adapter.start(t.startInput(), t.ctx)
+    t.fakeStream.push({
+      type: "permission.updated",
+      properties: {
+        id: "perm_bypass",
+        type: "bash",
+        sessionID: S_ROOT,
+        title: "t",
+        pattern: "rm",
+      },
+    })
+    t.fakeStream.end()
+    await new Promise((r) => setTimeout(r, 0))
+    // Replied always without user approval
+    expect(t.replies).toEqual([
+      { id: S_ROOT, permissionID: "perm_bypass", response: "always" },
+    ])
+    // requestApproval must NOT have been called
+    expect(t.approvalCallCount).toBe(0)
+    // No approval-requested event in the canonical stream
+    expect(t.emitted.some((e) => e.type === "approval-requested")).toBe(false)
+  })
+
+  it("sends prompts with the plan agent when mode is plan", async () => {
+    const t = setupMode("plan")
+    const handle = await t.adapter.start(
+      t.startInput({ initialPrompt: "init-plan" }),
+      t.ctx,
+    )
+    handle.send("go")
+    await new Promise((r) => setTimeout(r, 0))
+    // Initial prompt carries agent: "plan"
+    expect(t.promptBodies).toContainEqual({
+      id: S_ROOT,
+      parts: [{ type: "text", text: "init-plan" }],
+      agent: "plan",
+    })
+    // handle.send also carries agent: "plan"
+    expect(t.promptBodies).toContainEqual({
+      id: S_ROOT,
+      parts: [{ type: "text", text: "go" }],
+      agent: "plan",
+    })
+  })
+
+  it("switches behavior after setMode", async () => {
+    // Start manual: prompt has no agent field
+    const t = setupMode("manual")
+    const handle = await t.adapter.start(
+      t.startInput({ initialPrompt: "first" }),
+      t.ctx,
+    )
+    // Switch to plan
+    handle.setMode?.("plan")
+    handle.send("second")
+    await new Promise((r) => setTimeout(r, 0))
+    // first prompt: no agent
+    expect(t.promptBodies[0]).toEqual({
+      id: S_ROOT,
+      parts: [{ type: "text", text: "first" }],
+      agent: undefined,
+    })
+    // second prompt: agent: "plan"
+    expect(t.promptBodies[1]).toEqual({
+      id: S_ROOT,
+      parts: [{ type: "text", text: "second" }],
+      agent: "plan",
+    })
   })
 
   it("fires the #6573 watchdog: finishes the root errored + closes the server when no session.idle arrives", async () => {

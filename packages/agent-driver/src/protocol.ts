@@ -1,5 +1,12 @@
-import { ApprovalDecisionSchema } from "@launchkit/agent-events"
-import type { ApprovalDecision, StoredEvent } from "@launchkit/agent-events"
+import {
+  ApprovalDecisionSchema,
+  PermissionModeSchema,
+} from "@launchkit/agent-events"
+import type {
+  ApprovalDecision,
+  PermissionMode,
+  StoredEvent,
+} from "@launchkit/agent-events"
 import { type SessionId, SessionIdSchema } from "@launchkit/types"
 import { type Result, err, ok } from "@launchkit/utils"
 import { z } from "zod"
@@ -20,6 +27,11 @@ export type RunnerInbound =
       readonly decision: ApprovalDecision
     }
   | { readonly type: "run-interrupt"; readonly id: SessionId }
+  | {
+      readonly type: "run-set-mode"
+      readonly id: SessionId
+      readonly mode: PermissionMode
+    }
 
 const InboundSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("run-attach"), id: SessionIdSchema }),
@@ -35,6 +47,11 @@ const InboundSchema = z.discriminatedUnion("type", [
     decision: ApprovalDecisionSchema,
   }),
   z.object({ type: z.literal("run-interrupt"), id: SessionIdSchema }),
+  z.object({
+    type: z.literal("run-set-mode"),
+    id: SessionIdSchema,
+    mode: PermissionModeSchema,
+  }),
 ])
 
 export const decodeRunnerInbound = (

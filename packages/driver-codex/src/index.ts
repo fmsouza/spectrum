@@ -8,3 +8,5 @@ export type {
   JsonRpcMessage,
 } from "./transport"
 export { createStdioJsonRpcTransport } from "./transport"
+export { toCodexTurnPolicy, CODEX_SUPPORTED_MODES } from "./permission-mode"
+export type { CodexTurnPolicy } from "./permission-mode"

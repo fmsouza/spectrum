@@ -1,5 +1,9 @@
 import type { RunnerInbound, RunnerOutbound } from "@launchkit/agent-driver"
-import type { ApprovalDecision, StoredEvent } from "@launchkit/agent-events"
+import type {
+  ApprovalDecision,
+  PermissionMode,
+  StoredEvent,
+} from "@launchkit/agent-events"
 import type { SessionId } from "@launchkit/types"
 
 /**
@@ -13,6 +17,7 @@ export interface RunnerClient {
   send(id: SessionId, text: string): void
   approve(id: SessionId, requestId: string, decision: ApprovalDecision): void
   interrupt(id: SessionId): void
+  setMode(id: SessionId, mode: PermissionMode): void
   /** route an inbound RunnerOutbound frame to the registered per-session listener */
   dispatch(message: RunnerOutbound): void
   onEvent(id: SessionId, cb: (event: StoredEvent) => void): void
@@ -36,6 +41,9 @@ export const createRunnerClient = (
     },
     interrupt: (id) => {
       send({ type: "run-interrupt", id })
+    },
+    setMode: (id, mode) => {
+      send({ type: "run-set-mode", id, mode })
     },
     dispatch: (message) => {
       listeners.get(message.id)?.(message.event)

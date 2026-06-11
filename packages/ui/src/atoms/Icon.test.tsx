@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { render, screen } from "@testing-library/react"
+import { cleanup, render, screen } from "@testing-library/react"
 import { Icon } from "./Icon"
 
 describe("Icon", () => {
@@ -27,5 +27,21 @@ describe("Icon", () => {
   it("is a labelled img when a title is given", () => {
     render(<Icon name="settings" title="Settings" />)
     expect(screen.getByRole("img", { name: "Settings" })).toBeInTheDocument()
+  })
+
+  it("renders each of the new glyph names", () => {
+    for (const name of [
+      "send",
+      "stop",
+      "chevron-down",
+      "shield",
+      "pencil",
+      "list",
+      "zap",
+    ] as const) {
+      render(<Icon name={name} title={name} />)
+      expect(screen.getByRole("img", { name })).toBeInTheDocument()
+      cleanup()
+    }
   })
 })

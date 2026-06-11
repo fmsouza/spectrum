@@ -106,6 +106,21 @@ describe("CanonicalEventSchema", () => {
       }).success,
     ).toBe(false)
   })
+
+  it("accepts runner-started with supportedModes and rejects unknown modes", () => {
+    const ok = CanonicalEventSchema.safeParse({
+      type: "runner-started",
+      runnerId: "rnr_1",
+      supportedModes: ["manual", "plan"],
+    })
+    expect(ok.success).toBe(true)
+    const bad = CanonicalEventSchema.safeParse({
+      type: "runner-started",
+      runnerId: "rnr_1",
+      supportedModes: ["yolo"],
+    })
+    expect(bad.success).toBe(false)
+  })
 })
 
 describe("StoredEventSchema", () => {

@@ -6,7 +6,9 @@ into the locked synchronous `AgentDriver`/`AgentSession` seam — owning the syn
 correlation, outbound command queueing (before the handle exists), and lifecycle/cleanup (`close`).
 
 **Public API (barrel `src/index.ts`):** `AdapterHandle`/`AdapterCtx`/`DriverAdapter` (the adapter SPI);
-`createDriver`.
+`createDriver`. `createDriver` forwards `AgentSession.setMode` calls to `AdapterHandle.setMode` (queued
+before the handle exists, like other outbound commands), and reads `DriverAdapter.supportedModes` to
+populate the `runner-started.supportedModes` field emitted up-front on every run start.
 
 **Depends on:** `@launchkit/agent-driver` (the seam + ports), `@launchkit/agent-events` (CanonicalEvent),
 `@launchkit/utils` (Result, IdGen). NO harness SDKs — this package is PURE of harness specifics.

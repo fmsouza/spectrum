@@ -1,5 +1,6 @@
 import {
   type CanonicalEvent,
+  type PermissionMode,
   type RunState,
   type RunnerId,
   initialRunState,
@@ -14,10 +15,12 @@ export type RunViewStore = {
   readonly openSubBySession: Readonly<Record<string, RunnerId>>
   /** Whether a turn is in flight (drives the typing indicator) — see `nextBusy`. */
   readonly busyBySession: Readonly<Record<string, boolean>>
+  readonly modeBySession: Readonly<Record<string, PermissionMode>>
   readonly applyEvent: (sessionId: SessionId, event: CanonicalEvent) => void
   readonly reset: (sessionId: SessionId) => void
   readonly openSub: (sessionId: SessionId, runnerId: RunnerId) => void
   readonly closeSub: (sessionId: SessionId) => void
+  readonly setMode: (sessionId: SessionId, mode: PermissionMode) => void
 }
 
 /**
@@ -52,6 +55,7 @@ export const createRunViewStore = (_deps: StoreDeps): StoreApi<RunViewStore> =>
     byId: {},
     openSubBySession: {},
     busyBySession: {},
+    modeBySession: {},
 
     applyEvent: (sessionId, event) => {
       const prev = get().byId[sessionId] ?? initialRunState
@@ -72,10 +76,12 @@ export const createRunViewStore = (_deps: StoreDeps): StoreApi<RunViewStore> =>
         const { [sessionId]: _removed, ...rest } = state.byId
         const { [sessionId]: _sub, ...subRest } = state.openSubBySession
         const { [sessionId]: _busy, ...busyRest } = state.busyBySession
+        const { [sessionId]: _mode, ...modeRest } = state.modeBySession
         return {
           byId: rest,
           openSubBySession: subRest,
           busyBySession: busyRest,
+          modeBySession: modeRest,
         }
       })
     },
@@ -91,5 +97,11 @@ export const createRunViewStore = (_deps: StoreDeps): StoreApi<RunViewStore> =>
         const { [sessionId]: _removed, ...rest } = state.openSubBySession
         return { openSubBySession: rest }
       })
+    },
+
+    setMode: (sessionId, mode) => {
+      set((state) => ({
+        modeBySession: { ...state.modeBySession, [sessionId]: mode },
+      }))
     },
   }))

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test"
-import type { CanonicalEvent, RunnerId } from "@launchkit/agent-events"
+import type {
+  CanonicalEvent,
+  PermissionMode,
+  RunnerId,
+} from "@launchkit/agent-events"
 import { createSequentialIdGen } from "@launchkit/utils"
 import type { AdapterCtx, AdapterHandle, DriverAdapter } from "./adapter"
 import { createDriver } from "./runtime"
@@ -13,6 +17,7 @@ const makeFakeAdapter = (): {
   rejectStart: (err: unknown) => void
   ctx: () => AdapterCtx
   sent: readonly string[]
+  modes: readonly PermissionMode[]
   interrupts: number
   closes: number
 } => {
@@ -20,10 +25,14 @@ const makeFakeAdapter = (): {
   let reject!: (e: unknown) => void
   let captured: AdapterCtx | undefined
   const sent: string[] = []
+  const modes: PermissionMode[] = []
   const state = { interrupts: 0, closes: 0 }
   const handle: AdapterHandle = {
     send: (t) => {
       sent.push(t)
+    },
+    setMode: (mode) => {
+      modes.push(mode)
     },
     interrupt: () => {
       state.interrupts += 1
@@ -51,6 +60,9 @@ const makeFakeAdapter = (): {
     },
     get sent() {
       return sent
+    },
+    get modes() {
+      return modes
     },
     get interrupts() {
       return state.interrupts
@@ -401,5 +413,89 @@ describe("createDriver", () => {
     fake.resolveStart()
     await Promise.resolve()
     expect(fake.interrupts).toBe(1)
+  })
+
+  it("emits supportedModes on the up-front runner-started when the adapter declares them", () => {
+    const modes = ["manual", "plan"] as const
+    const fake = makeFakeAdapter()
+    // Override adapter with one that declares supportedModes
+    const adapterWithModes: DriverAdapter = {
+      ...fake.adapter,
+      supportedModes: modes,
+    }
+    let run: (() => void) | undefined
+    const driver = createDriver({
+      adapter: adapterWithModes,
+      idGen: createSequentialIdGen(),
+      scheduler: (fn) => {
+        run = fn
+      },
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    const seen: CanonicalEvent[] = []
+    started.value.onEvent((e) => seen.push(e))
+    run?.()
+    expect(seen[0]).toEqual({
+      type: "runner-started",
+      runnerId: "rnr_1" as RunnerId,
+      supportedModes: ["manual", "plan"],
+    })
+  })
+
+  it("omits supportedModes when the adapter does not declare them", () => {
+    const fake = makeFakeAdapter()
+    let run: (() => void) | undefined
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: (fn) => {
+        run = fn
+      },
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    const seen: CanonicalEvent[] = []
+    started.value.onEvent((e) => seen.push(e))
+    run?.()
+    expect(seen[0]).toEqual({
+      type: "runner-started",
+      runnerId: "rnr_1" as RunnerId,
+    })
+  })
+
+  it("queues setMode until the handle exists, then forwards to the adapter", async () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    // setMode BEFORE the adapter resolves → queued, not yet forwarded
+    started.value.setMode?.("bypass")
+    expect(fake.modes).toEqual([])
+    // resolve start — queue is drained into the handle
+    fake.resolveStart()
+    await Promise.resolve()
+    expect(fake.modes).toEqual(["bypass"])
+  })
+
+  it("forwards setMode immediately once the handle exists", async () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    // resolve start first
+    fake.resolveStart()
+    await Promise.resolve()
+    // setMode AFTER handle exists → forwarded immediately
+    started.value.setMode?.("plan")
+    expect(fake.modes).toEqual(["plan"])
   })
 })
