@@ -44,12 +44,16 @@ export const ModeSelector = ({
   const [open, setOpen] = useState(false)
   const current = MODE_META[mode]
   return (
-    // Escape is handled on the wrapper so it works whether focus sits on the
-    // pill (just opened by click) or inside the menu.
+    // Escape/blur are handled on the wrapper so they work whether focus sits
+    // on the pill (just opened by click) or inside the menu; focus leaving the
+    // wrapper entirely (outside click, Tab away) dismisses the menu.
     <div
       className="lk-mode-selector"
       onKeyDown={(e) => {
         if (e.key === "Escape") setOpen(false)
+      }}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false)
       }}
     >
       <button

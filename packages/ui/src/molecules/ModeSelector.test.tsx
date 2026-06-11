@@ -53,6 +53,21 @@ describe("ModeSelector", () => {
     cleanup()
   })
 
+  it("closes when focus leaves the selector entirely", () => {
+    render(
+      <ModeSelector
+        mode="manual"
+        supportedModes={["manual", "plan"]}
+        onChange={() => {}}
+      />,
+    )
+    const pill = screen.getByRole("button", { name: /manual approval/i })
+    fireEvent.click(pill)
+    fireEvent.blur(pill, { relatedTarget: document.body })
+    expect(screen.queryByRole("menu")).toBeNull()
+    cleanup()
+  })
+
   it("closes on Escape while focus is still on the pill", () => {
     render(
       <ModeSelector
