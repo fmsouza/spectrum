@@ -76,14 +76,14 @@ describe("RunView", () => {
       />,
     )
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "next" } })
-    fireEvent.click(screen.getByRole("button", { name: "Send" }))
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }))
     expect(sent).toBe("next")
     cleanup()
   })
 
   it("disables the composer when inert (replay)", () => {
     render(<RunView {...base} inert />)
-    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled()
     cleanup()
   })
 })

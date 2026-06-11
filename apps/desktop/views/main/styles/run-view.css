@@ -400,24 +400,32 @@
   margin-left: auto;
 }
 
-/* Composer: a flat input row pinned under the conversation column. */
+/* Composer: one rounded card — textarea on top, controls bar beneath
+   (mode pill left [later task], circular send/stop icon button right). */
 .lk-composer {
   flex: 0 0 auto;
   display: flex;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border-top: 1px solid var(--border);
-  background: var(--surface);
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}
+
+.lk-composer:focus-within {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .lk-composer__input {
-  flex: 1 1 auto;
+  border: none;
+  outline: none;
+  resize: none;
   min-height: 2.5rem;
-  resize: vertical;
-  padding: var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  padding: var(--space-1) 0;
+  background: transparent;
   color: var(--text);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
@@ -425,6 +433,42 @@
 
 .lk-composer__input:disabled {
   opacity: 0.6;
+}
+
+.lk-composer__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lk-composer__action {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  transition: background var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+
+.lk-composer__action:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.lk-composer__action[data-action="stop"] {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.lk-composer__action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* ── Typing / working indicator (3 bouncing dots) ───────────────────────────── */

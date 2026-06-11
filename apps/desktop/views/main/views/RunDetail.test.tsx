@@ -84,9 +84,9 @@ describe("RunDetail (live)", () => {
     runner.push(
       stored(0, { type: "runner-started", runnerId: "run_root" as never }),
     )
-    await waitFor(() => screen.getByRole("button", { name: "Send" }))
+    await waitFor(() => screen.getByRole("button", { name: "Send message" }))
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "go" } })
-    fireEvent.click(screen.getByRole("button", { name: "Send" }))
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }))
     expect(runner.sends).toEqual(["go"])
     cleanup()
   })
@@ -121,7 +121,7 @@ describe("RunDetail (replay)", () => {
     await waitFor(() =>
       expect(screen.getByText("Recorded reply")).toBeInTheDocument(),
     )
-    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled()
     expect(runner.attached).toEqual([]) // replay never attaches the socket
     cleanup()
   })
