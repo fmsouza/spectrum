@@ -25,7 +25,7 @@ echo "==> verifying the partials match the rail+master+detail shell (post-redesi
 # Sessions master nav, and the sessions-detail terminal container.
 grep -q -- "--master-w" "$STYLES/tokens.css" \
   && grep -q 'nav\[aria-label="Sessions"\]' "$STYLES/shell.css" \
-  && grep -q "\.sessions-detail" "$STYLES/sessions-detail.css" \
+  && grep -q "\.lk-sessions-detail" "$STYLES/sessions-detail.css" \
   || { echo "FAIL: built style partials are out of sync with the rail+master+detail shell"; exit 1; }
 
 echo "==> launching app"
