@@ -164,6 +164,7 @@ span[data-tone="danger"] {
 /* ─────────────────────── StatusDot (span role=img) ─────────────────────── */
 span[role="img"][data-color] {
   display: inline-block;
+  flex: 0 0 auto;
   width: 10px;
   height: 10px;
   border-radius: 50%;
