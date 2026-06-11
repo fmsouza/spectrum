@@ -12,3 +12,7 @@ export {
   type SdkOptions,
   createClaudeAdapter,
 } from "./sdk-glue"
+export {
+  CLAUDE_SUPPORTED_MODES,
+  toClaudePermissionMode,
+} from "./permission-mode"

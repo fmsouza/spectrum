@@ -24,10 +24,12 @@ const makeFakeSdk = (
   interrupts: number
   closes: number
   pushedPrompts: readonly unknown[]
+  setPermissionModeCalls: readonly string[]
 } => {
   let options: SdkOptions | undefined
   const state = { interrupts: 0, closes: 0 }
   const pushed: unknown[] = []
+  const setPermissionModeCalls: string[] = []
   const done = defer<void>()
 
   const query = (args: {
@@ -51,7 +53,9 @@ const makeFakeSdk = (
         state.closes += 1
         done.resolve()
       },
-      setPermissionMode: async () => undefined,
+      setPermissionMode: async (mode: string) => {
+        setPermissionModeCalls.push(mode)
+      },
     })
     return q
   }
@@ -70,6 +74,9 @@ const makeFakeSdk = (
     },
     get pushedPrompts() {
       return pushed
+    },
+    get setPermissionModeCalls() {
+      return setPermissionModeCalls
     },
   }
 }
@@ -232,5 +239,22 @@ describe("createClaudeAdapter", () => {
     handle.close()
     handle.close()
     expect(fake.closes).toBe(1)
+  })
+
+  it("passes the normalized permissionMode to the SDK query options (plan → 'plan')", async () => {
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    await adapter.start({ ...input, permissionMode: "plan" }, makeCtx([], []))
+    expect(fake.capturedOptions().permissionMode).toBe("plan")
+  })
+
+  it("handle.setMode calls query.setPermissionMode with the mapped SDK string", async () => {
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    const handle = await adapter.start(input, makeCtx([], []))
+    handle.setMode?.("bypass")
+    // setPermissionMode is async/fire-and-forget; wait a tick for the promise to settle
+    await new Promise((r) => setTimeout(r, 0))
+    expect(fake.setPermissionModeCalls).toEqual(["bypassPermissions"])
   })
 })

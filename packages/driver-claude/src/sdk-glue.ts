@@ -6,6 +6,10 @@ import type {
   DriverAdapter,
 } from "@launchkit/driver-runtime"
 import { initialClaudeMapState, mapClaudeMessage } from "./map-claude-message"
+import {
+  CLAUDE_SUPPORTED_MODES,
+  toClaudePermissionMode,
+} from "./permission-mode"
 import type { SdkMessageLike } from "./sdk-types"
 
 /** A user message in the SDK's streaming-input format. */
@@ -143,6 +147,7 @@ export const createClaudeAdapter = (deps: {
   pathToClaudeExecutable?: string
   baseEnv?: () => Record<string, string | undefined>
 }): DriverAdapter => ({
+  supportedModes: CLAUDE_SUPPORTED_MODES,
   start: async (
     input: AgentStartInput,
     ctx: AdapterCtx,
@@ -165,7 +170,9 @@ export const createClaudeAdapter = (deps: {
           ? { model: String(input.modelId) }
           : {}),
         abortController: abort,
-        permissionMode: "default",
+        permissionMode: toClaudePermissionMode(
+          input.permissionMode ?? "manual",
+        ),
         ...(executable !== undefined
           ? { pathToClaudeCodeExecutable: executable }
           : {}),
@@ -201,6 +208,9 @@ export const createClaudeAdapter = (deps: {
     let closed = false
     return {
       send: (text) => inputStream.push(text),
+      setMode: (mode) => {
+        void query.setPermissionMode?.(toClaudePermissionMode(mode))
+      },
       interrupt: () => {
         void query.interrupt()
       },
