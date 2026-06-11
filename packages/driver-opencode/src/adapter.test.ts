@@ -94,14 +94,30 @@ const setup = (decision: ApprovalDecision = "allow") => {
     event: { subscribe: async () => fakeStream },
   }
 
+  let aprSeq = 0
   const ctx = {
     rootRunnerId: ROOT,
     emit: (e: CanonicalEvent) => emitted.push(e),
     newRunnerId: (): RunnerId => "rnr_child" as RunnerId,
+    /**
+     * Mirror the real runtime's ctx.requestApproval: emit an approval-requested with a
+     * minted apr_* requestId THEN resolve to the configured decision.  This is the
+     * regression guard — previously the fake silently swallowed the emit, hiding the
+     * duplicate that the mapper was also producing.
+     */
     requestApproval: async (
-      _r: RunnerId,
-      _t: ApprovalTarget,
-    ): Promise<ApprovalDecision> => decision,
+      r: RunnerId,
+      t: ApprovalTarget,
+    ): Promise<ApprovalDecision> => {
+      const requestId = `apr_${++aprSeq}`
+      emitted.push({
+        type: "approval-requested",
+        runnerId: r,
+        requestId,
+        target: t,
+      })
+      return decision
+    },
   }
 
   const adapter = createOpencodeAdapter({
@@ -331,10 +347,12 @@ describe("createOpencodeAdapter", () => {
     })
     t.fakeStream.end()
     await new Promise((r) => setTimeout(r, 0))
+    // approval-requested comes from the runtime bridge (ctx.requestApproval), NOT from the mapper.
+    // The runtime mints its own apr_* requestId; perm_1 is the opencode id used only for the REST reply.
     expect(t.emitted).toContainEqual({
       type: "approval-requested",
       runnerId: ROOT,
-      requestId: "perm_1",
+      requestId: "apr_1",
       target: { kind: "command", detail: "rm" },
     })
     expect(t.replies).toEqual([

@@ -23,6 +23,10 @@ spawn; `@opencode-ai/sdk` is loaded lazily ONLY inside `realOpencodeConnect`).
 **Local rules:** types are zod-first; `mapOpencodeEvent` is PURE + fully fixture-tested; the GLOBAL SSE
 stream is filtered by `sessionID` (filter client-side, reconcile on reconnect); guard the #6573
 subagent-over-REST hang with a watchdog timeout + kill; no `any`; no import of the proxy/UI/other drivers.
+**`mapOpencodeEvent` deliberately emits NO canonical events for `permission.updated`** — the runtime
+approval bridge (`ctx.requestApproval` in `driver-runtime`) is the single source of truth for
+`approval-requested` events and mints the `apr_*` requestId that `approval-resolved` matches; emitting
+here would produce a duplicate dangling card in the UI.
 
 **Verification status (2026-06-10, macOS arm64, opencode 1.16.2 / @opencode-ai/sdk 1.17.3) — VERIFIED
 (headless driver smoke):** drove the REAL `createOpencodeDriver` (no fake `connect`), so the live
