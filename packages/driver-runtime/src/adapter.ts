@@ -3,6 +3,7 @@ import type {
   ApprovalDecision,
   ApprovalTarget,
   CanonicalEvent,
+  PermissionMode,
   RunnerId,
 } from "@launchkit/agent-events"
 
@@ -14,6 +15,8 @@ export interface AdapterHandle {
   interrupt(): void
   /** Terminate the process / disconnect the server (idempotent). */
   close(): void
+  /** Switch the normalized permission mode (apply natively now, or stash for the next turn). */
+  setMode?(mode: PermissionMode): void
 }
 
 /** What the runtime gives the adapter: a push channel + the approval bridge + runner-id minting. */
@@ -34,4 +37,6 @@ export interface AdapterCtx {
 /** One per harness. `start` does the real async spawn/connect and returns a live handle. */
 export interface DriverAdapter {
   start(input: AgentStartInput, ctx: AdapterCtx): Promise<AdapterHandle>
+  /** The normalized modes this harness supports; omitted = manual only. */
+  readonly supportedModes?: readonly PermissionMode[]
 }
