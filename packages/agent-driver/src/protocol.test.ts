@@ -54,4 +54,19 @@ describe("decodeRunnerInbound", () => {
   it("rejects a non-object payload as bad-message", () => {
     expect(decodeRunnerInbound("nope").ok).toBe(false)
   })
+
+  it("decodes run-set-mode and rejects unknown modes", () => {
+    const ok = decodeRunnerInbound({
+      type: "run-set-mode",
+      id,
+      mode: "plan",
+    })
+    expect(ok.ok).toBe(true)
+    const bad = decodeRunnerInbound({
+      type: "run-set-mode",
+      id,
+      mode: "yolo",
+    })
+    expect(bad.ok).toBe(false)
+  })
 })

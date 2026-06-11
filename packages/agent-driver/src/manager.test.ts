@@ -339,6 +339,49 @@ describe("createRunManager.handleInbound", () => {
   })
 })
 
+describe("createRunManager.handleInbound run-set-mode", () => {
+  it("calls setMode on the live session with the requested mode", () => {
+    const modeCalls: string[] = []
+    const capturingDriver: AgentDriver = {
+      start: () =>
+        ok({
+          rootRunnerId: root,
+          onEvent: () => undefined,
+          send: () => ok(undefined),
+          respondApproval: () => ok(undefined),
+          interrupt: () => ok(undefined),
+          close: () => ok(undefined),
+          setMode: (mode) => {
+            modeCalls.push(mode)
+            return ok(undefined)
+          },
+        }),
+    }
+    const { deps } = makeDeps(scriptOf([]))
+    const manager = createRunManager({ ...deps, driver: capturingDriver })
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    manager.handleInbound({
+      type: "run-set-mode",
+      id: sessionId,
+      mode: "bypass",
+    })
+    expect(modeCalls).toEqual(["bypass"])
+  })
+
+  it("is a safe no-op for an unknown session id", () => {
+    const { deps } = makeDeps(scriptOf([startEvent]))
+    const manager = createRunManager(deps)
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    expect(() =>
+      manager.handleInbound({
+        type: "run-set-mode",
+        id: otherId,
+        mode: "bypass",
+      }),
+    ).not.toThrow()
+  })
+})
+
 describe("createRunManager.bindSend", () => {
   it("uses the rebound sink instead of the original after bindSend", () => {
     const { deps, sent } = makeDeps(scriptOf([startEvent]))
