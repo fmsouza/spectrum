@@ -7,6 +7,7 @@ import type {
   ApprovalDecision,
   ApprovalTarget,
   CanonicalEvent,
+  PermissionMode,
   RunnerId,
 } from "@launchkit/agent-events"
 import { type IdGen, type Result, ok } from "@launchkit/utils"
@@ -66,7 +67,13 @@ export const createDriver = (deps: {
       // startup failure visible: the `errored` event below now attaches to an existing runner
       // instead of being dropped by the reducer. The harness's own `runner-started` (e.g. from
       // claude's system/init) is a harmless re-emit — the reducer treats it idempotently.
-      emit({ type: "runner-started", runnerId: rootRunnerId })
+      emit({
+        type: "runner-started",
+        runnerId: rootRunnerId,
+        ...(deps.adapter.supportedModes !== undefined
+          ? { supportedModes: [...deps.adapter.supportedModes] }
+          : {}),
+      })
       deps.adapter.start(input, ctx).then(
         (h) => {
           if (closed) {
@@ -122,6 +129,10 @@ export const createDriver = (deps: {
       },
       interrupt: () => {
         runOrQueue((h) => h.interrupt())
+        return ok(undefined)
+      },
+      setMode: (mode: PermissionMode) => {
+        runOrQueue((h) => h.setMode?.(mode))
         return ok(undefined)
       },
       close: () => {

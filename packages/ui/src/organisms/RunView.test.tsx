@@ -76,14 +76,52 @@ describe("RunView", () => {
       />,
     )
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "next" } })
-    fireEvent.click(screen.getByRole("button", { name: "Send" }))
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }))
     expect(sent).toBe("next")
     cleanup()
   })
 
   it("disables the composer when inert (replay)", () => {
     render(<RunView {...base} inert />)
-    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled()
+    cleanup()
+  })
+
+  it("forwards onInterrupt to the composer stop button when busy", () => {
+    let interrupted = 0
+    render(
+      <RunView
+        {...base}
+        busy
+        onInterrupt={() => {
+          interrupted += 1
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Stop run" }))
+    expect(interrupted).toBe(1)
+    cleanup()
+  })
+
+  it("renders the mode selector pill and fires onModeChange when a mode is picked", () => {
+    const rootWithModes = {
+      ...rootRunner,
+      supportedModes: ["manual", "plan"] as const,
+    }
+    let picked: string | undefined
+    render(
+      <RunView
+        {...base}
+        root={rootWithModes}
+        mode="manual"
+        onModeChange={(m) => {
+          picked = m
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: /manual approval/i }))
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /plan mode/i }))
+    expect(picked).toBe("plan")
     cleanup()
   })
 })

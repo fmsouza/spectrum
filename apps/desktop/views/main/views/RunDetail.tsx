@@ -25,9 +25,11 @@ const LiveRunDetail = ({
   const runState = useStore(store, (s) => s.byId[sessionId])
   const openSubId = useStore(store, (s) => s.openSubBySession[sessionId])
   const busy = useStore(store, (s) => s.busyBySession[sessionId] ?? false)
+  const mode = useStore(store, (s) => s.modeBySession[sessionId] ?? "manual")
   const applyEvent = useStore(store, (s) => s.applyEvent)
   const openSub = useStore(store, (s) => s.openSub)
   const closeSub = useStore(store, (s) => s.closeSub)
+  const setMode = useStore(store, (s) => s.setMode)
 
   // Register the per-session listener and attach once. The store accumulates the
   // RunState; this effect owns the only socket coupling on the page.
@@ -62,7 +64,13 @@ const LiveRunDetail = ({
       onDecide={(requestId, decision) =>
         runnerClient.approve(sessionId, requestId, decision)
       }
+      onInterrupt={() => runnerClient.interrupt(sessionId)}
       busy={busy}
+      mode={mode}
+      onModeChange={(m) => {
+        setMode(sessionId, m)
+        runnerClient.setMode(sessionId, m)
+      }}
     />
   )
 }

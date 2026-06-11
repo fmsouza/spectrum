@@ -8,7 +8,10 @@ stream, maps each in-scope event to canonical events, bridges `permission.update
 
 **Public API (barrel `src/index.ts`):** `createOpencodeDriver(deps)`; the PURE `mapOpencodeEvent` +
 `newOpencodeMapState` + `OpencodeMapState` (for tests); the injected transport port types
-(`OpencodeEvent`, `OpencodeClient`, `OpencodeServer`, `OpencodeConnect`, `OpencodeConnectConfig`).
+(`OpencodeEvent`, `OpencodeClient`, `OpencodeServer`, `OpencodeConnect`, `OpencodeConnectConfig`);
+`OPENCODE_SUPPORTED_MODES` (manual / plan / bypass — auto-edits is deferred because
+`permission.updated` has no verified edit discriminator). Plan mode sends prompts with `agent: "plan"`;
+bypass auto-replies `"always"` to permission requests without bridging to the UI.
 
 **Depends on:** `@launchkit/driver-runtime`, `@launchkit/agent-events`, `@launchkit/agent-driver`,
 `@launchkit/utils`, `@opencode-ai/sdk`, `zod`. Does NOT import other driver packages, the proxy, or the UI.
@@ -20,6 +23,10 @@ spawn; `@opencode-ai/sdk` is loaded lazily ONLY inside `realOpencodeConnect`).
 **Local rules:** types are zod-first; `mapOpencodeEvent` is PURE + fully fixture-tested; the GLOBAL SSE
 stream is filtered by `sessionID` (filter client-side, reconcile on reconnect); guard the #6573
 subagent-over-REST hang with a watchdog timeout + kill; no `any`; no import of the proxy/UI/other drivers.
+**`mapOpencodeEvent` deliberately emits NO canonical events for `permission.updated`** — the runtime
+approval bridge (`ctx.requestApproval` in `driver-runtime`) is the single source of truth for
+`approval-requested` events and mints the `apr_*` requestId that `approval-resolved` matches; emitting
+here would produce a duplicate dangling card in the UI.
 
 **Verification status (2026-06-10, macOS arm64, opencode 1.16.2 / @opencode-ai/sdk 1.17.3) — VERIFIED
 (headless driver smoke):** drove the REAL `createOpencodeDriver` (no fake `connect`), so the live

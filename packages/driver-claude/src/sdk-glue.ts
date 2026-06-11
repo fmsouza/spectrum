@@ -6,6 +6,10 @@ import type {
   DriverAdapter,
 } from "@launchkit/driver-runtime"
 import { initialClaudeMapState, mapClaudeMessage } from "./map-claude-message"
+import {
+  CLAUDE_SUPPORTED_MODES,
+  toClaudePermissionMode,
+} from "./permission-mode"
 import type { SdkMessageLike } from "./sdk-types"
 
 /** A user message in the SDK's streaming-input format. */
@@ -37,6 +41,7 @@ export interface SdkOptions {
   readonly abortController?: AbortController
   readonly permissionMode?: string
   readonly pathToClaudeCodeExecutable?: string
+  readonly resume?: string
   readonly canUseTool?: (
     toolName: string,
     input: Record<string, unknown>,
@@ -143,73 +148,183 @@ export const createClaudeAdapter = (deps: {
   pathToClaudeExecutable?: string
   baseEnv?: () => Record<string, string | undefined>
 }): DriverAdapter => ({
+  supportedModes: CLAUDE_SUPPORTED_MODES,
   start: async (
     input: AgentStartInput,
     ctx: AdapterCtx,
   ): Promise<AdapterHandle> => {
     const sdk = await deps.loadSdk()
-    const inputStream = makeInputStream()
-    const abort = new AbortController()
-    // Seed the first turn from initialPrompt so the live session has something to do.
-    if (input.initialPrompt !== undefined) inputStream.push(input.initialPrompt)
     const state = initialClaudeMapState(ctx.rootRunnerId)
     state.newRunnerId = ctx.newRunnerId
 
     const executable = input.command ?? deps.pathToClaudeExecutable
-    const query = sdk.query({
-      prompt: inputStream.stream,
-      options: {
-        cwd: input.cwd,
-        env: { ...(deps.baseEnv?.() ?? {}), ...input.env },
-        ...(input.modelId !== undefined
-          ? { model: String(input.modelId) }
-          : {}),
-        abortController: abort,
-        permissionMode: "default",
-        ...(executable !== undefined
-          ? { pathToClaudeCodeExecutable: executable }
-          : {}),
-        canUseTool: async (toolName, toolInput) => {
-          const decision = await ctx.requestApproval(
-            ctx.rootRunnerId,
-            targetFor(toolName, toolInput),
-          )
-          return toPermissionResult(
-            decision,
-            toolInput as Record<string, unknown>,
-          )
-        },
-      },
-    })
 
-    // Pump the SDK message stream → canonical events. A thrown iterator ends the run as errored.
-    void (async () => {
-      try {
-        for await (const msg of query) {
-          for (const event of mapClaudeMessage(msg, state)) ctx.emit(event)
-        }
-      } catch (err) {
-        ctx.emit({
-          type: "runner-finished",
-          runnerId: ctx.rootRunnerId,
-          status: "errored",
-          error: String(err),
-        })
-      }
-    })()
-
+    /** Mutable refs shared across launch closures. */
+    let claudeSessionId: string | undefined
     let closed = false
+    /**
+     * When setMode is called before system:init delivers a session id we cannot resume
+     * yet, so we store the requested mode here and apply it once the id is known.
+     */
+    let pendingRestartMode: string | undefined
+
+    /** The active query quadruple (replaced on restart). */
+    let current: {
+      query: ClaudeQuery
+      inputStream: ReturnType<typeof makeInputStream>
+      abort: AbortController
+      /** Mark this launch stale so its pump's catch does not emit runner-finished errored. */
+      markStale: () => void
+    }
+
+    /**
+     * Build a fresh inputStream + AbortController + sdk.query and start its pump loop.
+     * `permissionMode` is the SDK permission string; `resume` is the claude session id to
+     * resume (absent on the initial launch).
+     */
+    const launch = (
+      permissionMode: string,
+      resume?: string,
+    ): typeof current => {
+      const inputStream = makeInputStream()
+      const abort = new AbortController()
+      // Per-launch stale flag: set by restart() BEFORE tearing down this query so the
+      // old pump's catch fires AFTER stale is true and swallows the teardown error.
+      let stale = false
+      const markStale = (): void => {
+        stale = true
+      }
+
+      const query = sdk.query({
+        prompt: inputStream.stream,
+        options: {
+          cwd: input.cwd,
+          env: { ...(deps.baseEnv?.() ?? {}), ...input.env },
+          ...(input.modelId !== undefined
+            ? { model: String(input.modelId) }
+            : {}),
+          abortController: abort,
+          permissionMode,
+          ...(executable !== undefined
+            ? { pathToClaudeCodeExecutable: executable }
+            : {}),
+          ...(resume !== undefined ? { resume } : {}),
+          canUseTool: async (toolName, toolInput) => {
+            const decision = await ctx.requestApproval(
+              ctx.rootRunnerId,
+              targetFor(toolName, toolInput),
+            )
+            return toPermissionResult(
+              decision,
+              toolInput as Record<string, unknown>,
+            )
+          },
+        },
+      })
+
+      // Pump the SDK message stream → canonical events.
+      void (async () => {
+        try {
+          for await (const msg of query) {
+            // Capture the claude session id from the init message so we can resume later.
+            if (
+              msg.type === "system" &&
+              "subtype" in msg &&
+              msg.subtype === "init" &&
+              "session_id" in msg &&
+              typeof msg.session_id === "string"
+            ) {
+              claudeSessionId = msg.session_id
+              // Apply any mode switch that was requested before the session id was known.
+              if (pendingRestartMode !== undefined) {
+                const mode = pendingRestartMode
+                pendingRestartMode = undefined
+                restart(mode)
+              }
+            }
+            for (const event of mapClaudeMessage(msg, state)) ctx.emit(event)
+          }
+        } catch (err) {
+          // Swallow errors that are caused by tearing down the current query during a
+          // restart or close — they must NOT emit runner-finished errored.
+          if (closed || stale) return
+          ctx.emit({
+            type: "runner-finished",
+            runnerId: ctx.rootRunnerId,
+            status: "errored",
+            error: String(err),
+          })
+        }
+      })()
+
+      return { query, inputStream, abort, markStale }
+    }
+
+    /**
+     * Tear down the current query and relaunch with a new permission mode.
+     * The new query resumes the same claude session so history is preserved.
+     */
+    const restart = (permissionMode: string): void => {
+      if (closed) return
+      // Mark the OLD launch stale BEFORE teardown so its pump's catch (which fires
+      // asynchronously as a microtask) sees stale=true and does not emit errored.
+      current.markStale()
+      current.inputStream.end()
+      current.abort.abort()
+      current.query.close()
+      current = launch(permissionMode, claudeSessionId)
+    }
+
+    // Launch with the initial permission mode.
+    const initialMode = toClaudePermissionMode(input.permissionMode ?? "manual")
+    current = launch(initialMode)
+    // Seed the first turn from initialPrompt so the live session has something to do.
+    // The prompt queue is drained asynchronously so pushing after launch() is safe.
+    if (input.initialPrompt !== undefined)
+      current.inputStream.push(input.initialPrompt)
+
     return {
-      send: (text) => inputStream.push(text),
+      send: (text) => current.inputStream.push(text),
+      setMode: (mode) => {
+        const native = toClaudePermissionMode(mode)
+        // Capture the current query at the time of this setMode call.
+        // This guards Finding 3: if a newer restart already happened by the time
+        // the rejection fires, current.query !== q and we skip the stale restart.
+        const q = current.query
+        const attempt = current.query.setPermissionMode?.(native)
+        if (attempt === undefined) {
+          // SDK without live switching: relaunch with the new mode.
+          // The absent-setPermissionMode path is synchronous; restart immediately regardless
+          // of whether a session id exists (the new session will simply start fresh).
+          restart(native)
+        } else {
+          attempt.catch(() => {
+            // The SDK refuses some in-place switches (e.g. into bypassPermissions when the
+            // process wasn't launched with --dangerously-skip-permissions): relaunch and
+            // resume the same claude session with the new mode instead.
+            // Guard (Finding 3): if a newer restart already replaced current.query, skip —
+            // the new query will get its own setMode if the user switches again.
+            if (current.query !== q) return
+            // Guard (Finding 2): if system:init hasn't arrived yet we have no session id
+            // to resume with, so the conversation would be silently dropped. Defer until
+            // the session id is known; the pump picks it up after system:init.
+            if (claudeSessionId === undefined) {
+              pendingRestartMode = native
+            } else {
+              restart(native)
+            }
+          })
+        }
+      },
       interrupt: () => {
-        void query.interrupt()
+        void current.query.interrupt()
       },
       close: () => {
         if (closed) return
         closed = true
-        inputStream.end()
-        abort.abort()
-        query.close()
+        current.inputStream.end()
+        current.abort.abort()
+        current.query.close()
       },
     }
   },

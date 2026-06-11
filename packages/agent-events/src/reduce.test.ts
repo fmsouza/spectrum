@@ -389,6 +389,28 @@ describe("reduce — annotation & defensiveness", () => {
   })
 })
 
+describe("reduce — supportedModes", () => {
+  it("projects supportedModes onto the runner and preserves them across idempotent re-emits", () => {
+    const startedWithModes = reduce(initialRunState, {
+      type: "runner-started",
+      runnerId: rid("rnr_1"),
+      supportedModes: ["manual", "bypass"],
+    })
+    expect(startedWithModes.runners.get(rid("rnr_1"))?.supportedModes).toEqual([
+      "manual",
+      "bypass",
+    ])
+    const reEmit = reduce(startedWithModes, {
+      type: "runner-started",
+      runnerId: rid("rnr_1"),
+    })
+    expect(reEmit.runners.get(rid("rnr_1"))?.supportedModes).toEqual([
+      "manual",
+      "bypass",
+    ])
+  })
+})
+
 describe("reduce — event-sourcing invariant", () => {
   it("yields identical state whether folded all-at-once or one-by-one", () => {
     const log: readonly CanonicalEvent[] = [

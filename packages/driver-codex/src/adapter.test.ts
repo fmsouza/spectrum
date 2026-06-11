@@ -315,6 +315,7 @@ describe("createCodexAdapter.start", () => {
         {
           threadId: "th_1",
           input: [{ type: "text", text: "first", text_elements: [] }],
+          approvalPolicy: "untrusted",
         },
       ],
     ])
@@ -368,5 +369,40 @@ describe("createCodexAdapter.start", () => {
     handle.close()
     handle.close()
     expect(ft.fake.closed()).toBe(true)
+  })
+
+  it("initial turn/start carries approvalPolicy: untrusted for the default manual mode", async () => {
+    const ft = makeFakeTransport()
+    ft.fake.setResult("thread/start", { thread: { id: "th_1" } })
+    const ctx = makeCtx()
+    const handle = await makeAdapter(ft).start(startInput, ctx.ctx)
+    ft.fake.outgoing.length = 0
+
+    handle.send("hello")
+    const turnStart = ft.fake.outgoing.find(([, m]) => m === "turn/start")
+    expect((turnStart?.[2] as Record<string, unknown>).approvalPolicy).toBe(
+      "untrusted",
+    )
+    expect(
+      (turnStart?.[2] as Record<string, unknown>).sandboxPolicy,
+    ).toBeUndefined()
+  })
+
+  it("after setMode('bypass'), the next turn/start carries never + dangerFullAccess", async () => {
+    const ft = makeFakeTransport()
+    ft.fake.setResult("thread/start", { thread: { id: "th_1" } })
+    const ctx = makeCtx()
+    const handle = await makeAdapter(ft).start(startInput, ctx.ctx)
+    ft.fake.outgoing.length = 0
+
+    handle.setMode?.("bypass")
+    handle.send("go")
+    const turnStart = ft.fake.outgoing.find(([, m]) => m === "turn/start")
+    expect((turnStart?.[2] as Record<string, unknown>).approvalPolicy).toBe(
+      "never",
+    )
+    expect((turnStart?.[2] as Record<string, unknown>).sandboxPolicy).toEqual({
+      type: "dangerFullAccess",
+    })
   })
 })

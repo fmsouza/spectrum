@@ -1,5 +1,6 @@
 import type { Json, ToolCallItem } from "@launchkit/agent-events"
 import type { ReactElement } from "react"
+import type { DotStatus } from "../atoms/StatusDot"
 import { StatusDot } from "../atoms/StatusDot"
 import { ToolIcon } from "../atoms/ToolIcon"
 
@@ -40,6 +41,9 @@ export const ToolCallCard = ({
   onToggle,
 }: ToolCallCardProps): ReactElement => {
   const summary = toolCallSummary(item.input)
+  const hasDetails = item.output !== undefined
+  const dot: DotStatus =
+    item.status === "running" ? "off" : item.status === "error" ? "error" : "on"
   return (
     <div
       className="lk-tool-call"
@@ -49,13 +53,11 @@ export const ToolCallCard = ({
       <button
         type="button"
         className="lk-tool-call__header"
-        aria-expanded={expanded}
+        aria-expanded={hasDetails ? expanded : undefined}
+        disabled={!hasDetails}
         onClick={() => onToggle()}
       >
-        <StatusDot
-          status={item.status === "running" ? "off" : "on"}
-          label={`tool ${item.status}`}
-        />
+        <StatusDot status={dot} label={`tool ${item.status}`} />
         <ToolIcon tool={item.tool} />
         <span className="lk-tool-call__name">{item.tool}</span>
         {summary === undefined ? null : (
@@ -63,12 +65,26 @@ export const ToolCallCard = ({
             {summary}
           </span>
         )}
-        {item.exitCode === undefined ? null : (
-          <span className="lk-tool-call__exit">{`exit ${item.exitCode}`}</span>
-        )}
+        <span className="lk-tool-call__meta">
+          {item.exitCode === undefined ? null : (
+            <span className="lk-tool-call__exit">{`exit ${item.exitCode}`}</span>
+          )}
+          {hasDetails ? (
+            <span className="lk-tool-call__chevron" aria-hidden="true">
+              {expanded ? "▾" : "▸"}
+            </span>
+          ) : null}
+        </span>
       </button>
-      {expanded && item.output !== undefined ? (
-        <pre className="lk-tool-call__output">{item.output}</pre>
+      {expanded && hasDetails ? (
+        <div className="lk-tool-call__details">
+          <div className="lk-tool-call__details-meta">
+            {item.exitCode === undefined
+              ? "output"
+              : `output · exit ${item.exitCode}`}
+          </div>
+          <pre className="lk-tool-call__output">{item.output}</pre>
+        </div>
       ) : null}
     </div>
   )

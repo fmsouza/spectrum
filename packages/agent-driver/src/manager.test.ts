@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type {
   CanonicalEvent,
+  PermissionMode,
   RunnerId,
   StoredEvent,
 } from "@launchkit/agent-events"
@@ -336,6 +337,49 @@ describe("createRunManager.handleInbound", () => {
       manager.handleInbound({ type: "run-send", id: otherId, text: "x" }),
     ).not.toThrow()
     expect(sent).toEqual([])
+  })
+})
+
+describe("createRunManager.handleInbound run-set-mode", () => {
+  it("calls setMode on the live session with the requested mode", () => {
+    const modeCalls: PermissionMode[] = []
+    const capturingDriver: AgentDriver = {
+      start: () =>
+        ok({
+          rootRunnerId: root,
+          onEvent: () => undefined,
+          send: () => ok(undefined),
+          respondApproval: () => ok(undefined),
+          interrupt: () => ok(undefined),
+          close: () => ok(undefined),
+          setMode: (mode) => {
+            modeCalls.push(mode)
+            return ok(undefined)
+          },
+        }),
+    }
+    const { deps } = makeDeps(scriptOf([]))
+    const manager = createRunManager({ ...deps, driver: capturingDriver })
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    manager.handleInbound({
+      type: "run-set-mode",
+      id: sessionId,
+      mode: "bypass",
+    })
+    expect(modeCalls).toEqual(["bypass"])
+  })
+
+  it("is a safe no-op for an unknown session id", () => {
+    const { deps } = makeDeps(scriptOf([startEvent]))
+    const manager = createRunManager(deps)
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    expect(() =>
+      manager.handleInbound({
+        type: "run-set-mode",
+        id: otherId,
+        mode: "bypass",
+      }),
+    ).not.toThrow()
   })
 })
 

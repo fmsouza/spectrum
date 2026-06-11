@@ -3,6 +3,7 @@ export type {
   ApprovalTarget,
   CanonicalEvent,
   Json,
+  PermissionMode,
   StoredEvent,
   Usage,
 } from "./events"
@@ -10,6 +11,7 @@ export {
   ApprovalDecisionSchema,
   ApprovalTargetSchema,
   CanonicalEventSchema,
+  PermissionModeSchema,
   StoredEventSchema,
   UsageSchema,
 } from "./events"

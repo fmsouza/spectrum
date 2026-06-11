@@ -71,4 +71,11 @@ describe("createRunnerClient", () => {
     }
     expect(() => c.dispatch(frame)).not.toThrow()
   })
+
+  it("encodes run-set-mode", () => {
+    const sent: unknown[] = []
+    const client = createRunnerClient((m) => sent.push(m))
+    client.setMode(id, "plan")
+    expect(sent).toEqual([{ type: "run-set-mode", id, mode: "plan" }])
+  })
 })

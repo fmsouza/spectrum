@@ -24,6 +24,14 @@ export type ApprovalTarget = z.infer<typeof ApprovalTargetSchema>
 export const ApprovalDecisionSchema = z.enum(["allow", "deny", "allow-always"])
 export type ApprovalDecision = z.infer<typeof ApprovalDecisionSchema>
 
+export const PermissionModeSchema = z.enum([
+  "manual",
+  "auto-edits",
+  "plan",
+  "bypass",
+])
+export type PermissionMode = z.infer<typeof PermissionModeSchema>
+
 export const CanonicalEventSchema = z.discriminatedUnion("type", [
   z
     .object({
@@ -34,6 +42,7 @@ export const CanonicalEventSchema = z.discriminatedUnion("type", [
       agentType: z.string().optional(),
       title: z.string().optional(),
       model: z.string().optional(),
+      supportedModes: z.array(PermissionModeSchema).optional(),
     })
     .strict(),
   z

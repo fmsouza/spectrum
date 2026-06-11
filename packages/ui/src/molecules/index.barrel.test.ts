@@ -4,6 +4,7 @@ import {
   Composer,
   FileDiffCard,
   MessageBubble,
+  ModeSelector,
   ReasoningBlock,
   SubRunnerCard,
   ToolCallCard,
@@ -21,6 +22,7 @@ describe("molecules barrel", () => {
       SubRunnerCard,
       UsageFooter,
       Composer,
+      ModeSelector,
     ])
       expect(typeof c).toBe("function")
   })

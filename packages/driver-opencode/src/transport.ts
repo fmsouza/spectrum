@@ -169,6 +169,8 @@ export interface OpencodeClient {
           readonly type: "text"
           readonly text: string
         }>
+        /** OpenCode agent to invoke (e.g. "plan"). Accepted by SDK SessionPromptData.body.agent. */
+        readonly agent?: string
       }
     }): Promise<unknown>
     /** Abort the current turn (REST POST /session/:id/abort). */
