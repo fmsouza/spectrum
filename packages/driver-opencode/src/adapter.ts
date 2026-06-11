@@ -127,7 +127,8 @@ export const createOpencodeAdapter = (
         if (closed) return
         arm()
         if (event.type === "permission.updated") {
-          // In scope only if the mapper would emit an approval-requested (i.e. a known session).
+          // In scope only for a known session. The mapper returns [] for permission
+          // events — the runtime approval bridge below owns approval-requested.
           const sess = event.properties.sessionID
           const runner = state.sessions.get(sess)
           if (runner !== undefined) {
@@ -140,9 +141,7 @@ export const createOpencodeAdapter = (
                 body: { response: "always" },
               })
             } else {
-              // Manual: run mapper (emits approval-requested), then bridge to requestApproval.
-              for (const canonical of mapOpencodeEvent(event, state))
-                ctx.emit(canonical)
+              // Manual: bridge to requestApproval (the runtime emits approval-requested).
               const decision = await ctx.requestApproval(runner, {
                 kind: "command",
                 detail:
