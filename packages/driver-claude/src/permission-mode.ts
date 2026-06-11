@@ -7,12 +7,14 @@ export const CLAUDE_SUPPORTED_MODES: readonly PermissionMode[] = [
   "bypass",
 ]
 
+// Record (not a ternary chain) so adding a PermissionMode fails the build here.
+const SDK_MODE: Record<PermissionMode, string> = {
+  manual: "default",
+  "auto-edits": "acceptEdits",
+  plan: "plan",
+  bypass: "bypassPermissions",
+}
+
 /** Normalized LaunchKit mode → the Claude Agent SDK `permissionMode` string. PURE. */
 export const toClaudePermissionMode = (mode: PermissionMode): string =>
-  mode === "auto-edits"
-    ? "acceptEdits"
-    : mode === "plan"
-      ? "plan"
-      : mode === "bypass"
-        ? "bypassPermissions"
-        : "default"
+  SDK_MODE[mode]
