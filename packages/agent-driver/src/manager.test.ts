@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type {
   CanonicalEvent,
+  PermissionMode,
   RunnerId,
   StoredEvent,
 } from "@launchkit/agent-events"
@@ -341,7 +342,7 @@ describe("createRunManager.handleInbound", () => {
 
 describe("createRunManager.handleInbound run-set-mode", () => {
   it("calls setMode on the live session with the requested mode", () => {
-    const modeCalls: string[] = []
+    const modeCalls: PermissionMode[] = []
     const capturingDriver: AgentDriver = {
       start: () =>
         ok({
