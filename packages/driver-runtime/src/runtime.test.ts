@@ -17,6 +17,7 @@ const makeFakeAdapter = (): {
   rejectStart: (err: unknown) => void
   ctx: () => AdapterCtx
   sent: readonly string[]
+  modes: readonly PermissionMode[]
   interrupts: number
   closes: number
 } => {
@@ -24,10 +25,14 @@ const makeFakeAdapter = (): {
   let reject!: (e: unknown) => void
   let captured: AdapterCtx | undefined
   const sent: string[] = []
+  const modes: PermissionMode[] = []
   const state = { interrupts: 0, closes: 0 }
   const handle: AdapterHandle = {
     send: (t) => {
       sent.push(t)
+    },
+    setMode: (mode) => {
+      modes.push(mode)
     },
     interrupt: () => {
       state.interrupts += 1
@@ -56,40 +61,15 @@ const makeFakeAdapter = (): {
     get sent() {
       return sent
     },
+    get modes() {
+      return modes
+    },
     get interrupts() {
       return state.interrupts
     },
     get closes() {
       return state.closes
     },
-  }
-}
-
-// Like makeFakeAdapter but the handle includes setMode, recording calls into the provided array.
-const makeFakeAdapterWithSetMode = (
-  modes: Array<PermissionMode>,
-): {
-  adapter: DriverAdapter
-  resolveStart: () => void
-} => {
-  let resolve!: (h: AdapterHandle) => void
-  const handle: AdapterHandle = {
-    send: () => {},
-    interrupt: () => {},
-    close: () => {},
-    setMode: (mode) => {
-      modes.push(mode)
-    },
-  }
-  const adapter: DriverAdapter = {
-    start: (_input, _ctx) =>
-      new Promise<AdapterHandle>((res) => {
-        resolve = res
-      }),
-  }
-  return {
-    adapter,
-    resolveStart: () => resolve(handle),
   }
 }
 
@@ -485,8 +465,7 @@ describe("createDriver", () => {
   })
 
   it("queues setMode until the handle exists, then forwards to the adapter", async () => {
-    const modes: Array<PermissionMode> = []
-    const fake = makeFakeAdapterWithSetMode(modes)
+    const fake = makeFakeAdapter()
     const driver = createDriver({
       adapter: fake.adapter,
       idGen: createSequentialIdGen(),
@@ -496,16 +475,15 @@ describe("createDriver", () => {
     if (!started.ok) throw new Error("expected ok")
     // setMode BEFORE the adapter resolves → queued, not yet forwarded
     started.value.setMode?.("bypass")
-    expect(modes).toEqual([])
+    expect(fake.modes).toEqual([])
     // resolve start — queue is drained into the handle
     fake.resolveStart()
     await Promise.resolve()
-    expect(modes).toEqual(["bypass"])
+    expect(fake.modes).toEqual(["bypass"])
   })
 
   it("forwards setMode immediately once the handle exists", async () => {
-    const modes: Array<PermissionMode> = []
-    const fake = makeFakeAdapterWithSetMode(modes)
+    const fake = makeFakeAdapter()
     const driver = createDriver({
       adapter: fake.adapter,
       idGen: createSequentialIdGen(),
@@ -518,6 +496,6 @@ describe("createDriver", () => {
     await Promise.resolve()
     // setMode AFTER handle exists → forwarded immediately
     started.value.setMode?.("plan")
-    expect(modes).toEqual(["plan"])
+    expect(fake.modes).toEqual(["plan"])
   })
 })
