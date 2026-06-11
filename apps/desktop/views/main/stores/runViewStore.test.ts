@@ -69,4 +69,12 @@ describe("runViewStore", () => {
     store.getState().closeSub(sid)
     expect(store.getState().openSubBySession[sid]).toBeUndefined()
   })
+
+  it("stores the selected mode per session and clears it on reset", () => {
+    const store = createRunViewStore(noDeps)
+    store.getState().setMode(sid, "bypass")
+    expect(store.getState().modeBySession[sid]).toBe("bypass")
+    store.getState().reset(sid)
+    expect(store.getState().modeBySession[sid]).toBeUndefined()
+  })
 })

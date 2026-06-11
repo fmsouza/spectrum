@@ -102,4 +102,26 @@ describe("RunView", () => {
     expect(interrupted).toBe(1)
     cleanup()
   })
+
+  it("renders the mode selector pill and fires onModeChange when a mode is picked", () => {
+    const rootWithModes = {
+      ...rootRunner,
+      supportedModes: ["manual", "plan"] as const,
+    }
+    let picked: string | undefined
+    render(
+      <RunView
+        {...base}
+        root={rootWithModes}
+        mode="manual"
+        onModeChange={(m) => {
+          picked = m
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: /manual approval/i }))
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /plan mode/i }))
+    expect(picked).toBe("plan")
+    cleanup()
+  })
 })

@@ -1,5 +1,6 @@
 import type {
   ApprovalDecision,
+  PermissionMode,
   RunnerId,
   RunnerState,
 } from "@launchkit/agent-events"
@@ -22,6 +23,8 @@ export type RunViewProps = {
   readonly busy?: boolean
   readonly inert?: boolean
   readonly onInterrupt?: () => void
+  readonly mode?: PermissionMode
+  readonly onModeChange?: (mode: PermissionMode) => void
 }
 
 /** A length proxy for the feed's content so streaming text (not just new items) triggers autoscroll. */
@@ -50,6 +53,8 @@ export const RunView = ({
   busy = false,
   inert = false,
   onInterrupt,
+  mode,
+  onModeChange,
 }: RunViewProps): ReactElement => {
   const scrollRef = useRef<HTMLDivElement>(null)
   // Autoscroll: pin the feed to the latest message as items stream in (and when the dots appear).
@@ -78,6 +83,11 @@ export const RunView = ({
           disabled={inert}
           busy={busy}
           {...(onInterrupt === undefined ? {} : { onInterrupt })}
+          {...(root.supportedModes === undefined
+            ? {}
+            : { supportedModes: root.supportedModes })}
+          {...(mode === undefined ? {} : { mode })}
+          {...(onModeChange === undefined ? {} : { onModeChange })}
         />
       </section>
       {openRunner === undefined ? null : (

@@ -1,5 +1,7 @@
+import type { PermissionMode } from "@launchkit/agent-events"
 import { type KeyboardEvent, type ReactElement, useState } from "react"
 import { Icon } from "../atoms/Icon"
+import { ModeSelector } from "./ModeSelector"
 
 export type ComposerProps = {
   readonly onSend: (text: string) => void
@@ -7,6 +9,9 @@ export type ComposerProps = {
   /** A turn is in flight: swap send → stop (the cancel affordance). Typing stays enabled. */
   readonly busy?: boolean
   readonly onInterrupt?: () => void
+  readonly mode?: PermissionMode
+  readonly supportedModes?: readonly PermissionMode[]
+  readonly onModeChange?: (mode: PermissionMode) => void
 }
 
 export const Composer = ({
@@ -14,6 +19,9 @@ export const Composer = ({
   disabled = false,
   busy = false,
   onInterrupt,
+  mode,
+  supportedModes,
+  onModeChange,
 }: ComposerProps): ReactElement => {
   const [text, setText] = useState("")
   const submit = (): void => {
@@ -40,6 +48,14 @@ export const Composer = ({
         onKeyDown={onKeyDown}
       />
       <div className="lk-composer__bar">
+        {supportedModes === undefined || onModeChange === undefined ? null : (
+          <ModeSelector
+            mode={mode ?? "manual"}
+            supportedModes={supportedModes}
+            onChange={onModeChange}
+            disabled={disabled}
+          />
+        )}
         {busy ? (
           <button
             type="button"

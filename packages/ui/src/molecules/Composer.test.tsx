@@ -112,4 +112,28 @@ describe("Composer", () => {
     expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled()
     cleanup()
   })
+
+  it("renders the mode selector and forwards mode changes", () => {
+    let picked: string | undefined
+    render(
+      <Composer
+        onSend={() => {}}
+        mode="manual"
+        supportedModes={["manual", "plan"]}
+        onModeChange={(m) => {
+          picked = m
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: /manual approval/i }))
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /plan mode/i }))
+    expect(picked).toBe("plan")
+    cleanup()
+  })
+
+  it("hides the mode selector when no modes are provided", () => {
+    render(<Composer onSend={() => {}} />)
+    expect(screen.queryByRole("button", { name: /approval/i })).toBeNull()
+    cleanup()
+  })
 })

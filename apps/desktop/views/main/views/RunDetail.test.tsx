@@ -14,18 +14,22 @@ const id = SessionIdSchema.parse("s_00000000-0000-4000-8000-000000000000")
 const makeFakeRunner = (): RunnerClient & {
   readonly attached: SessionId[]
   readonly sends: string[]
+  readonly setModes: Array<{ id: SessionId; mode: string }>
   push: (event: StoredEvent) => void
 } => {
   let listener: ((event: StoredEvent) => void) | undefined
   const attached: SessionId[] = []
   const sends: string[] = []
+  const setModes: Array<{ id: SessionId; mode: string }> = []
   return {
     attached,
     sends,
+    setModes,
     attach: (sid) => attached.push(sid),
     send: (_sid, text) => sends.push(text),
     approve: () => {},
     interrupt: () => {},
+    setMode: (sid, mode) => setModes.push({ id: sid, mode }),
     dispatch: (_m: RunnerOutbound) => {},
     onEvent: (_sid, cb) => {
       listener = cb
@@ -122,6 +126,32 @@ describe("RunDetail (live)", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: "Stop run" }))
     expect(interrupted).toEqual([id])
+    cleanup()
+  })
+
+  it("renders the mode selector pill and calls runnerClient.setMode on pick", async () => {
+    const runner = makeFakeRunner()
+    renderWithProviders(
+      <RunDetail mode="live" sessionId={id} runnerClient={runner} />,
+      createFakeIpcClient({}),
+    )
+    runner.push(
+      stored(0, {
+        type: "runner-started",
+        runnerId: "run_root" as never,
+        supportedModes: ["manual", "bypass"],
+      }),
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /manual approval/i }),
+      ).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /manual approval/i }))
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: /bypass permissions/i }),
+    )
+    expect(runner.setModes).toEqual([{ id, mode: "bypass" }])
     cleanup()
   })
 })
