@@ -200,17 +200,11 @@
   white-space: pre-wrap;
 }
 
-/* Tool call cards: a header row (status dot, icon, name, exit) over an optional
-   monospace output body. data-status tints the left edge. */
+/* Tool/skill rows: flat (un-boxed) one-liners in the conversation; pressing a
+   row with output opens a bordered detail card directly below it. Failure shows
+   as a red status dot (no red border). */
 .lk-tool-call {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  overflow: hidden;
-}
-
-.lk-tool-call[data-status="error"] {
-  border-color: var(--red);
+  min-width: 0;
 }
 
 .lk-tool-call__header {
@@ -218,12 +212,16 @@
   align-items: center;
   gap: var(--space-2);
   width: 100%;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) 0;
   border: none;
   background: transparent;
-  color: var(--text);
+  color: var(--text-muted);
   cursor: pointer;
   text-align: left;
+}
+
+.lk-tool-call__header:disabled {
+  cursor: default;
 }
 
 .lk-tool-call__name {
@@ -232,7 +230,6 @@
   flex: 0 0 auto;
 }
 
-/* The inline command / file / skill detail next to the tool name (single line, truncated). */
 .lk-tool-call__summary {
   flex: 1 1 auto;
   min-width: 0;
@@ -244,17 +241,44 @@
   color: var(--text-muted);
 }
 
-.lk-tool-call__exit {
+.lk-tool-call__meta {
   margin-left: auto;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.lk-tool-call__exit {
   color: var(--text-faint);
   font-size: var(--text-xs);
+}
+
+.lk-tool-call__chevron {
+  color: var(--text-faint);
+  font-size: var(--text-xs);
+}
+
+.lk-tool-call__details {
+  margin-top: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.lk-tool-call__details-meta {
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .lk-tool-call__output {
   margin: 0;
   padding: var(--space-2) var(--space-3);
-  border-top: 1px solid var(--border);
   background: var(--surface-inset);
   font-family: var(--font-mono);
   font-size: var(--text-xs);

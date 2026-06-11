@@ -180,6 +180,11 @@ span[role="img"][data-color="grey"] {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--grey) 22%, transparent);
 }
 
+span[role="img"][data-color="red"] {
+  background: var(--red);
+  box-shadow: 0 0 0 3px var(--red-soft);
+}
+
 /* The dashboard wraps the dot in <div aria-label="Proxy status">. Give it a
    pill so the running/stopped state reads at a glance. */
 div[aria-label="Proxy status"] {

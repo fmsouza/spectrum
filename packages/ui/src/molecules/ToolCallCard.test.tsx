@@ -82,4 +82,60 @@ describe("ToolCallCard", () => {
     expect(toggled).toBe(true)
     cleanup()
   })
+
+  it("shows a red dot (not a green one) when the tool call errored", () => {
+    render(
+      <ToolCallCard
+        item={{
+          kind: "tool-call",
+          callId: "c1",
+          tool: "Bash",
+          status: "error",
+          output: "boom",
+          exitCode: 2,
+        }}
+        expanded={false}
+        onToggle={() => {}}
+      />,
+    )
+    expect(screen.getByRole("img", { name: "tool error" })).toHaveAttribute(
+      "data-color",
+      "red",
+    )
+    cleanup()
+  })
+
+  it("disables the row and hides the chevron when there is no output", () => {
+    render(
+      <ToolCallCard
+        item={{ kind: "tool-call", callId: "c2", tool: "Read", status: "ok" }}
+        expanded={false}
+        onToggle={() => {}}
+      />,
+    )
+    expect(screen.getByRole("button")).toBeDisabled()
+    expect(screen.queryByText("▸")).toBeNull()
+    cleanup()
+  })
+
+  it("renders the output inside a details card when expanded", () => {
+    render(
+      <ToolCallCard
+        item={{
+          kind: "tool-call",
+          callId: "c3",
+          tool: "Bash",
+          status: "ok",
+          output: "done",
+          exitCode: 0,
+        }}
+        expanded
+        onToggle={() => {}}
+      />,
+    )
+    expect(screen.getByText("done")).toBeInTheDocument()
+    expect(screen.getByText("output · exit 0")).toBeInTheDocument()
+    expect(screen.getByText("▾")).toBeInTheDocument()
+    cleanup()
+  })
 })
