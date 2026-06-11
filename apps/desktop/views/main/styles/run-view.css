@@ -526,3 +526,63 @@
   -webkit-user-select: text;
   cursor: auto;
 }
+
+/* Mode selector: a pill in the composer bar opening an upward menu of the
+   harness's supported normalized modes. */
+.lk-mode-selector {
+  position: relative;
+}
+
+.lk-mode-selector__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 24px;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.lk-mode-selector__pill:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.lk-mode-selector__menu {
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 40;
+  min-width: 240px;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.lk-mode-selector__item {
+  display: block;
+  width: 100%;
+  padding: var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-align: left;
+}
+
+.lk-mode-selector__item:hover,
+.lk-mode-selector__item[aria-checked="true"] {
+  background: var(--surface-inset);
+}
+
+.lk-mode-selector__hint {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
