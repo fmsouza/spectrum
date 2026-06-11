@@ -14,19 +14,19 @@ echo "==> verifying launcher entrypoint exists (bun/index.js)"
 test -f "$APP/Contents/Resources/app/bun/index.js" \
   || { echo "FAIL: bundle is missing bun/index.js — launcher will load nothing"; exit 1; }
 
-echo "==> verifying the built app.css contains the app theme (not just xterm)"
-CSS="$APP/Contents/Resources/app/views/main/app.css"
-grep -q ":root" "$CSS" && grep -q "nav\[aria-label" "$CSS" \
-  || { echo "FAIL: built app.css is missing the app theme (xterm CSS likely clobbered it)"; exit 1; }
+echo "==> verifying the built style partials contain the app theme"
+STYLES="$APP/Contents/Resources/app/views/main/styles"
+grep -q ":root" "$STYLES/tokens.css" \
+  || { echo "FAIL: built tokens.css is missing the app theme"; exit 1; }
 
-echo "==> verifying app.css matches the rail+master+detail shell (post-redesign)"
+echo "==> verifying the partials match the rail+master+detail shell (post-redesign)"
 # Guards against the CSS desyncing from the AppShell DOM again (the unstyled
 # master/detail regression): the 3-zone grid needs the master-column token, the
 # Sessions master nav, and the sessions-detail terminal container.
-grep -q -- "--master-w" "$CSS" \
-  && grep -q 'nav\[aria-label="Sessions"\]' "$CSS" \
-  && grep -q "\.sessions-detail" "$CSS" \
-  || { echo "FAIL: built app.css is out of sync with the rail+master+detail shell"; exit 1; }
+grep -q -- "--master-w" "$STYLES/tokens.css" \
+  && grep -q 'nav\[aria-label="Sessions"\]' "$STYLES/shell.css" \
+  && grep -q "\.sessions-detail" "$STYLES/sessions-detail.css" \
+  || { echo "FAIL: built style partials are out of sync with the rail+master+detail shell"; exit 1; }
 
 echo "==> launching app"
 open "$APP"
