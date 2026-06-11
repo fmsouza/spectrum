@@ -164,6 +164,7 @@ span[data-tone="danger"] {
 /* ─────────────────────── StatusDot (span role=img) ─────────────────────── */
 span[role="img"][data-color] {
   display: inline-block;
+  flex: 0 0 auto;
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -178,6 +179,11 @@ span[role="img"][data-color="green"] {
 span[role="img"][data-color="grey"] {
   background: var(--grey);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--grey) 22%, transparent);
+}
+
+span[role="img"][data-color="red"] {
+  background: var(--red);
+  box-shadow: 0 0 0 3px var(--red-soft);
 }
 
 /* The dashboard wraps the dot in <div aria-label="Proxy status">. Give it a

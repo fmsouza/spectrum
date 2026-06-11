@@ -1,8 +1,4 @@
-import type {
-  ApprovalTarget,
-  CanonicalEvent,
-  RunnerId,
-} from "@launchkit/agent-events"
+import type { CanonicalEvent, RunnerId } from "@launchkit/agent-events"
 import type { OpencodeEvent } from "./transport"
 
 /** Mutable mapping state: session→runner correlation + per-call lifecycle tracking. Owned by the adapter per run. */
@@ -32,20 +28,6 @@ const runnerFor = (
   state: OpencodeMapState,
   sessionID: string,
 ): RunnerId | undefined => state.sessions.get(sessionID)
-
-/** Map an OpenCode permission `type`/`pattern` onto the canonical approval target kind + detail. */
-const approvalTargetOf = (props: {
-  readonly pattern: string | ReadonlyArray<string> | undefined
-  readonly title: string
-}): ApprovalTarget => {
-  const detail =
-    props.pattern === undefined
-      ? props.title
-      : Array.isArray(props.pattern)
-        ? props.pattern.join(" ")
-        : (props.pattern as string)
-  return { kind: "command", detail }
-}
 
 /** Pull a human message out of OpenCode's `{ name, data: { message } }` error envelope, defensively. */
 const extractErrorMessage = (error: unknown): string | undefined => {
@@ -143,19 +125,11 @@ export const mapOpencodeEvent = (
       return []
     }
     case "permission.updated": {
-      const runner = runnerFor(state, event.properties.sessionID)
-      if (runner === undefined) return []
-      return [
-        {
-          type: "approval-requested",
-          runnerId: runner,
-          requestId: event.properties.id,
-          target: approvalTargetOf({
-            pattern: event.properties.pattern,
-            title: event.properties.title,
-          }),
-        },
-      ]
+      // Deliberately emits NO canonical events. The runtime approval bridge
+      // (ctx.requestApproval in driver-runtime) is the single source of truth for
+      // approval-requested — it mints the apr_* requestId that approval-resolved matches.
+      // Emitting here would produce a duplicate dangling card in the UI.
+      return []
     }
     case "permission.replied": {
       // The canonical approval-resolved is emitted by the runtime on respondApproval; the server's

@@ -1,5 +1,5 @@
 import type { AgentStartInput } from "@launchkit/agent-driver"
-import type { ApprovalDecision } from "@launchkit/agent-events"
+import type { ApprovalDecision, PermissionMode } from "@launchkit/agent-events"
 import type {
   AdapterCtx,
   AdapterHandle,
@@ -11,6 +11,21 @@ import {
   type OpencodeConnectConfig,
   buildOpencodeProxyConfig,
 } from "./transport"
+
+/**
+ * Permission modes supported by the OpenCode adapter.
+ * - "manual": user is prompted for every permission (default).
+ * - "plan": prompts are routed to OpenCode's plan agent (body gains `agent: "plan"`).
+ * - "bypass": permission.updated events are auto-approved with `response: "always"`,
+ *   skipping the requestApproval bridge entirely.
+ * NOTE: "auto-edits" is NOT included — the permission.updated payload has no verified
+ * edit-vs-command discriminator in the current SDK.
+ */
+export const OPENCODE_SUPPORTED_MODES: readonly PermissionMode[] = [
+  "manual",
+  "plan",
+  "bypass",
+]
 
 export interface OpencodeAdapterDeps {
   /** Start/connect `opencode serve` + client (injected; real impl wraps @opencode-ai/sdk). */
@@ -58,9 +73,12 @@ const replyFor = (decision: ApprovalDecision): "once" | "always" | "reject" =>
 export const createOpencodeAdapter = (
   deps: OpencodeAdapterDeps,
 ): DriverAdapter => ({
+  supportedModes: OPENCODE_SUPPORTED_MODES,
   start: async (input, ctx: AdapterCtx): Promise<AdapterHandle> => {
     const setTimer = deps.setTimer ?? ((fn, ms) => setTimeout(fn, ms))
     const clearTimer = deps.clearTimer ?? ((h) => clearTimeout(h))
+
+    let mode: PermissionMode = input.permissionMode ?? "manual"
 
     const { client, server } = await deps.connect(readConfig(input))
     const created = await client.session.create({ body: {} })
@@ -108,26 +126,39 @@ export const createOpencodeAdapter = (
       for await (const event of subscription.stream) {
         if (closed) return
         arm()
-        for (const canonical of mapOpencodeEvent(event, state))
-          ctx.emit(canonical)
         if (event.type === "permission.updated") {
-          // In scope only if the mapper emitted an approval-requested (i.e. a known session).
+          // In scope only for a known session. The mapper returns [] for permission
+          // events — the runtime approval bridge below owns approval-requested.
           const sess = event.properties.sessionID
           const runner = state.sessions.get(sess)
           if (runner !== undefined) {
             permissionSessions.set(event.properties.id, sess)
-            const decision = await ctx.requestApproval(runner, {
-              kind: "command",
-              detail:
-                typeof event.properties.pattern === "string"
-                  ? event.properties.pattern
-                  : event.properties.title,
-            })
-            await client.session.permissions({
-              path: { id: sess, permissionID: event.properties.id },
-              body: { response: replyFor(decision) },
-            })
+            if (mode === "bypass") {
+              // Bypass: auto-approve with "always" — skip the UI approval card entirely
+              // (don't emit approval-requested, don't call requestApproval).
+              await client.session.permissions({
+                path: { id: sess, permissionID: event.properties.id },
+                body: { response: "always" },
+              })
+            } else {
+              // Manual: bridge to requestApproval (the runtime emits approval-requested).
+              const decision = await ctx.requestApproval(runner, {
+                kind: "command",
+                detail:
+                  typeof event.properties.pattern === "string"
+                    ? event.properties.pattern
+                    : event.properties.title,
+              })
+              await client.session.permissions({
+                path: { id: sess, permissionID: event.properties.id },
+                body: { response: replyFor(decision) },
+              })
+            }
           }
+          // Skip mapper for unknown sessions (it returns [] anyway).
+        } else {
+          for (const canonical of mapOpencodeEvent(event, state))
+            ctx.emit(canonical)
         }
         if (
           event.type === "session.idle" &&
@@ -137,12 +168,23 @@ export const createOpencodeAdapter = (
       }
     })()
 
+    // Build a prompt body with optional agent field for plan mode.
+    const promptBody = (
+      text: string,
+    ): {
+      parts: ReadonlyArray<{ type: "text"; text: string }>
+      agent?: string
+    } => ({
+      parts: [{ type: "text", text }],
+      ...(mode === "plan" ? { agent: "plan" } : {}),
+    })
+
     // Initial prompt.
     if (input.initialPrompt !== undefined && input.initialPrompt !== "") {
       arm()
       await client.session.prompt({
         path: { id: sessionId },
-        body: { parts: [{ type: "text", text: input.initialPrompt }] },
+        body: promptBody(input.initialPrompt),
       })
     }
 
@@ -151,7 +193,7 @@ export const createOpencodeAdapter = (
         arm()
         void client.session.prompt({
           path: { id: sessionId },
-          body: { parts: [{ type: "text", text }] },
+          body: promptBody(text),
         })
       },
       interrupt: () => {
@@ -161,6 +203,9 @@ export const createOpencodeAdapter = (
         closed = true
         disarm()
         server?.close()
+      },
+      setMode: (m) => {
+        mode = m
       },
     }
   },

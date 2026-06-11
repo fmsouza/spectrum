@@ -55,6 +55,9 @@
  *   - `.lk-tooltip__bubble` — only in the DOM while the Tooltip trigger is
  *     hovered/focused (open state). No rendered app state hovers the rail
  *     tooltip; the `.lk-tooltip` wrapper IS checked. Verified by Tooltip.test.tsx.
+ *   - `span[role="img"][data-color="red"]` (StatusDot error) — only rendered by
+ *     ToolCallCard when status="error". No contract state renders a conversation
+ *     with an errored tool call. Verified by ToolCallCard.test.tsx and StatusDot.test.tsx.
  */
 
 import { afterEach, describe, expect, it } from "bun:test"
@@ -350,6 +353,10 @@ const isHasNotBucket = (s: string): boolean =>
  *   - `.lk-field__error` — only rendered when FormField receives an `error` prop
  *     (server validation error); no test state triggers a server-side form error.
  *     Verified by FormField.test.tsx.
+ *
+ *   - `span[role="img"][data-color="red"]` (StatusDot error) — only rendered by
+ *     ToolCallCard when status="error". No contract state renders a conversation
+ *     with an errored tool call. Verified by ToolCallCard.test.tsx and StatusDot.test.tsx.
  */
 const isDocumentedGap = (s: string): boolean => {
   // Stack/Row attribute variants
@@ -370,6 +377,10 @@ const isDocumentedGap = (s: string): boolean => {
   // (from the expanded groups rendered in State 2a). Collapsing is verified by
   // ProjectGroup.test.tsx.
   if (s === '.lk-project-group__toggle[data-collapsed="true"]') return true
+  // Red StatusDot — only rendered by ToolCallCard on status="error". No contract state
+  // renders a conversation/ToolCallCard with an error status. Verified by
+  // ToolCallCard.test.tsx and StatusDot.test.tsx.
+  if (s === 'span[role="img"][data-color="red"]') return true
   return false
 }
 

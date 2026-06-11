@@ -8,7 +8,9 @@
 **Public API (barrel `src/index.ts`):** `AgentDriver`/`AgentSession`/`AgentStartInput`/`DriverError`;
 `SessionSink`/`RunEventSink` ports; `RunnerInbound`/`RunnerOutbound`/`decodeRunnerInbound`;
 `RunManager`/`RunManagerDeps`/`RunLaunchInput`/`createRunManager`; `FakeReaction`/`FakeScript`/
-`createFakeDriver`/`demoScript`.
+`createFakeDriver`/`demoScript`. The socket protocol now includes the inbound command `run-set-mode`;
+`AgentSession` has an optional `setMode` method for mid-session mode changes; `AgentStartInput` carries
+an optional `permissionMode` field (absent means manual).
 
 **Depends on:** `@launchkit/agent-events`, `@launchkit/types`, `@launchkit/utils`.
 

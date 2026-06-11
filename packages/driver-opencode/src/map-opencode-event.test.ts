@@ -91,16 +91,11 @@ describe("mapOpencodeEvent", () => {
     ])
   })
 
-  it("maps permission.updated to approval-requested (requestId = permission id, kind+detail)", () => {
+  it("emits [] for permission.updated (runtime bridge owns approval-requested; mapper is not the source)", () => {
+    // The runtime ctx.requestApproval is the single source of truth for approval-requested events.
+    // The mapper deliberately returns [] so no duplicate dangling card appears in the UI.
     const out = mapOpencodeEvent(permissionUpdatedFixture, mkState())
-    expect(out).toEqual([
-      {
-        type: "approval-requested",
-        runnerId: ROOT,
-        requestId: "perm_1",
-        target: { kind: "command", detail: "rm -rf build" },
-      },
-    ])
+    expect(out).toEqual([])
   })
 
   it("maps a child session (parentID) to runner-started with a fresh child id + parentRunnerId, then routes its parts", () => {

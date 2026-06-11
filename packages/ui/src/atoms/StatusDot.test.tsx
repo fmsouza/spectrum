@@ -21,4 +21,11 @@ describe("StatusDot", () => {
       "grey",
     )
   })
+  it("marks the dot red when the status is error", () => {
+    render(<StatusDot status="error" label="tool error" />)
+    expect(screen.getByLabelText("tool error")).toHaveAttribute(
+      "data-color",
+      "red",
+    )
+  })
 })

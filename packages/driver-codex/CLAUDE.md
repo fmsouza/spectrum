@@ -9,7 +9,9 @@ and map `send`/`interrupt`/`close` onto `turn/start`|`turn/steer` / `turn/interr
 
 **Public API (barrel `src/index.ts`):** `createCodexDriver(deps)`; the PURE `mapCodexEvent` +
 `CodexMapState` (for tests); `CODEX_APP_SERVER_VERSION`; the `JsonRpcTransport` SPI +
-`createStdioJsonRpcTransport`.
+`createStdioJsonRpcTransport`; `toCodexTurnPolicy` (pure mapper from `PermissionMode` → Codex approval
+policy); `CODEX_SUPPORTED_MODES` (manual / auto-edits / bypass — plan mode is unsupported by the
+app-server protocol).
 
 **Depends on:** `@launchkit/driver-runtime`, `@launchkit/agent-driver`, `@launchkit/agent-events`,
 `@launchkit/types`, `@launchkit/utils`. Does NOT import other driver packages, the proxy, or the UI; it
@@ -24,4 +26,6 @@ PURE mapper needs neither a process nor the binary.
 method strings). app-server is `[experimental]`: unknown/unsupported item types and methods are handled
 defensively (the mapper returns `[]`; unsupported server requests get a JSON-RPC error so the server is not
 left hanging). `baseEnv` (default `process.env`) is merged UNDER `input.env` so the spawned process inherits
-`PATH`/`HOME` while the per-run proxy vars win.
+`PATH`/`HOME` while the per-run proxy vars win. Turn and start policy overrides (derived from
+`permissionMode`) are re-asserted on every turn and deliberately override any user-side
+`~/.codex/config.toml` approval/sandbox profile for LaunchKit-launched sessions.

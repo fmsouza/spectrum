@@ -11,4 +11,8 @@ describe("@launchkit/agent-events barrel", () => {
     expect(typeof agentEvents.CanonicalEventSchema.parse).toBe("function")
     expect(typeof agentEvents.StoredEventSchema.parse).toBe("function")
   })
+
+  it("exports PermissionModeSchema when imported", () => {
+    expect(typeof agentEvents.PermissionModeSchema.parse).toBe("function")
+  })
 })

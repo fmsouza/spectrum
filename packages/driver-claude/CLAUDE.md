@@ -7,7 +7,9 @@ route `canUseTool` → `ctx.requestApproval`, and map `send`/`interrupt`/`close`
 `query.interrupt()` / `AbortController.abort()`.
 
 **Public API (barrel `src/index.ts`):** `createClaudeDriver(deps)`; `mapClaudeMessage` + `ClaudeMapState`/
-`initialClaudeMapState` (PURE, for tests); the narrow `SdkMessageLike` types.
+`initialClaudeMapState` (PURE, for tests); the narrow `SdkMessageLike` types; `toClaudePermissionMode`
+(pure mapper from `PermissionMode` → SDK permission value); `CLAUDE_SUPPORTED_MODES` (all four modes:
+manual / auto-edits / plan / bypass — applied mid-session via the SDK's `setPermissionMode`).
 
 **Depends on:** `@launchkit/driver-runtime`, `@launchkit/agent-driver`, `@launchkit/agent-events`,
 `@launchkit/utils`, and `@anthropic-ai/claude-agent-sdk` (its only harness SDK). Does NOT import other

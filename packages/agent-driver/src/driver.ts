@@ -1,5 +1,9 @@
 import type { RunnerId } from "@launchkit/agent-events"
-import type { ApprovalDecision, CanonicalEvent } from "@launchkit/agent-events"
+import type {
+  ApprovalDecision,
+  CanonicalEvent,
+  PermissionMode,
+} from "@launchkit/agent-events"
 import type { HarnessId, ModelId } from "@launchkit/types"
 import type { Result } from "@launchkit/utils"
 
@@ -32,6 +36,8 @@ export interface AgentStartInput {
    * ignores the LaunchKit proxy. Drivers that route via env (claude/opencode/openclaw) ignore this.
    */
   readonly args?: readonly string[]
+  /** The normalized permission mode the session starts in; absent = "manual". */
+  readonly permissionMode?: PermissionMode
 }
 
 export interface AgentSession {
@@ -44,6 +50,8 @@ export interface AgentSession {
   ): Result<void, DriverError>
   interrupt(): Result<void, DriverError>
   close(): Result<void, DriverError>
+  /** Switch the normalized permission mode mid-session (driver applies natively or on next turn). */
+  setMode?(mode: PermissionMode): Result<void, DriverError>
 }
 
 export interface AgentDriver {
