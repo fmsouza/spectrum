@@ -8,7 +8,10 @@ stream, maps each in-scope event to canonical events, bridges `permission.update
 
 **Public API (barrel `src/index.ts`):** `createOpencodeDriver(deps)`; the PURE `mapOpencodeEvent` +
 `newOpencodeMapState` + `OpencodeMapState` (for tests); the injected transport port types
-(`OpencodeEvent`, `OpencodeClient`, `OpencodeServer`, `OpencodeConnect`, `OpencodeConnectConfig`).
+(`OpencodeEvent`, `OpencodeClient`, `OpencodeServer`, `OpencodeConnect`, `OpencodeConnectConfig`);
+`OPENCODE_SUPPORTED_MODES` (manual / plan / bypass — auto-edits is deferred because
+`permission.updated` has no verified edit discriminator). Plan mode sends prompts with `agent: "plan"`;
+bypass auto-replies `"always"` to permission requests without bridging to the UI.
 
 **Depends on:** `@launchkit/driver-runtime`, `@launchkit/agent-events`, `@launchkit/agent-driver`,
 `@launchkit/utils`, `@opencode-ai/sdk`, `zod`. Does NOT import other driver packages, the proxy, or the UI.
