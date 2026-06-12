@@ -1,4 +1,7 @@
-import { PermissionModeSchema, StoredEventSchema } from "@launchkit/agent-events"
+import {
+  PermissionModeSchema,
+  StoredEventSchema,
+} from "@launchkit/agent-events"
 import {
   HarnessDefinitionSchema,
   HarnessIdSchema,
