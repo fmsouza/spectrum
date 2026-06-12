@@ -1,6 +1,7 @@
-export type { Settings, Config } from "./schema"
+export type { Settings, Config, HarnessPrefs } from "./schema"
 export {
   SettingsSchema,
+  HarnessPrefsSchema,
   ConfigSchema,
   CURRENT_CONFIG_VERSION,
   defaultConfig,

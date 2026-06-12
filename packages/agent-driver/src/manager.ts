@@ -1,4 +1,8 @@
-import type { CanonicalEvent, StoredEvent } from "@launchkit/agent-events"
+import type {
+  CanonicalEvent,
+  PermissionMode,
+  StoredEvent,
+} from "@launchkit/agent-events"
 import type { HarnessId, ModelId, SessionId } from "@launchkit/types"
 import { type Clock, type Result, isErr, isOk, ok } from "@launchkit/utils"
 import type { AgentDriver, AgentSession, DriverError } from "./driver"
@@ -8,6 +12,8 @@ import type { RunnerInbound, RunnerOutbound } from "./protocol"
 export interface RunLaunchInput {
   readonly harnessId: HarnessId
   readonly modelId?: ModelId
+  /** The normalized permission mode the session starts in; absent = the driver's default ("manual"). */
+  readonly permissionMode?: PermissionMode
   readonly name?: string
   readonly cwd: string
   readonly env: Readonly<Record<string, string>>
@@ -62,6 +68,9 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
     const started = deps.driver.start({
       harnessId: input.harnessId,
       ...(input.modelId !== undefined ? { modelId: input.modelId } : {}),
+      ...(input.permissionMode !== undefined
+        ? { permissionMode: input.permissionMode }
+        : {}),
       cwd: input.cwd,
       env: input.env,
       ...(input.initialPrompt !== undefined

@@ -1,4 +1,7 @@
-import { StoredEventSchema } from "@launchkit/agent-events"
+import {
+  PermissionModeSchema,
+  StoredEventSchema,
+} from "@launchkit/agent-events"
 import {
   HarnessDefinitionSchema,
   HarnessIdSchema,
@@ -208,6 +211,16 @@ export const GetSettingsResultSchema = z
   })
   .strict()
 
+// Persist a per-harness "last used" pref. Inbound (webview→main) only; returns void. The mode is
+// validated against the canonical PermissionMode here so config never stores an unrecognized value.
+export const UpdateHarnessPrefsParamsSchema = z
+  .object({
+    harnessId: HarnessIdSchema,
+    mode: PermissionModeSchema.optional(),
+  })
+  .strict()
+export const UpdateHarnessPrefsResultSchema = VoidSchema
+
 // ── Projects ──────────────────────────────────────────────────────────────
 
 export const GetProjectsParamsSchema = z.undefined()
@@ -312,6 +325,10 @@ export const IpcMethodSchemas = {
   setCollapsedProjects: {
     params: SetCollapsedProjectsParamsSchema,
     result: SetCollapsedProjectsResultSchema,
+  },
+  updateHarnessPrefs: {
+    params: UpdateHarnessPrefsParamsSchema,
+    result: UpdateHarnessPrefsResultSchema,
   },
 } as const
 
