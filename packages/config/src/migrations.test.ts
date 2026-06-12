@@ -20,8 +20,8 @@ const v1Config = {
 }
 
 describe("migrations", () => {
-  it("ships ordered v1->v2, v2->v3, v3->v4, v4->v5, and v5->v6 migrations", () => {
-    expect(migrations).toHaveLength(5)
+  it("ships ordered v1->v2, v2->v3, v3->v4, v4->v5, v5->v6, and v6->v7 migrations", () => {
+    expect(migrations).toHaveLength(6)
     expect(migrations[0]?.from).toBe(1)
     expect(migrations[0]?.to).toBe(2)
     expect(migrations[1]?.from).toBe(2)
@@ -32,6 +32,8 @@ describe("migrations", () => {
     expect(migrations[3]?.to).toBe(5)
     expect(migrations[4]?.from).toBe(5)
     expect(migrations[4]?.to).toBe(6)
+    expect(migrations[5]?.from).toBe(6)
+    expect(migrations[5]?.to).toBe(7)
   })
 })
 
@@ -60,6 +62,7 @@ describe("runMigrations", () => {
         lastSelectedHarnessId: "",
         lastSelectedModelId: "",
         collapsedProjects: [],
+        lastByHarness: {},
       },
     }
     expect(runMigrations(current)).toEqual({ ok: true, value: current })
@@ -134,6 +137,27 @@ describe("runMigrations", () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error.kind).toBe("migration-failed")
+  })
+
+  it("migrates a v6 config to v7, adding an empty lastByHarness", () => {
+    const v6 = {
+      version: 6,
+      providers: [],
+      models: [],
+      settings: {
+        proxyPort: 4000,
+        proxyHost: "127.0.0.1" as const,
+        lastSelectedFolder: "",
+        lastSelectedHarnessId: "",
+        lastSelectedModelId: "",
+        collapsedProjects: [],
+      },
+    }
+    const result = runMigrations(v6)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.version).toBe(CURRENT_CONFIG_VERSION)
+    expect(result.value.settings.lastByHarness).toEqual({})
   })
 })
 
