@@ -15,6 +15,8 @@ export type MessageItem = {
   messageId: string
   role: "user" | "assistant"
   text: string
+  /** Set when this message carries a turn error (e.g. a provider failure) — render in error state. */
+  tone?: "error"
 }
 export type ReasoningItem = {
   kind: "reasoning"
@@ -62,6 +64,7 @@ export type RunnerState = {
   items: TimelineItem[]
   usage?: Usage
   supportedModes?: readonly PermissionMode[]
+  error?: string
 }
 export type RunState = {
   rootRunnerId?: RunnerId
@@ -136,9 +139,14 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
     case "runner-finished": {
       const runner = state.runners.get(event.runnerId)
       if (runner === undefined) return state
-      // `event.error` is intentionally not projected into RunnerState; it is
-      // retained only in the StoredEvent envelope for audit / replay purposes.
-      return withRunner(state, { ...runner, status: event.status })
+      const updated: RunnerState = {
+        ...runner,
+        status: event.status,
+      }
+      if (event.error !== undefined) {
+        updated.error = event.error
+      }
+      return withRunner(state, updated)
     }
 
     case "text-delta":
@@ -256,10 +264,39 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
     }
 
     case "turn-finished": {
-      if (event.usage === undefined) return state
-      const runner = state.runners.get(event.runnerId)
-      if (runner === undefined) return state
-      return withRunner(state, { ...runner, usage: event.usage })
+      let next = state
+      if (event.usage !== undefined) {
+        const runner = next.runners.get(event.runnerId)
+        if (runner !== undefined)
+          next = withRunner(next, { ...runner, usage: event.usage })
+      }
+      // A turn error marks the referenced message with an error tone (the error text was already
+      // streamed as that message); without a reference it appends its own error-toned message.
+      // The runner stays "running" — the session is alive and the user can retry.
+      if (event.error !== undefined) {
+        const error = event.error
+        next = mapRunnerItems(next, event.runnerId, (items) => {
+          const idx = items.findIndex(
+            (i) => i.kind === "message" && i.messageId === error.messageId,
+          )
+          if (idx === -1)
+            return [
+              ...items,
+              {
+                kind: "message",
+                messageId: `turn-error-${items.length}`,
+                role: "assistant",
+                text: error.detail,
+                tone: "error",
+              },
+            ]
+          const existing = items[idx] as MessageItem
+          return items.map((i, j) =>
+            j === idx ? { ...existing, tone: "error" as const } : i,
+          )
+        })
+      }
+      return next
     }
 
     case "annotation":

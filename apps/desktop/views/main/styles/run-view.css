@@ -82,6 +82,47 @@
   padding: var(--space-3);
 }
 
+/* ── Error banner ──────────────────────────────────────────────────────────── */
+.lk-run-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--red);
+  border-radius: var(--radius-sm);
+  background: var(--red-soft);
+  color: var(--red);
+}
+.lk-run-error__icon {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--red);
+  color: var(--red-soft);
+  font-weight: 700;
+  font-size: var(--text-xs);
+  line-height: 1;
+}
+.lk-run-error__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.lk-run-error__title {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  margin: 0;
+}
+.lk-run-error__detail {
+  font-size: var(--text-xs);
+  margin: var(--space-1) 0 0 0;
+  word-break: break-word;
+}
+
 /* ── Timeline + items ───────────────────────────────────────────────────── */
 .lk-timeline {
   display: flex;
@@ -104,6 +145,13 @@
   align-self: flex-end;
   background: var(--accent-soft, var(--surface-2));
   border-color: var(--accent, var(--border-strong));
+}
+
+/* A turn error (e.g. provider rate limit): same palette as .lk-run-error. */
+.lk-message-bubble[data-tone="error"] {
+  background: var(--red-soft);
+  border-color: var(--red);
+  color: var(--red);
 }
 
 /* ── Markdown body inside a bubble (react-markdown renders real elements) ──── */

@@ -51,6 +51,40 @@ describe("ConversationTimeline", () => {
     cleanup()
   })
 
+  it("renders the message a turn error references in its error state", () => {
+    const state = fold([
+      { type: "runner-started", runnerId: root },
+      {
+        type: "text-delta",
+        runnerId: root,
+        messageId: "m1",
+        text: "API Error: 429 you have reached your session usage limit",
+      },
+      {
+        type: "turn-finished",
+        runnerId: root,
+        error: {
+          detail: "API Error: 429 you have reached your session usage limit",
+          messageId: "m1",
+        },
+      },
+    ])
+    const runner = state.runners.get(root)
+    if (runner === undefined) throw new Error("no root runner")
+    const { container } = render(
+      <ConversationTimeline
+        runner={runner}
+        runners={state.runners}
+        onOpenSubRunner={() => {}}
+        onDecide={() => {}}
+      />,
+    )
+    expect(
+      container.querySelector('.lk-message-bubble[data-tone="error"]'),
+    ).not.toBeNull()
+    cleanup()
+  })
+
   it("renders a tool call card for a finished tool call", () => {
     const state = fold(baseEvents)
     const runner = state.runners.get(root)

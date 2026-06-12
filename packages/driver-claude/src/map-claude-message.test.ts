@@ -135,10 +135,52 @@ describe("mapClaudeMessage", () => {
     ])
   })
 
-  it("maps an error result → turn-finished too (a turn error does not end the session; fatal errors come via the iterator catch)", () => {
+  it("maps an error result → turn-finished with an error, NOT runner-finished (the session stays alive)", () => {
     const out = mapClaudeMessage(resultError, makeState())
     expect(out.find((e) => e.type === "runner-finished")).toBeUndefined()
-    expect(out.at(-1)).toEqual({ type: "turn-finished", runnerId: ROOT })
+    expect(out.at(-1)).toEqual({
+      type: "turn-finished",
+      runnerId: ROOT,
+      error: { detail: "Turn failed (error_during_execution)" },
+    })
+  })
+
+  it("correlates an error result with the turn's last root assistant message (the streamed error text)", () => {
+    // Claude streams the API error text as a normal assistant message, THEN flags the turn
+    // via result.is_error — the mapper must point the turn error at that message so the UI
+    // can restyle the existing bubble instead of duplicating the text.
+    const state = makeState()
+    mapClaudeMessage(assistantText, state)
+    const out = mapClaudeMessage(resultError, state)
+    expect(out.at(-1)).toEqual({
+      type: "turn-finished",
+      runnerId: ROOT,
+      error: { detail: "Hello there", messageId: "m_1" },
+    })
+  })
+
+  it("does not correlate a turn error with a SUB-AGENT's text (root messages only)", () => {
+    const state = makeState()
+    mapClaudeMessage(assistantAgentSpawn, state)
+    mapClaudeMessage(subAgentText, state)
+    const out = mapClaudeMessage(resultError, state)
+    expect(out.at(-1)).toEqual({
+      type: "turn-finished",
+      runnerId: ROOT,
+      error: { detail: "Turn failed (error_during_execution)" },
+    })
+  })
+
+  it("does not let a previous turn's message leak into a later turn error", () => {
+    const state = makeState()
+    mapClaudeMessage(assistantText, state)
+    mapClaudeMessage(resultSuccess, state) // turn 1 ends cleanly
+    const out = mapClaudeMessage(resultError, state) // turn 2 errors with no text
+    expect(out.at(-1)).toEqual({
+      type: "turn-finished",
+      runnerId: ROOT,
+      error: { detail: "Turn failed (error_during_execution)" },
+    })
   })
 
   it("returns no events for an unrecognized message type (defensive)", () => {

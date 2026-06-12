@@ -56,6 +56,8 @@ export interface SdkResultMessage {
   readonly type: "result"
   readonly subtype: string
   readonly is_error: boolean
+  /** The turn's final text — present on success results and some error subtypes. */
+  readonly result?: string
   readonly total_cost_usd?: number
   readonly usage?: SdkResultUsage
 }
