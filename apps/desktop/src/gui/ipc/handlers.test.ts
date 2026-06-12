@@ -1073,6 +1073,48 @@ describe("createIpcHandlers.launchHarness (persisted mode)", () => {
   })
 })
 
+describe("createIpcHandlers.launchHarness (persisted model)", () => {
+  it("uses the persisted per-harness modelId when the launch carries none", async () => {
+    const { ctx, runnerLaunchInputs } = makeCtx({ providers: [provider()] })
+    const loaded = (await ctx.config.load()).value
+    await ctx.config.save({
+      ...loaded,
+      settings: {
+        ...loaded.settings,
+        lastByHarness: { claude: { modelId: "mdl_x" } },
+      },
+    } as Config)
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({ id: "claude" as HarnessId, env: {} })
+
+    const input = runnerLaunchInputs[0] as { modelId?: string }
+    expect(input.modelId).toBe("mdl_x")
+  })
+
+  it("prefers an explicit launch modelId over the persisted one", async () => {
+    const { ctx, runnerLaunchInputs } = makeCtx({ providers: [provider()] })
+    const loaded = (await ctx.config.load()).value
+    await ctx.config.save({
+      ...loaded,
+      settings: {
+        ...loaded.settings,
+        lastByHarness: { claude: { modelId: "mdl_persisted" } },
+      },
+    } as Config)
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({
+      id: "claude" as HarnessId,
+      modelId: "mdl_explicit" as ModelId,
+      env: {},
+    })
+
+    const input = runnerLaunchInputs[0] as { modelId?: string }
+    expect(input.modelId).toBe("mdl_explicit")
+  })
+})
+
 describe("createIpcHandlers.launchHarness selection", () => {
   it("launches a native harness via the runner manager", async () => {
     const { ctx, runnerLaunchInputs } = makeCtx({
