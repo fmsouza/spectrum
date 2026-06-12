@@ -33,4 +33,22 @@ describe("MessageBubble", () => {
     )
     cleanup()
   })
+
+  it("marks an error-toned message with data-tone=error and an alert role", () => {
+    const { container } = render(
+      <MessageBubble text="API Error: 429 rate limited" tone="error" />,
+    )
+    const bubble = container.querySelector(".lk-message-bubble")
+    expect(bubble).toHaveAttribute("data-tone", "error")
+    expect(bubble).toHaveAttribute("role", "alert")
+    cleanup()
+  })
+
+  it("carries no tone attribute or alert role by default", () => {
+    const { container } = render(<MessageBubble text="hi" />)
+    const bubble = container.querySelector(".lk-message-bubble")
+    expect(bubble).not.toHaveAttribute("data-tone")
+    expect(bubble).not.toHaveAttribute("role")
+    cleanup()
+  })
 })

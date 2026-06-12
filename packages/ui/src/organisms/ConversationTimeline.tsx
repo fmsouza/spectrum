@@ -48,6 +48,7 @@ export const ConversationTimeline = ({
                 key={`m-${item.messageId}`}
                 text={item.text}
                 author={item.role}
+                {...(item.tone !== undefined ? { tone: item.tone } : {})}
               />
             )
           case "reasoning":

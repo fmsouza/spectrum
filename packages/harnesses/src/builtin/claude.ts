@@ -14,6 +14,11 @@ export const claude: HarnessDefinition = {
     // ANTHROPIC_API_KEY to avoid the precedence ambiguity / approval prompt.
     ANTHROPIC_AUTH_TOKEN: "{{proxyKey}}",
     ANTHROPIC_MODEL: "{{model}}",
+    // Claude Code's default API retry policy (~10 attempts with growing backoff)
+    // is tuned for the real Anthropic API. Against our loopback proxy it turns a
+    // hard provider failure (e.g. exhausted rate-limit quota) into minutes of
+    // apparent hang. Two retries still covers transient blips.
+    CLAUDE_CODE_MAX_RETRIES: "2",
   },
   builtIn: true,
 } satisfies HarnessDefinition
