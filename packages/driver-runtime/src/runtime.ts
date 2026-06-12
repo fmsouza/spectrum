@@ -73,6 +73,9 @@ export const createDriver = (deps: {
         ...(deps.adapter.supportedModes !== undefined
           ? { supportedModes: [...deps.adapter.supportedModes] }
           : {}),
+        ...(input.permissionMode !== undefined
+          ? { permissionMode: input.permissionMode }
+          : {}),
       })
       deps.adapter.start(input, ctx).then(
         (h) => {

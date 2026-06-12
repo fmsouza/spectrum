@@ -443,6 +443,28 @@ describe("createDriver", () => {
     })
   })
 
+  it("emits permissionMode on the up-front runner-started when the start input carries one", () => {
+    const fake = makeFakeAdapter()
+    let run: (() => void) | undefined
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: (fn) => {
+        run = fn
+      },
+    })
+    const started = driver.start({ ...startInput, permissionMode: "plan" })
+    if (!started.ok) throw new Error("expected ok")
+    const seen: CanonicalEvent[] = []
+    started.value.onEvent((e) => seen.push(e))
+    run?.()
+    expect(seen[0]).toEqual({
+      type: "runner-started",
+      runnerId: "rnr_1" as RunnerId,
+      permissionMode: "plan",
+    })
+  })
+
   it("omits supportedModes when the adapter does not declare them", () => {
     const fake = makeFakeAdapter()
     let run: (() => void) | undefined
