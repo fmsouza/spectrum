@@ -73,6 +73,13 @@ describe("SettingsSchema", () => {
     expect(parsed.lastByHarness.claude?.mode).toBe("plan")
   })
 
+  it("accepts a per-harness modelId alongside mode", () => {
+    const parsed = SettingsSchema.parse({
+      lastByHarness: { claude: { mode: "plan", modelId: "mdl_x" } },
+    })
+    expect(parsed.lastByHarness.claude?.modelId).toBe("mdl_x")
+  })
+
   it("rejects unknown keys inside a HarnessPrefs entry (strict)", () => {
     expect(
       SettingsSchema.safeParse({ lastByHarness: { claude: { nope: 1 } } })

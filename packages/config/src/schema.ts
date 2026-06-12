@@ -13,6 +13,7 @@ export const CURRENT_CONFIG_VERSION = 7
 export const HarnessPrefsSchema = z
   .object({
     mode: z.string().optional(),
+    modelId: z.string().optional(),
   })
   .strict()
 export type HarnessPrefs = z.infer<typeof HarnessPrefsSchema>
