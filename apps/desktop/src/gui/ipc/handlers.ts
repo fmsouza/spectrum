@@ -328,13 +328,14 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return null
     },
 
-    updateHarnessPrefs: async ({ harnessId, mode }) => {
+    updateHarnessPrefs: async ({ harnessId, mode, modelId }) => {
       const config = await loadConfig()
       const prev = config.settings.lastByHarness ?? {}
       const key = String(harnessId)
       const nextEntry = {
         ...(prev[key] ?? {}),
         ...(mode === undefined ? {} : { mode }),
+        ...(modelId === undefined ? {} : { modelId }),
       }
       const saved = await ctx.config.save({
         ...config,

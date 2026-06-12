@@ -401,4 +401,26 @@ describe("UpdateHarnessPrefsParamsSchema", () => {
       }).success,
     ).toBe(false)
   })
+  it("accepts a harnessId with an optional modelId (real id or empty string for default/clear)", () => {
+    expect(
+      UpdateHarnessPrefsParamsSchema.safeParse({
+        harnessId: "claude",
+        modelId: "mdl_x",
+      }).success,
+    ).toBe(true)
+    expect(
+      UpdateHarnessPrefsParamsSchema.safeParse({
+        harnessId: "claude",
+        modelId: "",
+      }).success,
+    ).toBe(true)
+  })
+  it("rejects a non-string modelId (modelId is a plain string, not ModelIdSchema)", () => {
+    expect(
+      UpdateHarnessPrefsParamsSchema.safeParse({
+        harnessId: "claude",
+        modelId: 42,
+      }).success,
+    ).toBe(false)
+  })
 })

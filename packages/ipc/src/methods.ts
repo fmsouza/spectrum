@@ -213,10 +213,12 @@ export const GetSettingsResultSchema = z
 
 // Persist a per-harness "last used" pref. Inbound (webview→main) only; returns void. The mode is
 // validated against the canonical PermissionMode here so config never stores an unrecognized value.
+// `modelId` is a plain string (not ModelIdSchema) so it accepts "" to mean "default/clear".
 export const UpdateHarnessPrefsParamsSchema = z
   .object({
     harnessId: HarnessIdSchema,
     mode: PermissionModeSchema.optional(),
+    modelId: z.string().optional(),
   })
   .strict()
 export const UpdateHarnessPrefsResultSchema = VoidSchema

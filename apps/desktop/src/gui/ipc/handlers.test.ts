@@ -991,6 +991,56 @@ describe("createIpcHandlers.updateHarnessPrefs", () => {
       claude: { mode: "plan" },
     })
   })
+
+  it("persists modelId without dropping a previously-set mode", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.updateHarnessPrefs({
+      harnessId: "claude" as HarnessId,
+      mode: "plan",
+    })
+    await handlers.updateHarnessPrefs({
+      harnessId: "claude" as HarnessId,
+      modelId: "mdl_x",
+    })
+
+    expect(saves.at(-1)?.settings.lastByHarness).toEqual({
+      claude: { mode: "plan", modelId: "mdl_x" },
+    })
+  })
+
+  it("preserves a previously-set modelId when a later call updates only the mode", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.updateHarnessPrefs({
+      harnessId: "claude" as HarnessId,
+      modelId: "mdl_x",
+    })
+    await handlers.updateHarnessPrefs({
+      harnessId: "claude" as HarnessId,
+      mode: "plan",
+    })
+
+    expect(saves.at(-1)?.settings.lastByHarness).toEqual({
+      claude: { mode: "plan", modelId: "mdl_x" },
+    })
+  })
+
+  it('persists modelId "" (default/clear) when only a modelId is supplied', async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.updateHarnessPrefs({
+      harnessId: "claude" as HarnessId,
+      modelId: "",
+    })
+
+    expect(saves.at(-1)?.settings.lastByHarness).toEqual({
+      claude: { modelId: "" },
+    })
+  })
 })
 
 describe("createIpcHandlers.launchHarness (persisted mode)", () => {
