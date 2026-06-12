@@ -22,7 +22,6 @@ describe("SettingsSchema", () => {
       proxyHost: "127.0.0.1",
       lastSelectedFolder: "",
       lastSelectedHarnessId: "",
-      lastSelectedModelId: "",
       collapsedProjects: [],
       lastByHarness: {},
     })
@@ -47,19 +46,23 @@ describe("SettingsSchema", () => {
     expect(settings.lastSelectedFolder).toBe("/home/me/proj")
   })
 
-  it("defaults lastSelectedHarnessId and lastSelectedModelId to empty strings", () => {
+  it("defaults lastSelectedHarnessId to an empty string", () => {
     const settings = SettingsSchema.parse({})
     expect(settings.lastSelectedHarnessId).toBe("")
-    expect(settings.lastSelectedModelId).toBe("")
   })
 
-  it("accepts provided lastSelectedHarnessId and lastSelectedModelId", () => {
+  it("accepts a provided lastSelectedHarnessId", () => {
     const settings = SettingsSchema.parse({
       lastSelectedHarnessId: "claude",
-      lastSelectedModelId: "mdl_1",
     })
     expect(settings.lastSelectedHarnessId).toBe("claude")
-    expect(settings.lastSelectedModelId).toBe("mdl_1")
+  })
+
+  it("no longer accepts the removed lastSelectedModelId key (strict)", () => {
+    const parsed = SettingsSchema.safeParse({
+      lastSelectedModelId: "mdl_1",
+    })
+    expect(parsed.success).toBe(false)
   })
 
   it("defaults lastByHarness to an empty object", () => {
@@ -101,7 +104,6 @@ describe("ConfigSchema", () => {
         proxyHost: "127.0.0.1",
         lastSelectedFolder: "",
         lastSelectedHarnessId: "",
-        lastSelectedModelId: "",
         collapsedProjects: [],
         lastByHarness: {},
       },
@@ -144,7 +146,6 @@ describe("defaultConfig", () => {
         proxyHost: "127.0.0.1",
         lastSelectedFolder: "",
         lastSelectedHarnessId: "",
-        lastSelectedModelId: "",
         collapsedProjects: [],
         lastByHarness: {},
       },
@@ -153,7 +154,7 @@ describe("defaultConfig", () => {
   it("produces a config that satisfies ConfigSchema", () => {
     expect(ConfigSchema.safeParse(defaultConfig()).success).toBe(true)
   })
-  it("uses the bumped CURRENT_CONFIG_VERSION of 7", () => {
-    expect(CURRENT_CONFIG_VERSION).toBe(7)
+  it("uses the bumped CURRENT_CONFIG_VERSION of 8", () => {
+    expect(CURRENT_CONFIG_VERSION).toBe(8)
   })
 })

@@ -404,7 +404,6 @@ const baseStubs = {
     value: {
       lastSelectedFolder: "",
       lastSelectedHarnessId: "",
-      lastSelectedModelId: "",
       collapsedProjects: [],
     },
   }),

@@ -29,7 +29,6 @@ describe("projects IPC schemas", () => {
     const parsed = IpcMethodSchemas.getSettings.result.parse({
       lastSelectedFolder: "",
       lastSelectedHarnessId: "",
-      lastSelectedModelId: "",
       collapsedProjects: ["prj_1"],
     })
     expect(parsed.collapsedProjects).toEqual(["prj_1"])

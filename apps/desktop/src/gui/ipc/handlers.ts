@@ -267,17 +267,17 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       })
       if (!isOk(launchedNative)) return fail("failed to launch native harness")
 
-      // Remember the launched harness/model/cwd so the New Session modal can prefill them next
-      // time. Persist on success only (a cancelled modal must not change the prefill). Harness &
-      // model are always recorded; the folder is only updated when a cwd was actually given
-      // (otherwise the previously remembered folder is kept). A save failure here is non-fatal —
-      // the session already launched.
+      // Remember the launched harness/cwd so the New Session modal can prefill them next
+      // time. Persist on success only (a cancelled modal must not change the prefill). Harness
+      // is always recorded; the folder is only updated when a cwd was actually given
+      // (otherwise the previously remembered folder is kept). Model persistence happens
+      // through the composer's `updateHarnessPrefs` instead. A save failure here is
+      // non-fatal — the session already launched.
       await ctx.config.save({
         ...config,
         settings: {
           ...config.settings,
           lastSelectedHarnessId: harness.id,
-          lastSelectedModelId: modelId ?? "",
           ...(safeCwd === undefined ? {} : { lastSelectedFolder: safeCwd }),
         },
       })
@@ -317,7 +317,6 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return {
         lastSelectedFolder: config.settings.lastSelectedFolder,
         lastSelectedHarnessId: config.settings.lastSelectedHarnessId,
-        lastSelectedModelId: config.settings.lastSelectedModelId,
         collapsedProjects: config.settings.collapsedProjects,
       }
     },

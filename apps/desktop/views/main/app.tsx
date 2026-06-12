@@ -70,12 +70,12 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   const [launchError, setLaunchError] = useState<string | undefined>(undefined)
   // The cwd picked via the native folder dialog (fed into NewSessionModal).
   const [folder, setFolder] = useState<string>("")
-  // The last harness/model launched, used to preselect the modal's selects.
+  // The last harness launched, used to preselect the modal's select. The
+  // composer's model selector persists per-harness directly (no modal state).
   const [initialHarnessId, setInitialHarnessId] = useState<string>("")
-  const [initialModelId, setInitialModelId] = useState<string>("")
   const proxy = useProxyStatus()
 
-  // Prefill the New Session modal with the last launched folder/harness/model
+  // Prefill the New Session modal with the last launched folder/harness
   // (persisted by a successful launch). Page-level fetch — the modal stays dumb
   // and just receives the resolved props.
   useEffect(() => {
@@ -86,8 +86,6 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
         setFolder(r.value.lastSelectedFolder)
       if (r.value.lastSelectedHarnessId !== "")
         setInitialHarnessId(r.value.lastSelectedHarnessId)
-      if (r.value.lastSelectedModelId !== "")
-        setInitialModelId(r.value.lastSelectedModelId)
     })
     return () => {
       active = false
@@ -137,9 +135,10 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
     // Omit empty name/cwd so they're never sent as "" — the IPC `name` schema
     // accepts "" but a session created with name:"" then fails SessionSchema's
     // min(1) on the next getSessions, and an empty cwd is meaningless.
+    // Model selection lives in the composer (per-harness prefs); the modal does
+    // not carry a model id.
     const r = await projectsView.launch({
       id: v.harnessId,
-      ...(v.modelId !== undefined ? { modelId: v.modelId } : {}),
       ...(v.name.trim() ? { name: v.name } : {}),
       ...(v.cwd.trim() ? { cwd: v.cwd } : {}),
       env: v.env,
@@ -201,11 +200,8 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
       <NewSessionModal
         open={modalOpen}
         harnesses={harnesses.data ?? []}
-        models={models.data ?? []}
-        providerNames={providerNames}
         folder={folder}
         initialHarnessId={initialHarnessId}
-        initialModelId={initialModelId}
         {...(launchError === undefined ? {} : { error: launchError })}
         onBrowse={() => void onBrowse()}
         onSubmit={(v) => void onSubmitNewSession(v)}

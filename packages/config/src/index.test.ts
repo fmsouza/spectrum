@@ -32,7 +32,6 @@ describe("@launchkit/config barrel", () => {
         proxyHost: "127.0.0.1" as const,
         lastSelectedFolder: "",
         lastSelectedHarnessId: "",
-        lastSelectedModelId: "",
         collapsedProjects: [],
         lastByHarness: {},
       },
