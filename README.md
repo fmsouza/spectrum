@@ -8,9 +8,106 @@ a model **alias** to a concrete provider + model, and streams the response back 
 and session history from the GUI; the CLI launches harnesses and edits config from the
 terminal.
 
-## Requirements
+## Download & install
 
-- **macOS on Apple Silicon** — the build target is `dev-macos-arm64`.
+Grab a prebuilt binary from the [**latest release**](https://github.com/fmsouza/launchkit/releases/latest)
+— no toolchain required. The download links below always resolve to the newest stable
+release.
+
+### Platform support
+
+| Platform | GUI app | CLI binary | Download |
+|---|:---:|:---:|---|
+| **macOS** — Apple Silicon (`arm64`) | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-arm64-cli.tar.gz) |
+| **macOS** — Intel (`x64`) | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-x64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-x64-cli.tar.gz) |
+| **Linux** — `x64` | ⚠️ experimental | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-x64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-x64-cli.tar.gz) |
+| **Linux** — `arm64` | ⚠️ experimental | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-arm64-cli.tar.gz) |
+| **Windows** — `x64` | — | ✅ | [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-windows-x64-cli.zip) |
+
+> **Which platform is fully supported?** macOS (Apple Silicon and Intel) is the
+> first-class target: GUI + CLI, with provider API keys stored in the macOS Keychain.
+> Linux and Windows binaries are published as a convenience and are **experimental** — the
+> GUI's secret-storage backend is macOS-only today, so on those platforms use the **CLI**
+> to launch harnesses with their own native credentials (the `default` route). Proxy
+> routing through stored provider keys currently requires macOS. The GUI app archives are
+> built best-effort in CI and may occasionally be missing from a given release on
+> non-macOS platforms — fall back to the CLI or [build from source](#build-from-source).
+
+### macOS — GUI app
+
+Apple Silicon (`arm64`); for an Intel Mac swap `darwin-arm64` → `darwin-x64` and
+`dev-macos-arm64` → `dev-macos-x64`.
+
+```sh
+curl -L -o launchkit-app.tar.gz \
+  https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-arm64-app.tar.gz
+tar xzf launchkit-app.tar.gz
+
+# the build is unsigned — clear the Gatekeeper quarantine flag, then install
+xattr -dr com.apple.quarantine dev-macos-arm64/LaunchKit-dev.app
+cp -R dev-macos-arm64/LaunchKit-dev.app /Applications/
+open /Applications/LaunchKit-dev.app
+```
+
+On launch the GUI starts a loopback proxy on `127.0.0.1:4000` and adds a menu-bar tray
+icon (launch a harness or quit from there).
+
+### macOS / Linux — CLI
+
+Pick the archive for your platform (`darwin-arm64`, `darwin-x64`, `linux-x64`, or
+`linux-arm64`):
+
+```sh
+PLATFORM=darwin-arm64   # darwin-x64 | linux-x64 | linux-arm64
+curl -L "https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-${PLATFORM}-cli.tar.gz" | tar xz
+chmod +x "launchkit-${PLATFORM}-cli"
+sudo mv "launchkit-${PLATFORM}-cli" /usr/local/bin/launchkit   # put it on your PATH
+
+# on macOS the first run may be quarantined — if it won't launch:
+# xattr -d com.apple.quarantine /usr/local/bin/launchkit
+
+launchkit list harnesses
+```
+
+### Linux — GUI app (experimental)
+
+```sh
+PLATFORM=linux-x64   # or linux-arm64
+curl -L -o launchkit-app.tar.gz \
+  "https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-${PLATFORM}-app.tar.gz"
+tar xzf launchkit-app.tar.gz
+./dev-${PLATFORM}/LaunchKit-dev/bin/launcher
+```
+
+### Windows — CLI (PowerShell)
+
+```powershell
+Invoke-WebRequest -Uri https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-windows-x64-cli.zip -OutFile launchkit-cli.zip
+Expand-Archive launchkit-cli.zip -DestinationPath .
+.\launchkit-windows-x64-cli.exe list harnesses
+```
+
+### Verify the download (optional)
+
+Every release ships a `checksums-sha256.txt`. After downloading one or more assets into
+the current directory:
+
+```sh
+curl -LO https://github.com/fmsouza/launchkit/releases/latest/download/checksums-sha256.txt
+shasum -a 256 -c checksums-sha256.txt --ignore-missing
+```
+
+Prefer the bleeding edge? Every push to `main` publishes a
+[pre-release canary](https://github.com/fmsouza/launchkit/releases) (`vX.Y.Z-canary.N`)
+with the same set of assets — unstable, but current.
+
+## Build from source
+
+### Requirements
+
+- **macOS, Linux, or Windows.** Building the GUI produces a bundle for your host platform
+  (`dev-<os>-<arch>`, e.g. `dev-macos-arm64`). macOS is the fully-supported GUI target;
+  see the platform note above.
 - **Bun ≥ 1.3.14** (the repo pins `bun@1.3.14`). Install from <https://bun.sh>.
 
 Bootstrap the workspace once:
@@ -25,13 +122,16 @@ bun install
 cd apps/desktop && bunx electrobun build
 ```
 
-This produces an unsigned development bundle at:
+This produces an unsigned development bundle under `apps/desktop/build/dev-<os>-<arch>/`
+for your host platform, e.g. on Apple Silicon:
 
 ```
 apps/desktop/build/dev-macos-arm64/LaunchKit-dev.app
 ```
 
-(The first build may download Electrobun core binaries.)
+(The first build may download Electrobun core binaries. Substitute your own
+`dev-<os>-<arch>` directory — e.g. `dev-macos-x64`, `dev-linux-x64` — in the commands
+below.)
 
 Install or run it:
 
