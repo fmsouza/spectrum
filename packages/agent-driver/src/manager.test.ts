@@ -7,6 +7,7 @@ import type {
 } from "@launchkit/agent-events"
 import {
   HarnessIdSchema,
+  type ModelId,
   type Session,
   SessionIdSchema,
 } from "@launchkit/types"
@@ -399,6 +400,49 @@ describe("createRunManager.handleInbound run-set-mode", () => {
         type: "run-set-mode",
         id: otherId,
         mode: "bypass",
+      }),
+    ).not.toThrow()
+  })
+})
+
+describe("createRunManager.handleInbound run-set-model", () => {
+  it("calls setModel on the live session with the requested modelId", () => {
+    const modelCalls: string[] = []
+    const capturingDriver: AgentDriver = {
+      start: () =>
+        ok({
+          rootRunnerId: root,
+          onEvent: () => undefined,
+          send: () => ok(undefined),
+          respondApproval: () => ok(undefined),
+          interrupt: () => ok(undefined),
+          close: () => ok(undefined),
+          setModel: (modelId) => {
+            modelCalls.push(String(modelId))
+            return ok(undefined)
+          },
+        }),
+    }
+    const { deps } = makeDeps(scriptOf([]))
+    const manager = createRunManager({ ...deps, driver: capturingDriver })
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    manager.handleInbound({
+      type: "run-set-model",
+      id: sessionId,
+      modelId: "mdl_x" as never,
+    })
+    expect(modelCalls).toEqual(["mdl_x"])
+  })
+
+  it("is a safe no-op for an unknown session id", () => {
+    const { deps } = makeDeps(scriptOf([startEvent]))
+    const manager = createRunManager(deps)
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    expect(() =>
+      manager.handleInbound({
+        type: "run-set-model",
+        id: otherId,
+        modelId: "mdl_x" as ModelId,
       }),
     ).not.toThrow()
   })

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import type { ModelRoute } from "@launchkit/types"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { Composer } from "./Composer"
 
@@ -134,6 +135,44 @@ describe("Composer", () => {
   it("hides the mode selector when no modes are provided", () => {
     render(<Composer onSend={() => {}} />)
     expect(screen.queryByRole("button", { name: /approval/i })).toBeNull()
+    cleanup()
+  })
+
+  it("renders the model selector beside the mode selector and forwards model changes", () => {
+    const models = [
+      { id: "mdl_default", providerId: "p1", providerModel: "sonnet" },
+      { id: "mdl_fast", providerId: "p1", providerModel: "haiku" },
+    ] as unknown as readonly ModelRoute[]
+    let picked: string | undefined
+    render(
+      <Composer
+        onSend={() => {}}
+        mode="manual"
+        supportedModes={["manual", "plan"]}
+        onModeChange={() => {}}
+        model=""
+        models={models}
+        providerNames={{ p1: "Anthropic" }}
+        onModelChange={(m) => {
+          picked = m
+        }}
+      />,
+    )
+    // Both selectors render
+    expect(
+      screen.getByRole("button", { name: /manual approval/i }),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: /default/i }))
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: /Anthropic \/ haiku/i }),
+    )
+    expect(picked).toBe("mdl_fast")
+    cleanup()
+  })
+
+  it("hides the model selector when models/onModelChange are not provided", () => {
+    render(<Composer onSend={() => {}} />)
+    expect(screen.queryByRole("button", { name: /default/i })).toBeNull()
     cleanup()
   })
 })

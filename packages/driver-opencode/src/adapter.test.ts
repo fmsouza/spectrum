@@ -529,4 +529,109 @@ describe("createOpencodeAdapter", () => {
     ).toBe(true)
     expect(t.serverClosed).toBe(true)
   })
+
+  // --- setModel: fresh server restart ---------------------------------------------------
+
+  it("setModel restarts the server with the new model, closes the old server, and re-emits runner-started with the new model", async () => {
+    // Custom fake-connect: each call records its config + returns a fresh server + a fresh client
+    // whose session.create returns a distinct session id, so we can prove the new session was created.
+    const connectConfigs: OpencodeConnectConfig[] = []
+    const serverCloses: number[] = []
+    const createdSessionIds: string[] = []
+    let nextSessionSeq = 0
+    const nextSessionId = (): string => `ses_${++nextSessionSeq}`
+
+    const buildClient = (): OpencodeClient => {
+      const sid = nextSessionId()
+      return {
+        session: {
+          create: async () => {
+            createdSessionIds.push(sid)
+            return { id: sid }
+          },
+          prompt: async () => {},
+          abort: async () => {},
+          permissions: async () => {},
+        },
+        event: { subscribe: async () => new FakeStream() },
+      }
+    }
+
+    const emitted: CanonicalEvent[] = []
+    const ctx = {
+      rootRunnerId: ROOT,
+      emit: (e: CanonicalEvent) => emitted.push(e),
+      newRunnerId: (): RunnerId => "rnr_child" as RunnerId,
+      requestApproval: async (): Promise<ApprovalDecision> => "allow",
+    }
+
+    const adapter = createOpencodeAdapter({
+      connect: async (cfg) => {
+        connectConfigs.push(cfg)
+        const idx = serverCloses.length
+        return {
+          client: buildClient(),
+          server: {
+            url: "u",
+            close: () => {
+              serverCloses.push(idx)
+            },
+          },
+        }
+      },
+      watchdogMs: 0,
+    })
+
+    const handle = await adapter.start(
+      {
+        ...START,
+        env: {
+          OPENAI_BASE_URL: "http://127.0.0.1:4000/v1",
+          OPENAI_API_KEY: "rk_1",
+          OPENAI_MODEL: "minimax-m3",
+        },
+      },
+      ctx,
+    )
+
+    // First connect happened with the initial model.
+    expect(connectConfigs).toHaveLength(1)
+    expect(connectConfigs[0]?.config?.model).toBe("launchkit/minimax-m3")
+    expect(connectConfigs[0]?.config?.provider.launchkit.models).toEqual({
+      "minimax-m3": {},
+    })
+    expect(createdSessionIds).toEqual(["ses_1"])
+    // First runner-started emitted on initial start.
+    expect(emitted).toContainEqual({
+      type: "runner-started",
+      runnerId: ROOT,
+    })
+
+    // Now flip the model.
+    handle.setModel?.("mdl_new" as never)
+    // setModel is synchronous (it tears down + triggers a new connectAndRun); allow the restart.
+    await new Promise((r) => setTimeout(r, 0))
+
+    // (a) connect was called again with a config whose model reflects mdl_new.
+    expect(connectConfigs).toHaveLength(2)
+    expect(connectConfigs[1]?.config?.model).toBe("launchkit/mdl_new")
+    expect(connectConfigs[1]?.config?.provider.launchkit.models).toEqual({
+      mdl_new: {},
+    })
+    // (b) a new session was created.
+    expect(createdSessionIds).toEqual(["ses_1", "ses_2"])
+    // (c) runner-started re-emitted with the new model.
+    const startedWithModel = emitted.filter(
+      (e) =>
+        e.type === "runner-started" && "model" in e && e.model === "mdl_new",
+    )
+    expect(startedWithModel).toHaveLength(1)
+    expect(startedWithModel[0]?.runnerId).toBe(ROOT)
+    // (d) the first server was close()d.
+    expect(serverCloses).toEqual([0])
+
+    // Tear down so we don't leak timers / async work.
+    handle.close()
+    await new Promise((r) => setTimeout(r, 0))
+  })
 })

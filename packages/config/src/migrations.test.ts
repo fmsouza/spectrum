@@ -20,8 +20,8 @@ const v1Config = {
 }
 
 describe("migrations", () => {
-  it("ships ordered v1->v2, v2->v3, v3->v4, v4->v5, v5->v6, and v6->v7 migrations", () => {
-    expect(migrations).toHaveLength(6)
+  it("ships ordered v1->v2, v2->v3, v3->v4, v4->v5, v5->v6, v6->v7, and v7->v8 migrations", () => {
+    expect(migrations).toHaveLength(7)
     expect(migrations[0]?.from).toBe(1)
     expect(migrations[0]?.to).toBe(2)
     expect(migrations[1]?.from).toBe(2)
@@ -34,6 +34,8 @@ describe("migrations", () => {
     expect(migrations[4]?.to).toBe(6)
     expect(migrations[5]?.from).toBe(6)
     expect(migrations[5]?.to).toBe(7)
+    expect(migrations[6]?.from).toBe(7)
+    expect(migrations[6]?.to).toBe(8)
   })
 })
 
@@ -60,7 +62,6 @@ describe("runMigrations", () => {
         proxyHost: "127.0.0.1" as const,
         lastSelectedFolder: "",
         lastSelectedHarnessId: "",
-        lastSelectedModelId: "",
         collapsedProjects: [],
         lastByHarness: {},
       },
@@ -215,5 +216,99 @@ describe("v4 → v5 (drop profiles)", () => {
       expect(result.value.version).toBe(CURRENT_CONFIG_VERSION)
       expect("profiles" in result.value).toBe(false)
     }
+  })
+})
+
+describe("v7 → v8 (fold lastSelectedModelId into lastByHarness)", () => {
+  it("folds the legacy lastSelectedModelId into lastByHarness[lastSelectedHarnessId] and drops it", () => {
+    const raw = {
+      version: 7,
+      providers: [],
+      models: [],
+      settings: {
+        proxyPort: 4000,
+        proxyHost: "127.0.0.1" as const,
+        lastSelectedFolder: "",
+        lastSelectedHarnessId: "claude",
+        lastSelectedModelId: "mdl_x",
+        collapsedProjects: [],
+        lastByHarness: {},
+      },
+    }
+    const result = runMigrations(raw)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.version).toBe(CURRENT_CONFIG_VERSION)
+    const settings = result.value.settings as Record<string, unknown>
+    expect(settings.lastByHarness).toEqual({ claude: { modelId: "mdl_x" } })
+    // The legacy top-level key is gone.
+    expect("lastSelectedModelId" in settings).toBe(false)
+  })
+
+  it("preserves an existing lastByHarness entry's mode when folding in the legacy modelId", () => {
+    const raw = {
+      version: 7,
+      providers: [],
+      models: [],
+      settings: {
+        proxyPort: 4000,
+        proxyHost: "127.0.0.1" as const,
+        lastSelectedFolder: "",
+        lastSelectedHarnessId: "claude",
+        lastSelectedModelId: "mdl_x",
+        collapsedProjects: [],
+        lastByHarness: { claude: { mode: "plan" } },
+      },
+    }
+    const result = runMigrations(raw)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.settings.lastByHarness).toEqual({
+      claude: { mode: "plan", modelId: "mdl_x" },
+    })
+  })
+
+  it("does not fold when lastSelectedHarnessId is empty (no harness to attribute the model to)", () => {
+    const raw = {
+      version: 7,
+      providers: [],
+      models: [],
+      settings: {
+        proxyPort: 4000,
+        proxyHost: "127.0.0.1" as const,
+        lastSelectedFolder: "",
+        lastSelectedHarnessId: "",
+        lastSelectedModelId: "mdl_x",
+        collapsedProjects: [],
+        lastByHarness: {},
+      },
+    }
+    const result = runMigrations(raw)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.settings.lastByHarness).toEqual({})
+    const settings = result.value.settings as Record<string, unknown>
+    expect("lastSelectedModelId" in settings).toBe(false)
+  })
+
+  it("does not fold when lastSelectedModelId is empty", () => {
+    const raw = {
+      version: 7,
+      providers: [],
+      models: [],
+      settings: {
+        proxyPort: 4000,
+        proxyHost: "127.0.0.1" as const,
+        lastSelectedFolder: "",
+        lastSelectedHarnessId: "claude",
+        lastSelectedModelId: "",
+        collapsedProjects: [],
+        lastByHarness: {},
+      },
+    }
+    const result = runMigrations(raw)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.settings.lastByHarness).toEqual({})
   })
 })

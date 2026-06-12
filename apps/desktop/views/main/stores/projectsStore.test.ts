@@ -21,7 +21,6 @@ const okClient = (overrides: Partial<Record<string, unknown>> = {}) =>
       value: {
         lastSelectedFolder: "",
         lastSelectedHarnessId: "",
-        lastSelectedModelId: "",
         collapsedProjects: ["prj_a"],
       },
     }),
