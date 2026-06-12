@@ -7,7 +7,13 @@ import type {
   PermissionMode,
   StoredEvent,
 } from "@launchkit/agent-events"
-import { type SessionId, SessionIdSchema } from "@launchkit/types"
+import {
+  type ModelId,
+  ModelIdSchema,
+  type SessionId,
+  SessionIdSchema,
+} from "@launchkit/types"
+
 import { type Result, err, ok } from "@launchkit/utils"
 import { z } from "zod"
 
@@ -32,6 +38,11 @@ export type RunnerInbound =
       readonly id: SessionId
       readonly mode: PermissionMode
     }
+  | {
+      readonly type: "run-set-model"
+      readonly id: SessionId
+      readonly modelId: ModelId
+    }
 
 const InboundSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("run-attach"), id: SessionIdSchema }),
@@ -51,6 +62,11 @@ const InboundSchema = z.discriminatedUnion("type", [
     type: z.literal("run-set-mode"),
     id: SessionIdSchema,
     mode: PermissionModeSchema,
+  }),
+  z.object({
+    type: z.literal("run-set-model"),
+    id: SessionIdSchema,
+    modelId: ModelIdSchema,
   }),
 ])
 

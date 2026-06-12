@@ -523,6 +523,60 @@ describe("createClaudeAdapter", () => {
     expect(queries[1]?.options?.resume).toBe("sess_deferred")
   })
 
+  // --- setModel: resume-restart with new model -------------------------------------------
+
+  it("setModel relaunches the query with the new model, resuming the claude session", async () => {
+    const { sdk, queries } = makeMultiQueryFakeSdk("resolve")
+    const adapter = createClaudeAdapter({ loadSdk: async () => sdk })
+    const handle = await adapter.start(input, makeCtx([], []))
+
+    // Push an init message so the glue captures the claude session id.
+    queries[0]?.pushMsg({
+      type: "system",
+      subtype: "init",
+      model: "m",
+      session_id: "sess_mdl",
+    })
+    await new Promise((r) => setTimeout(r, 10))
+
+    handle.setModel?.("mdl_new" as never)
+    // setModel is synchronous (relaunches immediately); allow the restart to happen.
+    await new Promise((r) => setTimeout(r, 20))
+
+    // Two query() calls: the original and the relaunched one.
+    expect(queries).toHaveLength(2)
+    // Second call carries the new model and the captured session id (resume).
+    expect(queries[1]?.options?.model).toBe("mdl_new")
+    expect(queries[1]?.options?.resume).toBe("sess_mdl")
+  })
+
+  it("setModel does not emit errored when the old query throws on teardown", async () => {
+    const { sdk, queries } = makeMultiQueryFakeSdk("resolve", true)
+    const adapter = createClaudeAdapter({ loadSdk: async () => sdk })
+    const emitted: CanonicalEvent[] = []
+    const handle = await adapter.start(input, makeCtx(emitted, []))
+
+    queries[0]?.pushMsg({
+      type: "system",
+      subtype: "init",
+      model: "m",
+      session_id: "sess_mdl_throw",
+    })
+    await new Promise((r) => setTimeout(r, 10))
+
+    handle.setModel?.("mdl_newer" as never)
+    // Give the restart, AND the old pump's catch time to all run.
+    await new Promise((r) => setTimeout(r, 30))
+
+    const erroredEvents = emitted.filter(
+      (e) => e.type === "runner-finished" && e.status === "errored",
+    )
+    expect(erroredEvents).toHaveLength(0)
+    expect(queries).toHaveLength(2)
+    expect(queries[1]?.options?.model).toBe("mdl_newer")
+    expect(queries[1]?.options?.resume).toBe("sess_mdl_throw")
+  })
+
   // --- Finding 3: rapid double setMode → stale rejection ---------------------------------
 
   it("ignores a stale rejection after a newer restart already happened", async () => {

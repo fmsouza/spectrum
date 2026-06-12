@@ -1,7 +1,9 @@
 import type { PermissionMode } from "@launchkit/agent-events"
+import type { ModelRoute } from "@launchkit/types"
 import { type KeyboardEvent, type ReactElement, useState } from "react"
 import { Icon } from "../atoms/Icon"
 import { ModeSelector } from "./ModeSelector"
+import { ModelSelector } from "./ModelSelector"
 
 export type ComposerProps = {
   readonly onSend: (text: string) => void
@@ -12,6 +14,11 @@ export type ComposerProps = {
   readonly mode?: PermissionMode
   readonly supportedModes?: readonly PermissionMode[]
   readonly onModeChange?: (mode: PermissionMode) => void
+  /** Current model id, or "" for the default (no-proxy) route. */
+  readonly model?: string
+  readonly models?: readonly ModelRoute[]
+  readonly providerNames?: Readonly<Record<string, string>>
+  readonly onModelChange?: (modelId: string) => void
 }
 
 export const Composer = ({
@@ -22,6 +29,10 @@ export const Composer = ({
   mode,
   supportedModes,
   onModeChange,
+  model = "",
+  models,
+  providerNames,
+  onModelChange,
 }: ComposerProps): ReactElement => {
   const [text, setText] = useState("")
   const submit = (): void => {
@@ -53,6 +64,15 @@ export const Composer = ({
             mode={mode ?? "manual"}
             supportedModes={supportedModes}
             onChange={onModeChange}
+            disabled={disabled}
+          />
+        )}
+        {models === undefined || onModelChange === undefined ? null : (
+          <ModelSelector
+            model={model}
+            models={models}
+            {...(providerNames === undefined ? {} : { providerNames })}
+            onChange={onModelChange}
             disabled={disabled}
           />
         )}

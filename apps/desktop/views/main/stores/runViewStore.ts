@@ -16,11 +16,13 @@ export type RunViewStore = {
   /** Whether a turn is in flight (drives the typing indicator) — see `nextBusy`. */
   readonly busyBySession: Readonly<Record<string, boolean>>
   readonly modeBySession: Readonly<Record<string, PermissionMode>>
+  readonly modelBySession: Readonly<Record<string, string>>
   readonly applyEvent: (sessionId: SessionId, event: CanonicalEvent) => void
   readonly reset: (sessionId: SessionId) => void
   readonly openSub: (sessionId: SessionId, runnerId: RunnerId) => void
   readonly closeSub: (sessionId: SessionId) => void
   readonly setMode: (sessionId: SessionId, mode: PermissionMode) => void
+  readonly setModel: (sessionId: SessionId, modelId: string) => void
 }
 
 /**
@@ -56,6 +58,7 @@ export const createRunViewStore = (_deps: StoreDeps): StoreApi<RunViewStore> =>
     openSubBySession: {},
     busyBySession: {},
     modeBySession: {},
+    modelBySession: {},
 
     applyEvent: (sessionId, event) => {
       const prev = get().byId[sessionId] ?? initialRunState
@@ -66,24 +69,36 @@ export const createRunViewStore = (_deps: StoreDeps): StoreApi<RunViewStore> =>
         next,
       )
       set((state) => {
-        const updated = {
+        const updated: {
+          byId: Readonly<Record<string, RunState>>
+          busyBySession: Readonly<Record<string, boolean>>
+          modeBySession?: Readonly<Record<string, PermissionMode>>
+          modelBySession?: Readonly<Record<string, string>>
+        } = {
           byId: { ...state.byId, [sessionId]: next },
           busyBySession: { ...state.busyBySession, [sessionId]: busy },
         }
-        // Seed the composer mode from the driver's reported applied mode, but only when nothing is
-        // set yet — so a benign re-emit of runner-started (claude's system/init) or a later user
-        // change is never clobbered. The driver is the source of truth for the *initial* mode.
+        // Seed the composer mode + model from the driver's reported applied values, but only when
+        // nothing is set yet — so a benign re-emit of runner-started (claude's system/init) or a
+        // later user change is never clobbered. The driver is the source of truth for the *initial*
+        // mode + model.
+        if (event.type !== "runner-started") return updated
         if (
-          event.type === "runner-started" &&
           event.permissionMode !== undefined &&
           state.modeBySession[sessionId] === undefined
         ) {
-          return {
-            ...updated,
-            modeBySession: {
-              ...state.modeBySession,
-              [sessionId]: event.permissionMode,
-            },
+          updated.modeBySession = {
+            ...state.modeBySession,
+            [sessionId]: event.permissionMode,
+          }
+        }
+        if (
+          event.model !== undefined &&
+          state.modelBySession[sessionId] === undefined
+        ) {
+          updated.modelBySession = {
+            ...state.modelBySession,
+            [sessionId]: event.model,
           }
         }
         return updated
@@ -96,11 +111,13 @@ export const createRunViewStore = (_deps: StoreDeps): StoreApi<RunViewStore> =>
         const { [sessionId]: _sub, ...subRest } = state.openSubBySession
         const { [sessionId]: _busy, ...busyRest } = state.busyBySession
         const { [sessionId]: _mode, ...modeRest } = state.modeBySession
+        const { [sessionId]: _model, ...modelRest } = state.modelBySession
         return {
           byId: rest,
           openSubBySession: subRest,
           busyBySession: busyRest,
           modeBySession: modeRest,
+          modelBySession: modelRest,
         }
       })
     },
@@ -121,6 +138,12 @@ export const createRunViewStore = (_deps: StoreDeps): StoreApi<RunViewStore> =>
     setMode: (sessionId, mode) => {
       set((state) => ({
         modeBySession: { ...state.modeBySession, [sessionId]: mode },
+      }))
+    },
+
+    setModel: (sessionId, modelId) => {
+      set((state) => ({
+        modelBySession: { ...state.modelBySession, [sessionId]: modelId },
       }))
     },
   }))

@@ -10,6 +10,7 @@ import type {
   PermissionMode,
   RunnerId,
 } from "@launchkit/agent-events"
+import type { ModelId } from "@launchkit/types"
 import { type IdGen, type Result, ok } from "@launchkit/utils"
 import type { AdapterCtx, AdapterHandle, DriverAdapter } from "./adapter"
 
@@ -76,6 +77,9 @@ export const createDriver = (deps: {
         ...(input.permissionMode !== undefined
           ? { permissionMode: input.permissionMode }
           : {}),
+        ...(input.modelId !== undefined
+          ? { model: String(input.modelId) }
+          : {}),
       })
       deps.adapter.start(input, ctx).then(
         (h) => {
@@ -136,6 +140,10 @@ export const createDriver = (deps: {
       },
       setMode: (mode: PermissionMode) => {
         runOrQueue((h) => h.setMode?.(mode))
+        return ok(undefined)
+      },
+      setModel: (modelId: ModelId) => {
+        runOrQueue((h) => h.setModel?.(modelId))
         return ok(undefined)
       },
       close: () => {

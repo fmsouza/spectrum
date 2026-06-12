@@ -91,4 +91,18 @@ describe("runViewStore", () => {
     store.getState().applyEvent(sid, { type: "runner-started", runnerId: root })
     expect(store.getState().modeBySession[sid]).toBe("plan")
   })
+
+  it("seeds the model from runner-started.model and exposes setModel/reset", () => {
+    const store = createRunViewStore(noDeps)
+    store.getState().applyEvent(sid, {
+      type: "runner-started",
+      runnerId: root,
+      model: "mdl_x",
+    })
+    expect(store.getState().modelBySession[sid]).toBe("mdl_x")
+    store.getState().setModel(sid, "mdl_y")
+    expect(store.getState().modelBySession[sid]).toBe("mdl_y")
+    store.getState().reset(sid)
+    expect(store.getState().modelBySession[sid]).toBeUndefined()
+  })
 })

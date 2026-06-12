@@ -1,6 +1,6 @@
 import { PermissionModeSchema } from "@launchkit/agent-events"
 import type { IpcHandlers, ProviderView } from "@launchkit/ipc"
-import type { ModelRoute, Provider, SecretRef } from "@launchkit/types"
+import type { ModelId, ModelRoute, Provider, SecretRef } from "@launchkit/types"
 import { isOk } from "@launchkit/utils"
 import type { AppContext } from "../../composition"
 
@@ -206,16 +206,30 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
           : PermissionModeSchema.safeParse(storedMode)
       const permissionMode = parsedMode?.success ? parsedMode.data : undefined
 
+      // Resolve the effective model: an explicit launch model wins; otherwise the persisted per-harness
+      // one (a stored "" means "default" — no model). This lets the modal drop its model selector.
+      const storedModel = config.settings.lastByHarness?.[String(id)]?.modelId
+      const effectiveModelId: ModelId | undefined =
+        modelId ??
+        (storedModel !== undefined && storedModel !== ""
+          ? (storedModel as ModelId)
+          : undefined)
+
       // modelId present → route through the proxy; absent → "default" = bypass the proxy.
       let route: import("@launchkit/harnesses").LaunchRoute
-      if (modelId === undefined) {
+      if (effectiveModelId === undefined) {
         route = { kind: "direct" }
       } else {
         const proxyUrl = `http://${config.settings.proxyHost}:${config.settings.proxyPort}`
         // The GUI proxy runs persistently and stored its per-run key in runtime state; reuse it so
         // the running proxy accepts the harness's requests. If absent, mint a fresh key (security.md).
         const proxyKey = (await ctx.runtime.readProxyKey()) ?? ctx.genProxyKey()
-        route = { kind: "proxied", proxyUrl, proxyKey, modelId }
+        route = {
+          kind: "proxied",
+          proxyUrl,
+          proxyKey,
+          modelId: effectiveModelId,
+        }
       }
 
       // Resolve the command (+ render the proxy env for a proxied route) WITHOUT spawning.
@@ -236,7 +250,9 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
 
       const launchedNative = ctx.runner.launch({
         harnessId: harness.id,
-        ...(modelId === undefined ? {} : { modelId }),
+        ...(effectiveModelId === undefined
+          ? {}
+          : { modelId: effectiveModelId }),
         ...(permissionMode === undefined ? {} : { permissionMode }),
         env: { ...resolved.value.env, ...(env ?? {}) },
         cwd: safeCwd ?? "",
@@ -251,17 +267,17 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       })
       if (!isOk(launchedNative)) return fail("failed to launch native harness")
 
-      // Remember the launched harness/model/cwd so the New Session modal can prefill them next
-      // time. Persist on success only (a cancelled modal must not change the prefill). Harness &
-      // model are always recorded; the folder is only updated when a cwd was actually given
-      // (otherwise the previously remembered folder is kept). A save failure here is non-fatal —
-      // the session already launched.
+      // Remember the launched harness/cwd so the New Session modal can prefill them next
+      // time. Persist on success only (a cancelled modal must not change the prefill). Harness
+      // is always recorded; the folder is only updated when a cwd was actually given
+      // (otherwise the previously remembered folder is kept). Model persistence happens
+      // through the composer's `updateHarnessPrefs` instead. A save failure here is
+      // non-fatal — the session already launched.
       await ctx.config.save({
         ...config,
         settings: {
           ...config.settings,
           lastSelectedHarnessId: harness.id,
-          lastSelectedModelId: modelId ?? "",
           ...(safeCwd === undefined ? {} : { lastSelectedFolder: safeCwd }),
         },
       })
@@ -301,7 +317,6 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return {
         lastSelectedFolder: config.settings.lastSelectedFolder,
         lastSelectedHarnessId: config.settings.lastSelectedHarnessId,
-        lastSelectedModelId: config.settings.lastSelectedModelId,
         collapsedProjects: config.settings.collapsedProjects,
       }
     },
@@ -328,13 +343,14 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return null
     },
 
-    updateHarnessPrefs: async ({ harnessId, mode }) => {
+    updateHarnessPrefs: async ({ harnessId, mode, modelId }) => {
       const config = await loadConfig()
       const prev = config.settings.lastByHarness ?? {}
       const key = String(harnessId)
       const nextEntry = {
         ...(prev[key] ?? {}),
         ...(mode === undefined ? {} : { mode }),
+        ...(modelId === undefined ? {} : { modelId }),
       }
       const saved = await ctx.config.save({
         ...config,

@@ -8,6 +8,7 @@
   "dependencies": {
     "@launchkit/agent-driver": "workspace:*",
     "@launchkit/agent-events": "workspace:*",
+    "@launchkit/types": "workspace:*",
     "@launchkit/utils": "workspace:*"
   }
 }

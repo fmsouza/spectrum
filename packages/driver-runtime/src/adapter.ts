@@ -6,6 +6,7 @@ import type {
   PermissionMode,
   RunnerId,
 } from "@launchkit/agent-events"
+import type { ModelId } from "@launchkit/types"
 
 /** A live, mapped handle to a started harness. Methods are fire-and-forget (errors surface as events). */
 export interface AdapterHandle {
@@ -17,6 +18,8 @@ export interface AdapterHandle {
   close(): void
   /** Switch the normalized permission mode (apply natively now, or stash for the next turn). */
   setMode?(mode: PermissionMode): void
+  /** Switch the model (apply natively now, resume-restart, or fresh session). */
+  setModel?(modelId: ModelId): void
 }
 
 /** What the runtime gives the adapter: a push channel + the approval bridge + runner-id minting. */

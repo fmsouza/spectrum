@@ -3,6 +3,7 @@ import type { RunnerOutbound } from "@launchkit/agent-driver"
 import type { CanonicalEvent, StoredEvent } from "@launchkit/agent-events"
 import {
   type HarnessId,
+  type ModelRoute,
   type SessionId,
   SessionIdSchema,
 } from "@launchkit/types"
@@ -19,21 +20,26 @@ const makeFakeRunner = (): RunnerClient & {
   readonly attached: SessionId[]
   readonly sends: string[]
   readonly setModes: Array<{ id: SessionId; mode: string }>
+  readonly setModels: Array<{ id: SessionId; modelId: string }>
   push: (event: StoredEvent) => void
 } => {
   let listener: ((event: StoredEvent) => void) | undefined
   const attached: SessionId[] = []
   const sends: string[] = []
   const setModes: Array<{ id: SessionId; mode: string }> = []
+  const setModels: Array<{ id: SessionId; modelId: string }> = []
   return {
     attached,
     sends,
     setModes,
+    setModels,
     attach: (sid) => attached.push(sid),
     send: (_sid, text) => sends.push(text),
     approve: () => {},
     interrupt: () => {},
     setMode: (sid, mode) => setModes.push({ id: sid, mode }),
+    setModel: (sid, modelId) =>
+      setModels.push({ id: sid, modelId: String(modelId) }),
     dispatch: (_m: RunnerOutbound) => {},
     onEvent: (_sid, cb) => {
       listener = cb
@@ -193,6 +199,99 @@ describe("RunDetail (live)", () => {
     )
     expect(prefsCalls).toEqual([{ harnessId: "claude", mode: "bypass" }])
     expect(runner.setModes).toEqual([{ id, mode: "bypass" }])
+    cleanup()
+  })
+
+  it("renders the model selector pill and calls runnerClient.setModel on pick", async () => {
+    const runner = makeFakeRunner()
+    const models = [
+      { id: "mdl_a", providerId: "p1", providerModel: "sonnet" },
+      { id: "mdl_b", providerId: "p1", providerModel: "haiku" },
+    ] as readonly ModelRoute[]
+    const providerNames: Readonly<Record<string, string>> = { p1: "Anthropic" }
+    renderWithProviders(
+      <RunDetail
+        mode="live"
+        sessionId={id}
+        runnerClient={runner}
+        models={models}
+        providerNames={providerNames}
+      />,
+      createFakeIpcClient({}),
+    )
+    runner.push(
+      stored(0, {
+        type: "runner-started",
+        runnerId: "run_root" as never,
+        model: "mdl_a",
+      }),
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Anthropic \/ sonnet/i }),
+      ).toBeInTheDocument(),
+    )
+    fireEvent.click(
+      screen.getByRole("button", { name: /Anthropic \/ sonnet/i }),
+    )
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: /Anthropic \/ haiku/i }),
+    )
+    expect(runner.setModels).toEqual([{ id, modelId: "mdl_b" }])
+    cleanup()
+  })
+
+  it("persists the picked model per-harness via updateHarnessPrefs", async () => {
+    const runner = makeFakeRunner()
+    const models = [
+      { id: "mdl_a", providerId: "p1", providerModel: "sonnet" },
+      { id: "mdl_b", providerId: "p1", providerModel: "haiku" },
+    ] as readonly ModelRoute[]
+    const providerNames: Readonly<Record<string, string>> = { p1: "Anthropic" }
+    const prefsCalls: Array<{
+      harnessId: string
+      mode?: string
+      modelId?: string
+    }> = []
+    const client = createFakeIpcClient({
+      updateHarnessPrefs: async (p: {
+        harnessId: string
+        mode?: string
+        modelId?: string
+      }) => {
+        prefsCalls.push(p)
+        return { ok: true, value: null }
+      },
+    })
+    renderWithProviders(
+      <RunDetail
+        mode="live"
+        sessionId={id}
+        runnerClient={runner}
+        harnessId={"claude" as HarnessId}
+        models={models}
+        providerNames={providerNames}
+      />,
+      client,
+    )
+    runner.push(
+      stored(0, {
+        type: "runner-started",
+        runnerId: "run_root" as never,
+        model: "mdl_a",
+      }),
+    )
+    await waitFor(() =>
+      screen.getByRole("button", { name: /Anthropic \/ sonnet/i }),
+    )
+    fireEvent.click(
+      screen.getByRole("button", { name: /Anthropic \/ sonnet/i }),
+    )
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: /Anthropic \/ haiku/i }),
+    )
+    expect(prefsCalls).toEqual([{ harnessId: "claude", modelId: "mdl_b" }])
+    expect(runner.setModels).toEqual([{ id, modelId: "mdl_b" }])
     cleanup()
   })
 })
