@@ -1,3 +1,4 @@
+import { PermissionModeSchema } from "@launchkit/agent-events"
 import type { IpcHandlers, ProviderView } from "@launchkit/ipc"
 import type { ModelRoute, Provider, SecretRef } from "@launchkit/types"
 import { isOk } from "@launchkit/utils"
@@ -195,6 +196,16 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       const harness = listed.value.find((h) => h.id === id)
       if (harness === undefined) return fail(`unknown harness: ${String(id)}`)
 
+      // Restore the last-used permission mode for this harness (persisted per-harness). Stored as a
+      // plain string; coerce against the canonical PermissionMode and ignore anything unrecognized.
+      const storedMode =
+        config.settings.lastByHarness?.[String(harness.id)]?.mode
+      const parsedMode =
+        storedMode === undefined
+          ? undefined
+          : PermissionModeSchema.safeParse(storedMode)
+      const permissionMode = parsedMode?.success ? parsedMode.data : undefined
+
       // modelId present → route through the proxy; absent → "default" = bypass the proxy.
       let route: import("@launchkit/harnesses").LaunchRoute
       if (modelId === undefined) {
@@ -226,6 +237,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       const launchedNative = ctx.runner.launch({
         harnessId: harness.id,
         ...(modelId === undefined ? {} : { modelId }),
+        ...(permissionMode === undefined ? {} : { permissionMode }),
         env: { ...resolved.value.env, ...(env ?? {}) },
         cwd: safeCwd ?? "",
         // The SDK-backed driver spawns this resolved `claude` binary directly — its own
