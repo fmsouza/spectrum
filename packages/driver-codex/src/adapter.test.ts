@@ -315,6 +315,7 @@ describe("createCodexAdapter.start", () => {
         {
           threadId: "th_1",
           input: [{ type: "text", text: "first", text_elements: [] }],
+          model: "gpt-5",
           approvalPolicy: "untrusted",
         },
       ],
@@ -404,5 +405,27 @@ describe("createCodexAdapter.start", () => {
     expect((turnStart?.[2] as Record<string, unknown>).sandboxPolicy).toEqual({
       type: "dangerFullAccess",
     })
+  })
+
+  it("setModel applies the new model on the next turn/start", async () => {
+    const ft = makeFakeTransport()
+    ft.fake.setResult("thread/start", { thread: { id: "th_1" } })
+    const ctx = makeCtx()
+    const handle = await makeAdapter(ft).start(startInput, ctx.ctx)
+    ft.fake.outgoing.length = 0
+
+    // First turn/start: uses the initial model from input.modelId.
+    handle.send("first")
+    const firstTurn = ft.fake.outgoing.find(([, m]) => m === "turn/start")
+    expect((firstTurn?.[2] as Record<string, unknown>).model).toBe("gpt-5")
+
+    // Change the model.
+    handle.setModel?.("mdl_new" as never)
+    ft.fake.outgoing.length = 0
+
+    // Next turn/start: carries the new model.
+    handle.send("second")
+    const secondTurn = ft.fake.outgoing.find(([, m]) => m === "turn/start")
+    expect((secondTurn?.[2] as Record<string, unknown>).model).toBe("mdl_new")
   })
 })
