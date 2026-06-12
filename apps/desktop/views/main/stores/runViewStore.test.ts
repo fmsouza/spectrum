@@ -77,4 +77,16 @@ describe("runViewStore", () => {
     store.getState().reset(sid)
     expect(store.getState().modeBySession[sid]).toBeUndefined()
   })
+
+  it("seeds the composer mode from runner-started.permissionMode and does not clobber it on re-emit", () => {
+    const store = createRunViewStore(noDeps)
+    store
+      .getState()
+      .applyEvent(sid, { type: "runner-started", runnerId: root, permissionMode: "plan" })
+    expect(store.getState().modeBySession[sid]).toBe("plan")
+    // The harness may re-emit runner-started (e.g. claude's system/init) without a permissionMode;
+    // that must not reset the already-seeded mode.
+    store.getState().applyEvent(sid, { type: "runner-started", runnerId: root })
+    expect(store.getState().modeBySession[sid]).toBe("plan")
+  })
 })
