@@ -1,7 +1,11 @@
 import { describe, expect, it } from "bun:test"
 import type { RunnerOutbound } from "@launchkit/agent-driver"
 import type { CanonicalEvent, StoredEvent } from "@launchkit/agent-events"
-import { type SessionId, SessionIdSchema } from "@launchkit/types"
+import {
+  type HarnessId,
+  type SessionId,
+  SessionIdSchema,
+} from "@launchkit/types"
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react"
 import type { RunnerClient } from "../runner/runnerClient"
 import { createFakeIpcClient } from "../test/fake-client"
@@ -151,6 +155,43 @@ describe("RunDetail (live)", () => {
     fireEvent.click(
       screen.getByRole("menuitemradio", { name: /bypass permissions/i }),
     )
+    expect(runner.setModes).toEqual([{ id, mode: "bypass" }])
+    cleanup()
+  })
+
+  it("persists the picked mode per-harness via updateHarnessPrefs", async () => {
+    const runner = makeFakeRunner()
+    const prefsCalls: Array<{ harnessId: string; mode?: string }> = []
+    const client = createFakeIpcClient({
+      updateHarnessPrefs: async (p: { harnessId: string; mode?: string }) => {
+        prefsCalls.push(p)
+        return { ok: true, value: null }
+      },
+    })
+    renderWithProviders(
+      <RunDetail
+        mode="live"
+        sessionId={id}
+        runnerClient={runner}
+        harnessId={"claude" as HarnessId}
+      />,
+      client,
+    )
+    runner.push(
+      stored(0, {
+        type: "runner-started",
+        runnerId: "run_root" as never,
+        supportedModes: ["manual", "bypass"],
+      }),
+    )
+    await waitFor(() =>
+      screen.getByRole("button", { name: /manual approval/i }),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /manual approval/i }))
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: /bypass permissions/i }),
+    )
+    expect(prefsCalls).toEqual([{ harnessId: "claude", mode: "bypass" }])
     expect(runner.setModes).toEqual([{ id, mode: "bypass" }])
     cleanup()
   })

@@ -2,7 +2,7 @@
 
 **Responsibility:** Read/write `~/.config/launchkit/config.json` — factory defaults, versioned forward migrations, and atomic, `0600` persistence. Secrets are never stored here (a `Provider` models them as `SecretRef`).
 
-**Public API (barrel `src/index.ts`):** `Config`/`ConfigSchema`, `Settings`/`SettingsSchema`, `CURRENT_CONFIG_VERSION`, `defaultConfig()`; `Migration`/`migrations`/`runMigrations`; `ConfigError`; `ConfigFile`/`createInMemoryConfigFile()` (test fake)/`createFsConfigFile()` (real adapter); `ConfigStore`/`createFileConfigStore({ file })`/`createCachedConfigStore(inner)`.
+**Public API (barrel `src/index.ts`):** `Config`/`ConfigSchema`, `Settings`/`SettingsSchema`, `HarnessPrefs`/`HarnessPrefsSchema`, `CURRENT_CONFIG_VERSION`, `defaultConfig()`; `Migration`/`migrations`/`runMigrations`; `ConfigError`; `ConfigFile`/`createInMemoryConfigFile()` (test fake)/`createFsConfigFile()` (real adapter); `ConfigStore`/`createFileConfigStore({ file })`/`createCachedConfigStore(inner)`.
 
 **Depends on:** `@launchkit/types` (`Provider`, `ModelRoute`, `SecretRef`), `@launchkit/utils` (`Result`, `ok`, `err`, `isOk`, `Clock`)md.
 

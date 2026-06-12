@@ -36,6 +36,7 @@ const METHOD_NAMES = [
   "setCollapsedProjects",
   "getRunnerSocketUrl",
   "getRunEvents",
+  "updateHarnessPrefs",
 ] as const satisfies ReadonlyArray<keyof IpcClient>
 
 /**
