@@ -79,6 +79,17 @@ export const RunView = ({
     <div className="lk-run-view" data-sub-open={openRunner !== undefined}>
       <section className="lk-run-view__main">
         <div className="lk-run-view__scroll" ref={scrollRef}>
+          {root.error !== undefined ? (
+            <div className="lk-run-error" role="alert">
+              <span className="lk-run-error__icon" aria-hidden>
+                !
+              </span>
+              <div className="lk-run-error__body">
+                <p className="lk-run-error__title">Runner errored</p>
+                <p className="lk-run-error__detail">{root.error}</p>
+              </div>
+            </div>
+          ) : null}
           <ConversationTimeline
             runner={root}
             runners={runners}
