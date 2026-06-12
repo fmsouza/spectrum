@@ -24,6 +24,7 @@ const configWithProvider = (): Config => ({
     lastSelectedHarnessId: "",
     lastSelectedModelId: "",
     collapsedProjects: [],
+    lastByHarness: {},
   },
 })
 

@@ -65,10 +65,29 @@ export const createRunViewStore = (_deps: StoreDeps): StoreApi<RunViewStore> =>
         event,
         next,
       )
-      set((state) => ({
-        byId: { ...state.byId, [sessionId]: next },
-        busyBySession: { ...state.busyBySession, [sessionId]: busy },
-      }))
+      set((state) => {
+        const updated = {
+          byId: { ...state.byId, [sessionId]: next },
+          busyBySession: { ...state.busyBySession, [sessionId]: busy },
+        }
+        // Seed the composer mode from the driver's reported applied mode, but only when nothing is
+        // set yet — so a benign re-emit of runner-started (claude's system/init) or a later user
+        // change is never clobbered. The driver is the source of truth for the *initial* mode.
+        if (
+          event.type === "runner-started" &&
+          event.permissionMode !== undefined &&
+          state.modeBySession[sessionId] === undefined
+        ) {
+          return {
+            ...updated,
+            modeBySession: {
+              ...state.modeBySession,
+              [sessionId]: event.permissionMode,
+            },
+          }
+        }
+        return updated
+      })
     },
 
     reset: (sessionId) => {

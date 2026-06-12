@@ -17,6 +17,7 @@ import {
   PickFolderParamsSchema,
   PickFolderResultSchema,
   SetProviderSecretParamsSchema,
+  UpdateHarnessPrefsParamsSchema,
   UpdateModelParamsSchema,
   UpdateModelResultSchema,
 } from "./methods"
@@ -372,11 +373,32 @@ describe("IpcMethodSchemas", () => {
       "setCollapsedProjects",
       "getRunnerSocketUrl",
       "getRunEvents",
+      "updateHarnessPrefs",
     ] as const
     for (const name of expected) {
       expect(IpcMethodSchemas[name]).toBeDefined()
       expect(IpcMethodSchemas[name].params).toBeDefined()
       expect(IpcMethodSchemas[name].result).toBeDefined()
     }
+  })
+})
+
+describe("UpdateHarnessPrefsParamsSchema", () => {
+  it("accepts a harnessId with an optional mode and rejects an unknown mode", () => {
+    expect(
+      UpdateHarnessPrefsParamsSchema.safeParse({ harnessId: "claude" }).success,
+    ).toBe(true)
+    expect(
+      UpdateHarnessPrefsParamsSchema.safeParse({
+        harnessId: "claude",
+        mode: "plan",
+      }).success,
+    ).toBe(true)
+    expect(
+      UpdateHarnessPrefsParamsSchema.safeParse({
+        harnessId: "claude",
+        mode: "yolo",
+      }).success,
+    ).toBe(false)
   })
 })

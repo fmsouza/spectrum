@@ -118,6 +118,17 @@ const v5ToV6: Migration = {
   migrate: (raw) => ({ ...raw, version: 6 }),
 }
 
+/**
+ * v7 adds `settings.lastByHarness` (per-harness "last used" prefs). The new field has a
+ * schema-level default of `{}`, so v6 documents simply gain it on first load — no data
+ * transformation beyond bumping the version (mirrors v5→v6).
+ */
+const v6ToV7: Migration = {
+  from: 6,
+  to: 7,
+  migrate: (raw) => ({ ...raw, version: 7 }),
+}
+
 /** Ordered list of forward migrations. Append a new step whenever `CURRENT_CONFIG_VERSION` bumps. */
 export const migrations: readonly Migration[] = [
   v1ToV2,
@@ -125,6 +136,7 @@ export const migrations: readonly Migration[] = [
   v3ToV4,
   v4ToV5,
   v5ToV6,
+  v6ToV7,
 ]
 
 /**

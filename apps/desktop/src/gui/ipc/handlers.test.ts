@@ -957,6 +957,72 @@ describe("createIpcHandlers.getRunEvents", () => {
   })
 })
 
+describe("createIpcHandlers.updateHarnessPrefs", () => {
+  it("persists the mode into settings.lastByHarness for the harness", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.updateHarnessPrefs({
+      harnessId: "claude" as HarnessId,
+      mode: "plan",
+    })
+
+    expect(result).toBeNull()
+    expect(saves.at(-1)?.settings.lastByHarness).toEqual({
+      claude: { mode: "plan" },
+    })
+  })
+
+  it("merges into existing entries without dropping other harnesses", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.updateHarnessPrefs({
+      harnessId: "codex" as HarnessId,
+      mode: "bypass",
+    })
+    await handlers.updateHarnessPrefs({
+      harnessId: "claude" as HarnessId,
+      mode: "plan",
+    })
+
+    expect(saves.at(-1)?.settings.lastByHarness).toEqual({
+      codex: { mode: "bypass" },
+      claude: { mode: "plan" },
+    })
+  })
+})
+
+describe("createIpcHandlers.launchHarness (persisted mode)", () => {
+  it("forwards the persisted permission mode for the harness to runner.launch", async () => {
+    const { ctx, runnerLaunchInputs } = makeCtx({ providers: [provider()] })
+    const loaded = (await ctx.config.load()).value
+    await ctx.config.save({
+      ...loaded,
+      settings: {
+        ...loaded.settings,
+        lastByHarness: { claude: { mode: "plan" } },
+      },
+    } as Config)
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({ id: "claude" as HarnessId, env: {} })
+
+    const input = runnerLaunchInputs[0] as { permissionMode?: string }
+    expect(input.permissionMode).toBe("plan")
+  })
+
+  it("omits permissionMode when nothing is stored for the harness", async () => {
+    const { ctx, runnerLaunchInputs } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({ id: "claude" as HarnessId, env: {} })
+
+    const input = runnerLaunchInputs[0] as Record<string, unknown>
+    expect("permissionMode" in input).toBe(false)
+  })
+})
+
 describe("createIpcHandlers.launchHarness selection", () => {
   it("launches a native harness via the runner manager", async () => {
     const { ctx, runnerLaunchInputs } = makeCtx({

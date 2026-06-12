@@ -24,6 +24,7 @@ describe("SettingsSchema", () => {
       lastSelectedHarnessId: "",
       lastSelectedModelId: "",
       collapsedProjects: [],
+      lastByHarness: {},
     })
   })
   it("rejects a non-loopback proxyHost so the proxy can never bind a public interface", () => {
@@ -60,6 +61,24 @@ describe("SettingsSchema", () => {
     expect(settings.lastSelectedHarnessId).toBe("claude")
     expect(settings.lastSelectedModelId).toBe("mdl_1")
   })
+
+  it("defaults lastByHarness to an empty object", () => {
+    expect(SettingsSchema.parse({}).lastByHarness).toEqual({})
+  })
+
+  it("accepts a per-harness prefs map with a stored mode", () => {
+    const parsed = SettingsSchema.parse({
+      lastByHarness: { claude: { mode: "plan" } },
+    })
+    expect(parsed.lastByHarness.claude?.mode).toBe("plan")
+  })
+
+  it("rejects unknown keys inside a HarnessPrefs entry (strict)", () => {
+    expect(
+      SettingsSchema.safeParse({ lastByHarness: { claude: { nope: 1 } } })
+        .success,
+    ).toBe(false)
+  })
 })
 
 describe("ConfigSchema", () => {
@@ -77,6 +96,7 @@ describe("ConfigSchema", () => {
         lastSelectedHarnessId: "",
         lastSelectedModelId: "",
         collapsedProjects: [],
+        lastByHarness: {},
       },
     }
     expect(ConfigSchema.parse(config)).toEqual(config)
@@ -119,13 +139,14 @@ describe("defaultConfig", () => {
         lastSelectedHarnessId: "",
         lastSelectedModelId: "",
         collapsedProjects: [],
+        lastByHarness: {},
       },
     })
   })
   it("produces a config that satisfies ConfigSchema", () => {
     expect(ConfigSchema.safeParse(defaultConfig()).success).toBe(true)
   })
-  it("uses the bumped CURRENT_CONFIG_VERSION of 6", () => {
-    expect(CURRENT_CONFIG_VERSION).toBe(6)
+  it("uses the bumped CURRENT_CONFIG_VERSION of 7", () => {
+    expect(CURRENT_CONFIG_VERSION).toBe(7)
   })
 })
