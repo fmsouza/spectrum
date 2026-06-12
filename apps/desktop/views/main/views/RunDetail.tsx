@@ -1,5 +1,5 @@
 import { type RunState, initialRunState, reduce } from "@launchkit/agent-events"
-import type { SessionId } from "@launchkit/types"
+import type { HarnessId, SessionId } from "@launchkit/types"
 import { EmptyState, RunView, Spinner } from "@launchkit/ui"
 import { type ReactElement, useEffect, useState } from "react"
 import { useStore } from "zustand"
@@ -11,16 +11,21 @@ export type RunDetailProps = {
   readonly mode: "live" | "replay"
   readonly sessionId: SessionId
   readonly runnerClient: RunnerClient
+  /** The session's harness, used to persist per-harness composer prefs. Absent in replay. */
+  readonly harnessId?: HarnessId
 }
 
 /** Live conversation: owns the runner socket attach + per-frame reduce. */
 const LiveRunDetail = ({
   sessionId,
   runnerClient,
+  harnessId,
 }: {
   readonly sessionId: SessionId
   readonly runnerClient: RunnerClient
+  readonly harnessId?: HarnessId
 }): ReactElement => {
+  const client = useIpcClient()
   const store = useStores().runView
   const runState = useStore(store, (s) => s.byId[sessionId])
   const openSubId = useStore(store, (s) => s.openSubBySession[sessionId])
@@ -70,6 +75,9 @@ const LiveRunDetail = ({
       onModeChange={(m) => {
         setMode(sessionId, m)
         runnerClient.setMode(sessionId, m)
+        // Remember this harness's last-used mode so the next session of it starts here.
+        if (harnessId !== undefined)
+          void client.updateHarnessPrefs({ harnessId, mode: m })
       }}
     />
   )
@@ -143,9 +151,14 @@ export const RunDetail = ({
   mode,
   sessionId,
   runnerClient,
+  harnessId,
 }: RunDetailProps): ReactElement =>
   mode === "live" ? (
-    <LiveRunDetail sessionId={sessionId} runnerClient={runnerClient} />
+    <LiveRunDetail
+      sessionId={sessionId}
+      runnerClient={runnerClient}
+      {...(harnessId === undefined ? {} : { harnessId })}
+    />
   ) : (
     <ReplayRunDetail sessionId={sessionId} />
   )

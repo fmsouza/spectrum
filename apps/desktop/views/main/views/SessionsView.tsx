@@ -97,6 +97,9 @@ const SessionsDetail = ({
         key={selectedSessionId}
         mode={isOpen ? "live" : "replay"}
         sessionId={selectedSession?.id ?? selectedSessionId}
+        {...(selectedSession?.harnessId === undefined
+          ? {}
+          : { harnessId: selectedSession.harnessId })}
         runnerClient={runnerClient}
       />
     </div>
