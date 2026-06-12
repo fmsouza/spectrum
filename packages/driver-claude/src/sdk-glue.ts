@@ -168,6 +168,13 @@ export const createClaudeAdapter = (deps: {
      */
     let pendingRestartMode: string | undefined
 
+    // Mutable current config: `currentMode` is the SDK permission string; `currentModel` is
+    // the route id string (or undefined for the default/direct route). launch() / restart()
+    // use whatever is current — setMode and setModel mutate these before relaunching.
+    let currentMode = toClaudePermissionMode(input.permissionMode ?? "manual")
+    let currentModel =
+      input.modelId !== undefined ? String(input.modelId) : undefined
+
     /** The active query quadruple (replaced on restart). */
     let current: {
       query: ClaudeQuery
@@ -179,13 +186,10 @@ export const createClaudeAdapter = (deps: {
 
     /**
      * Build a fresh inputStream + AbortController + sdk.query and start its pump loop.
-     * `permissionMode` is the SDK permission string; `resume` is the claude session id to
-     * resume (absent on the initial launch).
+     * Reads the current `currentMode` / `currentModel` state for options; `resume` is
+     * the claude session id to resume (absent on the initial launch).
      */
-    const launch = (
-      permissionMode: string,
-      resume?: string,
-    ): typeof current => {
+    const launch = (resume?: string): typeof current => {
       const inputStream = makeInputStream()
       const abort = new AbortController()
       // Per-launch stale flag: set by restart() BEFORE tearing down this query so the
@@ -200,11 +204,9 @@ export const createClaudeAdapter = (deps: {
         options: {
           cwd: input.cwd,
           env: { ...(deps.baseEnv?.() ?? {}), ...input.env },
-          ...(input.modelId !== undefined
-            ? { model: String(input.modelId) }
-            : {}),
+          ...(currentModel !== undefined ? { model: currentModel } : {}),
           abortController: abort,
-          permissionMode,
+          permissionMode: currentMode,
           ...(executable !== undefined
             ? { pathToClaudeCodeExecutable: executable }
             : {}),
@@ -239,7 +241,8 @@ export const createClaudeAdapter = (deps: {
               if (pendingRestartMode !== undefined) {
                 const mode = pendingRestartMode
                 pendingRestartMode = undefined
-                restart(mode)
+                currentMode = mode
+                restart()
               }
             }
             for (const event of mapClaudeMessage(msg, state)) ctx.emit(event)
@@ -261,10 +264,10 @@ export const createClaudeAdapter = (deps: {
     }
 
     /**
-     * Tear down the current query and relaunch with a new permission mode.
+     * Tear down the current query and relaunch with the current `currentMode` / `currentModel`.
      * The new query resumes the same claude session so history is preserved.
      */
-    const restart = (permissionMode: string): void => {
+    const restart = (): void => {
       if (closed) return
       // Mark the OLD launch stale BEFORE teardown so its pump's catch (which fires
       // asynchronously as a microtask) sees stale=true and does not emit errored.
@@ -272,12 +275,11 @@ export const createClaudeAdapter = (deps: {
       current.inputStream.end()
       current.abort.abort()
       current.query.close()
-      current = launch(permissionMode, claudeSessionId)
+      current = launch(claudeSessionId)
     }
 
-    // Launch with the initial permission mode.
-    const initialMode = toClaudePermissionMode(input.permissionMode ?? "manual")
-    current = launch(initialMode)
+    // Launch with the initial permission mode + model.
+    current = launch()
     // Seed the first turn from initialPrompt so the live session has something to do.
     // The prompt queue is drained asynchronously so pushing after launch() is safe.
     if (input.initialPrompt !== undefined)
@@ -287,6 +289,7 @@ export const createClaudeAdapter = (deps: {
       send: (text) => current.inputStream.push(text),
       setMode: (mode) => {
         const native = toClaudePermissionMode(mode)
+        currentMode = native
         // Capture the current query at the time of this setMode call.
         // This guards Finding 3: if a newer restart already happened by the time
         // the rejection fires, current.query !== q and we skip the stale restart.
@@ -296,7 +299,7 @@ export const createClaudeAdapter = (deps: {
           // SDK without live switching: relaunch with the new mode.
           // The absent-setPermissionMode path is synchronous; restart immediately regardless
           // of whether a session id exists (the new session will simply start fresh).
-          restart(native)
+          restart()
         } else {
           attempt.catch(() => {
             // The SDK refuses some in-place switches (e.g. into bypassPermissions when the
@@ -311,10 +314,18 @@ export const createClaudeAdapter = (deps: {
             if (claudeSessionId === undefined) {
               pendingRestartMode = native
             } else {
-              restart(native)
+              restart()
             }
           })
         }
+      },
+      setModel: (modelId) => {
+        // Model is fixed per SDK query (the SDK reads `options.model` at query() time and
+        // does not support a live-switch endpoint). To change models we relaunch resuming
+        // the same claude session so conversation history is preserved. "default" (no
+        // model) is not reachable here — the selector only sends real route ids.
+        currentModel = String(modelId)
+        restart()
       },
       interrupt: () => {
         void current.query.interrupt()
