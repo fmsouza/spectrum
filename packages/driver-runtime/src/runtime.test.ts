@@ -18,6 +18,7 @@ const makeFakeAdapter = (): {
   ctx: () => AdapterCtx
   sent: readonly string[]
   modes: readonly PermissionMode[]
+  models: readonly string[]
   interrupts: number
   closes: number
 } => {
@@ -26,6 +27,7 @@ const makeFakeAdapter = (): {
   let captured: AdapterCtx | undefined
   const sent: string[] = []
   const modes: PermissionMode[] = []
+  const modelsSet: string[] = []
   const state = { interrupts: 0, closes: 0 }
   const handle: AdapterHandle = {
     send: (t) => {
@@ -33,6 +35,9 @@ const makeFakeAdapter = (): {
     },
     setMode: (mode) => {
       modes.push(mode)
+    },
+    setModel: (modelId) => {
+      modelsSet.push(String(modelId))
     },
     interrupt: () => {
       state.interrupts += 1
@@ -63,6 +68,9 @@ const makeFakeAdapter = (): {
     },
     get modes() {
       return modes
+    },
+    get models() {
+      return modelsSet
     },
     get interrupts() {
       return state.interrupts
@@ -519,5 +527,43 @@ describe("createDriver", () => {
     // setMode AFTER handle exists → forwarded immediately
     started.value.setMode?.("plan")
     expect(fake.modes).toEqual(["plan"])
+  })
+
+  it("emits model on the up-front runner-started when the start input carries one", () => {
+    const fake = makeFakeAdapter()
+    let run: (() => void) | undefined
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: (fn) => {
+        run = fn
+      },
+    })
+    const started = driver.start({ ...startInput, modelId: "mdl_x" as never })
+    if (!started.ok) throw new Error("expected ok")
+    const seen: CanonicalEvent[] = []
+    started.value.onEvent((e) => seen.push(e))
+    run?.()
+    expect(seen[0]).toEqual({
+      type: "runner-started",
+      runnerId: "rnr_1" as RunnerId,
+      model: "mdl_x",
+    })
+  })
+
+  it("queues setModel until the handle exists, then forwards to the adapter", async () => {
+    const fake = makeFakeAdapter()
+    const driver = createDriver({
+      adapter: fake.adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    started.value.setModel?.("mdl_y" as never)
+    expect(fake.models).toEqual([]) // queued before the handle exists
+    fake.resolveStart()
+    await Promise.resolve()
+    expect(fake.models).toEqual(["mdl_y"]) // drained into the handle
   })
 })

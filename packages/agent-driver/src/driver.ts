@@ -52,6 +52,8 @@ export interface AgentSession {
   close(): Result<void, DriverError>
   /** Switch the normalized permission mode mid-session (driver applies natively or on next turn). */
   setMode?(mode: PermissionMode): Result<void, DriverError>
+  /** Switch the model mid-session (driver applies live, resume-restart, or fresh session). */
+  setModel?(modelId: ModelId): Result<void, DriverError>
 }
 
 export interface AgentDriver {
