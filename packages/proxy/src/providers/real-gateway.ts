@@ -17,6 +17,55 @@ type ModelMessage = NonNullable<
 type ToolSet = NonNullable<Parameters<typeof streamText>[0]["tools"]>
 
 /**
+ * Pure: describe a (possibly nested) AI SDK error as the most useful human-readable detail plus the
+ * upstream HTTP status. An `AI_RetryError` unwraps to its last attempt's error; an `AI_APICallError`
+ * prefers the provider's own response body (`{"error":"..."}` or `{"error":{"message":"..."}}`) over
+ * the generic status text — e.g. Ollama's "you have reached your session usage limit ..." instead of
+ * "Too Many Requests".
+ */
+export const describeStreamError = (
+  err: unknown,
+): { readonly detail: string; readonly statusCode?: number } => {
+  if (err instanceof Error && err.name === "AI_RetryError") {
+    const last = (err as { lastError?: unknown }).lastError
+    if (last !== undefined) return describeStreamError(last)
+  }
+  if (err instanceof Error && err.name === "AI_APICallError") {
+    const e = err as Error & {
+      readonly statusCode?: number
+      readonly responseBody?: string
+    }
+    return {
+      detail: providerBodyMessage(e.responseBody) ?? e.message,
+      ...(e.statusCode !== undefined ? { statusCode: e.statusCode } : {}),
+    }
+  }
+  if (err instanceof Error) return { detail: err.message }
+  return { detail: String(err) }
+}
+
+/** Pure: extract the message from a provider error body — `{"error":"..."}` or `{"error":{"message":"..."}}`. */
+const providerBodyMessage = (body: string | undefined): string | undefined => {
+  if (body === undefined) return undefined
+  try {
+    const parsed: unknown = JSON.parse(body)
+    if (typeof parsed !== "object" || parsed === null) return undefined
+    const error = (parsed as { error?: unknown }).error
+    if (typeof error === "string") return error
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "message" in error &&
+      typeof (error as { message: unknown }).message === "string"
+    )
+      return (error as { message: string }).message
+    return undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Pure mapping from an AI SDK v6 high-level `fullStream` part to our internal `StreamEvent`.
  * The high-level text-delta part carries its text in `.text` (v4 used `.textDelta`); the high-level
  * `tool-call` part carries the fully-assembled `.input` (the incremental `tool-input-*` parts are
@@ -55,7 +104,14 @@ export const mapFullStreamPart = (
     }
   }
   if (part.type === "error")
-    return { type: "error", detail: String(part.error) }
+    return part.error instanceof Error && part.error.name.startsWith("AI_")
+      ? { type: "error", ...describeStreamError(part.error) }
+      : { type: "error", detail: String(part.error) }
+  if (part.type === "abort")
+    return {
+      type: "error",
+      detail: (part as { reason?: string }).reason ?? "LLM request was aborted",
+    }
   return undefined
 }
 
@@ -118,6 +174,17 @@ export const createRealGateway = (): LanguageModelGateway => ({
     model: ModelHandle,
     req: NormalizedRequest,
   ): AsyncIterable<StreamEvent> {
+    // The AI SDK v6's streamText has an unawaited recordSpan() call in its
+    // DefaultStreamTextResult constructor. When the LLM provider rejects (e.g. 429),
+    // that promise becomes an unhandled rejection, the internal stitchable stream is
+    // never closed/errored, and result.fullStream hangs forever. We work around this
+    // by racing EVERY iterator.next() against a per-chunk timeout. Additionally, an
+    // unhandledRejection listener captures the actual AI SDK error message so it can
+    // be surfaced instead of the generic timeout message.
+    const CHUNK_TIMEOUT_MS = 20_000
+
+    const controller = new AbortController()
+
     const result = streamText({
       model: model as Parameters<typeof streamText>[0]["model"],
       ...(req.system !== undefined ? { system: req.system } : {}),
@@ -131,19 +198,80 @@ export const createRealGateway = (): LanguageModelGateway => ({
       ...(req.temperature !== undefined
         ? { temperature: req.temperature }
         : {}),
+      // The proxy is a RELAY: the harness owns retry policy. The AI SDK's default
+      // (2 retries with exponential backoff) compounds with the harness's own
+      // retries into minutes of stall on a rate-limited provider.
+      maxRetries: 0,
+      abortSignal: controller.signal,
     })
+
+    const iterator = result.fullStream[Symbol.asyncIterator]()
+
+    // Capture AI SDK errors from unhandled rejections and short-circuit the
+    // pending chunk wait IMMEDIATELY — without this, a captured provider error
+    // would only surface when the chunk timer fires.
+    let captureError: Error | null = null
+    let shortCircuit: ((err: Error) => void) | null = null
+    const onUnhandled = (reason: unknown) => {
+      if (reason instanceof Error && reason.name.startsWith("AI_")) {
+        captureError = reason
+        controller.abort()
+        shortCircuit?.(reason)
+        shortCircuit = null
+      }
+    }
+    process.on("unhandledRejection", onUnhandled)
+
     try {
-      for await (const part of result.fullStream) {
+      while (true) {
+        type Next = Awaited<ReturnType<typeof iterator.next>>
+
+        // A provider error may have been captured between chunks.
+        if (captureError !== null) throw captureError
+
+        const next: Next = await new Promise<Next>((resolve, reject) => {
+          const id = setTimeout(() => {
+            controller.abort()
+            shortCircuit = null
+            reject(
+              captureError !== null
+                ? captureError
+                : new Error(
+                    `LLM provider did not respond within ${CHUNK_TIMEOUT_MS}ms; check your provider credentials, rate limits, and network`,
+                  ),
+            )
+          }, CHUNK_TIMEOUT_MS)
+
+          shortCircuit = (err) => {
+            clearTimeout(id)
+            reject(err)
+          }
+
+          void iterator.next().then(
+            (val) => {
+              clearTimeout(id)
+              shortCircuit = null
+              resolve(val)
+            },
+            (err) => {
+              clearTimeout(id)
+              shortCircuit = null
+              reject(err)
+            },
+          )
+        })
+
+        if (next.done) break
+
         const event = mapFullStreamPart(
-          part as { type: string } & Record<string, unknown>,
+          next.value as { type: string } & Record<string, unknown>,
         )
         if (event !== undefined) yield event
       }
-    } catch (e) {
-      yield {
-        type: "error",
-        detail: e instanceof Error ? e.message : "stream failed",
-      }
+    } catch (e: unknown) {
+      yield { type: "error", ...describeStreamError(captureError ?? e) }
+    } finally {
+      process.off("unhandledRejection", onUnhandled)
     }
   },
 })

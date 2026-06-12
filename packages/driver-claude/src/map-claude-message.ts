@@ -25,6 +25,15 @@ export interface ClaudeMapState {
   newRunnerId: () => RunnerId
   readonly childByToolUseId: Map<string, RunnerId>
   seq: number
+  /**
+   * The last assistant text streamed on the ROOT runner this turn. When the turn ends with
+   * `result.is_error`, that message IS the error text (claude streams e.g. "API Error: 429 …" as a
+   * normal assistant message before flagging the result), so the turn error references it. Cleared
+   * on every result so one turn's text never leaks into a later turn's error.
+   */
+  lastRootText?:
+    | { readonly messageId: string; readonly text: string }
+    | undefined
 }
 
 export const initialClaudeMapState = (
@@ -77,12 +86,10 @@ const mapAssistant = (
   const events: CanonicalEvent[] = []
   for (const block of msg.message.content) {
     if (isTextBlock(block)) {
-      events.push({
-        type: "text-delta",
-        runnerId,
-        messageId: nextMessageId(state),
-        text: block.text,
-      })
+      const messageId = nextMessageId(state)
+      events.push({ type: "text-delta", runnerId, messageId, text: block.text })
+      if (runnerId === state.rootRunnerId)
+        state.lastRootText = { messageId, text: block.text }
       continue
     }
     if (isToolUse(block)) {
@@ -148,13 +155,28 @@ const mapResultUsage = (msg: SdkResultMessage): Usage => ({
 // A `result` message ends a TURN, not the session — claude's streaming-input session stays alive for
 // follow-up turns. Emit `turn-finished` (keeps the runner running so the composer stays enabled); a
 // genuinely fatal failure surfaces via the glue's iterator-catch → runner-finished:"errored".
+// An `is_error` result carries the turn error: claude already streamed the error text as the turn's
+// last root assistant message, so the error references it (the UI restyles that bubble).
 const mapResult = (
   msg: SdkResultMessage,
   state: ClaudeMapState,
-): CanonicalEvent[] => [
-  { type: "usage", runnerId: state.rootRunnerId, usage: mapResultUsage(msg) },
-  { type: "turn-finished", runnerId: state.rootRunnerId },
-]
+): CanonicalEvent[] => {
+  const last = state.lastRootText
+  state.lastRootText = undefined
+  return [
+    { type: "usage", runnerId: state.rootRunnerId, usage: mapResultUsage(msg) },
+    msg.is_error
+      ? {
+          type: "turn-finished",
+          runnerId: state.rootRunnerId,
+          error: {
+            detail: last?.text ?? msg.result ?? `Turn failed (${msg.subtype})`,
+            ...(last !== undefined ? { messageId: last.messageId } : {}),
+          },
+        }
+      : { type: "turn-finished", runnerId: state.rootRunnerId },
+  ]
+}
 
 /**
  * PURE: map one SDK message → 0..n canonical events, mutating the small `state` for runner

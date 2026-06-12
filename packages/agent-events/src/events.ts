@@ -59,6 +59,17 @@ export const CanonicalEventSchema = z.discriminatedUnion("type", [
       type: z.literal("turn-finished"),
       runnerId: RunnerIdSchema,
       usage: UsageSchema.optional(),
+      // A TURN-level failure (e.g. the provider rate-limited the request): the turn is over but the
+      // session stays alive for a retry — distinct from runner-finished:"errored" (runner is dead).
+      // `messageId` references the already-streamed message carrying the error text, so the view can
+      // render that bubble in its error state instead of duplicating the text.
+      error: z
+        .object({
+          detail: z.string(),
+          messageId: z.string().optional(),
+        })
+        .strict()
+        .optional(),
     })
     .strict(),
   z

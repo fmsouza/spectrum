@@ -460,4 +460,120 @@ describe("createRunManager.bindSend", () => {
     expect(rebound).toHaveLength(1)
     expect(sent).toHaveLength(0)
   })
+
+  it("captures events in-run-attach replay even when the initial microtask send goes to a no-op sink (proxy for WS-not-yet-bound race)", async () => {
+    // The real-app scenario: manager created with no-op `send: () => {}`, then a WS
+    // connects later. Events emitted via queueMicrotask during launch are stored in the
+    // RunEventSink but dropped by the no-op send. When the WS later connects and the
+    // webview sends run-attach, the replay must re-send the missed events.
+    const store: StoredEvent[] = []
+    let seq = -1
+    const noopSend = (): void => {}
+    const manager = createRunManager({
+      driver: createFakeDriver({
+        script: {
+          rootRunnerId: root,
+          reactions: [{ on: "start", emit: [startEvent, textEvent] }],
+        },
+      }),
+      sessions: {
+        create: () => ok(fakeSession),
+        close: () => ok({ ...fakeSession, exitCode: 0 }),
+      },
+      events: {
+        append: (sid, event) => {
+          seq += 1
+          store.push({ seq, sessionId: sid, ts, event })
+          return ok({ seq })
+        },
+        read: () => ok(store),
+      },
+      clock,
+      send: noopSend,
+    })
+
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    // Flush microtasks — events stored but forwarded to no-op
+    await new Promise((r) => setTimeout(r, 0))
+    expect(store).toHaveLength(2)
+    expect(store[0]?.event).toEqual(startEvent)
+    expect(store[1]?.event).toEqual(textEvent)
+
+    // WS now connects
+    const rebound: RunnerOutbound[] = []
+    manager.bindSend((m) => rebound.push(m))
+
+    // run-attach replays stored backlog
+    manager.handleInbound({ type: "run-attach", id: sessionId })
+    expect(rebound).toHaveLength(2)
+    expect(rebound[0]).toMatchObject({
+      type: "runner-event",
+      id: sessionId,
+      event: store[0],
+    })
+    expect(rebound[1]).toMatchObject({
+      type: "runner-event",
+      id: sessionId,
+      event: store[1],
+    })
+  })
+
+  it("replays stored backlog via run-attach after initial no-op send (async timing)", async () => {
+    // Simulate the real app: manager created with no-op send, WS connects later.
+    // Events emitted via microtask are stored but not forwarded; run-attach replay
+    // must send them after bindSend.
+    const store: StoredEvent[] = []
+    let seq = -1
+    const noopSend = (): void => {} // like the real composition's `send: () => {}`
+    const manager = createRunManager({
+      driver: createFakeDriver({
+        script: {
+          rootRunnerId: root,
+          reactions: [{ on: "start", emit: [startEvent] }],
+        },
+        // Uses default queueMicrotask so events fire asynchronously
+      }),
+      sessions: {
+        create: () => ok(fakeSession),
+        close: () => ok({ ...fakeSession, exitCode: 0 }),
+      },
+      events: {
+        append: (_sid, event) => {
+          seq += 1
+          store.push({ seq, sessionId, ts, event })
+          return ok({ seq })
+        },
+        read: () => ok(store),
+      },
+      clock,
+      send: noopSend,
+    })
+
+    // Launch — events are queued via queueMicrotask
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+
+    // Flush microtasks: events stored but sent to no-op
+    await new Promise((r) => setTimeout(r, 0))
+
+    // Events should be stored but not forwarded (no-op sink — nothing is capturing them)
+    expect(store).toHaveLength(1)
+    expect(store[0]?.event).toEqual(startEvent)
+
+    // Now the WS connects — bindSend replaces the no-op
+    const rebound: RunnerOutbound[] = []
+    manager.bindSend((m) => {
+      rebound.push(m)
+    })
+
+    // The webview sends run-attach to replay stored events
+    manager.handleInbound({ type: "run-attach", id: sessionId })
+    expect(rebound).toHaveLength(1)
+    const replayed = store[0]
+    if (replayed === undefined) throw new Error("no stored event to replay")
+    expect(rebound[0]).toEqual({
+      type: "runner-event",
+      id: sessionId,
+      event: replayed,
+    })
+  })
 })

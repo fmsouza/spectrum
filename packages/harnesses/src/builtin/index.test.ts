@@ -49,7 +49,15 @@ describe("builtinHarnesses", () => {
       ANTHROPIC_BASE_URL: "{{proxyUrl}}",
       ANTHROPIC_AUTH_TOKEN: "{{proxyKey}}",
       ANTHROPIC_MODEL: "{{model}}",
+      CLAUDE_CODE_MAX_RETRIES: "2",
     })
+  })
+
+  it("caps claude's API retries so a failing local proxy errors out in seconds, not minutes", () => {
+    const retries = Number(claude.envTemplate.CLAUDE_CODE_MAX_RETRIES)
+    expect(Number.isInteger(retries)).toBe(true)
+    expect(retries).toBeGreaterThanOrEqual(1)
+    expect(retries).toBeLessThanOrEqual(3)
   })
 
   it("wires opencode to the OpenAI env vars with proxy tokens", () => {

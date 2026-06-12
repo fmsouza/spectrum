@@ -90,6 +90,35 @@ describe("CanonicalEventSchema", () => {
     expect(parsed.type).toBe("usage")
   })
 
+  it("parses a turn-finished event carrying a turn error with a message reference", () => {
+    const parsed = CanonicalEventSchema.parse({
+      type: "turn-finished",
+      runnerId: "rnr_root",
+      error: { detail: "rate limited", messageId: "m1" },
+    })
+    expect(parsed.type).toBe("turn-finished")
+  })
+
+  it("parses a turn-finished error without a messageId", () => {
+    expect(
+      CanonicalEventSchema.safeParse({
+        type: "turn-finished",
+        runnerId: "rnr_root",
+        error: { detail: "rate limited" },
+      }).success,
+    ).toBe(true)
+  })
+
+  it("rejects a turn-finished error missing its detail (strict shape)", () => {
+    expect(
+      CanonicalEventSchema.safeParse({
+        type: "turn-finished",
+        runnerId: "rnr_root",
+        error: { messageId: "m1" },
+      }).success,
+    ).toBe(false)
+  })
+
   it("rejects an event with an unknown type", () => {
     expect(
       CanonicalEventSchema.safeParse({ type: "nope", runnerId: "rnr_root" })

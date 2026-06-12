@@ -1,6 +1,72 @@
 import { describe, expect, it } from "bun:test"
+import { APICallError, RetryError } from "ai"
 import type { NormalizedRequest } from "../types"
-import { mapFullStreamPart, toModelMessages } from "./real-gateway"
+import {
+  describeStreamError,
+  mapFullStreamPart,
+  toModelMessages,
+} from "./real-gateway"
+
+const rateLimitError = (responseBody: string): APICallError =>
+  new APICallError({
+    message: "Too Many Requests",
+    url: "http://127.0.0.1:11434/api/chat",
+    requestBodyValues: {},
+    statusCode: 429,
+    responseBody,
+    isRetryable: true,
+  })
+
+describe("describeStreamError", () => {
+  it("surfaces the provider's JSON error string and status from an APICallError", () => {
+    expect(
+      describeStreamError(
+        rateLimitError('{"error":"you have reached your session usage limit"}'),
+      ),
+    ).toEqual({
+      detail: "you have reached your session usage limit",
+      statusCode: 429,
+    })
+  })
+
+  it("unwraps an AI_RetryError to its last APICallError's provider message", () => {
+    const inner = rateLimitError('{"error":"quota exhausted"}')
+    expect(
+      describeStreamError(
+        new RetryError({
+          message: "Failed after 3 attempts. Last error: Too Many Requests",
+          reason: "maxRetriesExceeded",
+          errors: [inner],
+        }),
+      ),
+    ).toEqual({ detail: "quota exhausted", statusCode: 429 })
+  })
+
+  it("surfaces a nested {error:{message}} provider body shape", () => {
+    expect(
+      describeStreamError(
+        rateLimitError(
+          '{"error":{"message":"rate limited","type":"rate_limit_error"}}',
+        ),
+      ),
+    ).toEqual({ detail: "rate limited", statusCode: 429 })
+  })
+
+  it("falls back to the error message when the body is not JSON", () => {
+    expect(describeStreamError(rateLimitError("<html>busy</html>"))).toEqual({
+      detail: "Too Many Requests",
+      statusCode: 429,
+    })
+  })
+
+  it("returns the message of a plain Error without a status", () => {
+    expect(describeStreamError(new Error("boom"))).toEqual({ detail: "boom" })
+  })
+
+  it("stringifies non-Error values", () => {
+    expect(describeStreamError("nope")).toEqual({ detail: "nope" })
+  })
+})
 
 describe("mapFullStreamPart", () => {
   it("maps a high-level text-delta part (carrying `text`) to a text-delta event", () => {
@@ -52,6 +118,19 @@ describe("mapFullStreamPart", () => {
     ).toEqual({ type: "error", detail: "Error: boom" })
   })
 
+  it("unwraps an AI_ error part to the provider's message and status", () => {
+    expect(
+      mapFullStreamPart({
+        type: "error",
+        error: rateLimitError('{"error":"session usage limit reached"}'),
+      }),
+    ).toEqual({
+      type: "error",
+      detail: "session usage limit reached",
+      statusCode: 429,
+    })
+  })
+
   it("returns undefined for unknown part types", () => {
     expect(mapFullStreamPart({ type: "text-start" })).toBeUndefined()
   })
@@ -70,6 +149,22 @@ describe("mapFullStreamPart", () => {
 
   it("returns undefined for start parts", () => {
     expect(mapFullStreamPart({ type: "start" })).toBeUndefined()
+  })
+
+  it("maps an abort part to an error event carrying the abort reason", () => {
+    expect(
+      mapFullStreamPart({
+        type: "abort",
+        reason: "LLM provider timed out",
+      }),
+    ).toEqual({ type: "error", detail: "LLM provider timed out" })
+  })
+
+  it("maps an abort part without a reason to a generic error", () => {
+    expect(mapFullStreamPart({ type: "abort" })).toEqual({
+      type: "error",
+      detail: "LLM request was aborted",
+    })
   })
 })
 

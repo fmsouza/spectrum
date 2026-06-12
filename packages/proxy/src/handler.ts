@@ -9,7 +9,7 @@ import { checkAuth } from "./auth"
 import type { LanguageModelGateway } from "./gateway"
 import type { ProviderFactory } from "./providers/factory"
 import type { Router } from "./router"
-import type { ProxyError } from "./types"
+import type { ProxyError, StreamEvent } from "./types"
 
 export interface HandlerDeps {
   proxyKey: string
@@ -19,13 +19,94 @@ export interface HandlerDeps {
   listModels: () => readonly string[]
 }
 
+// A provider rate limit (429) passes through so the harness sees the true
+// semantics (and the provider's own quota message). Every other provider
+// failure stays 502: leaking e.g. a provider 401 would read as a proxy-auth
+// failure to the harness (see the ANTHROPIC_AUTH_TOKEN 401-retry-loop note in
+// the claude harness definition).
 const statusFor = (e: ProxyError): number =>
-  e.kind === "unauthorized" ? 401 : e.kind === "provider-failed" ? 502 : 400
+  e.kind === "unauthorized"
+    ? 401
+    : e.kind === "provider-failed"
+      ? e.statusCode === 429
+        ? 429
+        : 502
+      : 400
 const errorResponse = (e: ProxyError): Response =>
   new Response(JSON.stringify({ error: e }), {
     status: statusFor(e),
     headers: { "content-type": "application/json" },
   })
+
+/**
+ * Peek at the first event yielded by the gateway stream. If it is an error
+ * event, tear down the generator and return a 502 JSON error response instead
+ * of a 200 SSE stream — so the caller (OpenCode serve / harness) sees a proper
+ * HTTP error and can emit a `session.error` / `runner-finished:errored` event.
+ * If the stream produces normal data, wrap it back into a chained iterable and
+ * pass it to the serializer.
+ */
+const errorOrStream = async (
+  events: AsyncIterable<StreamEvent>,
+): Promise<
+  | { readonly kind: "stream"; readonly events: AsyncIterable<StreamEvent> }
+  | {
+      readonly kind: "error"
+      readonly detail: string
+      readonly statusCode?: number
+    }
+> => {
+  const iter = events[Symbol.asyncIterator]()
+  let first: IteratorResult<StreamEvent>
+  try {
+    first = await iter.next()
+  } catch (e) {
+    await iter.return?.()
+    return {
+      kind: "error",
+      detail: e instanceof Error ? e.message : "stream generation failed",
+    }
+  }
+
+  if (first.done) {
+    await iter.return?.()
+    return { kind: "error", detail: "provider returned no data" }
+  }
+
+  if (first.value.type === "error") {
+    await iter.return?.()
+    return {
+      kind: "error",
+      detail: first.value.detail,
+      ...(first.value.statusCode !== undefined
+        ? { statusCode: first.value.statusCode }
+        : {}),
+    }
+  }
+
+  // Chain the first value back in front of the remaining iterable
+  const chained: AsyncIterable<StreamEvent> = {
+    [Symbol.asyncIterator]() {
+      let yieldedFirst = false
+      return {
+        next() {
+          if (!yieldedFirst) {
+            yieldedFirst = true
+            return Promise.resolve({ done: false, value: first.value })
+          }
+          return iter.next()
+        },
+        return() {
+          return (
+            iter.return?.() ?? Promise.resolve({ done: true, value: undefined })
+          )
+        },
+      }
+    },
+  }
+
+  return { kind: "stream", events: chained }
+}
 
 export const createHandler = (
   deps: HandlerDeps,
@@ -34,7 +115,7 @@ export const createHandler = (
     req: Request,
     parse: (b: unknown) => ReturnType<typeof parseAnthropicRequest>,
     serialize: (
-      events: AsyncIterable<import("./types").StreamEvent>,
+      events: AsyncIterable<StreamEvent>,
       model: string,
     ) => ReadableStream<Uint8Array>,
   ): Promise<Response> => {
@@ -56,7 +137,16 @@ export const createHandler = (
     )
     if (isErr(model)) return errorResponse(model.error)
     const events = deps.gateway.stream(model.value, parsed.value)
-    return new Response(serialize(events, parsed.value.model), {
+    const checked = await errorOrStream(events)
+    if (checked.kind === "error")
+      return errorResponse({
+        kind: "provider-failed",
+        detail: checked.detail,
+        ...(checked.statusCode !== undefined
+          ? { statusCode: checked.statusCode }
+          : {}),
+      })
+    return new Response(serialize(checked.events, parsed.value.model), {
       headers: {
         "content-type": "text/event-stream",
         "cache-control": "no-cache",
