@@ -184,6 +184,8 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
             setModalOpen(true)
           },
           runnerClient,
+          models: models.data ?? [],
+          providerNames,
         })
 
   return (

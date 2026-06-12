@@ -1,5 +1,10 @@
 import { type RunState, initialRunState, reduce } from "@launchkit/agent-events"
-import type { HarnessId, SessionId } from "@launchkit/types"
+import type {
+  HarnessId,
+  ModelId,
+  ModelRoute,
+  SessionId,
+} from "@launchkit/types"
 import { EmptyState, RunView, Spinner } from "@launchkit/ui"
 import { type ReactElement, useEffect, useState } from "react"
 import { useStore } from "zustand"
@@ -13,6 +18,10 @@ export type RunDetailProps = {
   readonly runnerClient: RunnerClient
   /** The session's harness, used to persist per-harness composer prefs. Absent in replay. */
   readonly harnessId?: HarnessId
+  /** All model routes, so the composer can render a picker. Absent = no picker. */
+  readonly models?: readonly ModelRoute[]
+  /** Map of providerId -> human name, used to label the model picker. */
+  readonly providerNames?: Readonly<Record<string, string>>
 }
 
 /** Live conversation: owns the runner socket attach + per-frame reduce. */
@@ -20,10 +29,14 @@ const LiveRunDetail = ({
   sessionId,
   runnerClient,
   harnessId,
+  models,
+  providerNames,
 }: {
   readonly sessionId: SessionId
   readonly runnerClient: RunnerClient
   readonly harnessId?: HarnessId
+  readonly models?: readonly ModelRoute[]
+  readonly providerNames?: Readonly<Record<string, string>>
 }): ReactElement => {
   const client = useIpcClient()
   const store = useStores().runView
@@ -31,10 +44,12 @@ const LiveRunDetail = ({
   const openSubId = useStore(store, (s) => s.openSubBySession[sessionId])
   const busy = useStore(store, (s) => s.busyBySession[sessionId] ?? false)
   const mode = useStore(store, (s) => s.modeBySession[sessionId] ?? "manual")
+  const model = useStore(store, (s) => s.modelBySession[sessionId] ?? "")
   const applyEvent = useStore(store, (s) => s.applyEvent)
   const openSub = useStore(store, (s) => s.openSub)
   const closeSub = useStore(store, (s) => s.closeSub)
   const setMode = useStore(store, (s) => s.setMode)
+  const setModelStore = useStore(store, (s) => s.setModel)
 
   // Register the per-session listener and attach once. The store accumulates the
   // RunState; this effect owns the only socket coupling on the page.
@@ -79,6 +94,20 @@ const LiveRunDetail = ({
         if (harnessId !== undefined)
           void client.updateHarnessPrefs({ harnessId, mode: m })
       }}
+      model={model}
+      {...(models === undefined ? {} : { models })}
+      {...(providerNames === undefined ? {} : { providerNames })}
+      onModelChange={(modelId) => {
+        setModelStore(sessionId, modelId)
+        // The runner seam takes a real ModelId — only forward real picks; the
+        // "" (default) sentinel is a no-op over the socket for now. Persistence
+        // still records "" so the next launch of this harness starts default.
+        if (modelId !== "") {
+          runnerClient.setModel(sessionId, modelId as ModelId)
+        }
+        if (harnessId !== undefined)
+          void client.updateHarnessPrefs({ harnessId, modelId })
+      }}
     />
   )
 }
@@ -86,8 +115,12 @@ const LiveRunDetail = ({
 /** Read-only replay: fold the stored events once; composer + approvals inert. */
 const ReplayRunDetail = ({
   sessionId,
+  models,
+  providerNames,
 }: {
   readonly sessionId: SessionId
+  readonly models?: readonly ModelRoute[]
+  readonly providerNames?: Readonly<Record<string, string>>
 }): ReactElement => {
   const client = useIpcClient()
   const [state, setState] = useState<RunState | undefined>(undefined)
@@ -137,6 +170,8 @@ const ReplayRunDetail = ({
       onSend={() => {}}
       onDecide={() => {}}
       inert
+      {...(models === undefined ? {} : { models })}
+      {...(providerNames === undefined ? {} : { providerNames })}
     />
   )
 }
@@ -152,13 +187,21 @@ export const RunDetail = ({
   sessionId,
   runnerClient,
   harnessId,
+  models,
+  providerNames,
 }: RunDetailProps): ReactElement =>
   mode === "live" ? (
     <LiveRunDetail
       sessionId={sessionId}
       runnerClient={runnerClient}
       {...(harnessId === undefined ? {} : { harnessId })}
+      {...(models === undefined ? {} : { models })}
+      {...(providerNames === undefined ? {} : { providerNames })}
     />
   ) : (
-    <ReplayRunDetail sessionId={sessionId} />
+    <ReplayRunDetail
+      sessionId={sessionId}
+      {...(models === undefined ? {} : { models })}
+      {...(providerNames === undefined ? {} : { providerNames })}
+    />
   )

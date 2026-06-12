@@ -1,4 +1,4 @@
-import type { Session, SessionId } from "@launchkit/types"
+import type { ModelRoute, Session, SessionId } from "@launchkit/types"
 import { EmptyState, ProjectList } from "@launchkit/ui"
 import type { ProjectSummary } from "@launchkit/ui"
 import type { ReactElement, ReactNode } from "react"
@@ -17,6 +17,10 @@ export type SessionsViewInput = {
   readonly onSelect: (id: SessionId) => void
   readonly onNew: () => void
   readonly runnerClient: RunnerClient
+  /** All model routes, threaded to `RunDetail` so the composer can render a picker. */
+  readonly models?: readonly ModelRoute[]
+  /** Map of providerId -> human name, threaded to `RunDetail` to label the picker. */
+  readonly providerNames?: Readonly<Record<string, string>>
 }
 
 /**
@@ -72,11 +76,15 @@ const SessionsDetail = ({
   openSessionIds,
   allSessions,
   runnerClient,
+  models,
+  providerNames,
 }: {
   readonly selectedSessionId?: SessionId
   readonly openSessionIds: readonly SessionId[]
   readonly allSessions: readonly Session[]
   readonly runnerClient: RunnerClient
+  readonly models?: readonly ModelRoute[]
+  readonly providerNames?: Readonly<Record<string, string>>
 }): ReactElement => {
   if (selectedSessionId === undefined)
     return (
@@ -101,6 +109,8 @@ const SessionsDetail = ({
           ? {}
           : { harnessId: selectedSession.harnessId })}
         runnerClient={runnerClient}
+        {...(models === undefined ? {} : { models })}
+        {...(providerNames === undefined ? {} : { providerNames })}
       />
     </div>
   )
@@ -124,6 +134,8 @@ export const SessionsView = ({
   onSelect,
   onNew,
   runnerClient,
+  models,
+  providerNames,
 }: SessionsViewInput): {
   readonly master: ReactNode
   readonly detail: ReactNode
@@ -146,6 +158,8 @@ export const SessionsView = ({
       openSessionIds={openSessionIds}
       allSessions={allSessions}
       runnerClient={runnerClient}
+      {...(models === undefined ? {} : { models })}
+      {...(providerNames === undefined ? {} : { providerNames })}
     />
   ),
 })
