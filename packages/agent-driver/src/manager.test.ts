@@ -192,6 +192,27 @@ describe("createRunManager.launch", () => {
     expect(captured?.args).toEqual(["app-server", "-c", "x=1"])
   })
 
+  it("forwards permissionMode to driver.start when the launch input carries one", () => {
+    let captured: AgentStartInput | undefined
+    const capturingDriver: AgentDriver = {
+      start: (i) => {
+        captured = i
+        return ok({
+          rootRunnerId: root,
+          onEvent: () => undefined,
+          send: () => ok(undefined),
+          respondApproval: () => ok(undefined),
+          interrupt: () => ok(undefined),
+          close: () => ok(undefined),
+        })
+      },
+    }
+    const { deps } = makeDeps(scriptOf([]))
+    const manager = createRunManager({ ...deps, driver: capturingDriver })
+    manager.launch({ harnessId, cwd: "/tmp", env: {}, permissionMode: "plan" })
+    expect(captured?.permissionMode).toBe("plan")
+  })
+
   it("closes the session even when the final event fails to persist", () => {
     // Arrange: append always fails so persist never succeeds.
     const sent: RunnerOutbound[] = []
