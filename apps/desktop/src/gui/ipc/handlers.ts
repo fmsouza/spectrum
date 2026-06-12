@@ -316,6 +316,25 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return null
     },
 
+    updateHarnessPrefs: async ({ harnessId, mode }) => {
+      const config = await loadConfig()
+      const prev = config.settings.lastByHarness ?? {}
+      const key = String(harnessId)
+      const nextEntry = {
+        ...(prev[key] ?? {}),
+        ...(mode === undefined ? {} : { mode }),
+      }
+      const saved = await ctx.config.save({
+        ...config,
+        settings: {
+          ...config.settings,
+          lastByHarness: { ...prev, [key]: nextEntry },
+        },
+      })
+      if (!isOk(saved)) return fail("could not save harness prefs")
+      return null
+    },
+
     // ── Dialogs ───────────────────────────────────────────────────────────────
     pickFolder: async (params) => {
       const startingFolder = params?.startingFolder

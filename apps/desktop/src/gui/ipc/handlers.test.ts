@@ -957,6 +957,42 @@ describe("createIpcHandlers.getRunEvents", () => {
   })
 })
 
+describe("createIpcHandlers.updateHarnessPrefs", () => {
+  it("persists the mode into settings.lastByHarness for the harness", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.updateHarnessPrefs({
+      harnessId: "claude" as HarnessId,
+      mode: "plan",
+    })
+
+    expect(result).toBeNull()
+    expect(saves.at(-1)?.settings.lastByHarness).toEqual({
+      claude: { mode: "plan" },
+    })
+  })
+
+  it("merges into existing entries without dropping other harnesses", async () => {
+    const { ctx, saves } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.updateHarnessPrefs({
+      harnessId: "codex" as HarnessId,
+      mode: "bypass",
+    })
+    await handlers.updateHarnessPrefs({
+      harnessId: "claude" as HarnessId,
+      mode: "plan",
+    })
+
+    expect(saves.at(-1)?.settings.lastByHarness).toEqual({
+      codex: { mode: "bypass" },
+      claude: { mode: "plan" },
+    })
+  })
+})
+
 describe("createIpcHandlers.launchHarness selection", () => {
   it("launches a native harness via the runner manager", async () => {
     const { ctx, runnerLaunchInputs } = makeCtx({
