@@ -43,6 +43,7 @@ export const CanonicalEventSchema = z.discriminatedUnion("type", [
       title: z.string().optional(),
       model: z.string().optional(),
       supportedModes: z.array(PermissionModeSchema).optional(),
+      permissionMode: PermissionModeSchema.optional(),
     })
     .strict(),
   z
