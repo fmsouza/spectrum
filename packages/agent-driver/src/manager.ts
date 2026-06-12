@@ -141,6 +141,9 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
       case "run-set-mode":
         agent.setMode?.(message.mode)
         return
+      case "run-set-model":
+        agent.setModel?.(message.modelId)
+        return
       default:
         // Compile-time exhaustiveness: a new RunnerInbound variant fails the build here.
         message satisfies never
