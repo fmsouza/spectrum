@@ -109,6 +109,54 @@ describe("createHandler", () => {
     )
     expect(res.status).toBe(400)
   })
+  it("returns 502 provider-failed when the gateway errors without an upstream status", async () => {
+    const res = await createHandler({
+      ...deps("k"),
+      gateway: createScriptedGateway([
+        { type: "error", detail: "stream failed" },
+      ]),
+    }).fetch(
+      post("/v1/messages", {
+        model: "mdl_default",
+        max_tokens: 1,
+        messages: [{ role: "user", content: "hi" }],
+      }),
+    )
+    expect(res.status).toBe(502)
+    const json = (await res.json()) as {
+      error: { kind: string; detail: string }
+    }
+    expect(json.error).toMatchObject({
+      kind: "provider-failed",
+      detail: "stream failed",
+    })
+  })
+  it("passes through 429 with the provider's detail when the provider is rate limited", async () => {
+    const res = await createHandler({
+      ...deps("k"),
+      gateway: createScriptedGateway([
+        {
+          type: "error",
+          detail: "you have reached your session usage limit",
+          statusCode: 429,
+        },
+      ]),
+    }).fetch(
+      post("/v1/messages", {
+        model: "mdl_default",
+        max_tokens: 1,
+        messages: [{ role: "user", content: "hi" }],
+      }),
+    )
+    expect(res.status).toBe(429)
+    const json = (await res.json()) as {
+      error: { kind: string; detail: string }
+    }
+    expect(json.error).toMatchObject({
+      kind: "provider-failed",
+      detail: "you have reached your session usage limit",
+    })
+  })
   it("lists the configured models for GET /v1/models", async () => {
     const res = await handler().fetch(
       new Request("http://localhost:4000/v1/models", {

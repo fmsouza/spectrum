@@ -83,7 +83,12 @@ export type StreamEvent =
         readonly outputTokens: number
       }
     }
-  | { readonly type: "error"; readonly detail: string }
+  | {
+      readonly type: "error"
+      readonly detail: string
+      /** The upstream provider's HTTP status, when the failure was an HTTP error (e.g. 429). */
+      readonly statusCode?: number
+    }
 
 export type ProxyError =
   | { readonly kind: "unauthorized" }
@@ -91,7 +96,12 @@ export type ProxyError =
   | { readonly kind: "unknown-model"; readonly id: string }
   | { readonly kind: "unknown-provider"; readonly providerId: string }
   | { readonly kind: "unsupported-provider"; readonly sdkProvider: string }
-  | { readonly kind: "provider-failed"; readonly detail: string }
+  | {
+      readonly kind: "provider-failed"
+      readonly detail: string
+      /** The upstream provider's HTTP status, when the failure was an HTTP error (e.g. 429). */
+      readonly statusCode?: number
+    }
   | {
       readonly kind: "unsupported-model-discovery"
       readonly sdkProvider: string

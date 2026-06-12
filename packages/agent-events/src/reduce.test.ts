@@ -52,6 +52,38 @@ describe("reduce — runner lifecycle", () => {
     expect(state.runners.get(rid("root"))?.status).toBe("running")
   })
 
+  it("propagates the error string from a runner-finished:errored event into RunnerState", () => {
+    const state = fold([
+      started("root"),
+      {
+        type: "runner-finished",
+        runnerId: rid("root"),
+        status: "errored",
+        error: "Provider returned 429 Too Many Requests",
+      },
+    ])
+    expect(state.runners.get(rid("root"))?.status).toBe("errored")
+    expect(state.runners.get(rid("root"))?.error).toBe(
+      "Provider returned 429 Too Many Requests",
+    )
+  })
+
+  it("omits error from RunnerState when runner-finished carries no error field", () => {
+    const state = fold([
+      started("root"),
+      { type: "runner-finished", runnerId: rid("root"), status: "errored" },
+    ])
+    expect(state.runners.get(rid("root"))?.error).toBeUndefined()
+  })
+
+  it("omits error from RunnerState when a runner finishes successfully", () => {
+    const state = fold([
+      started("root"),
+      { type: "runner-finished", runnerId: rid("root"), status: "completed" },
+    ])
+    expect(state.runners.get(rid("root"))?.error).toBeUndefined()
+  })
+
   it("a re-emitted runner-started preserves the runner's existing items + title (idempotent)", () => {
     // The runtime marks the root started up front; the harness re-emits runner-started later
     // (e.g. claude's system/init). The accumulated conversation must NOT be reset.
@@ -343,6 +375,102 @@ describe("reduce — usage", () => {
       { type: "turn-finished", runnerId: rid("root") },
     ])
     expect(state.runners.get(rid("root"))?.usage).toBeUndefined()
+  })
+})
+
+describe("reduce — turn errors", () => {
+  it("marks the referenced message with an error tone when a turn finishes with an error", () => {
+    const state = fold([
+      started("root"),
+      {
+        type: "text-delta",
+        runnerId: rid("root"),
+        messageId: "m1",
+        text: "API Error: 429 you have reached your session usage limit",
+      },
+      {
+        type: "turn-finished",
+        runnerId: rid("root"),
+        error: {
+          detail: "API Error: 429 you have reached your session usage limit",
+          messageId: "m1",
+        },
+      },
+    ])
+    expect(state.runners.get(rid("root"))?.items).toEqual([
+      {
+        kind: "message",
+        messageId: "m1",
+        role: "assistant",
+        text: "API Error: 429 you have reached your session usage limit",
+        tone: "error",
+      },
+    ])
+  })
+
+  it("keeps the runner running after a turn error (the session stays alive for a retry)", () => {
+    const state = fold([
+      started("root"),
+      {
+        type: "turn-finished",
+        runnerId: rid("root"),
+        error: { detail: "rate limited" },
+      },
+    ])
+    expect(state.runners.get(rid("root"))?.status).toBe("running")
+    expect(state.runners.get(rid("root"))?.error).toBeUndefined()
+  })
+
+  it("appends an error-toned message when the turn error references no existing message", () => {
+    const state = fold([
+      started("root"),
+      {
+        type: "turn-finished",
+        runnerId: rid("root"),
+        error: { detail: "rate limited" },
+      },
+    ])
+    expect(state.runners.get(rid("root"))?.items).toEqual([
+      {
+        kind: "message",
+        messageId: "turn-error-0",
+        role: "assistant",
+        text: "rate limited",
+        tone: "error",
+      },
+    ])
+  })
+
+  it("still records usage when a turn finishes with both usage and an error", () => {
+    const state = fold([
+      started("root"),
+      {
+        type: "turn-finished",
+        runnerId: rid("root"),
+        usage: { inputTokens: 1, outputTokens: 2 },
+        error: { detail: "rate limited" },
+      },
+    ])
+    expect(state.runners.get(rid("root"))?.usage).toEqual({
+      inputTokens: 1,
+      outputTokens: 2,
+    })
+  })
+
+  it("leaves messages untoned on a turn-finished without error", () => {
+    const state = fold([
+      started("root"),
+      {
+        type: "text-delta",
+        runnerId: rid("root"),
+        messageId: "m1",
+        text: "hello",
+      },
+      { type: "turn-finished", runnerId: rid("root") },
+    ])
+    expect(state.runners.get(rid("root"))?.items).toEqual([
+      { kind: "message", messageId: "m1", role: "assistant", text: "hello" },
+    ])
   })
 })
 
