@@ -4,7 +4,7 @@ import type {
   PermissionMode,
   StoredEvent,
 } from "@launchkit/agent-events"
-import type { SessionId } from "@launchkit/types"
+import type { ModelId, SessionId } from "@launchkit/types"
 
 /**
  * Transport-agnostic runner client (twin of `terminalClient`). Encodes outbound
@@ -18,6 +18,7 @@ export interface RunnerClient {
   approve(id: SessionId, requestId: string, decision: ApprovalDecision): void
   interrupt(id: SessionId): void
   setMode(id: SessionId, mode: PermissionMode): void
+  setModel(id: SessionId, modelId: ModelId): void
   /** route an inbound RunnerOutbound frame to the registered per-session listener */
   dispatch(message: RunnerOutbound): void
   onEvent(id: SessionId, cb: (event: StoredEvent) => void): void
@@ -44,6 +45,9 @@ export const createRunnerClient = (
     },
     setMode: (id, mode) => {
       send({ type: "run-set-mode", id, mode })
+    },
+    setModel: (id, modelId) => {
+      send({ type: "run-set-model", id, modelId })
     },
     dispatch: (message) => {
       listeners.get(message.id)?.(message.event)

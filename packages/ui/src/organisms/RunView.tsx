@@ -4,6 +4,7 @@ import type {
   RunnerId,
   RunnerState,
 } from "@launchkit/agent-events"
+import type { ModelRoute } from "@launchkit/types"
 import { type ReactElement, useEffect, useRef } from "react"
 import { TypingIndicator } from "../atoms/TypingIndicator"
 import { Composer } from "../molecules/Composer"
@@ -25,6 +26,11 @@ export type RunViewProps = {
   readonly onInterrupt?: () => void
   readonly mode?: PermissionMode
   readonly onModeChange?: (mode: PermissionMode) => void
+  /** Current model id, or "" for the default (no-proxy) route. */
+  readonly model?: string
+  readonly models?: readonly ModelRoute[]
+  readonly providerNames?: Readonly<Record<string, string>>
+  readonly onModelChange?: (modelId: string) => void
 }
 
 /** A length proxy for the feed's content so streaming text (not just new items) triggers autoscroll. */
@@ -55,6 +61,10 @@ export const RunView = ({
   onInterrupt,
   mode,
   onModeChange,
+  model,
+  models,
+  providerNames,
+  onModelChange,
 }: RunViewProps): ReactElement => {
   const scrollRef = useRef<HTMLDivElement>(null)
   // Autoscroll: pin the feed to the latest message as items stream in (and when the dots appear).
@@ -88,6 +98,10 @@ export const RunView = ({
             : { supportedModes: root.supportedModes })}
           {...(mode === undefined ? {} : { mode })}
           {...(onModeChange === undefined ? {} : { onModeChange })}
+          {...(model === undefined ? {} : { model })}
+          {...(models === undefined ? {} : { models })}
+          {...(providerNames === undefined ? {} : { providerNames })}
+          {...(onModelChange === undefined ? {} : { onModelChange })}
         />
       </section>
       {openRunner === undefined ? null : (

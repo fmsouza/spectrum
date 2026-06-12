@@ -301,26 +301,23 @@ describe("GetSettingsParamsSchema", () => {
 })
 
 describe("GetSettingsResultSchema", () => {
-  it("parses a result carrying all four persisted fields", () => {
+  it("parses a result carrying all three persisted fields (no lastSelectedModelId)", () => {
     expect(
       GetSettingsResultSchema.parse({
         lastSelectedFolder: "/home/me/proj",
         lastSelectedHarnessId: "claude",
-        lastSelectedModelId: "mdl_x",
         collapsedProjects: [],
       }),
     ).toEqual({
       lastSelectedFolder: "/home/me/proj",
       lastSelectedHarnessId: "claude",
-      lastSelectedModelId: "mdl_x",
       collapsedProjects: [],
     })
   })
-  it("validates a getSettings result with all four persisted fields", () => {
+  it("validates a getSettings result with all three persisted fields", () => {
     const result = GetSettingsResultSchema.safeParse({
       lastSelectedFolder: "/p",
       lastSelectedHarnessId: "claude",
-      lastSelectedModelId: "",
       collapsedProjects: ["prj_1"],
     })
     expect(result.success).toBe(true)
@@ -328,7 +325,6 @@ describe("GetSettingsResultSchema", () => {
   it("rejects a getSettings result missing lastSelectedHarnessId", () => {
     const result = GetSettingsResultSchema.safeParse({
       lastSelectedFolder: "/p",
-      lastSelectedModelId: "",
       collapsedProjects: [],
     })
     expect(result.success).toBe(false)
@@ -336,14 +332,23 @@ describe("GetSettingsResultSchema", () => {
   it("rejects a result missing lastSelectedFolder", () => {
     expect(GetSettingsResultSchema.safeParse({}).success).toBe(false)
   })
-  it("rejects extra keys", () => {
+  it("rejects extra keys (no lastSelectedModelId on the wire)", () => {
     expect(
       GetSettingsResultSchema.safeParse({
         lastSelectedFolder: "/x",
         lastSelectedHarnessId: "claude",
-        lastSelectedModelId: "",
         collapsedProjects: [],
         extra: 1,
+      }).success,
+    ).toBe(false)
+  })
+  it("no longer carries the removed lastSelectedModelId (strict)", () => {
+    expect(
+      GetSettingsResultSchema.safeParse({
+        lastSelectedFolder: "/x",
+        lastSelectedHarnessId: "claude",
+        lastSelectedModelId: "mdl_x",
+        collapsedProjects: [],
       }).success,
     ).toBe(false)
   })
@@ -398,6 +403,28 @@ describe("UpdateHarnessPrefsParamsSchema", () => {
       UpdateHarnessPrefsParamsSchema.safeParse({
         harnessId: "claude",
         mode: "yolo",
+      }).success,
+    ).toBe(false)
+  })
+  it("accepts a harnessId with an optional modelId (real id or empty string for default/clear)", () => {
+    expect(
+      UpdateHarnessPrefsParamsSchema.safeParse({
+        harnessId: "claude",
+        modelId: "mdl_x",
+      }).success,
+    ).toBe(true)
+    expect(
+      UpdateHarnessPrefsParamsSchema.safeParse({
+        harnessId: "claude",
+        modelId: "",
+      }).success,
+    ).toBe(true)
+  })
+  it("rejects a non-string modelId (modelId is a plain string, not ModelIdSchema)", () => {
+    expect(
+      UpdateHarnessPrefsParamsSchema.safeParse({
+        harnessId: "claude",
+        modelId: 42,
       }).success,
     ).toBe(false)
   })

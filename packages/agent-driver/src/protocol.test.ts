@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { SessionIdSchema } from "@launchkit/types"
+import { ModelIdSchema, SessionIdSchema } from "@launchkit/types"
 import { decodeRunnerInbound } from "./protocol"
 
 const id = SessionIdSchema.parse("s_00000000-0000-4000-8000-000000000000")
@@ -62,6 +62,22 @@ describe("decodeRunnerInbound", () => {
 
   it("rejects an unknown mode on run-set-mode as bad-message", () => {
     const r = decodeRunnerInbound({ type: "run-set-mode", id, mode: "yolo" })
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.error.kind).toBe("bad-message")
+  })
+
+  it("decodes a run-set-model message", () => {
+    const modelId = ModelIdSchema.parse("mdl_x")
+    const r = decodeRunnerInbound({ type: "run-set-model", id, modelId })
+    expect(r.ok && r.value).toEqual({
+      type: "run-set-model",
+      id,
+      modelId,
+    })
+  })
+
+  it("rejects an empty modelId on run-set-model as bad-message", () => {
+    const r = decodeRunnerInbound({ type: "run-set-model", id, modelId: "" })
     expect(r.ok).toBe(false)
     expect(!r.ok && r.error.kind).toBe("bad-message")
   })

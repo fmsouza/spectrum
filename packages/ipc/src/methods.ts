@@ -199,24 +199,27 @@ export const PickFolderResultSchema = z
 // ── Settings ──────────────────────────────────────────────────────────────
 
 // Read the persisted, non-secret settings the GUI needs to prefill its UI: the
-// last launched cwd, harness, and model. The New Session modal seeds its fields
-// from these. Empty strings mean "nothing remembered yet".
+// last launched cwd and harness. The New Session modal seeds its fields from these.
+// Per-harness prefs (mode + model) live in `lastByHarness` and are read directly by
+// the composer; they are NOT shipped over this endpoint. Empty strings mean "nothing
+// remembered yet".
 export const GetSettingsParamsSchema = z.undefined()
 export const GetSettingsResultSchema = z
   .object({
     lastSelectedFolder: z.string(),
     lastSelectedHarnessId: z.string(),
-    lastSelectedModelId: z.string(),
     collapsedProjects: z.array(z.string()),
   })
   .strict()
 
 // Persist a per-harness "last used" pref. Inbound (webview→main) only; returns void. The mode is
 // validated against the canonical PermissionMode here so config never stores an unrecognized value.
+// `modelId` is a plain string (not ModelIdSchema) so it accepts "" to mean "default/clear".
 export const UpdateHarnessPrefsParamsSchema = z
   .object({
     harnessId: HarnessIdSchema,
     mode: PermissionModeSchema.optional(),
+    modelId: z.string().optional(),
   })
   .strict()
 export const UpdateHarnessPrefsResultSchema = VoidSchema

@@ -139,6 +139,8 @@ export const createCodexAdapter = (
 
     let activeTurnId: string | undefined
     let mode: PermissionMode = input.permissionMode ?? "manual"
+    let model: string | undefined =
+      input.modelId !== undefined ? String(input.modelId) : undefined
 
     const handleServerRequest = (r: ServerRequestFrame): void => {
       const dispatcher = transport.dispatcher
@@ -233,6 +235,7 @@ export const createCodexAdapter = (
         .request(M_TURN_START, {
           threadId,
           input: [textInput(input.initialPrompt)],
+          ...(model !== undefined ? { model } : {}),
           ...toCodexTurnPolicy(mode),
         })
         .catch((err: unknown) => {
@@ -258,6 +261,7 @@ export const createCodexAdapter = (
             : dispatcher.request(M_TURN_START, {
                 threadId,
                 input: [textInput(text)],
+                ...(model !== undefined ? { model } : {}),
                 ...toCodexTurnPolicy(mode),
               })
         void turn.catch((err: unknown) => {
@@ -271,6 +275,9 @@ export const createCodexAdapter = (
       },
       setMode: (m) => {
         mode = m // turn/steer takes no policy; applied on the next turn/start
+      },
+      setModel: (m) => {
+        model = String(m) // turn/steer takes no model; applied on the next turn/start
       },
       interrupt: () => {
         if (activeTurnId !== undefined) {

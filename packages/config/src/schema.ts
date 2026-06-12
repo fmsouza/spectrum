@@ -2,17 +2,18 @@ import { ModelRouteSchema, ProviderSchema } from "@launchkit/types"
 import { z } from "zod"
 
 /** Bump on any breaking config shape change; add a matching `Migration` (see migrations.ts). */
-export const CURRENT_CONFIG_VERSION = 7
+export const CURRENT_CONFIG_VERSION = 8
 
 /**
  * Per-harness "last used" prefs. `mode` is the normalized permission mode the user last selected
- * for this harness, stored as a plain string (like `lastSelectedModelId`) so this package needs no
- * dependency on `@launchkit/agent-events`; the canonical `PermissionMode` is validated at the IPC
- * boundary and re-checked when read at launch. Phases 2 and 3 add optional `modelId`/`thinkingEffort`.
+ * for this harness, stored as a plain string (like `modelId`) so this package needs no dependency
+ * on `@launchkit/agent-events`; the canonical `PermissionMode` is validated at the IPC boundary
+ * and re-checked when read at launch. Phase 2 adds optional `modelId`.
  */
 export const HarnessPrefsSchema = z
   .object({
     mode: z.string().optional(),
+    modelId: z.string().optional(),
   })
   .strict()
 export type HarnessPrefs = z.infer<typeof HarnessPrefsSchema>
@@ -20,6 +21,8 @@ export type HarnessPrefs = z.infer<typeof HarnessPrefsSchema>
 /**
  * Process-wide settings. `proxyHost` is the literal loopback address — the proxy
  * binds `127.0.0.1` only (security.md), so any other host is rejected at validation.
+ * Per-harness "last used" model id lives in `lastByHarness` (the modal no longer carries a
+ * model selector; the composer model selector reads/writes per-harness prefs directly).
  */
 export const SettingsSchema = z
   .object({
@@ -27,7 +30,6 @@ export const SettingsSchema = z
     proxyHost: z.literal("127.0.0.1").default("127.0.0.1"),
     lastSelectedFolder: z.string().default(""),
     lastSelectedHarnessId: z.string().default(""),
-    lastSelectedModelId: z.string().default(""),
     /** Project IDs whose session group the user has collapsed in the sidebar. */
     collapsedProjects: z.array(z.string()).default([]),
     /** Per-harness "last used" prefs, keyed by harness id. Defaults to `{}`. */

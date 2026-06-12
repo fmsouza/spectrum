@@ -6,6 +6,7 @@ import {
   reduce,
 } from "@launchkit/agent-events"
 import { RunnerIdSchema } from "@launchkit/types"
+import type { ModelRoute } from "@launchkit/types"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { RunView } from "./RunView"
 
@@ -122,6 +123,31 @@ describe("RunView", () => {
     fireEvent.click(screen.getByRole("button", { name: /manual approval/i }))
     fireEvent.click(screen.getByRole("menuitemradio", { name: /plan mode/i }))
     expect(picked).toBe("plan")
+    cleanup()
+  })
+
+  it("renders the model selector pill and fires onModelChange when a model is picked", () => {
+    const models = [
+      { id: "mdl_default", providerId: "p1", providerModel: "sonnet" },
+      { id: "mdl_fast", providerId: "p1", providerModel: "haiku" },
+    ] as unknown as readonly ModelRoute[]
+    let picked: string | undefined
+    render(
+      <RunView
+        {...base}
+        model=""
+        models={models}
+        providerNames={{ p1: "Anthropic" }}
+        onModelChange={(m) => {
+          picked = m
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: /default/i }))
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: /Anthropic \/ haiku/i }),
+    )
+    expect(picked).toBe("mdl_fast")
     cleanup()
   })
 })

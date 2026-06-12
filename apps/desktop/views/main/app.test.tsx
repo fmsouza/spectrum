@@ -458,7 +458,6 @@ describe("App view model", () => {
         value: {
           lastSelectedFolder: "/seed/dir",
           lastSelectedHarnessId: "",
-          lastSelectedModelId: "",
           collapsedProjects: [],
         },
       }),
@@ -480,7 +479,7 @@ describe("App view model", () => {
     )
   })
 
-  it("prefills harness and model in the New Session modal from settings", async () => {
+  it("prefills the harness from settings (the modal no longer carries a model field)", async () => {
     const client = createFakeIpcClient({
       ...baseStubs,
       getHarnesses: async () => ({
@@ -515,7 +514,6 @@ describe("App view model", () => {
         value: {
           lastSelectedFolder: "/seed/dir",
           lastSelectedHarnessId: "codex",
-          lastSelectedModelId: "mdl_fast",
           collapsedProjects: [],
         },
       }),
@@ -527,14 +525,15 @@ describe("App view model", () => {
         initialView="sessions"
       />,
     )
-    // Open the modal; the harness/model selects must carry the persisted ids
-    // (page-level fetch → props), not the first-harness / default fallbacks.
+    // Open the modal; the harness select must carry the persisted id
+    // (page-level fetch → props), not the first-harness fallback.
     fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
     await screen.findByRole("button", { name: /launch/i })
     await waitFor(() =>
       expect(screen.getByLabelText("Harness")).toHaveValue("codex"),
     )
-    expect(screen.getByLabelText("Model")).toHaveValue("mdl_fast")
+    // The Model field is gone — model selection lives in the composer now.
+    expect(screen.queryByLabelText("Model")).toBeNull()
   })
 
   it("surfaces a pickFolder error as an alert in the modal (Fix #2)", async () => {

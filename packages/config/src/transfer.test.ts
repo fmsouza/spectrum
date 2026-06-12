@@ -22,7 +22,6 @@ const configWithProvider = (): Config => ({
     proxyHost: "127.0.0.1",
     lastSelectedFolder: "",
     lastSelectedHarnessId: "",
-    lastSelectedModelId: "",
     collapsedProjects: [],
     lastByHarness: {},
   },

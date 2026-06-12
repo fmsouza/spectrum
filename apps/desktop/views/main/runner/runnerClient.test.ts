@@ -78,4 +78,11 @@ describe("createRunnerClient", () => {
     client.setMode(id, "plan")
     expect(sent).toEqual([{ type: "run-set-mode", id, mode: "plan" }])
   })
+
+  it("setModel sends a run-set-model message", () => {
+    const sent: unknown[] = []
+    const client = createRunnerClient((m) => sent.push(m))
+    client.setModel(id, "mdl_x" as never)
+    expect(sent).toEqual([{ type: "run-set-model", id, modelId: "mdl_x" }])
+  })
 })

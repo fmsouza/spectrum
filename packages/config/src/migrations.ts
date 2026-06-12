@@ -129,6 +129,48 @@ const v6ToV7: Migration = {
   migrate: (raw) => ({ ...raw, version: 7 }),
 }
 
+/**
+ * v8 consolidates model selection: the modal no longer carries a model picker, and the
+ * composer's per-harness model selector persists into `lastByHarness[].modelId`. The legacy
+ * top-level `settings.lastSelectedModelId` is folded into the per-harness entry attributed by
+ * `settings.lastSelectedHarnessId` and then dropped from the shape entirely. Documents that
+ * already use `lastByHarness[].modelId` pass through with only the key-removal applied.
+ */
+const v7ToV8: Migration = {
+  from: 7,
+  to: 8,
+  migrate: (raw) => {
+    const settings = asRecord(raw.settings)
+    const harnessId =
+      typeof settings.lastSelectedHarnessId === "string"
+        ? settings.lastSelectedHarnessId
+        : ""
+    const modelId =
+      typeof settings.lastSelectedModelId === "string"
+        ? settings.lastSelectedModelId
+        : ""
+    const lastByHarness = {
+      ...(asRecord(settings.lastByHarness) as Record<
+        string,
+        Record<string, unknown>
+      >),
+    }
+    if (harnessId !== "" && modelId !== "") {
+      lastByHarness[harnessId] = {
+        ...(lastByHarness[harnessId] ?? {}),
+        modelId,
+      }
+    }
+    const { lastSelectedModelId: _drop, ...restSettings } = settings
+    void _drop
+    return {
+      ...raw,
+      version: 8,
+      settings: { ...restSettings, lastByHarness },
+    }
+  },
+}
+
 /** Ordered list of forward migrations. Append a new step whenever `CURRENT_CONFIG_VERSION` bumps. */
 export const migrations: readonly Migration[] = [
   v1ToV2,
@@ -137,6 +179,7 @@ export const migrations: readonly Migration[] = [
   v4ToV5,
   v5ToV6,
   v6ToV7,
+  v7ToV8,
 ]
 
 /**
