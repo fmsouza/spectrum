@@ -56,6 +56,7 @@ const config = {
       "views/main/styles/page.css": "views/main/styles/page.css",
       "views/main/launchkit-favicon.svg": "views/main/launchkit-favicon.svg",
       "views/main/favicon.ico": "views/main/favicon.ico",
+      "views/main/launchkit-tray.png": "views/main/launchkit-tray.png",
     },
     mac: { createDmg: true },
     linux: { bundleCEF: true, defaultRenderer: "cef" },

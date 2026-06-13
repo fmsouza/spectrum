@@ -56,6 +56,13 @@ describe("views/main stylesheet partials wiring", () => {
       )
   })
 
+  it("ships the brand tray icon next to app.js via build.copy", () => {
+    const flat = electrobunConfig.replace(/\s+/g, " ")
+    expect(flat).toContain(
+      '"views/main/launchkit-tray.png": "views/main/launchkit-tray.png"',
+    )
+  })
+
   it("still ships the post-redesign shell + sessions detail markers", async () => {
     const shell = await Bun.file(
       new URL("./styles/shell.css", import.meta.url),
