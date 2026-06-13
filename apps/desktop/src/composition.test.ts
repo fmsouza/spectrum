@@ -174,7 +174,7 @@ describe("createAppContext wiring", () => {
 
     // fs file is created at the resolved config path under the home dir
     expect(calls.createFsConfigFile?.[0] as string).toContain(
-      "/home/tester/.config/launchkit/config.json",
+      "/home/tester/.config/spectrum/config.json",
     )
     // the file store receives that fs file ...
     expect(calls.createFileConfigStore?.[0]).toEqual({
@@ -199,7 +199,7 @@ describe("createAppContext wiring", () => {
     expect(arg.platform).toBe("linux")
     expect(arg.runner).toEqual({ __stub: "createBunProcessRunner" })
     expect(arg.fileOps).toEqual({ __stub: "createSecretFileOps" })
-    expect(arg.secretsDir).toBe("/home/tester/.config/launchkit/secrets")
+    expect(arg.secretsDir).toBe("/home/tester/.config/spectrum/secrets")
     expect(typeof arg.secretPassphrase).toBe("function")
     expect(calls.createSecretStore?.[0]).toEqual({
       backend: { __stub: "createPlatformKeychainBackend" },
@@ -212,7 +212,7 @@ describe("createAppContext wiring", () => {
     createAppContext(deps)
 
     expect(calls.createSqliteClient?.[0] as string).toContain(
-      "/home/tester/.config/launchkit/launchkit.db",
+      "/home/tester/.config/spectrum/spectrum.db",
     )
     const sessionArgs = calls.createSessionStore?.[0] as {
       db: unknown
@@ -254,7 +254,7 @@ describe("createAppContext wiring", () => {
     const ctx = createAppContext(deps)
 
     expect(calls.createFileRuntimeState?.[0] as string).toContain(
-      "/home/tester/.config/launchkit/runtime.json",
+      "/home/tester/.config/spectrum/runtime.json",
     )
     expect(ctx.runtime).toEqual({ __stub: "createFileRuntimeState" })
   })

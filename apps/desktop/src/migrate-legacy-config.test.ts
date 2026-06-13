@@ -27,7 +27,7 @@ describe("migrateLegacyMacosConfig", () => {
     expect(copied).toEqual([
       {
         from: "/Users/me/.config/launchkit",
-        to: "/Users/me/Library/Application Support/LaunchKit",
+        to: "/Users/me/Library/Application Support/Spectrum",
       },
     ])
     expect(markers).toEqual([
@@ -39,7 +39,7 @@ describe("migrateLegacyMacosConfig", () => {
     const { fs, copied } = fakeFs(
       new Set([
         "/Users/me/.config/launchkit",
-        "/Users/me/Library/Application Support/LaunchKit",
+        "/Users/me/Library/Application Support/Spectrum",
       ]),
     )
     migrateLegacyMacosConfig(

@@ -168,7 +168,7 @@ const makeCtx = (
     gateway: {},
     paths: {
       configFile: "/tmp/config.json",
-      dbFile: "/tmp/launchkit.db",
+      dbFile: "/tmp/spectrum.db",
       harnessDir: "/tmp/harnesses",
     },
     pickFolder: async (opts: unknown) => {

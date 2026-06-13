@@ -31,12 +31,12 @@ export const realMigrationFs: MigrationFs = {
   exists: (p) => existsSync(p),
   copyDir: (from, to) => cpSync(from, to, { recursive: true }),
   writeMarker: (p) =>
-    writeFileSync(p, "migrated to ~/Library/Application Support/LaunchKit\n"),
+    writeFileSync(p, "migrated to ~/Library/Application Support/Spectrum\n"),
 }
 
 /**
  * One-time, non-destructive macOS migration: copy `~/.config/launchkit` to the idiomatic
- * `~/Library/Application Support/LaunchKit` (leaving the legacy dir in place as a backup, marked).
+ * `~/Library/Application Support/Spectrum` (leaving the legacy dir in place as a backup, marked).
  * No-op on Linux/Windows and when already migrated. Synchronous so it can run inside the
  * synchronous `createAppContext`.
  */
