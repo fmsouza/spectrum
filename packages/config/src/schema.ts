@@ -1,4 +1,4 @@
-import { ModelRouteSchema, ProviderSchema } from "@launchkit/types"
+import { ModelRouteSchema, ProviderSchema } from "@spectrum/types"
 import { z } from "zod"
 
 /** Bump on any breaking config shape change; add a matching `Migration` (see migrations.ts). */
@@ -7,7 +7,7 @@ export const CURRENT_CONFIG_VERSION = 8
 /**
  * Per-harness "last used" prefs. `mode` is the normalized permission mode the user last selected
  * for this harness, stored as a plain string (like `modelId`) so this package needs no dependency
- * on `@launchkit/agent-events`; the canonical `PermissionMode` is validated at the IPC boundary
+ * on `@spectrum/agent-events`; the canonical `PermissionMode` is validated at the IPC boundary
  * and re-checked when read at launch. Phase 2 adds optional `modelId`.
  */
 export const HarnessPrefsSchema = z
@@ -39,7 +39,7 @@ export const SettingsSchema = z
 
 export type Settings = z.infer<typeof SettingsSchema>
 
-/** The on-disk config document. `providers`/`models` reuse the locked `@launchkit/types` schemas. */
+/** The on-disk config document. `providers`/`models` reuse the locked `@spectrum/types` schemas. */
 export const ConfigSchema = z
   .object({
     version: z.number().int(),

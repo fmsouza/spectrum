@@ -94,7 +94,7 @@ describe("importConfig", () => {
     expect(result.error.kind).toBe("parse-failed")
   })
 
-  it("rejects a foreign object that is not a LaunchKit config", () => {
+  it("rejects a foreign object that is not a Spectrum config", () => {
     const result = importConfig({ hello: "world", nested: { a: 1 } })
     expect(result.ok).toBe(false)
     if (result.ok) return

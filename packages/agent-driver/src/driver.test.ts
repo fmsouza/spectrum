@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
-import type { RunnerId } from "@launchkit/agent-events"
-import { HarnessIdSchema } from "@launchkit/types"
-import { ok } from "@launchkit/utils"
+import type { RunnerId } from "@spectrum/agent-events"
+import { HarnessIdSchema } from "@spectrum/types"
+import { ok } from "@spectrum/utils"
 import type { AgentDriver, AgentSession, DriverError } from "./driver"
 import type { RunEventSink, SessionSink } from "./ports"
 

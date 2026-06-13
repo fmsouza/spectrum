@@ -1,4 +1,4 @@
-# @launchkit/driver-claude
+# @spectrum/driver-claude
 
 **Responsibility:** the Claude Code `AgentDriver`. A PURE `mapClaudeMessage` (one `@anthropic-ai/claude-agent-sdk`
 `SDKMessage` → 0..n `CanonicalEvent`, given a small mapping state) + thin SDK glue: run `query()` in
@@ -11,8 +11,8 @@ route `canUseTool` → `ctx.requestApproval`, and map `send`/`interrupt`/`close`
 (pure mapper from `PermissionMode` → SDK permission value); `CLAUDE_SUPPORTED_MODES` (all four modes:
 manual / auto-edits / plan / bypass — applied mid-session via the SDK's `setPermissionMode`).
 
-**Depends on:** `@launchkit/driver-runtime`, `@launchkit/agent-driver`, `@launchkit/agent-events`,
-`@launchkit/utils`, and `@anthropic-ai/claude-agent-sdk` (its only harness SDK). Does NOT import other
+**Depends on:** `@spectrum/driver-runtime`, `@spectrum/agent-driver`, `@spectrum/agent-events`,
+`@spectrum/utils`, and `@anthropic-ai/claude-agent-sdk` (its only harness SDK). Does NOT import other
 driver packages, the proxy, or the UI.
 
 **Effect owned:** the live `claude` process — spawned by the SDK's `query()` (`pathToClaudeCodeExecutable`).

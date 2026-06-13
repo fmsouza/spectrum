@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { ModelRoute } from "@launchkit/types"
+import type { ModelRoute } from "@spectrum/types"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { ModelTable } from "./ModelTable"
 

@@ -1,4 +1,4 @@
-import type { HarnessDefinition } from "@launchkit/types"
+import type { HarnessDefinition } from "@spectrum/types"
 
 /** A single tray entry. A discriminated union so the seam binds the right action per `kind`. */
 export type TrayItem =
@@ -41,7 +41,7 @@ export interface BuildTrayMenuInput {
 /**
  * PURE: build the tray-menu descriptor. A status item (green dot when `proxyRunning`, grey otherwise),
  * a "Launch" submenu with one item per harness (or a disabled placeholder when empty), then a
- * separator, "Open LaunchKit", and "Quit". Returns a plain serializable value — `mountTray`
+ * separator, "Open Spectrum", and "Quit". Returns a plain serializable value — `mountTray`
  * (tray-polish-02) turns it into a native tray and binds clicks by `kind`. Cheap (`performance.md`):
  * one map over the harness list, no IO.
  */
@@ -76,7 +76,7 @@ export const buildTrayMenu = (input: BuildTrayMenuInput): TrayMenu => {
       status,
       { kind: "submenu", label: "Launch", items: launchItems },
       { kind: "separator" },
-      { kind: "open", label: "Open LaunchKit" },
+      { kind: "open", label: "Open Spectrum" },
       { kind: "quit", label: "Quit" },
     ],
   }

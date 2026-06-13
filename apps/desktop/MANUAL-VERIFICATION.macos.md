@@ -1,11 +1,11 @@
-# LaunchKit — Manual Verification Checklist (built desktop app)
+# Spectrum — Manual Verification Checklist (built desktop app)
 
 Run after `bunx electrobun build` in `apps/desktop`. These steps cover what `bun test` cannot:
 the native window, the native tray, and click-through behavior. Check each box on a real macOS run.
 
 ## Build & launch
 - [ ] `bunx electrobun build` completes with no errors.
-- [ ] Launching the built binary with **no args** opens the GUI window titled "LaunchKit".
+- [ ] Launching the built binary with **no args** opens the GUI window titled "Spectrum".
 - [ ] A **tray icon** appears in the macOS menu bar.
 
 ## Tray menu (tray-and-polish)
@@ -15,7 +15,7 @@ the native window, the native tray, and click-through behavior. Check each box o
       opencode, openclaw), or "No harnesses configured" when none exist.
 - [ ] Clicking a **Launch** item spawns that harness (terminal/child process appears) using its
       default alias, and a new row appears in the **Sessions** page.
-- [ ] **Open LaunchKit** focuses/opens the main window.
+- [ ] **Open Spectrum** focuses/opens the main window.
 - [ ] **Quit** exits the app (window + tray disappear).
 
 ## Sessions master/detail + embedded terminal (session redesign)
@@ -36,8 +36,8 @@ the native window, the native tray, and click-through behavior. Check each box o
 - [ ] The tray **Launch** also opens the window with the new session selected and its terminal live.
 
 ## CLI mode
-- [ ] `launchkit list harnesses` prints the built-in harness ids (no window opens).
-- [ ] `launchkit list providers` prints provider ids/names and **never** prints a secret value or ref.
+- [ ] `spectrum list harnesses` prints the built-in harness ids (no window opens).
+- [ ] `spectrum list providers` prints provider ids/names and **never** prints a secret value or ref.
 - [ ] With the GUI open, a CLI `launch` reuses the running proxy (no second proxy starts).
 
 ## Provider connectivity test (tray-and-polish)
@@ -110,6 +110,6 @@ WebKit devtools (`Cmd+Option+I`); see `selector-contract.test.tsx` for the autom
 regression guard.
 
 ## Security spot-checks
-- [ ] The proxy is bound to `127.0.0.1` only (e.g. `lsof -iTCP -sTCP:LISTEN -P | grep launchkit`
+- [ ] The proxy is bound to `127.0.0.1` only (e.g. `lsof -iTCP -sTCP:LISTEN -P | grep spectrum`
       shows loopback, never `*` / `0.0.0.0`).
 - [ ] No secret value appears in any log line, the exported config, or the webview dev tools.

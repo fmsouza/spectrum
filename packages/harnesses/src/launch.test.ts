@@ -3,8 +3,8 @@ import {
   type HarnessDefinition,
   HarnessIdSchema,
   ModelIdSchema,
-} from "@launchkit/types"
-import { isOk } from "@launchkit/utils"
+} from "@spectrum/types"
+import { isOk } from "@spectrum/utils"
 import { createFakeCommandResolver } from "./command-resolver"
 import { launchHarness, resolveHarnessLaunch } from "./launch"
 import { createRecordingProcessSpawner } from "./process-spawner"

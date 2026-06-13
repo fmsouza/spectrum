@@ -1,4 +1,4 @@
-# @launchkit/driver-codex
+# @spectrum/driver-codex
 
 **Responsibility:** the Codex `AgentDriver`. A PURE `mapCodexEvent` (one `codex app-server`
 `ServerNotification` → 0..n `CanonicalEvent`, given a small mapping state) + thin JSON-RPC/stdio glue:
@@ -13,8 +13,8 @@ and map `send`/`interrupt`/`close` onto `turn/start`|`turn/steer` / `turn/interr
 policy); `CODEX_SUPPORTED_MODES` (manual / auto-edits / bypass — plan mode is unsupported by the
 app-server protocol).
 
-**Depends on:** `@launchkit/driver-runtime`, `@launchkit/agent-driver`, `@launchkit/agent-events`,
-`@launchkit/types`, `@launchkit/utils`, `@launchkit/platform`. Does NOT import other driver packages, the proxy, or the UI; it
+**Depends on:** `@spectrum/driver-runtime`, `@spectrum/agent-driver`, `@spectrum/agent-events`,
+`@spectrum/types`, `@spectrum/utils`, `@spectrum/platform`. Does NOT import other driver packages, the proxy, or the UI; it
 has no harness SDK (it talks raw JSON-RPC to `codex app-server`).
 
 **Effect owned:** the live `codex app-server` process — spawned ONLY behind the injected
@@ -28,4 +28,4 @@ defensively (the mapper returns `[]`; unsupported server requests get a JSON-RPC
 left hanging). `baseEnv` (default `process.env`) is merged UNDER `input.env` so the spawned process inherits
 `PATH`/`HOME` while the per-run proxy vars win. Turn and start policy overrides (derived from
 `permissionMode`) are re-asserted on every turn and deliberately override any user-side
-`~/.codex/config.toml` approval/sandbox profile for LaunchKit-launched sessions.
+`~/.codex/config.toml` approval/sandbox profile for Spectrum-launched sessions.

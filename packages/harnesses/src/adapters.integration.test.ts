@@ -9,7 +9,7 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { HarnessDefinition } from "@launchkit/types"
+import type { HarnessDefinition } from "@spectrum/types"
 import {
   createBunProcessSpawner,
   createDirHarnessFileSource,

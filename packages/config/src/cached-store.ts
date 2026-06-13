@@ -1,4 +1,4 @@
-import { type Result, isOk } from "@launchkit/utils"
+import { type Result, isOk } from "@spectrum/utils"
 import type { ConfigError } from "./errors"
 import type { Config } from "./schema"
 import type { ConfigStore } from "./store"

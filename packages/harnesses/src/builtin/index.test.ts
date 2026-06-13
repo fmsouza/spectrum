@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { HarnessDefinitionSchema, HarnessIdSchema } from "@launchkit/types"
+import { HarnessDefinitionSchema, HarnessIdSchema } from "@spectrum/types"
 import { ALLOWED_TOKENS } from "../tokens"
 import { builtinHarnesses, claude, codex, openclaw, opencode } from "./index"
 
@@ -76,7 +76,7 @@ describe("builtinHarnesses", () => {
     // codex ignores OPENAI_BASE_URL, so it gets a `-c` provider override instead; only the key is env.
     expect(codex.envTemplate).toEqual({ OPENAI_API_KEY: "{{proxyKey}}" })
     const args = (codex.argsTemplate ?? []).join(" ")
-    expect(args).toContain("model_provider=launchkit")
+    expect(args).toContain("model_provider=spectrum")
     expect(args).toContain('base_url="{{proxyUrl}}/v1"')
     expect(args).toContain('wire_api="responses"')
     expect(args).toContain("{{model}}")

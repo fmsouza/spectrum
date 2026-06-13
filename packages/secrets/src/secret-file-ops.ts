@@ -8,8 +8,8 @@ import {
   writeFile,
 } from "node:fs/promises"
 import { dirname } from "node:path"
-import { type Platform, detectPlatform } from "@launchkit/platform"
-import { type Result, err, ok } from "@launchkit/utils"
+import { type Platform, detectPlatform } from "@spectrum/platform"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { SecretError } from "./backend"
 
 /** Minimal filesystem effect for the encrypted-file backend. Atomic, `0600` on POSIX. */

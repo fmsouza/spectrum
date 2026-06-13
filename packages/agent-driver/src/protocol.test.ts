@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { ModelIdSchema, SessionIdSchema } from "@launchkit/types"
+import { ModelIdSchema, SessionIdSchema } from "@spectrum/types"
 import { decodeRunnerInbound } from "./protocol"
 
 const id = SessionIdSchema.parse("s_00000000-0000-4000-8000-000000000000")

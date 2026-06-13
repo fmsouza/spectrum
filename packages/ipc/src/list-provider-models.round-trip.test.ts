@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { ProviderId } from "@launchkit/types"
+import type { ProviderId } from "@spectrum/types"
 import { createIpcClient } from "./client"
 import { createMemoryTransportPair } from "./fake-transport"
 import {

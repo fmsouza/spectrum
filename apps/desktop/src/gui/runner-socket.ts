@@ -2,8 +2,8 @@ import {
   type RunManager,
   type RunnerOutbound,
   decodeRunnerInbound,
-} from "@launchkit/agent-driver"
-import { isOk } from "@launchkit/utils"
+} from "@spectrum/agent-driver"
+import { isOk } from "@spectrum/utils"
 
 export interface RunnerSocket {
   /** `ws://localhost:<port>/` — handed to the webview via the `getRunnerSocketUrl` IPC method. */
@@ -62,7 +62,7 @@ export const startRunnerSocket = (manager: RunManager): RunnerSocket => {
     port: 0,
     fetch(req, srv) {
       if (srv.upgrade(req)) return undefined
-      return new Response("launchkit runner socket", { status: 426 })
+      return new Response("spectrum runner socket", { status: 426 })
     },
     websocket: {
       open(ws) {

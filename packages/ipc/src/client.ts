@@ -1,4 +1,4 @@
-import { type Result, err, ok } from "@launchkit/utils"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { z } from "zod"
 import type { IpcError } from "./errors"
 import {

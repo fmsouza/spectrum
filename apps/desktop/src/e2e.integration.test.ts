@@ -2,27 +2,27 @@ import { afterEach, describe, expect, it } from "bun:test"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { runCli } from "@launchkit/cli"
-import { createMemoryWriter } from "@launchkit/cli"
+import { runCli } from "@spectrum/cli"
+import { createMemoryWriter } from "@spectrum/cli"
 import {
   type Config,
   createCachedConfigStore,
   createFileConfigStore,
   createFsConfigFile,
   exportConfig,
-} from "@launchkit/config"
+} from "@spectrum/config"
 import {
   builtinHarnesses,
   createInMemoryHarnessFileSource,
   createRegistry,
-} from "@launchkit/harnesses"
+} from "@spectrum/harnesses"
 import {
   type LanguageModelGateway,
   createRouter,
   createScriptedGateway,
   isProxyRunning,
   startProxy,
-} from "@launchkit/proxy"
+} from "@spectrum/proxy"
 import { buildTrayMenu } from "./gui/tray-menu"
 
 const dirs: string[] = []
@@ -31,7 +31,7 @@ const freshConfig = async (): Promise<{
   store: ReturnType<typeof createCachedConfigStore>
   path: string
 }> => {
-  const dir = await mkdtemp(join(tmpdir(), "launchkit-e2e-"))
+  const dir = await mkdtemp(join(tmpdir(), "spectrum-e2e-"))
   dirs.push(dir)
   const path = join(dir, "config.json")
   const config: Config = {
@@ -68,7 +68,7 @@ afterEach(async () => {
 
 // These end-to-end paths (CLI over fakes, a real loopback proxy on an ephemeral port, the pure
 // tray-menu descriptor) are platform-agnostic — run them everywhere, including Linux CI.
-describe("LaunchKit end-to-end", () => {
+describe("Spectrum end-to-end", () => {
   it("runs the CLI `list harnesses` against a temp config and prints the built-in ids", async () => {
     const { store } = await freshConfig()
     const out = createMemoryWriter()

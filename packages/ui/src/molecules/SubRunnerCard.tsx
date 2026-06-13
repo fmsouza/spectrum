@@ -1,4 +1,4 @@
-import type { RunnerId, RunnerStatus } from "@launchkit/agent-events"
+import type { RunnerId, RunnerStatus } from "@spectrum/agent-events"
 import type { ReactElement } from "react"
 import { StatusDot } from "../atoms/StatusDot"
 

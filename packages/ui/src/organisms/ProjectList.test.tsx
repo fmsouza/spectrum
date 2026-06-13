@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { Session } from "@launchkit/types"
+import type { Session } from "@spectrum/types"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { ProjectList } from "./ProjectList"
 

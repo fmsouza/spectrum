@@ -4,14 +4,14 @@ import type {
   PermissionMode,
   RunnerId,
   StoredEvent,
-} from "@launchkit/agent-events"
+} from "@spectrum/agent-events"
 import {
   HarnessIdSchema,
   type ModelId,
   type Session,
   SessionIdSchema,
-} from "@launchkit/types"
-import { createFixedClock, err, ok } from "@launchkit/utils"
+} from "@spectrum/types"
+import { createFixedClock, err, ok } from "@spectrum/utils"
 import type { AgentDriver, AgentStartInput } from "./driver"
 import { createFakeDriver } from "./fake-driver"
 import type { FakeScript } from "./fake-driver"

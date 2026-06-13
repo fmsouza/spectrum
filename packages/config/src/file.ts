@@ -1,4 +1,4 @@
-import { type Result, err, ok } from "@launchkit/utils"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { ConfigError } from "./errors"
 
 /**
@@ -11,7 +11,7 @@ import type { ConfigError } from "./errors"
  *   3. `rename` it over `<file>` (an atomic replace — a reader sees either the old or new file,
  *      never a half-written one);
  *   4. `chmod` the file to `0600` (owner read/write only) so secrets-adjacent config is private.
- * The containing directory (`~/.config/launchkit/`) is created `0700` if absent.
+ * The containing directory (`~/.config/spectrum/`) is created `0700` if absent.
  */
 export interface ConfigFile {
   read(): Promise<Result<string, ConfigError>>

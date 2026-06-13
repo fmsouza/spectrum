@@ -2,7 +2,7 @@ import type {
   ApprovalDecision,
   RunnerId,
   RunnerState,
-} from "@launchkit/agent-events"
+} from "@spectrum/agent-events"
 import { type ReactElement, useState } from "react"
 import { ApprovalCard } from "../molecules/ApprovalCard"
 import { FileDiffCard } from "../molecules/FileDiffCard"

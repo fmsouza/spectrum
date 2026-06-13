@@ -1,8 +1,8 @@
-import { err, isOk, ok, redactSecrets } from "@launchkit/utils"
+import { err, isOk, ok, redactSecrets } from "@spectrum/utils"
 import type { KeychainBackend, SecretError } from "./backend"
 import type { ProcessRunner } from "./process-runner"
 
-const SERVICE = "launchkit"
+const SERVICE = "spectrum"
 
 const redactError = (
   error: SecretError,
@@ -14,7 +14,7 @@ const redactError = (
 
 /**
  * Linux keychain backend over libsecret's `secret-tool` (Secret Service / D-Bus). The secret is fed
- * on stdin (never argv). The service name is always `"launchkit"`, matching every other backend.
+ * on stdin (never argv). The service name is always `"spectrum"`, matching every other backend.
  */
 export const createSecretToolBackend = (deps: {
   readonly runner: ProcessRunner
@@ -26,7 +26,7 @@ export const createSecretToolBackend = (deps: {
         "secret-tool",
         [
           "store",
-          `--label=LaunchKit: ${account}`,
+          `--label=Spectrum: ${account}`,
           "service",
           SERVICE,
           "account",

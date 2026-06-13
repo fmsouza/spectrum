@@ -1,11 +1,11 @@
-import type { AgentStartInput } from "@launchkit/agent-driver"
-import type { ApprovalDecision, PermissionMode } from "@launchkit/agent-events"
+import type { AgentStartInput } from "@spectrum/agent-driver"
+import type { ApprovalDecision, PermissionMode } from "@spectrum/agent-events"
 import type {
   AdapterCtx,
   AdapterHandle,
   DriverAdapter,
-} from "@launchkit/driver-runtime"
-import type { IdGen } from "@launchkit/utils"
+} from "@spectrum/driver-runtime"
+import type { IdGen } from "@spectrum/utils"
 import { type CodexMapState, mapCodexEvent } from "./map-codex-event"
 import { CODEX_SUPPORTED_MODES, toCodexTurnPolicy } from "./permission-mode"
 import {
@@ -88,7 +88,7 @@ const fileDetail = (params: unknown): string => {
  * Keep only the `-c key=value` config overrides from the harness-resolved args. The terminal `codex`
  * command also carries `-m <model>` (TUI model select), which `codex app-server` REJECTS ("unexpected
  * argument '-m'") — app-server takes the model via `thread/start` instead. The `-c` provider overrides
- * (model_providers.launchkit.*) DO apply to app-server, so forward exactly those. PURE.
+ * (model_providers.spectrum.*) DO apply to app-server, so forward exactly those. PURE.
  */
 const appServerArgs = (args: readonly string[]): string[] => {
   const out: string[] = []
@@ -197,8 +197,8 @@ export const createCodexAdapter = (
 
     const transport = createTransport({
       command,
-      // `app-server` then ONLY the `-c` provider overrides (`model_providers.launchkit.*`) so it routes
-      // through the LaunchKit proxy. The terminal path's `-m <model>` is dropped (app-server rejects it;
+      // `app-server` then ONLY the `-c` provider overrides (`model_providers.spectrum.*`) so it routes
+      // through the Spectrum proxy. The terminal path's `-m <model>` is dropped (app-server rejects it;
       // the model is sent via thread/start below).
       args: ["app-server", ...appServerArgs(input.args ?? [])],
       cwd: input.cwd,
@@ -211,7 +211,7 @@ export const createCodexAdapter = (
 
     // Handshake: initialize (request) → initialized (notification).
     await dispatcher.request(M_INITIALIZE, {
-      clientInfo: { name: "launchkit", title: "LaunchKit", version: "0" },
+      clientInfo: { name: "spectrum", title: "Spectrum", version: "0" },
       capabilities: { experimentalApi: true },
     })
     dispatcher.notify(M_INITIALIZED, undefined)

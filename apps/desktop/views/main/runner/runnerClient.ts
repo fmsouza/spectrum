@@ -1,10 +1,10 @@
-import type { RunnerInbound, RunnerOutbound } from "@launchkit/agent-driver"
+import type { RunnerInbound, RunnerOutbound } from "@spectrum/agent-driver"
 import type {
   ApprovalDecision,
   PermissionMode,
   StoredEvent,
-} from "@launchkit/agent-events"
-import type { ModelId, SessionId } from "@launchkit/types"
+} from "@spectrum/agent-events"
+import type { ModelId, SessionId } from "@spectrum/types"
 
 /**
  * Transport-agnostic runner client (twin of `terminalClient`). Encodes outbound

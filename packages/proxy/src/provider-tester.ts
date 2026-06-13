@@ -1,5 +1,5 @@
-import type { Provider } from "@launchkit/types"
-import { type Clock, type Result, isOk, ok } from "@launchkit/utils"
+import type { Provider } from "@spectrum/types"
+import { type Clock, type Result, isOk, ok } from "@spectrum/utils"
 import type { LanguageModelGateway } from "./gateway"
 import type { ProviderFactory } from "./providers/factory"
 import type { NormalizedRequest, ProxyError } from "./types"

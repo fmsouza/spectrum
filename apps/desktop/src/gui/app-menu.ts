@@ -38,7 +38,7 @@ export const buildAppMenu = (appName: string): ApplicationMenuItemConfig[] => [
  * Install the native application menu. Electrobun is imported lazily (only present in the built
  * binary — mirrors `gui/tray.ts`/`gui/window.ts`), so the rest of the shell stays unit-testable.
  */
-export const mountAppMenu = (appName = "LaunchKit"): void => {
+export const mountAppMenu = (appName = "Spectrum"): void => {
   void import("electrobun/bun").then(({ ApplicationMenu }) => {
     ApplicationMenu.setApplicationMenu(buildAppMenu(appName))
   })

@@ -2,8 +2,8 @@ import {
   IpcMethodSchemas,
   type ServerTransport,
   createIpcServer,
-} from "@launchkit/ipc"
-import { detectPlatform } from "@launchkit/platform"
+} from "@spectrum/ipc"
+import { detectPlatform } from "@spectrum/platform"
 import type { AppContext } from "../composition"
 import { createIpcHandlers } from "./ipc/handlers"
 
@@ -53,7 +53,7 @@ export const openWindow = (
 ): void => {
   const window = deps.createWindow({
     url: deps.viewUrl,
-    title: "LaunchKit",
+    title: "Spectrum",
     lockNavigationToOrigin: true,
   })
   const transport = deps.makeTransport(window)

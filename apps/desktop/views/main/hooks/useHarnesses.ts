@@ -1,4 +1,4 @@
-import type { HarnessView } from "@launchkit/ipc"
+import type { HarnessView } from "@spectrum/ipc"
 import { useEffect } from "react"
 import { useStore } from "zustand"
 import { useStores } from "../stores/createStores"

@@ -1,4 +1,4 @@
-import { type Result, err, isOk, ok } from "@launchkit/utils"
+import { type Result, err, isOk, ok } from "@spectrum/utils"
 import type { ConfigError } from "./errors"
 import type { ConfigFile } from "./file"
 import { runMigrations } from "./migrations"

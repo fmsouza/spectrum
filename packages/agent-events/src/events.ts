@@ -1,4 +1,4 @@
-import { RunnerIdSchema, SessionIdSchema } from "@launchkit/types"
+import { RunnerIdSchema, SessionIdSchema } from "@spectrum/types"
 import { z } from "zod"
 
 export type Json = unknown

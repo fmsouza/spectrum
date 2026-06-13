@@ -3,7 +3,7 @@ import * as cli from "./index"
 import { createMemoryWriter, parseArgs, runCli } from "./index"
 import { makeFakeDeps } from "./test-support"
 
-describe("@launchkit/cli barrel", () => {
+describe("@spectrum/cli barrel", () => {
   it("exports parseArgs, runCli, the commands, and the writer factory when imported", () => {
     for (const name of [
       "parseArgs",

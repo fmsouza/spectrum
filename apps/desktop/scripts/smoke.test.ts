@@ -16,8 +16,8 @@ describe("isLauncherEntry", () => {
   })
 
   it("accepts an app-named release binary as a fallback", () => {
-    expect(isLauncherEntry("LaunchKit", "macos")).toBe(true)
-    expect(isLauncherEntry("LaunchKit.exe", "windows")).toBe(true)
+    expect(isLauncherEntry("Spectrum", "macos")).toBe(true)
+    expect(isLauncherEntry("Spectrum.exe", "windows")).toBe(true)
   })
 
   it("does NOT match the other executables bundled beside the launcher", () => {
@@ -33,7 +33,7 @@ describe("resolveAppExecutable", () => {
     const macos = join(
       root,
       "dev-macos-arm64",
-      "LaunchKit-dev.app",
+      "Spectrum-dev.app",
       "Contents",
       "MacOS",
     )
@@ -45,7 +45,7 @@ describe("resolveAppExecutable", () => {
 
   it("finds launcher.exe in a Windows build layout", () => {
     const root = mkdtempSync(join(tmpdir(), "lk-smoke-win-"))
-    const dir = join(root, "dev-win-x64", "LaunchKit-dev")
+    const dir = join(root, "dev-win-x64", "Spectrum-dev")
     mkdirSync(dir, { recursive: true })
     writeFileSync(join(dir, "bun.exe"), "")
     writeFileSync(join(dir, "launcher.exe"), "")

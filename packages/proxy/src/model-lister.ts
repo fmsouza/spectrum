@@ -1,5 +1,5 @@
-import type { SdkProvider } from "@launchkit/types"
-import { type Result, err, ok } from "@launchkit/utils"
+import type { SdkProvider } from "@spectrum/types"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { ProxyError } from "./types"
 
 // ── HttpGet interface ─────────────────────────────────────────────────────────

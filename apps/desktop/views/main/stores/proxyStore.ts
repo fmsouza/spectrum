@@ -1,4 +1,4 @@
-import type { IpcMethods } from "@launchkit/ipc"
+import type { IpcMethods } from "@spectrum/ipc"
 import { type StoreApi, createStore } from "zustand/vanilla"
 import { type ResourceState, createResource } from "./resource"
 import type { StoreDeps } from "./types"

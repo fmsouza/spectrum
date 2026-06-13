@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import type { CanonicalEvent } from "@launchkit/agent-events"
-import { createSequentialIdGen } from "@launchkit/utils"
+import type { CanonicalEvent } from "@spectrum/agent-events"
+import { createSequentialIdGen } from "@spectrum/utils"
 import { createClaudeDriver } from "./create-claude-driver"
 import type { ClaudeQuery, ClaudeSdk } from "./sdk-glue"
 

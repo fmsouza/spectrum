@@ -1,4 +1,4 @@
-import type { ModelRoute } from "@launchkit/types"
+import type { ModelRoute } from "@spectrum/types"
 import { useEffect } from "react"
 import { useStore } from "zustand"
 import { useStores } from "../stores/createStores"

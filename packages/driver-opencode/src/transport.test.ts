@@ -40,7 +40,7 @@ describe("OpencodeEventSchema", () => {
 })
 
 describe("buildOpencodeProxyConfig", () => {
-  it("builds a launchkit OpenAI-compatible provider + model from the proxy env", () => {
+  it("builds a spectrum OpenAI-compatible provider + model from the proxy env", () => {
     const config = buildOpencodeProxyConfig({
       OPENAI_BASE_URL: "http://127.0.0.1:4000/v1",
       OPENAI_API_KEY: "rk_abc",
@@ -48,14 +48,14 @@ describe("buildOpencodeProxyConfig", () => {
     })
     expect(config).toEqual({
       provider: {
-        launchkit: {
+        spectrum: {
           npm: "@ai-sdk/openai-compatible",
-          name: "LaunchKit",
+          name: "Spectrum",
           options: { baseURL: "http://127.0.0.1:4000/v1", apiKey: "rk_abc" },
           models: { "minimax-m3": {} },
         },
       },
-      model: "launchkit/minimax-m3",
+      model: "spectrum/minimax-m3",
     })
   })
 
@@ -71,7 +71,7 @@ describe("buildOpencodeProxyConfig", () => {
       OPENAI_BASE_URL: "http://x/v1",
       OPENAI_MODEL: "m",
     })
-    expect(config?.provider.launchkit.options).toEqual({
+    expect(config?.provider.spectrum.options).toEqual({
       baseURL: "http://x/v1",
     })
   })

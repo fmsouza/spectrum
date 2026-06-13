@@ -63,9 +63,9 @@ describe("AppShell", () => {
     ).toBe(3)
   })
 
-  it("renders the LaunchKit brand mark in the primary rail", () => {
+  it("renders the Spectrum brand mark in the primary rail", () => {
     const { getByRole } = render(<AppShell {...baseProps} />)
-    expect(getByRole("img", { name: "LaunchKit" })).toBeTruthy()
+    expect(getByRole("img", { name: "Spectrum" })).toBeTruthy()
   })
 
   it("shows the proxy port in a tooltip when the rail status is hovered", () => {

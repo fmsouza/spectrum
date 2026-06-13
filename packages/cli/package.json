@@ -1,19 +1,19 @@
 {
-  "name": "@launchkit/cli",
+  "name": "@spectrum/cli",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "typecheck": "tsc --noEmit", "test": "bun test" },
   "dependencies": {
-    "@launchkit/types": "workspace:*",
-    "@launchkit/utils": "workspace:*",
-    "@launchkit/db": "workspace:*",
-    "@launchkit/config": "workspace:*",
-    "@launchkit/secrets": "workspace:*",
-    "@launchkit/proxy": "workspace:*",
-    "@launchkit/harnesses": "workspace:*",
-    "@launchkit/sessions": "workspace:*",
-    "@launchkit/projects": "workspace:*"
+    "@spectrum/types": "workspace:*",
+    "@spectrum/utils": "workspace:*",
+    "@spectrum/db": "workspace:*",
+    "@spectrum/config": "workspace:*",
+    "@spectrum/secrets": "workspace:*",
+    "@spectrum/proxy": "workspace:*",
+    "@spectrum/harnesses": "workspace:*",
+    "@spectrum/sessions": "workspace:*",
+    "@spectrum/projects": "workspace:*"
   }
 }

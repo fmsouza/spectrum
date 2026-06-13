@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import type { CanonicalEvent } from "@launchkit/agent-events"
-import { RunnerIdSchema, SessionIdSchema } from "@launchkit/types"
+import type { CanonicalEvent } from "@spectrum/agent-events"
+import { RunnerIdSchema, SessionIdSchema } from "@spectrum/types"
 import { createRunViewStore } from "./runViewStore"
 
 const sid = SessionIdSchema.parse("s_00000000-0000-4000-8000-000000000000")

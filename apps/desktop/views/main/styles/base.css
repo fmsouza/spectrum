@@ -16,20 +16,20 @@ html {
 }
 
 body {
-  font-family: var(--lk-font-sans);
-  font-size: var(--lk-text-base);
+  font-family: var(--sp-font-sans);
+  font-size: var(--sp-text-base);
   line-height: 1.55;
-  color: var(--lk-text);
-  background-color: var(--lk-bg);
+  color: var(--sp-text);
+  background-color: var(--sp-bg);
   /* A faint diagonal "engineering grid" so the surface reads as a deliberate
      console rather than a blank page; cheap, GPU-free, theme-aware. */
-  background-image: linear-gradient(var(--lk-bg-subtle) 0 0),
+  background-image: linear-gradient(var(--sp-bg-subtle) 0 0),
     repeating-linear-gradient(
       135deg,
       transparent 0,
       transparent 22px,
-      color-mix(in srgb, var(--lk-text) 3%, transparent) 22px,
-      color-mix(in srgb, var(--lk-text) 3%, transparent) 23px
+      color-mix(in srgb, var(--sp-text) 3%, transparent) 22px,
+      color-mix(in srgb, var(--sp-text) 3%, transparent) 23px
     );
   background-attachment: fixed;
   height: 100%;
@@ -48,32 +48,32 @@ h4 {
   font-weight: 650;
   line-height: 1.2;
   letter-spacing: -0.012em;
-  color: var(--lk-text);
+  color: var(--sp-text);
 }
 
 p {
-  color: var(--lk-text-secondary);
+  color: var(--sp-text-secondary);
 }
 
 a {
-  color: var(--lk-primary);
+  color: var(--sp-primary);
   text-decoration: none;
 }
 
 a:hover {
-  color: var(--lk-primary-active);
+  color: var(--sp-primary-active);
 }
 
 code,
 kbd,
 samp,
 pre {
-  font-family: var(--lk-font-mono);
+  font-family: var(--sp-font-mono);
   font-size: 0.92em;
 }
 
 :focus-visible {
-  outline: 2px solid var(--lk-primary);
+  outline: 2px solid var(--sp-primary);
   outline-offset: 2px;
-  border-radius: var(--lk-radius-sm);
+  border-radius: var(--sp-radius-sm);
 }

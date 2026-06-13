@@ -1,4 +1,4 @@
-import { type Result, err, ok } from "@launchkit/utils"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { DbError } from "./errors"
 
 const detailOf = (cause: unknown): string =>

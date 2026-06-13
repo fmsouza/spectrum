@@ -1,4 +1,4 @@
-import type { FileChangeItem } from "@launchkit/agent-events"
+import type { FileChangeItem } from "@spectrum/agent-events"
 import type { ReactElement } from "react"
 import { DiffLine } from "../atoms/DiffLine"
 

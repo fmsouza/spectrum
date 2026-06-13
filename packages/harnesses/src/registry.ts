@@ -1,8 +1,8 @@
 import {
   type HarnessDefinition,
   HarnessDefinitionSchema,
-} from "@launchkit/types"
-import { type Result, err, isErr, ok } from "@launchkit/utils"
+} from "@spectrum/types"
+import { type Result, err, isErr, ok } from "@spectrum/utils"
 import { builtinHarnesses } from "./builtin/index"
 import type { HarnessError } from "./errors"
 import type { HarnessFileSource } from "./file-source"

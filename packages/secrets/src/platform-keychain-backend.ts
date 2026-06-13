@@ -1,4 +1,4 @@
-import type { Platform } from "@launchkit/platform"
+import type { Platform } from "@spectrum/platform"
 import { type KeychainBackend, createInMemoryKeychainBackend } from "./backend"
 import { createDpapiCipher } from "./cipher-dpapi"
 import { createPassphraseAeadCipher } from "./cipher-passphrase"

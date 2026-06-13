@@ -1,0 +1,239 @@
+/* ============================================================================
+   Spectrum — Design Tokens
+   ----------------------------------------------------------------------------
+   Dark-first token set for the Spectrum desktop UI (Electrobun + React).
+   One steady anchor hub + a full spectrum of provider accents.
+   Fonts: Geist (UI) + Geist Mono (code/CLI) — `npm i geist`.
+   A light theme is provided under [data-theme="light"].
+
+   Usage:  import "./spectrum-tokens.css";
+           background: var(--sp-bg); color: var(--sp-text);
+           font-family: var(--sp-font-sans); accent: var(--sp-primary);
+   ========================================================================== */
+
+:root {
+  /* ---- Brand anchor (the routing hub) -------------------------------- */
+  --sp-anchor-50: #eaf1fe;
+  --sp-anchor-100: #d2e0fc;
+  --sp-anchor-200: #a9c4f8;
+  --sp-anchor-300: #80a8f4;
+  --sp-anchor-400: #5b8def; /* primary brand blue */
+  --sp-anchor-500: #3e6fd4;
+  --sp-anchor-600: #3258ac;
+  --sp-anchor-700: #284585;
+  --sp-anchor: var(--sp-anchor-400);
+
+  /* ---- Spectrum accents (the providers it routes to) ----------------- */
+  --sp-violet: #a56bff;
+  --sp-cyan: #22d3ee;
+  --sp-green: #4ade80;
+  --sp-amber: #ffb13b;
+  --sp-rose: #f472b6;
+  --sp-violet-soft: rgba(165, 107, 255, 0.16);
+  --sp-cyan-soft: rgba(34, 211, 238, 0.16);
+  --sp-green-soft: rgba(74, 222, 128, 0.16);
+  --sp-amber-soft: rgba(255, 177, 59, 0.16);
+  --sp-rose-soft: rgba(244, 114, 182, 0.16);
+
+  /* Ordered ramp — use for charts / sequential provider assignment */
+  --sp-spectrum-1: var(--sp-violet);
+  --sp-spectrum-2: var(--sp-cyan);
+  --sp-spectrum-3: var(--sp-green);
+  --sp-spectrum-4: var(--sp-amber);
+  --sp-spectrum-5: var(--sp-rose);
+
+  /* ---- Graphite neutrals (dark-first) -------------------------------- */
+  --sp-graphite-950: #0c0d10;
+  --sp-graphite-900: #121317;
+  --sp-graphite-850: #17181d;
+  --sp-graphite-800: #1e2026;
+  --sp-graphite-700: #2a2c34;
+  --sp-graphite-600: #3a3d47;
+  --sp-graphite-500: #565a66;
+  --sp-graphite-400: #8a8d99;
+  --sp-graphite-300: #b4b7c2;
+  --sp-graphite-200: #d7d9e0;
+  --sp-graphite-100: #ecedf1;
+  --sp-graphite-50: #f6f7f9;
+  --sp-white: #ffffff;
+  --sp-black: #000000;
+
+  /* ---- Semantic surfaces & text (dark theme = default) --------------- */
+  --sp-bg: var(--sp-graphite-950);
+  --sp-bg-subtle: var(--sp-graphite-900);
+  --sp-surface: var(--sp-graphite-850);
+  --sp-surface-raised: var(--sp-graphite-800);
+  --sp-overlay: rgba(8, 9, 12, 0.72);
+  --sp-border: var(--sp-graphite-700);
+  --sp-border-strong: var(--sp-graphite-600);
+
+  --sp-text: var(--sp-graphite-100);
+  --sp-text-secondary: var(--sp-graphite-300);
+  --sp-text-muted: var(--sp-graphite-400);
+  --sp-text-inverse: var(--sp-graphite-950);
+  --sp-text-link: var(--sp-anchor-300);
+
+  /* ---- Interactive (primary action) ---------------------------------- */
+  --sp-primary: var(--sp-anchor-400);
+  --sp-primary-hover: var(--sp-anchor-300);
+  --sp-primary-active: var(--sp-anchor-500);
+  --sp-on-primary: #07101f; /* AA-legible text on anchor */
+  --sp-focus-ring: rgba(91, 141, 239, 0.55);
+
+  /* ---- Status -------------------------------------------------------- */
+  --sp-success: var(--sp-green);
+  --sp-warning: var(--sp-amber);
+  --sp-danger: #ff5c5c;
+  --sp-info: var(--sp-anchor-400);
+  --sp-success-soft: var(--sp-green-soft);
+  --sp-warning-soft: var(--sp-amber-soft);
+  --sp-danger-soft: rgba(255, 92, 92, 0.16);
+  --sp-info-soft: rgba(91, 141, 239, 0.16);
+
+  /* ---- Gradients ----------------------------------------------------- */
+  --sp-gradient-spectrum: linear-gradient(
+    90deg,
+    #a56bff 0%,
+    #5b8def 26%,
+    #22d3ee 48%,
+    #4ade80 68%,
+    #ffb13b 86%,
+    #f472b6 100%
+  );
+  --sp-gradient-brand: linear-gradient(
+    135deg,
+    #a56bff 0%,
+    #5b8def 50%,
+    #22d3ee 100%
+  );
+  --sp-gradient-hub: radial-gradient(
+    120% 120% at 38% 30%,
+    #8fb0f5 0%,
+    #3e6fd4 100%
+  );
+  --sp-gradient-surface: linear-gradient(180deg, #1b1d24 0%, #0c0d10 100%);
+
+  /* ---- Typography ---------------------------------------------------- */
+  --sp-font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  --sp-font-mono: "Geist Mono", ui-monospace, "SF Mono", "JetBrains Mono", Menlo,
+    Consolas, monospace;
+
+  --sp-display-size: 48px;
+  --sp-display-lh: 56px;
+  --sp-display-weight: 700;
+  --sp-display-tracking: -0.02em;
+  --sp-h1-size: 36px;
+  --sp-h1-lh: 44px;
+  --sp-h1-weight: 700;
+  --sp-h1-tracking: -0.02em;
+  --sp-h2-size: 28px;
+  --sp-h2-lh: 36px;
+  --sp-h2-weight: 600;
+  --sp-h2-tracking: -0.01em;
+  --sp-h3-size: 22px;
+  --sp-h3-lh: 30px;
+  --sp-h3-weight: 600;
+  --sp-h3-tracking: -0.01em;
+  --sp-h4-size: 18px;
+  --sp-h4-lh: 26px;
+  --sp-h4-weight: 600;
+  --sp-h4-tracking: 0;
+  --sp-body-lg-size: 16px;
+  --sp-body-lg-lh: 26px;
+  --sp-body-lg-weight: 400;
+  --sp-body-size: 14px;
+  --sp-body-lh: 22px;
+  --sp-body-weight: 400;
+  --sp-small-size: 13px;
+  --sp-small-lh: 20px;
+  --sp-small-weight: 400;
+  --sp-mono-size: 12px;
+  --sp-mono-lh: 18px;
+  --sp-mono-weight: 500;
+  --sp-mono-tracking: 0.02em;
+  --sp-label-tracking: 0.06em;
+
+  /* ---- Spacing (4px base) -------------------------------------------- */
+  --sp-space-0: 0;
+  --sp-space-1: 4px;
+  --sp-space-2: 8px;
+  --sp-space-3: 12px;
+  --sp-space-4: 16px;
+  --sp-space-5: 20px;
+  --sp-space-6: 24px;
+  --sp-space-8: 32px;
+  --sp-space-10: 40px;
+  --sp-space-12: 48px;
+  --sp-space-16: 64px;
+  --sp-space-20: 80px;
+
+  /* ---- Radii --------------------------------------------------------- */
+  --sp-radius-xs: 4px;
+  --sp-radius-sm: 6px;
+  --sp-radius-md: 10px;
+  --sp-radius-lg: 14px;
+  --sp-radius-xl: 20px;
+  --sp-radius-pill: 999px;
+
+  /* ---- Elevation & glow ---------------------------------------------- */
+  --sp-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sp-shadow-2: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --sp-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --sp-glow-anchor: 0 0 0 1px rgba(91, 141, 239, 0.3), 0 8px 30px
+    rgba(91, 141, 239, 0.25);
+
+  /* ---- Motion -------------------------------------------------------- */
+  --sp-duration-fast: 120ms;
+  --sp-duration: 200ms;
+  --sp-duration-slow: 320ms;
+  --sp-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --sp-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ---- Layout chrome ------------------------------------------------- */
+  --sp-titlebar-h: 40px;
+  --sp-sidebar-w: 240px;
+  --sp-content-max: 1120px;
+
+  color-scheme: dark;
+}
+
+/* ============================================================================
+   Light theme — <html data-theme="light">
+   ========================================================================== */
+[data-theme="light"] {
+  --sp-bg: #f6f7f9;
+  --sp-bg-subtle: #eef0f4;
+  --sp-surface: #ffffff;
+  --sp-surface-raised: #ffffff;
+  --sp-overlay: rgba(16, 18, 24, 0.4);
+  --sp-border: #e2e5ec;
+  --sp-border-strong: #cbd0da;
+
+  --sp-text: #15171c;
+  --sp-text-secondary: #444954;
+  --sp-text-muted: #6b7280;
+  --sp-text-inverse: #ffffff;
+  --sp-text-link: var(--sp-anchor-600);
+
+  --sp-primary: var(--sp-anchor-500);
+  --sp-primary-hover: var(--sp-anchor-400);
+  --sp-primary-active: var(--sp-anchor-600);
+  --sp-on-primary: #ffffff;
+  --sp-focus-ring: rgba(62, 111, 212, 0.45);
+
+  --sp-gradient-surface: linear-gradient(180deg, #ffffff 0%, #f1f3f7 100%);
+  --sp-shadow-1: 0 1px 2px rgba(16, 18, 24, 0.08);
+  --sp-shadow-2: 0 4px 16px rgba(16, 18, 24, 0.1);
+  --sp-shadow-3: 0 16px 48px rgba(16, 18, 24, 0.14);
+
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --sp-duration-fast: 0ms;
+    --sp-duration: 0ms;
+    --sp-duration-slow: 0ms;
+  }
+}

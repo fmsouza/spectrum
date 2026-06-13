@@ -1,12 +1,12 @@
-import type { AgentStartInput } from "@launchkit/agent-driver"
+import type { AgentStartInput } from "@spectrum/agent-driver"
 import type {
   ApprovalDecision,
   ApprovalTarget,
   CanonicalEvent,
   PermissionMode,
   RunnerId,
-} from "@launchkit/agent-events"
-import type { ModelId } from "@launchkit/types"
+} from "@spectrum/agent-events"
+import type { ModelId } from "@spectrum/types"
 
 /** A live, mapped handle to a started harness. Methods are fire-and-forget (errors surface as events). */
 export interface AdapterHandle {

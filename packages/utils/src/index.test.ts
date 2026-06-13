@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import * as utils from "./index"
 
-describe("@launchkit/utils barrel", () => {
+describe("@spectrum/utils barrel", () => {
   it("exports every public symbol when imported", () => {
     for (const name of [
       "ok",

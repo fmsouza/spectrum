@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { ProjectId } from "@launchkit/types"
+import type { ProjectId } from "@spectrum/types"
 import { IpcMethodSchemas } from "./methods"
 
 describe("projects IPC schemas", () => {

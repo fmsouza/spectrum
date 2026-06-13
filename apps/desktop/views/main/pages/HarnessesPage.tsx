@@ -1,4 +1,4 @@
-import { Badge, EmptyState, SettingsLayout, Spinner } from "@launchkit/ui"
+import { Badge, EmptyState, SettingsLayout, Spinner } from "@spectrum/ui"
 import type { ReactElement } from "react"
 import { useHarnesses } from "../hooks/useHarnesses"
 

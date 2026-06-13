@@ -1,4 +1,4 @@
-import { err, isOk, ok } from "@launchkit/utils"
+import { err, isOk, ok } from "@spectrum/utils"
 import type { SecretCipher } from "./cipher"
 import type { ProcessRunner } from "./process-runner"
 

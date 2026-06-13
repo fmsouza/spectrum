@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import * as agentEvents from "./index"
 
-describe("@launchkit/agent-events barrel", () => {
+describe("@spectrum/agent-events barrel", () => {
   it("exports the reduce reducer and initialRunState when imported", () => {
     expect(typeof agentEvents.reduce).toBe("function")
     expect(agentEvents.initialRunState).toEqual({ runners: new Map() })

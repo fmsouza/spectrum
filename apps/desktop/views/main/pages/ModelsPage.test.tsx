@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import type { ProviderView } from "@launchkit/ipc"
-import type { ModelRoute } from "@launchkit/types"
+import type { ProviderView } from "@spectrum/ipc"
+import type { ModelRoute } from "@spectrum/types"
 import { fireEvent, screen, waitFor } from "@testing-library/react"
 import { createFakeIpcClient } from "../test/fake-client"
 import { renderWithProviders } from "../test/renderWithProviders"

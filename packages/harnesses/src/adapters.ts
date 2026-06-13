@@ -4,9 +4,9 @@ import {
   type Platform,
   detectPlatform,
   isAbsolutePath,
-} from "@launchkit/platform"
-import { HarnessDefinitionSchema } from "@launchkit/types"
-import { type Result, err, ok } from "@launchkit/utils"
+} from "@spectrum/platform"
+import { HarnessDefinitionSchema } from "@spectrum/types"
+import { type Result, err, ok } from "@spectrum/utils"
 import { type CommandResolver, guardCommand } from "./command-resolver"
 import type { HarnessError } from "./errors"
 import type { HarnessFileSource } from "./file-source"

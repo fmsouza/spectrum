@@ -1,7 +1,7 @@
-import { PermissionModeSchema } from "@launchkit/agent-events"
-import type { IpcHandlers, ProviderView } from "@launchkit/ipc"
-import type { ModelId, ModelRoute, Provider, SecretRef } from "@launchkit/types"
-import { isOk } from "@launchkit/utils"
+import { PermissionModeSchema } from "@spectrum/agent-events"
+import type { IpcHandlers, ProviderView } from "@spectrum/ipc"
+import type { ModelId, ModelRoute, Provider, SecretRef } from "@spectrum/types"
+import { isOk } from "@spectrum/utils"
 import type { AppContext } from "../../composition"
 
 /**
@@ -28,7 +28,7 @@ const fail = (message: string): never => {
 }
 
 /**
- * Bind the `@launchkit/ipc` contract to the wired subsystems. Each handler is `async` and either
+ * Bind the `@spectrum/ipc` contract to the wired subsystems. Each handler is `async` and either
  * returns the validated result shape or throws (the ipc server turns a throw into a `handler-failed`
  * IpcError; nothing leaks a stack trace because the server stringifies `error.message` only).
  * `void` results are encoded as `null` (the ipc VoidSchema), matching `04-ipc.md`.
@@ -216,7 +216,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
           : undefined)
 
       // modelId present → route through the proxy; absent → "default" = bypass the proxy.
-      let route: import("@launchkit/harnesses").LaunchRoute
+      let route: import("@spectrum/harnesses").LaunchRoute
       if (effectiveModelId === undefined) {
         route = { kind: "direct" }
       } else {
@@ -260,7 +260,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         // bundle-relative executable resolution finds no cli.js in the packaged app.
         command: resolved.value.command,
         // Forward the resolved launch args too: codex routes through the proxy ONLY via its
-        // `-c model_providers.launchkit.*` overrides (not env), so a native codex session needs
+        // `-c model_providers.spectrum.*` overrides (not env), so a native codex session needs
         // them. Drivers that route via env ignore this.
         args: resolved.value.args,
         ...(safeName === undefined ? {} : { name: safeName }),
@@ -292,7 +292,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
           ? undefined
           : (Object.fromEntries(
               Object.entries(filter).filter(([, v]) => v !== undefined),
-            ) as import("@launchkit/sessions").SessionFilter)
+            ) as import("@spectrum/sessions").SessionFilter)
       const queried = ctx.sessions.query(sessionFilter)
       if (!isOk(queried)) return fail("could not query sessions")
       return [...queried.value]
