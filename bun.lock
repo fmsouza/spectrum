@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "launchkit-monorepo",
+      "name": "spectrum-monorepo",
       "devDependencies": {
         "@biomejs/biome": "1.9.4",
         "@happy-dom/global-registrator": "^20",

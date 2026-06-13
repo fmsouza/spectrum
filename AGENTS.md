@@ -32,4 +32,4 @@ Test-first (RED observed) → implemented (GREEN) → refactored → `bun run ty
 - `@spectrum/driver-openclaw` — OpenClaw gateway adapter over driver-runtime (UNVERIFIED; depends on driver-runtime, agent-events, agent-driver, utils)
 
 ## Project skills
-`.agents/skills/launchkit-new-package` — creating a new internal package under `packages/`. Invoke it when it applies.
+`.agents/skills/spectrum-new-package` — creating a new internal package under `packages/`. Invoke it when it applies.

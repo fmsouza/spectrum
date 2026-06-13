@@ -255,7 +255,7 @@ tasks:
 
 | Skill | When to use it |
 |---|---|
-| `launchkit-new-package` | Creating a new internal package under `packages/` |
+| `spectrum-new-package` | Creating a new internal package under `packages/` |
 
 All other process (TDD, planning, review, debugging) is covered by the superpowers
 skills — invoke `using-superpowers` at the start of a session.
