@@ -14,11 +14,13 @@ export type ProviderRow = {
 export type ProviderListProps = {
   readonly providers: readonly ProviderRow[]
   readonly onSetSecret: (providerId: string) => void
+  readonly onEdit: (providerId: string) => void
 }
 
 export const ProviderList = ({
   providers,
   onSetSecret,
+  onEdit,
 }: ProviderListProps): ReactElement => {
   if (providers.length === 0) {
     return (
@@ -51,6 +53,9 @@ export const ProviderList = ({
               </Badge>
             </td>
             <td className="lk-cell-actions">
+              <Button variant="secondary" onClick={() => onEdit(p.id)}>
+                Edit
+              </Button>
               <Button variant="secondary" onClick={() => onSetSecret(p.id)}>
                 Set secret
               </Button>

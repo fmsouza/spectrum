@@ -30,7 +30,7 @@ const toRow = (view: ProviderView): ProviderRow => {
 }
 
 export const ProvidersPage = (): ReactElement => {
-  const { data, loading, error, add, setSecret } = useProviders()
+  const { data, loading, error, add, update, setSecret } = useProviders()
   const catalog = useProviderCatalog()
 
   const catalogOptions =
@@ -73,6 +73,9 @@ export const ProvidersPage = (): ReactElement => {
   const [secretField, setSecretField] = useState<string>("")
   const [secretValue, setSecretValue] = useState<string>("")
 
+  const [editFor, setEditFor] = useState<ProviderView | undefined>(undefined)
+  const [editConfig, setEditConfig] = useState<Record<string, string>>({})
+
   const submitSecret = async (): Promise<void> => {
     if (
       secretFor === undefined ||
@@ -93,6 +96,25 @@ export const ProvidersPage = (): ReactElement => {
     }
   }
 
+  const submitEdit = async (): Promise<void> => {
+    if (editFor === undefined) return
+    const r = await update(editFor.id as Parameters<typeof update>[0], {
+      name: editFor.name,
+      sdkProvider: editFor.sdkProvider as SdkProvider,
+      config: editConfig,
+      secretFieldNames: Object.keys(editFor.secretFields),
+      models: editFor.models,
+    })
+    if (r.ok) {
+      setEditFor(undefined)
+    }
+  }
+
+  const editCatalogEntry =
+    editFor !== undefined
+      ? catalog.data?.find((c) => c.key === editFor.sdkProvider)
+      : undefined
+
   return (
     <SettingsLayout title="Providers">
       {loading ? <Spinner label="Loading providers" /> : null}
@@ -111,6 +133,13 @@ export const ProvidersPage = (): ReactElement => {
             onSetSecret={(id) => {
               const p = data.find((x) => x.id === id)
               if (p !== undefined) setSecretFor(p)
+            }}
+            onEdit={(id) => {
+              const p = data.find((x) => x.id === id)
+              if (p !== undefined) {
+                setEditFor(p)
+                setEditConfig({ ...p.config })
+              }
             }}
           />
         </>
@@ -205,6 +234,42 @@ export const ProvidersPage = (): ReactElement => {
                 variant="secondary"
                 onClick={() => setSecretFor(undefined)}
               >
+                Cancel
+              </Button>
+            </Row>
+          </form>
+        ) : null}
+      </Modal>
+      <Modal
+        title={
+          editFor === undefined
+            ? "Edit provider"
+            : `Edit provider ${editFor.name}`
+        }
+        open={editFor !== undefined}
+        onClose={() => setEditFor(undefined)}
+      >
+        {editFor !== undefined ? (
+          <form
+            aria-label={`Edit provider ${editFor.name}`}
+            onSubmit={(e) => {
+              e.preventDefault()
+              void submitEdit()
+            }}
+          >
+            {editCatalogEntry !== undefined &&
+            editCatalogEntry.configFields.length > 0 ? (
+              <ProviderForm
+                fields={editCatalogEntry.configFields}
+                values={editConfig}
+                onChange={(name, value) =>
+                  setEditConfig((c) => ({ ...c, [name]: value }))
+                }
+              />
+            ) : null}
+            <Row gap={2} className="lk-form-actions">
+              <Button onClick={() => void submitEdit()}>Save changes</Button>
+              <Button variant="secondary" onClick={() => setEditFor(undefined)}>
                 Cancel
               </Button>
             </Row>
