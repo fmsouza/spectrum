@@ -4,7 +4,7 @@
 
 **Public surface (not a library -- the user-facing `launchkit` binary):** `src/main.ts` (entry: `runApp(detectMode(argv), argv, realDeps)`); `src/app.ts` (`runApp` mode router); `src/composition.ts` (`AppContext` + `createAppContext` real-adapter wiring); `src/gui/window.ts` (`openWindow` Electrobun seam); `src/gui/ipc/handlers.ts` (`createIpcHandlers` binding the ipc contract to subsystems). Owned by OTHER plans: `src/gui/tray.ts` (tray-and-polish), `views/**` (gui-pages), `src/detect-mode.ts` (phase0).
 
-**Depends on:** every `@launchkit/*` package (`cli`, `proxy`, `harnesses`, `config`, `sessions`, `secrets`, `ipc`, `ui`, `types`, `utils`)md.
+**Depends on:** every `@launchkit/*` package (`cli`, `proxy`, `harnesses`, `config`, `sessions`, `secrets`, `ipc`, `ui`, `types`, `utils`).
 
 **Effects owned:** ALL of them -- but only via constructing the real adapters in `composition.ts` and injecting them. `createAppContext` is flat and logic-free; every decision lives in `runApp` / `createIpcHandlers` (separately unit-tested with fakes). Electrobun (window + message bus) lives behind thin injected seams in `gui/window.ts` so the logic is testable without a running window.
 
