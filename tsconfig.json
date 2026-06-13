@@ -18,6 +18,7 @@
     { "path": "packages/driver-claude" },
     { "path": "packages/driver-codex" },
     { "path": "packages/driver-opencode" },
-    { "path": "packages/driver-openclaw" }
+    { "path": "packages/driver-openclaw" },
+    { "path": "packages/brand" }
   ]
 }

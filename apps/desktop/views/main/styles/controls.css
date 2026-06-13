@@ -8,21 +8,21 @@ button[data-variant] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
+  gap: var(--lk-space-2);
+  padding: var(--lk-space-2) var(--lk-space-4);
   min-height: 36px;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
+  border-radius: var(--lk-radius-md);
+  font-size: var(--lk-text-sm);
   font-weight: 600;
   letter-spacing: 0.01em;
   white-space: nowrap;
   transition:
-    background var(--dur) var(--ease),
-    border-color var(--dur) var(--ease),
-    color var(--dur) var(--ease),
-    transform var(--dur) var(--ease),
-    box-shadow var(--dur) var(--ease);
+    background var(--lk-duration) var(--lk-ease),
+    border-color var(--lk-duration) var(--lk-ease),
+    color var(--lk-duration) var(--lk-ease),
+    transform var(--lk-duration) var(--lk-ease),
+    box-shadow var(--lk-duration) var(--lk-ease);
 }
 
 button[data-variant]:active:not(:disabled) {
@@ -30,36 +30,36 @@ button[data-variant]:active:not(:disabled) {
 }
 
 button[data-variant="primary"] {
-  background: var(--accent);
-  color: var(--accent-contrast);
-  box-shadow: var(--shadow-sm);
+  background: var(--lk-primary);
+  color: var(--lk-on-primary);
+  box-shadow: var(--lk-shadow-1);
 }
 
 button[data-variant="primary"]:hover:not(:disabled) {
-  background: var(--accent-strong);
-  box-shadow: var(--shadow-md);
+  background: var(--lk-primary-active);
+  box-shadow: var(--lk-shadow-2);
 }
 
 button[data-variant="secondary"] {
-  background: var(--surface);
-  color: var(--text);
-  border-color: var(--border-strong);
+  background: var(--lk-surface);
+  color: var(--lk-text);
+  border-color: var(--lk-border-strong);
 }
 
 button[data-variant="secondary"]:hover:not(:disabled) {
-  background: var(--surface-inset);
-  border-color: var(--text-faint);
+  background: var(--lk-bg-subtle);
+  border-color: var(--lk-text-muted);
 }
 
 button[data-variant="danger"] {
   background: transparent;
-  color: var(--red);
-  border-color: color-mix(in srgb, var(--red) 45%, transparent);
+  color: var(--lk-danger);
+  border-color: color-mix(in srgb, var(--lk-danger) 45%, transparent);
 }
 
 button[data-variant="danger"]:hover:not(:disabled) {
-  background: var(--red-soft);
-  border-color: var(--red);
+  background: var(--lk-danger-soft);
+  border-color: var(--lk-danger);
 }
 
 button[data-variant]:disabled {
@@ -73,92 +73,92 @@ input,
 select {
   font: inherit;
   width: 100%;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--lk-space-2) var(--lk-space-3);
   min-height: 38px;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  transition: border-color var(--dur) var(--ease), box-shadow var(--dur)
-    var(--ease);
+  color: var(--lk-text);
+  background: var(--lk-surface);
+  border: 1px solid var(--lk-border-strong);
+  border-radius: var(--lk-radius-md);
+  transition: border-color var(--lk-duration) var(--lk-ease), box-shadow
+    var(--lk-duration) var(--lk-ease);
 }
 
 input::placeholder {
-  color: var(--text-faint);
+  color: var(--lk-text-muted);
 }
 
 input:hover:not(:disabled),
 select:hover:not(:disabled) {
-  border-color: var(--text-faint);
+  border-color: var(--lk-text-muted);
 }
 
 input:focus,
 select:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--ring);
+  border-color: var(--lk-primary);
+  box-shadow: 0 0 0 3px var(--lk-focus-ring);
 }
 
 input:disabled,
 select:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-  background: var(--surface-inset);
+  background: var(--lk-bg-subtle);
 }
 
 select {
   cursor: pointer;
   appearance: none;
-  padding-right: var(--space-6);
+  padding-right: var(--lk-space-8);
   /* Caret drawn as a background SVG (data: URI allowed by CSP img-src). */
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%238a8c96' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-repeat: no-repeat;
-  background-position: right var(--space-3) center;
+  background-position: right var(--lk-space-3) center;
 }
 
 label {
   display: block;
-  font-size: var(--text-sm);
+  font-size: var(--lk-text-sm);
   font-weight: 600;
-  color: var(--text);
-  margin-bottom: var(--space-2);
+  color: var(--lk-text);
+  margin-bottom: var(--lk-space-2);
 }
 
 /* ───────────────────────────── Badges ───────────────────────────── */
 span[data-tone] {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  padding: 2px var(--space-2);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  gap: var(--lk-space-1);
+  padding: 2px var(--lk-space-2);
+  font-family: var(--lk-font-mono);
+  font-size: var(--lk-text-xs);
   font-weight: 600;
   line-height: 1.5;
   letter-spacing: 0.01em;
-  border-radius: var(--radius-sm);
+  border-radius: var(--lk-radius-sm);
   border: 1px solid transparent;
   white-space: nowrap;
 }
 
 span[data-tone="neutral"] {
-  color: var(--text-muted);
-  background: var(--surface-inset);
-  border-color: var(--border-strong);
+  color: var(--lk-text-secondary);
+  background: var(--lk-bg-subtle);
+  border-color: var(--lk-border-strong);
 }
 
 span[data-tone="info"] {
-  color: var(--blue);
-  background: var(--blue-soft);
+  color: var(--lk-info);
+  background: var(--lk-info-soft);
 }
 
 span[data-tone="success"] {
-  color: var(--green);
-  background: var(--green-soft);
+  color: var(--lk-success);
+  background: var(--lk-success-soft);
 }
 
 span[data-tone="danger"] {
-  color: var(--red);
-  background: var(--red-soft);
+  color: var(--lk-danger);
+  background: var(--lk-danger-soft);
 }
 
 /* ─────────────────────── StatusDot (span role=img) ─────────────────────── */
@@ -172,18 +172,19 @@ span[role="img"][data-color] {
 }
 
 span[role="img"][data-color="green"] {
-  background: var(--green);
-  box-shadow: 0 0 0 3px var(--green-soft);
+  background: var(--lk-success);
+  box-shadow: 0 0 0 3px var(--lk-success-soft);
 }
 
 span[role="img"][data-color="grey"] {
-  background: var(--grey);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--grey) 22%, transparent);
+  background: var(--lk-text-muted);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--lk-text-muted) 22%, transparent);
 }
 
 span[role="img"][data-color="red"] {
-  background: var(--red);
-  box-shadow: 0 0 0 3px var(--red-soft);
+  background: var(--lk-danger);
+  box-shadow: 0 0 0 3px var(--lk-danger-soft);
 }
 
 /* The dashboard wraps the dot in <div aria-label="Proxy status">. Give it a
@@ -191,15 +192,15 @@ span[role="img"][data-color="red"] {
 div[aria-label="Proxy status"] {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-sm);
-  font-size: var(--text-sm);
+  gap: var(--lk-space-2);
+  padding: var(--lk-space-2) var(--lk-space-4);
+  background: var(--lk-surface);
+  border: 1px solid var(--lk-border);
+  border-radius: var(--lk-radius-pill);
+  box-shadow: var(--lk-shadow-1);
+  font-size: var(--lk-text-sm);
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--lk-text-secondary);
 }
 
 /* ───────────────────── Spinner (span role=status busy) ──────────────────── */
@@ -208,8 +209,8 @@ span[role="status"][aria-busy="true"] {
   width: 18px;
   height: 18px;
   vertical-align: middle;
-  border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
-  border-top-color: var(--accent);
+  border: 2px solid color-mix(in srgb, var(--lk-primary) 25%, transparent);
+  border-top-color: var(--lk-primary);
   border-radius: 50%;
   animation: lk-spin 0.7s linear infinite;
 }
@@ -238,15 +239,15 @@ span[role="status"][aria-busy="true"] {
 .lk-tooltip__bubble {
   position: absolute;
   z-index: 50;
-  bottom: calc(100% + var(--space-2));
+  bottom: calc(100% + var(--lk-space-2));
   left: 50%;
   transform: translateX(-50%);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--sidebar-bg, #222);
-  color: var(--sidebar-fg, #fff);
-  font-size: var(--text-xs);
+  padding: var(--lk-space-1) var(--lk-space-2);
+  border-radius: var(--lk-radius-sm);
+  background: var(--lk-graphite-950, #222);
+  color: var(--lk-text-secondary, #fff);
+  font-size: var(--lk-text-xs);
   white-space: nowrap;
   pointer-events: none;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--lk-shadow-2);
 }

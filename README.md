@@ -1,3 +1,5 @@
+![LaunchKit](assets/launchkit-readme-hero.png)
+
 # LaunchKit
 
 LaunchKit is a dual-mode (CLI + GUI) desktop app that lets coding-agent harnesses
@@ -257,3 +259,6 @@ tasks:
 
 All other process (TDD, planning, review, debugging) is covered by the superpowers
 skills — invoke `using-superpowers` at the start of a session.
+
+> **GitHub social preview:** upload `assets/launchkit-og-card.png` at
+> Settings → General → Social preview. (Manual; cannot be automated.)

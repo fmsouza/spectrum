@@ -263,6 +263,10 @@ const isGlobalBucket = (s: string): boolean => {
     "*",
     "to",
     "from",
+    // Theme opt-in root selector — dark is the default; the light theme is only
+    // active when [data-theme="light"] is set on <html>. No rendered test state
+    // opts into light, so this root-level selector matches nothing by design.
+    '[data-theme="light"]',
     // Typography resets — present in real app but not reliably in test states
     "h1",
     "h2",
