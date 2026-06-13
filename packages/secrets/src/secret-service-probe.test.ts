@@ -54,4 +54,9 @@ describe("isSecretServiceAvailable", () => {
     })
     expect(available).toBe(true)
   })
+
+  it("returns a boolean (and never throws) when commandExists is omitted", async () => {
+    const available = await isSecretServiceAvailable({ runner: throwingRunner })
+    expect(typeof available).toBe("boolean")
+  })
 })

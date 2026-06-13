@@ -57,7 +57,7 @@ describe("createPlatformKeychainBackend", () => {
 
   it("falls back to the encrypted file on linux when no Secret Service is available", async () => {
     const fileOps = createInMemorySecretFileOps()
-    const { runner } = recordingRunner([])
+    const { runner, calls } = recordingRunner([])
     const backend = createPlatformKeychainBackend({
       platform: "linux",
       runner,
@@ -67,6 +67,7 @@ describe("createPlatformKeychainBackend", () => {
       commandExists: () => false, // secret-tool not installed
     })
     expect((await backend.add("kc_1", "s")).ok).toBe(true)
+    expect(calls).toHaveLength(0)
     expect(await backend.find("kc_1")).toEqual({ ok: true, value: "s" })
   })
 

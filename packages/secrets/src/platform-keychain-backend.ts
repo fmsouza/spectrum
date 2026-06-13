@@ -14,6 +14,11 @@ export interface PlatformKeychainDeps {
   readonly runner: ProcessRunner
   readonly fileOps: SecretFileOps
   readonly secretsDir: string
+  /**
+   * Linux only — passphrase source for the encrypted-file fallback when no
+   * Secret Service answers. Unused on macOS/Windows. May return `null`, in
+   * which case Linux writes return `{ kind: "unavailable" }`.
+   */
   readonly secretPassphrase: () => Promise<string | null>
   readonly commandExists?: (cmd: string) => boolean
 }
@@ -26,23 +31,30 @@ export interface PlatformKeychainDeps {
 const createLinuxKeychainBackend = (
   deps: PlatformKeychainDeps,
 ): KeychainBackend => {
-  let chosen: KeychainBackend | null = null
-  const pick = async (): Promise<KeychainBackend> => {
-    if (chosen !== null) return chosen
-    const available = await isSecretServiceAvailable({
-      runner: deps.runner,
-      ...(deps.commandExists ? { commandExists: deps.commandExists } : {}),
-    })
-    chosen = available
-      ? createSecretToolBackend({ runner: deps.runner })
-      : createEncryptedFileBackend({
-          fileOps: deps.fileOps,
-          secretsDir: deps.secretsDir,
-          cipher: createPassphraseAeadCipher({
-            getPassphrase: deps.secretPassphrase,
-          }),
-        })
-    return chosen
+  let resolved: KeychainBackend | null = null
+  let pending: Promise<KeychainBackend> | null = null
+  const pick = (): Promise<KeychainBackend> => {
+    if (resolved !== null) return Promise.resolve(resolved)
+    if (pending !== null) return pending
+    pending = (async () => {
+      const available = await isSecretServiceAvailable(
+        deps.commandExists === undefined
+          ? { runner: deps.runner }
+          : { runner: deps.runner, commandExists: deps.commandExists },
+      )
+      const next: KeychainBackend = available
+        ? createSecretToolBackend({ runner: deps.runner })
+        : createEncryptedFileBackend({
+            fileOps: deps.fileOps,
+            secretsDir: deps.secretsDir,
+            cipher: createPassphraseAeadCipher({
+              getPassphrase: deps.secretPassphrase,
+            }),
+          })
+      resolved = next
+      return next
+    })()
+    return pending
   }
   return {
     add: async (a, s) => (await pick()).add(a, s),
@@ -66,6 +78,7 @@ export const createPlatformKeychainBackend = (
         secretsDir: deps.secretsDir,
         cipher: createDpapiCipher({ runner: deps.runner }),
       })
+    // `unknown` is a defensive default for future OS additions; never expected at runtime.
     default:
       return createInMemoryKeychainBackend()
   }
