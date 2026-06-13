@@ -24,6 +24,9 @@ const makeFakeDeps = (): {
     platform: "linux",
     env: {},
     resolveAppPaths,
+    ensureDir: ((dir: string) => {
+      calls.ensureDir = [dir]
+    }) as never,
     migrateLegacyMacosConfig: record("migrateLegacyMacosConfig") as never,
     createFsConfigFile: record("createFsConfigFile") as never,
     createFileConfigStore: record("createFileConfigStore") as never,
@@ -218,6 +221,32 @@ describe("createAppContext wiring", () => {
     }
     expect(sessionArgs.db).toEqual({ __stub: "dbClient" })
     expect(sessionArgs.clock).toEqual({ __stub: "createSystemClock" })
+  })
+
+  it("creates the data directory before opening the database (fresh install)", () => {
+    const { deps, calls } = makeFakeDeps()
+    const order: string[] = []
+    const ensureDir = ((dir: string) => {
+      order.push("ensureDir")
+      calls.ensureDir = [dir]
+    }) as never
+    const createSqliteClient = ((path: string) => {
+      order.push("db")
+      calls.createSqliteClient = [path]
+      return { ok: true, value: { __stub: "dbClient" } }
+    }) as never
+    createAppContext({ ...deps, ensureDir, createSqliteClient })
+
+    const expected = resolveAppPaths({
+      platform: "linux",
+      homeDir: "/home/tester",
+      env: {},
+    })
+    // The data dir is created (recursively) before the db open, or a fresh install
+    // (no dir yet) throws on `new Database(path)` and the proxy never starts.
+    expect(calls.ensureDir?.[0]).toBe(expected.dataDir)
+    expect(order.indexOf("ensureDir")).toBeGreaterThanOrEqual(0)
+    expect(order.indexOf("ensureDir")).toBeLessThan(order.indexOf("db"))
   })
 
   it("builds the runtime state at the resolved runtime.json path and exposes it", () => {
