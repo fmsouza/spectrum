@@ -28,7 +28,11 @@ const makeFakeDeps = (): {
     createFsConfigFile: record("createFsConfigFile") as never,
     createFileConfigStore: record("createFileConfigStore") as never,
     createCachedConfigStore: record("createCachedConfigStore") as never,
-    createMacosSecurityBackend: record("createMacosSecurityBackend") as never,
+    createPlatformKeychainBackend: record(
+      "createPlatformKeychainBackend",
+    ) as never,
+    createSecretFileOps: record("createSecretFileOps") as never,
+    secretPassphrase: (async () => null) as never,
     createBunProcessRunner: record("createBunProcessRunner") as never,
     createCryptoIdGen: record("createCryptoIdGen") as never,
     createSecretStore: record("createSecretStore") as never,
@@ -179,15 +183,23 @@ describe("createAppContext wiring", () => {
     })
   })
 
-  it("builds the secret store from a macOS backend driven by a Bun process runner + crypto id gen", () => {
+  it("builds the secret store from a platform keychain backend wired with paths + passphrase", () => {
     const { deps, calls } = makeFakeDeps()
     createAppContext(deps)
-
-    expect(calls.createMacosSecurityBackend?.[0]).toEqual({
-      runner: { __stub: "createBunProcessRunner" },
-    })
+    const arg = calls.createPlatformKeychainBackend?.[0] as {
+      platform: string
+      runner: unknown
+      fileOps: unknown
+      secretsDir: string
+      secretPassphrase: unknown
+    }
+    expect(arg.platform).toBe("linux")
+    expect(arg.runner).toEqual({ __stub: "createBunProcessRunner" })
+    expect(arg.fileOps).toEqual({ __stub: "createSecretFileOps" })
+    expect(arg.secretsDir).toBe("/home/tester/.config/launchkit/secrets")
+    expect(typeof arg.secretPassphrase).toBe("function")
     expect(calls.createSecretStore?.[0]).toEqual({
-      backend: { __stub: "createMacosSecurityBackend" },
+      backend: { __stub: "createPlatformKeychainBackend" },
       idGen: { __stub: "createCryptoIdGen" },
     })
   })

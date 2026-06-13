@@ -69,7 +69,8 @@ import {
 import { createRunStore } from "@launchkit/run-store"
 import {
   createBunProcessRunner,
-  createMacosSecurityBackend,
+  createFsSecretFileOps,
+  createPlatformKeychainBackend,
   createSecretStore,
 } from "@launchkit/secrets"
 import { createSessionStore } from "@launchkit/sessions"
@@ -201,7 +202,9 @@ export interface CreateAppContextDeps {
   readonly createFsConfigFile: typeof createFsConfigFile
   readonly createFileConfigStore: typeof createFileConfigStore
   readonly createCachedConfigStore: typeof createCachedConfigStore
-  readonly createMacosSecurityBackend: typeof createMacosSecurityBackend
+  readonly createPlatformKeychainBackend: typeof createPlatformKeychainBackend
+  readonly createSecretFileOps: typeof createFsSecretFileOps
+  readonly secretPassphrase: () => Promise<string | null>
   readonly createBunProcessRunner: typeof createBunProcessRunner
   readonly createCryptoIdGen: typeof createCryptoIdGen
   readonly createSecretStore: typeof createSecretStore
@@ -236,6 +239,10 @@ const defaultGenProxyKey = (): string => {
   return Buffer.from(bytes).toString("base64url")
 }
 
+/** Headless passphrase source for the encrypted-file fallback (GUI prompt is a future addition). */
+const defaultSecretPassphrase = async (): Promise<string | null> =>
+  process.env.LAUNCHKIT_SECRET_PASSPHRASE ?? null
+
 /** The real constructors, used when `createAppContext()` is called with no argument. */
 const realDeps: CreateAppContextDeps = {
   homeDir: homedir,
@@ -246,7 +253,9 @@ const realDeps: CreateAppContextDeps = {
   createFsConfigFile,
   createFileConfigStore,
   createCachedConfigStore,
-  createMacosSecurityBackend,
+  createPlatformKeychainBackend,
+  createSecretFileOps: createFsSecretFileOps,
+  secretPassphrase: defaultSecretPassphrase,
   createBunProcessRunner,
   createCryptoIdGen,
   createSecretStore,
@@ -390,10 +399,14 @@ export const createAppContext = (
     },
   }
 
-  // secrets: store( macOS security backend over a Bun process runner, crypto id gen )
+  // secrets: store( per-OS keychain backend (security / secret-tool / DPAPI-file) over a Bun runner )
   const secrets = deps.createSecretStore({
-    backend: deps.createMacosSecurityBackend({
+    backend: deps.createPlatformKeychainBackend({
+      platform: deps.platform,
       runner: deps.createBunProcessRunner(),
+      fileOps: deps.createSecretFileOps(),
+      secretsDir: paths.secretsDir,
+      secretPassphrase: deps.secretPassphrase,
     }),
     idGen: deps.createCryptoIdGen(),
   })
