@@ -20,18 +20,16 @@ release.
 |---|:---:|:---:|---|
 | **macOS** — Apple Silicon (`arm64`) | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-arm64-cli.tar.gz) |
 | **macOS** — Intel (`x64`) | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-x64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-x64-cli.tar.gz) |
-| **Linux** — `x64` | ⚠️ experimental | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-x64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-x64-cli.tar.gz) |
-| **Linux** — `arm64` | ⚠️ experimental | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-arm64-cli.tar.gz) |
-| **Windows** — `x64` | — | ✅ | [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-windows-x64-cli.zip) |
+| **Linux** — `x64` | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-x64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-x64-cli.tar.gz) |
+| **Linux** — `arm64` | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-arm64-cli.tar.gz) |
+| **Windows** — `x64` | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-windows-x64-app.zip) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-windows-x64-cli.zip) |
 
-> **Which platform is fully supported?** macOS (Apple Silicon and Intel) is the
-> first-class target: GUI + CLI, with provider API keys stored in the macOS Keychain.
-> Linux and Windows binaries are published as a convenience and are **experimental** — the
-> GUI's secret-storage backend is macOS-only today, so on those platforms use the **CLI**
-> to launch harnesses with their own native credentials (the `default` route). Proxy
-> routing through stored provider keys currently requires macOS. The GUI app archives are
-> built best-effort in CI and may occasionally be missing from a given release on
-> non-macOS platforms — fall back to the CLI or [build from source](#build-from-source).
+LaunchKit runs GUI + CLI on macOS, Linux, and Windows. Provider API keys are stored in the
+platform's secret store — macOS Keychain, Linux Secret Service (libsecret), or Windows DPAPI —
+so stored-key proxy routing works on all three. On a headless Linux box with no keyring, set
+`LAUNCHKIT_SECRET_PASSPHRASE` to enable an encrypted-file fallback (LaunchKit never writes secrets
+in plaintext). Code signing / notarization is not yet applied, so you may need to allow the app past
+your OS's first-run gatekeeper.
 
 ### macOS — GUI app
 
@@ -69,7 +67,7 @@ sudo mv "launchkit-${PLATFORM}-cli" /usr/local/bin/launchkit   # put it on your 
 launchkit list harnesses
 ```
 
-### Linux — GUI app (experimental)
+### Linux — GUI app
 
 ```sh
 PLATFORM=linux-x64   # or linux-arm64
@@ -82,9 +80,24 @@ tar xzf launchkit-app.tar.gz
 ### Windows — CLI (PowerShell)
 
 ```powershell
-Invoke-WebRequest -Uri https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-windows-x64-cli.zip -OutFile launchkit-cli.zip
-Expand-Archive launchkit-cli.zip -DestinationPath .
-.\launchkit-windows-x64-cli.exe list harnesses
+Invoke-WebRequest -OutFile launchkit-cli.zip `
+  https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-windows-x64-cli.zip
+Expand-Archive launchkit-cli.zip
+# move to a directory on your PATH
+Move-Item launchkit-windows-x64-cli\launchkit.exe C:\Windows\System32\launchkit.exe
+launchkit list harnesses
+```
+
+### Windows — GUI app
+
+The build is unsigned — Windows SmartScreen may prompt on first launch. Click
+**More info** → **Run anyway** to proceed.
+
+```powershell
+Invoke-WebRequest -OutFile launchkit-app.zip `
+  https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-windows-x64-app.zip
+Expand-Archive launchkit-app.zip
+.\dev-windows-x64\LaunchKit-dev\bin\launcher.exe
 ```
 
 ### Verify the download (optional)
@@ -106,8 +119,7 @@ with the same set of assets — unstable, but current.
 ### Requirements
 
 - **macOS, Linux, or Windows.** Building the GUI produces a bundle for your host platform
-  (`dev-<os>-<arch>`, e.g. `dev-macos-arm64`). macOS is the fully-supported GUI target;
-  see the platform note above.
+  (`dev-<os>-<arch>`, e.g. `dev-macos-arm64`).
 - **Bun ≥ 1.3.14** (the repo pins `bun@1.3.14`). Install from <https://bun.sh>.
 
 Bootstrap the workspace once:
@@ -191,9 +203,10 @@ generated per-run key.
 ## Configure providers
 
 Provider API keys are added from the GUI **Providers** page, never from the CLI. Keys are
-stored in the **macOS Keychain** — `~/.config/launchkit/config.json` holds only a
-reference to each key, never the value. (`launchkit add provider` creates a provider with
-empty secrets; you then set the key in the GUI.)
+stored in the platform's secret store — macOS Keychain, Linux Secret Service (libsecret),
+or Windows DPAPI — and `config.json` holds only a reference to each key, never the value.
+(`launchkit add provider` creates a provider with empty secrets; you then set the key in
+the GUI.)
 
 Map your model **aliases** (`default`, `fast`, `smart`, `local`) to a provider + model on
 the GUI **Models** page. Harnesses request an alias, and the proxy routes it to the

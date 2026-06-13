@@ -19,7 +19,6 @@ import type { SessionId } from "@launchkit/types"
 import type { Result } from "@launchkit/utils"
 
 import { homedir } from "node:os"
-import { join } from "node:path"
 import type {
   AgentDriver,
   RunManager,
@@ -51,6 +50,11 @@ import {
   resolveHarnessLaunch,
 } from "@launchkit/harnesses"
 import {
+  type Platform,
+  detectPlatform,
+  resolveAppPaths,
+} from "@launchkit/platform"
+import {
   createFetchHttpGet,
   createFileRuntimeState,
   createModelLister,
@@ -65,7 +69,8 @@ import {
 import { createRunStore } from "@launchkit/run-store"
 import {
   createBunProcessRunner,
-  createMacosSecurityBackend,
+  createFsSecretFileOps,
+  createPlatformKeychainBackend,
   createSecretStore,
 } from "@launchkit/secrets"
 import { createSessionStore } from "@launchkit/sessions"
@@ -78,6 +83,7 @@ import {
   createDriverRegistry,
 } from "./gui/driver-registry"
 import { startRunnerSocket } from "./gui/runner-socket"
+import { migrateLegacyMacosConfig } from "./migrate-legacy-config"
 
 /** Result of testing one provider's live connectivity (mirrors ipc TestProviderResult). */
 export type ProviderTestResult = {
@@ -189,10 +195,16 @@ export interface AppContext {
  */
 export interface CreateAppContextDeps {
   readonly homeDir: typeof homedir
+  readonly platform: Platform
+  readonly env: Readonly<Record<string, string | undefined>>
+  readonly resolveAppPaths: typeof resolveAppPaths
+  readonly migrateLegacyMacosConfig: typeof migrateLegacyMacosConfig
   readonly createFsConfigFile: typeof createFsConfigFile
   readonly createFileConfigStore: typeof createFileConfigStore
   readonly createCachedConfigStore: typeof createCachedConfigStore
-  readonly createMacosSecurityBackend: typeof createMacosSecurityBackend
+  readonly createPlatformKeychainBackend: typeof createPlatformKeychainBackend
+  readonly createSecretFileOps: typeof createFsSecretFileOps
+  readonly secretPassphrase: () => Promise<string | null>
   readonly createBunProcessRunner: typeof createBunProcessRunner
   readonly createCryptoIdGen: typeof createCryptoIdGen
   readonly createSecretStore: typeof createSecretStore
@@ -227,13 +239,23 @@ const defaultGenProxyKey = (): string => {
   return Buffer.from(bytes).toString("base64url")
 }
 
+/** Headless passphrase source for the encrypted-file fallback (GUI prompt is a future addition). */
+const defaultSecretPassphrase = async (): Promise<string | null> =>
+  process.env.LAUNCHKIT_SECRET_PASSPHRASE ?? null
+
 /** The real constructors, used when `createAppContext()` is called with no argument. */
 const realDeps: CreateAppContextDeps = {
   homeDir: homedir,
+  platform: detectPlatform(),
+  env: process.env,
+  resolveAppPaths,
+  migrateLegacyMacosConfig,
   createFsConfigFile,
   createFileConfigStore,
   createCachedConfigStore,
-  createMacosSecurityBackend,
+  createPlatformKeychainBackend,
+  createSecretFileOps: createFsSecretFileOps,
+  secretPassphrase: defaultSecretPassphrase,
   createBunProcessRunner,
   createCryptoIdGen,
   createSecretStore,
@@ -341,11 +363,20 @@ const createListProviderModels = (
 export const createAppContext = (
   deps: CreateAppContextDeps = realDeps,
 ): AppContext => {
-  const configDir = join(deps.homeDir(), ".config", "launchkit")
-  const configFile = join(configDir, "config.json")
-  const dbFile = join(configDir, "launchkit.db")
-  const harnessDir = join(configDir, "harnesses")
-  const runtimeFile = join(configDir, "runtime.json")
+  deps.migrateLegacyMacosConfig({
+    platform: deps.platform,
+    homeDir: deps.homeDir(),
+    env: deps.env,
+  })
+  const paths = deps.resolveAppPaths({
+    platform: deps.platform,
+    homeDir: deps.homeDir(),
+    env: deps.env,
+  })
+  const configFile = paths.configFile
+  const dbFile = paths.dbFile
+  const harnessDir = paths.harnessDir
+  const runtimeFile = paths.runtimeFile
 
   // config: cached( file( fs(configFile) ) ). Wrapped to keep a synchronous snapshot of the latest
   // config (`liveConfig`) updated on every load/save, so the long-running GUI proxy can resolve
@@ -368,10 +399,14 @@ export const createAppContext = (
     },
   }
 
-  // secrets: store( macOS security backend over a Bun process runner, crypto id gen )
+  // secrets: store( per-OS keychain backend (security / secret-tool / DPAPI-file) over a Bun runner )
   const secrets = deps.createSecretStore({
-    backend: deps.createMacosSecurityBackend({
+    backend: deps.createPlatformKeychainBackend({
+      platform: deps.platform,
       runner: deps.createBunProcessRunner(),
+      fileOps: deps.createSecretFileOps(),
+      secretsDir: paths.secretsDir,
+      secretPassphrase: deps.secretPassphrase,
     }),
     idGen: deps.createCryptoIdGen(),
   })

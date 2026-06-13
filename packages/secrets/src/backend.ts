@@ -4,6 +4,7 @@ import { type Result, err, ok } from "@launchkit/utils"
 export type SecretError =
   | { readonly kind: "not-found" }
   | { readonly kind: "backend-failed"; readonly detail: string }
+  | { readonly kind: "unavailable"; readonly detail: string }
 
 /**
  * The keychain effect. The only thing `SecretStore` knows about the OS keychain.
