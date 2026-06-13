@@ -50,6 +50,8 @@ const config = {
       "views/main/styles/page.css": "views/main/styles/page.css",
     },
     mac: { createDmg: false },
+    linux: { bundleCEF: true, defaultRenderer: "cef" },
+    win: {},
   },
 } satisfies ElectrobunConfig
 
