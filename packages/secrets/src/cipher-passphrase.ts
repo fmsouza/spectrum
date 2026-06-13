@@ -53,7 +53,10 @@ export const createPassphraseAeadCipher = (deps: {
       const pt = Buffer.concat([decipher.update(ct), decipher.final()])
       return ok(pt.toString("utf8"))
     } catch {
-      return err({ kind: "backend-failed", detail: "decrypt failed (wrong passphrase or corrupt envelope)" })
+      return err({
+        kind: "backend-failed",
+        detail: "decrypt failed (wrong passphrase or corrupt envelope)",
+      })
     }
   },
 })

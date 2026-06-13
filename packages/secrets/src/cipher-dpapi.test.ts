@@ -5,7 +5,9 @@ import { createDpapiCipher } from "./cipher-dpapi"
 import type { ProcessRunner } from "./process-runner"
 
 type Call = { command: string; args: readonly string[]; stdin?: string }
-const recordingRunner = (results: ReadonlyArray<Result<{ stdout: string }, SecretError>>) => {
+const recordingRunner = (
+  results: ReadonlyArray<Result<{ stdout: string }, SecretError>>,
+) => {
   const calls: Call[] = []
   let i = 0
   const runner: ProcessRunner = {
@@ -19,13 +21,17 @@ const recordingRunner = (results: ReadonlyArray<Result<{ stdout: string }, Secre
 
 describe("createDpapiCipher", () => {
   it("invokes powershell, passes base64(plaintext) on stdin, and returns its stdout as the envelope", async () => {
-    const { runner, calls } = recordingRunner([ok({ stdout: "PROTECTED_B64\n" })])
+    const { runner, calls } = recordingRunner([
+      ok({ stdout: "PROTECTED_B64\n" }),
+    ])
     const cipher = createDpapiCipher({ runner })
     const enc = await cipher.encrypt("hello")
     expect(enc).toEqual({ ok: true, value: "PROTECTED_B64" })
     expect(calls[0]?.command).toBe("powershell")
     expect(calls[0]?.args).toContain("-NoProfile")
-    expect(calls[0]?.stdin).toBe(Buffer.from("hello", "utf8").toString("base64"))
+    expect(calls[0]?.stdin).toBe(
+      Buffer.from("hello", "utf8").toString("base64"),
+    )
   })
 
   it("decrypts by passing the envelope on stdin and decoding the base64 plaintext stdout", async () => {

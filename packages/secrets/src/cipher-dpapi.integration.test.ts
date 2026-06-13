@@ -12,6 +12,9 @@ describeWin("createDpapiCipher (real DPAPI)", () => {
     expect(enc.ok).toBe(true)
     if (!enc.ok) return
     expect(enc.value).not.toContain("sk-windows-secret")
-    expect(await cipher.decrypt(enc.value)).toEqual({ ok: true, value: "sk-windows-secret" })
+    expect(await cipher.decrypt(enc.value)).toEqual({
+      ok: true,
+      value: "sk-windows-secret",
+    })
   })
 })

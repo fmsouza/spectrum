@@ -4,7 +4,10 @@ import type { ProcessRunner } from "./process-runner"
 
 const SERVICE = "launchkit"
 
-const redactError = (error: SecretError, secrets: readonly string[]): SecretError =>
+const redactError = (
+  error: SecretError,
+  secrets: readonly string[],
+): SecretError =>
   error.kind === "backend-failed"
     ? { kind: "backend-failed", detail: redactSecrets(error.detail, secrets) }
     : error
@@ -21,19 +24,40 @@ export const createSecretToolBackend = (deps: {
     add: async (account, secret) => {
       const result = await runner.run(
         "secret-tool",
-        ["store", `--label=LaunchKit: ${account}`, "service", SERVICE, "account", account],
+        [
+          "store",
+          `--label=LaunchKit: ${account}`,
+          "service",
+          SERVICE,
+          "account",
+          account,
+        ],
         { stdin: secret },
       )
-      return isOk(result) ? ok(undefined) : err(redactError(result.error, [secret]))
+      return isOk(result)
+        ? ok(undefined)
+        : err(redactError(result.error, [secret]))
     },
     find: async (account) => {
-      const result = await runner.run("secret-tool", ["lookup", "service", SERVICE, "account", account])
+      const result = await runner.run("secret-tool", [
+        "lookup",
+        "service",
+        SERVICE,
+        "account",
+        account,
+      ])
       // `secret-tool lookup` exits non-zero when the item is absent — treat any failure as not-found.
       if (!isOk(result)) return err({ kind: "not-found" })
       return ok(result.value.stdout.replace(/\n$/, ""))
     },
     remove: async (account) => {
-      const result = await runner.run("secret-tool", ["clear", "service", SERVICE, "account", account])
+      const result = await runner.run("secret-tool", [
+        "clear",
+        "service",
+        SERVICE,
+        "account",
+        account,
+      ])
       return isOk(result) ? ok(undefined) : err(result.error)
     },
   }

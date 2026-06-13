@@ -30,12 +30,19 @@ describe("createEncryptedFileBackend", () => {
       secretsDir: "/data/secrets",
       cipher: fakeCipher,
     })
-    expect(await backend.find("missing")).toEqual({ ok: false, error: { kind: "not-found" } })
+    expect(await backend.find("missing")).toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    })
   })
 
   it("reports not-found after remove", async () => {
     const fileOps = createInMemorySecretFileOps()
-    const backend = createEncryptedFileBackend({ fileOps, secretsDir: "/d", cipher: fakeCipher })
+    const backend = createEncryptedFileBackend({
+      fileOps,
+      secretsDir: "/d",
+      cipher: fakeCipher,
+    })
     await backend.add("kc_1", "x")
     expect((await backend.remove("kc_1")).ok).toBe(true)
     expect((await backend.find("kc_1")).ok).toBe(false)
@@ -43,9 +50,16 @@ describe("createEncryptedFileBackend", () => {
 
   it("propagates the cipher 'unavailable' error and writes nothing when no passphrase exists", async () => {
     const fileOps = createInMemorySecretFileOps()
-    const backend = createEncryptedFileBackend({ fileOps, secretsDir: "/d", cipher: unavailableCipher })
+    const backend = createEncryptedFileBackend({
+      fileOps,
+      secretsDir: "/d",
+      cipher: unavailableCipher,
+    })
     const r = await backend.add("kc_1", "x")
-    expect(r).toEqual({ ok: false, error: { kind: "unavailable", detail: "no passphrase" } })
+    expect(r).toEqual({
+      ok: false,
+      error: { kind: "unavailable", detail: "no passphrase" },
+    })
     expect(await fileOps.exists("/d")).toBe(false)
   })
 })

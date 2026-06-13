@@ -15,7 +15,10 @@ export const createEncryptedFileBackend = (deps: {
   readonly cipher: SecretCipher
 }): KeychainBackend => {
   const fileFor = (account: string): string =>
-    join(deps.secretsDir, `${createHash("sha256").update(account).digest("hex")}.enc`)
+    join(
+      deps.secretsDir,
+      `${createHash("sha256").update(account).digest("hex")}.enc`,
+    )
   return {
     add: async (account, secret) => {
       const enc = await deps.cipher.encrypt(secret)

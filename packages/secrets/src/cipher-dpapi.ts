@@ -28,11 +28,15 @@ export const createDpapiCipher = (deps: {
 }): SecretCipher => ({
   encrypt: async (plaintext) => {
     const stdin = Buffer.from(plaintext, "utf8").toString("base64")
-    const r = await deps.runner.run("powershell", [...PS_FLAGS, PROTECT], { stdin })
+    const r = await deps.runner.run("powershell", [...PS_FLAGS, PROTECT], {
+      stdin,
+    })
     return isOk(r) ? ok(r.value.stdout.trim()) : err(r.error)
   },
   decrypt: async (envelope) => {
-    const r = await deps.runner.run("powershell", [...PS_FLAGS, UNPROTECT], { stdin: envelope })
+    const r = await deps.runner.run("powershell", [...PS_FLAGS, UNPROTECT], {
+      stdin: envelope,
+    })
     if (!isOk(r)) return err(r.error)
     return ok(Buffer.from(r.value.stdout.trim(), "base64").toString("utf8"))
   },

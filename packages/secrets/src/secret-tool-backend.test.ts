@@ -5,7 +5,9 @@ import type { ProcessRunner } from "./process-runner"
 import { createSecretToolBackend } from "./secret-tool-backend"
 
 type Call = { command: string; args: readonly string[]; stdin?: string }
-const recordingRunner = (results: ReadonlyArray<Result<{ stdout: string }, SecretError>>) => {
+const recordingRunner = (
+  results: ReadonlyArray<Result<{ stdout: string }, SecretError>>,
+) => {
   const calls: Call[] = []
   let i = 0
   const runner: ProcessRunner = {
@@ -39,11 +41,19 @@ describe("createSecretToolBackend", () => {
     const { runner, calls } = recordingRunner([ok({ stdout: "sk-secret" })])
     const r = await createSecretToolBackend({ runner }).find("kc_1")
     expect(r).toEqual({ ok: true, value: "sk-secret" })
-    expect(calls[0]?.args).toEqual(["lookup", "service", "launchkit", "account", "kc_1"])
+    expect(calls[0]?.args).toEqual([
+      "lookup",
+      "service",
+      "launchkit",
+      "account",
+      "kc_1",
+    ])
   })
 
   it("maps a failed lookup to not-found when find is called for a missing account", async () => {
-    const { runner } = recordingRunner([err({ kind: "backend-failed", detail: "exit 1: " })])
+    const { runner } = recordingRunner([
+      err({ kind: "backend-failed", detail: "exit 1: " }),
+    ])
     const r = await createSecretToolBackend({ runner }).find("missing")
     expect(r).toEqual({ ok: false, error: { kind: "not-found" } })
   })
@@ -52,12 +62,21 @@ describe("createSecretToolBackend", () => {
     const { runner, calls } = recordingRunner([ok({ stdout: "" })])
     const r = await createSecretToolBackend({ runner }).remove("kc_1")
     expect(r).toEqual({ ok: true, value: undefined })
-    expect(calls[0]?.args).toEqual(["clear", "service", "launchkit", "account", "kc_1"])
+    expect(calls[0]?.args).toEqual([
+      "clear",
+      "service",
+      "launchkit",
+      "account",
+      "kc_1",
+    ])
   })
 
   it("redacts the secret out of a failed-add error detail", async () => {
     const { runner } = recordingRunner([
-      err({ kind: "backend-failed", detail: "store failed near sk-secret end" }),
+      err({
+        kind: "backend-failed",
+        detail: "store failed near sk-secret end",
+      }),
     ])
     const r = await createSecretToolBackend({ runner }).add("kc_1", "sk-secret")
     expect(r.ok).toBe(false)

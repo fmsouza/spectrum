@@ -15,14 +15,18 @@ describe("createInMemorySecretFileOps", () => {
     expect(await ops.read("/a")).toEqual({ ok: true, value: "x" })
     expect(await ops.exists("/a")).toBe(true)
     expect((await ops.remove("/a")).ok).toBe(true)
-    expect(await ops.read("/a")).toEqual({ ok: false, error: { kind: "not-found" } })
+    expect(await ops.read("/a")).toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    })
   })
 })
 
 describe("createFsSecretFileOps", () => {
   const dirs: string[] = []
   afterEach(async () => {
-    for (const d of dirs.splice(0)) await rm(d, { recursive: true, force: true })
+    for (const d of dirs.splice(0))
+      await rm(d, { recursive: true, force: true })
   })
   const freshPath = () => {
     const dir = join(tmpdir(), `lk-sec-${crypto.randomUUID()}`)
@@ -39,6 +43,9 @@ describe("createFsSecretFileOps", () => {
 
   it("returns not-found when reading a missing file on the posix branch", async () => {
     const ops = createFsSecretFileOps("linux")
-    expect(await ops.read(freshPath())).toEqual({ ok: false, error: { kind: "not-found" } })
+    expect(await ops.read(freshPath())).toEqual({
+      ok: false,
+      error: { kind: "not-found" },
+    })
   })
 })
