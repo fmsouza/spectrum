@@ -247,6 +247,7 @@
       "name": "@launchkit/secrets",
       "version": "0.1.0",
       "dependencies": {
+        "@launchkit/platform": "workspace:*",
         "@launchkit/types": "workspace:*",
         "@launchkit/utils": "workspace:*",
       },
