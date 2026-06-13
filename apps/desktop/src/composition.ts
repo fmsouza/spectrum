@@ -84,7 +84,10 @@ import {
   createDriverRegistry,
 } from "./gui/driver-registry"
 import { startRunnerSocket } from "./gui/runner-socket"
-import { migrateLegacyMacosConfig } from "./migrate-legacy-config"
+import {
+  migrateLaunchkitToSpectrum,
+  migrateLegacyMacosConfig,
+} from "./migrate-legacy-config"
 
 /** Result of testing one provider's live connectivity (mirrors ipc TestProviderResult). */
 export type ProviderTestResult = {
@@ -202,6 +205,7 @@ export interface CreateAppContextDeps {
   /** Create a directory (recursively) — used to materialise the data dir on a fresh install. */
   readonly ensureDir: (dir: string) => void
   readonly migrateLegacyMacosConfig: typeof migrateLegacyMacosConfig
+  readonly migrateLaunchkitToSpectrum: typeof migrateLaunchkitToSpectrum
   readonly createFsConfigFile: typeof createFsConfigFile
   readonly createFileConfigStore: typeof createFileConfigStore
   readonly createCachedConfigStore: typeof createCachedConfigStore
@@ -256,6 +260,7 @@ const realDeps: CreateAppContextDeps = {
     mkdirSync(dir, { recursive: true })
   },
   migrateLegacyMacosConfig,
+  migrateLaunchkitToSpectrum,
   createFsConfigFile,
   createFileConfigStore,
   createCachedConfigStore,
@@ -370,6 +375,11 @@ export const createAppContext = (
   deps: CreateAppContextDeps = realDeps,
 ): AppContext => {
   deps.migrateLegacyMacosConfig({
+    platform: deps.platform,
+    homeDir: deps.homeDir(),
+    env: deps.env,
+  })
+  deps.migrateLaunchkitToSpectrum({
     platform: deps.platform,
     homeDir: deps.homeDir(),
     env: deps.env,

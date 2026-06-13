@@ -28,6 +28,7 @@ const makeFakeDeps = (): {
       calls.ensureDir = [dir]
     }) as never,
     migrateLegacyMacosConfig: record("migrateLegacyMacosConfig") as never,
+    migrateLaunchkitToSpectrum: record("migrateLaunchkitToSpectrum") as never,
     createFsConfigFile: record("createFsConfigFile") as never,
     createFileConfigStore: record("createFileConfigStore") as never,
     createCachedConfigStore: record("createCachedConfigStore") as never,
@@ -324,6 +325,16 @@ describe("createAppContext wiring", () => {
     const { deps, calls } = makeFakeDeps()
     createAppContext(deps)
     expect(calls.migrateLegacyMacosConfig?.[0]).toEqual({
+      platform: "linux",
+      homeDir: "/home/tester",
+      env: {},
+    })
+  })
+
+  it("runs the LaunchKit→Spectrum migration with the injected platform/home/env after the legacy migration", () => {
+    const { deps, calls } = makeFakeDeps()
+    createAppContext(deps)
+    expect(calls.migrateLaunchkitToSpectrum?.[0]).toEqual({
       platform: "linux",
       homeDir: "/home/tester",
       env: {},
