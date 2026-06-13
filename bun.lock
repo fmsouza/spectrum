@@ -282,6 +282,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@launchkit/agent-events": "workspace:*",
+        "@launchkit/brand": "workspace:*",
         "@launchkit/types": "workspace:*",
         "@launchkit/utils": "workspace:*",
         "react": "^19",
