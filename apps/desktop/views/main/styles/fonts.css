@@ -1,0 +1,17 @@
+/* Self-hosted Geist (variable). Same-origin so the app CSP font-src 'self' is unchanged.
+   Paths are relative to the app's bundled styles dir; the build copies these woff2 to
+   views/main/fonts/. */
+@font-face {
+  font-family: "Geist";
+  src: url("../fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("../fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}

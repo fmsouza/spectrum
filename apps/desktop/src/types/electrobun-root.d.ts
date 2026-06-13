@@ -19,7 +19,14 @@ export interface ElectrobunConfig {
     copy?: { [sourcePath: string]: string }
     buildFolder?: string
     targets?: string
-    mac?: { codesign?: boolean; createDmg?: boolean; notarize?: boolean }
+    mac?: {
+      codesign?: boolean
+      createDmg?: boolean
+      notarize?: boolean
+      // Path to a .iconset folder / .icon file; Electrobun runs iconutil/actool at build
+      // time to emit AppIcon.icns (CFBundleIconFile). @default "icon.iconset"
+      icons?: string
+    }
     linux?: { bundleCEF?: boolean; defaultRenderer?: "native" | "cef" }
     win?: { bundleCEF?: boolean; defaultRenderer?: "native" | "cef" }
   }

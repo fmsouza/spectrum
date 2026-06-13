@@ -43,3 +43,6 @@ coverage/
 # Local-only design / planning docs (never commit; superpowers writes specs+plans here)
 build-plan/
 docs/superpowers/
+
+# AI-generated brand kit reference — consumed assets are vendored in packages/brand (do not commit)
+launchkit-brand/

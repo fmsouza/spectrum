@@ -1,3 +1,5 @@
+export { BrandMark } from "./BrandMark"
+export type { BrandMarkProps } from "./BrandMark"
 export * from "./Button"
 export * from "./Icon"
 export * from "./IconButton"

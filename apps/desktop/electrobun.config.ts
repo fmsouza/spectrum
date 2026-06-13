@@ -35,6 +35,11 @@ const config = {
     },
     copy: {
       "views/main/index.html": "views/main/index.html",
+      "views/main/styles/fonts.css": "views/main/styles/fonts.css",
+      "views/main/fonts/Geist-Variable.woff2":
+        "views/main/fonts/Geist-Variable.woff2",
+      "views/main/fonts/GeistMono-Variable.woff2":
+        "views/main/fonts/GeistMono-Variable.woff2",
       "views/main/styles/tokens.css": "views/main/styles/tokens.css",
       "views/main/styles/base.css": "views/main/styles/base.css",
       "views/main/styles/controls.css": "views/main/styles/controls.css",
@@ -49,8 +54,13 @@ const config = {
       "views/main/styles/modal.css": "views/main/styles/modal.css",
       "views/main/styles/lists.css": "views/main/styles/lists.css",
       "views/main/styles/page.css": "views/main/styles/page.css",
+      "views/main/launchkit-favicon.svg": "views/main/launchkit-favicon.svg",
+      "views/main/favicon.ico": "views/main/favicon.ico",
+      "views/main/launchkit-tray.png": "views/main/launchkit-tray.png",
     },
-    mac: { createDmg: true },
+    // `icons` points at the macOS .iconset (built from the brand squircle icon); Electrobun
+    // runs `iconutil` at build time to emit AppIcon.icns (CFBundleIconFile) into the bundle.
+    mac: { createDmg: true, icons: "icon.iconset" },
     linux: { bundleCEF: true, defaultRenderer: "cef" },
     win: {},
   },
