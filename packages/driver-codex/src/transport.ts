@@ -1,3 +1,4 @@
+import { defaultTerminationSignal, detectPlatform } from "@launchkit/platform"
 import type { IdGen } from "@launchkit/utils"
 
 /** A parsed JSON-RPC line. Routed by the presence of `id`/`method`/`result`/`error`. */
@@ -253,7 +254,7 @@ export const createBunSpawn = (): SpawnFn => (opts) => {
       })()
     },
     kill: () => {
-      proc.kill()
+      proc.kill(defaultTerminationSignal(detectPlatform()))
     },
   }
 }
