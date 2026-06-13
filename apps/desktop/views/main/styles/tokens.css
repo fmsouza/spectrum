@@ -7,184 +7,184 @@
    [data-theme="light"].
 
    Usage:  import "./launchkit-tokens.css";
-           background: var(--lk-bg);
-           color: var(--lk-text);
-           font-family: var(--lk-font-sans);
+           background: var(--sp-bg);
+           color: var(--sp-text);
+           font-family: var(--sp-font-sans);
    ========================================================================== */
 
 :root {
   /* ---- Brand anchor (the routing hub) -------------------------------- */
-  --lk-anchor-50: #eaf1fe;
-  --lk-anchor-100: #d2e0fc;
-  --lk-anchor-200: #a9c4f8;
-  --lk-anchor-300: #80a8f4;
-  --lk-anchor-400: #5b8def; /* primary brand blue */
-  --lk-anchor-500: #3e6fd4;
-  --lk-anchor-600: #3258ac;
-  --lk-anchor-700: #284585;
-  --lk-anchor: var(--lk-anchor-400);
+  --sp-anchor-50: #eaf1fe;
+  --sp-anchor-100: #d2e0fc;
+  --sp-anchor-200: #a9c4f8;
+  --sp-anchor-300: #80a8f4;
+  --sp-anchor-400: #5b8def; /* primary brand blue */
+  --sp-anchor-500: #3e6fd4;
+  --sp-anchor-600: #3258ac;
+  --sp-anchor-700: #284585;
+  --sp-anchor: var(--sp-anchor-400);
 
   /* ---- Spectrum accents (the providers it routes to) ----------------- */
-  --lk-violet: #a56bff;
-  --lk-cyan: #22d3ee;
-  --lk-amber: #ffb13b;
-  --lk-green: #4ade80;
-  --lk-violet-soft: rgba(165, 107, 255, 0.16);
-  --lk-cyan-soft: rgba(34, 211, 238, 0.16);
-  --lk-amber-soft: rgba(255, 177, 59, 0.16);
-  --lk-green-soft: rgba(74, 222, 128, 0.16);
+  --sp-violet: #a56bff;
+  --sp-cyan: #22d3ee;
+  --sp-amber: #ffb13b;
+  --sp-green: #4ade80;
+  --sp-violet-soft: rgba(165, 107, 255, 0.16);
+  --sp-cyan-soft: rgba(34, 211, 238, 0.16);
+  --sp-amber-soft: rgba(255, 177, 59, 0.16);
+  --sp-green-soft: rgba(74, 222, 128, 0.16);
 
   /* ---- Graphite neutrals (dark-first) -------------------------------- */
-  --lk-graphite-950: #0c0d10;
-  --lk-graphite-900: #121317;
-  --lk-graphite-850: #17181d;
-  --lk-graphite-800: #1e2026;
-  --lk-graphite-700: #2a2c34;
-  --lk-graphite-600: #3a3d47;
-  --lk-graphite-500: #565a66;
-  --lk-graphite-400: #8a8d99;
-  --lk-graphite-300: #b4b7c2;
-  --lk-graphite-200: #d7d9e0;
-  --lk-graphite-100: #ecedf1;
-  --lk-graphite-50: #f6f7f9;
-  --lk-white: #ffffff;
-  --lk-black: #000000;
+  --sp-graphite-950: #0c0d10;
+  --sp-graphite-900: #121317;
+  --sp-graphite-850: #17181d;
+  --sp-graphite-800: #1e2026;
+  --sp-graphite-700: #2a2c34;
+  --sp-graphite-600: #3a3d47;
+  --sp-graphite-500: #565a66;
+  --sp-graphite-400: #8a8d99;
+  --sp-graphite-300: #b4b7c2;
+  --sp-graphite-200: #d7d9e0;
+  --sp-graphite-100: #ecedf1;
+  --sp-graphite-50: #f6f7f9;
+  --sp-white: #ffffff;
+  --sp-black: #000000;
 
   /* ---- Semantic surfaces & text (dark theme = default) --------------- */
-  --lk-bg: var(--lk-graphite-950);
-  --lk-bg-subtle: var(--lk-graphite-900);
-  --lk-surface: var(--lk-graphite-850);
-  --lk-surface-raised: var(--lk-graphite-800);
-  --lk-overlay: rgba(8, 9, 12, 0.72);
-  --lk-border: var(--lk-graphite-700);
-  --lk-border-strong: var(--lk-graphite-600);
+  --sp-bg: var(--sp-graphite-950);
+  --sp-bg-subtle: var(--sp-graphite-900);
+  --sp-surface: var(--sp-graphite-850);
+  --sp-surface-raised: var(--sp-graphite-800);
+  --sp-overlay: rgba(8, 9, 12, 0.72);
+  --sp-border: var(--sp-graphite-700);
+  --sp-border-strong: var(--sp-graphite-600);
 
-  --lk-text: var(--lk-graphite-100);
-  --lk-text-secondary: var(--lk-graphite-300);
-  --lk-text-muted: var(--lk-graphite-400);
-  --lk-text-inverse: var(--lk-graphite-950);
-  --lk-text-link: var(--lk-anchor-300);
+  --sp-text: var(--sp-graphite-100);
+  --sp-text-secondary: var(--sp-graphite-300);
+  --sp-text-muted: var(--sp-graphite-400);
+  --sp-text-inverse: var(--sp-graphite-950);
+  --sp-text-link: var(--sp-anchor-300);
 
   /* ---- Interactive (primary action) ---------------------------------- */
-  --lk-primary: var(--lk-anchor-400);
-  --lk-primary-hover: var(--lk-anchor-300);
-  --lk-primary-active: var(--lk-anchor-500);
-  --lk-on-primary: #07101f; /* AA-legible text on anchor */
-  --lk-focus-ring: rgba(91, 141, 239, 0.55);
+  --sp-primary: var(--sp-anchor-400);
+  --sp-primary-hover: var(--sp-anchor-300);
+  --sp-primary-active: var(--sp-anchor-500);
+  --sp-on-primary: #07101f; /* AA-legible text on anchor */
+  --sp-focus-ring: rgba(91, 141, 239, 0.55);
 
   /* ---- Status (reuse spectrum where it reads naturally) -------------- */
-  --lk-success: var(--lk-green);
-  --lk-warning: var(--lk-amber);
-  --lk-danger: #ff5c5c;
-  --lk-info: var(--lk-anchor-400);
-  --lk-success-soft: var(--lk-green-soft);
-  --lk-warning-soft: var(--lk-amber-soft);
-  --lk-danger-soft: rgba(255, 92, 92, 0.16);
-  --lk-info-soft: rgba(91, 141, 239, 0.16);
+  --sp-success: var(--sp-green);
+  --sp-warning: var(--sp-amber);
+  --sp-danger: #ff5c5c;
+  --sp-info: var(--sp-anchor-400);
+  --sp-success-soft: var(--sp-green-soft);
+  --sp-warning-soft: var(--sp-amber-soft);
+  --sp-danger-soft: rgba(255, 92, 92, 0.16);
+  --sp-info-soft: rgba(91, 141, 239, 0.16);
 
   /* ---- Gradients ----------------------------------------------------- */
-  --lk-gradient-spectrum: linear-gradient(
+  --sp-gradient-spectrum: linear-gradient(
     90deg,
     #a56bff 0%,
     #5b8def 38%,
     #22d3ee 70%,
     #4ade80 100%
   );
-  --lk-gradient-brand: linear-gradient(
+  --sp-gradient-brand: linear-gradient(
     135deg,
     #a56bff 0%,
     #5b8def 55%,
     #22d3ee 100%
   );
-  --lk-gradient-hub: radial-gradient(
+  --sp-gradient-hub: radial-gradient(
     120% 120% at 38% 30%,
     #8fb0f5 0%,
     #3e6fd4 100%
   );
-  --lk-gradient-surface: linear-gradient(180deg, #1b1d24 0%, #0c0d10 100%);
+  --sp-gradient-surface: linear-gradient(180deg, #1b1d24 0%, #0c0d10 100%);
 
   /* ---- Typography ---------------------------------------------------- */
-  --lk-font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+  --sp-font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, Helvetica, Arial, sans-serif;
-  --lk-font-mono: "Geist Mono", ui-monospace, "SF Mono", "JetBrains Mono", Menlo,
+  --sp-font-mono: "Geist Mono", ui-monospace, "SF Mono", "JetBrains Mono", Menlo,
     Consolas, monospace;
 
   /* size · line-height · weight · tracking */
-  --lk-display-size: 48px;
-  --lk-display-lh: 56px;
-  --lk-display-weight: 700;
-  --lk-display-tracking: -0.02em;
-  --lk-h1-size: 36px;
-  --lk-h1-lh: 44px;
-  --lk-h1-weight: 700;
-  --lk-h1-tracking: -0.02em;
-  --lk-h2-size: 28px;
-  --lk-h2-lh: 36px;
-  --lk-h2-weight: 600;
-  --lk-h2-tracking: -0.01em;
-  --lk-h3-size: 22px;
-  --lk-h3-lh: 30px;
-  --lk-h3-weight: 600;
-  --lk-h3-tracking: -0.01em;
-  --lk-h4-size: 18px;
-  --lk-h4-lh: 26px;
-  --lk-h4-weight: 600;
-  --lk-h4-tracking: 0;
-  --lk-body-lg-size: 16px;
-  --lk-body-lg-lh: 26px;
-  --lk-body-lg-weight: 400;
-  --lk-body-size: 14px;
-  --lk-body-lh: 22px;
-  --lk-body-weight: 400;
-  --lk-small-size: 13px;
-  --lk-small-lh: 20px;
-  --lk-small-weight: 400;
-  --lk-mono-size: 12px;
-  --lk-mono-lh: 18px;
-  --lk-mono-weight: 500;
-  --lk-mono-tracking: 0.02em;
-  --lk-label-tracking: 0.06em; /* uppercase eyebrow/labels */
+  --sp-display-size: 48px;
+  --sp-display-lh: 56px;
+  --sp-display-weight: 700;
+  --sp-display-tracking: -0.02em;
+  --sp-h1-size: 36px;
+  --sp-h1-lh: 44px;
+  --sp-h1-weight: 700;
+  --sp-h1-tracking: -0.02em;
+  --sp-h2-size: 28px;
+  --sp-h2-lh: 36px;
+  --sp-h2-weight: 600;
+  --sp-h2-tracking: -0.01em;
+  --sp-h3-size: 22px;
+  --sp-h3-lh: 30px;
+  --sp-h3-weight: 600;
+  --sp-h3-tracking: -0.01em;
+  --sp-h4-size: 18px;
+  --sp-h4-lh: 26px;
+  --sp-h4-weight: 600;
+  --sp-h4-tracking: 0;
+  --sp-body-lg-size: 16px;
+  --sp-body-lg-lh: 26px;
+  --sp-body-lg-weight: 400;
+  --sp-body-size: 14px;
+  --sp-body-lh: 22px;
+  --sp-body-weight: 400;
+  --sp-small-size: 13px;
+  --sp-small-lh: 20px;
+  --sp-small-weight: 400;
+  --sp-mono-size: 12px;
+  --sp-mono-lh: 18px;
+  --sp-mono-weight: 500;
+  --sp-mono-tracking: 0.02em;
+  --sp-label-tracking: 0.06em; /* uppercase eyebrow/labels */
 
   /* ---- Spacing scale (4px base) -------------------------------------- */
-  --lk-space-0: 0;
-  --lk-space-1: 4px;
-  --lk-space-2: 8px;
-  --lk-space-3: 12px;
-  --lk-space-4: 16px;
-  --lk-space-5: 20px;
-  --lk-space-6: 24px;
-  --lk-space-8: 32px;
-  --lk-space-10: 40px;
-  --lk-space-12: 48px;
-  --lk-space-16: 64px;
-  --lk-space-20: 80px;
+  --sp-space-0: 0;
+  --sp-space-1: 4px;
+  --sp-space-2: 8px;
+  --sp-space-3: 12px;
+  --sp-space-4: 16px;
+  --sp-space-5: 20px;
+  --sp-space-6: 24px;
+  --sp-space-8: 32px;
+  --sp-space-10: 40px;
+  --sp-space-12: 48px;
+  --sp-space-16: 64px;
+  --sp-space-20: 80px;
 
   /* ---- Radii --------------------------------------------------------- */
-  --lk-radius-xs: 4px;
-  --lk-radius-sm: 6px;
-  --lk-radius-md: 10px;
-  --lk-radius-lg: 14px;
-  --lk-radius-xl: 20px;
-  --lk-radius-pill: 999px;
+  --sp-radius-xs: 4px;
+  --sp-radius-sm: 6px;
+  --sp-radius-md: 10px;
+  --sp-radius-lg: 14px;
+  --sp-radius-xl: 20px;
+  --sp-radius-pill: 999px;
 
   /* ---- Elevation & glow ---------------------------------------------- */
-  --lk-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --lk-shadow-2: 0 4px 16px rgba(0, 0, 0, 0.45);
-  --lk-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.55);
-  --lk-glow-anchor: 0 0 0 1px rgba(91, 141, 239, 0.3), 0 8px 30px
+  --sp-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sp-shadow-2: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --sp-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --sp-glow-anchor: 0 0 0 1px rgba(91, 141, 239, 0.3), 0 8px 30px
     rgba(91, 141, 239, 0.25);
 
   /* ---- Motion -------------------------------------------------------- */
-  --lk-duration-fast: 120ms;
-  --lk-duration: 200ms;
-  --lk-duration-slow: 320ms;
-  --lk-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --lk-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --sp-duration-fast: 120ms;
+  --sp-duration: 200ms;
+  --sp-duration-slow: 320ms;
+  --sp-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --sp-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* ---- Layout chrome ------------------------------------------------- */
-  --lk-titlebar-h: 40px;
-  --lk-sidebar-w: 240px;
-  --lk-content-max: 1120px;
+  --sp-titlebar-h: 40px;
+  --sp-sidebar-w: 240px;
+  --sp-content-max: 1120px;
 
   color-scheme: dark;
 }
@@ -194,52 +194,52 @@
    Brand hues stay constant; only surfaces & text invert.
    ========================================================================== */
 [data-theme="light"] {
-  --lk-bg: #f6f7f9;
-  --lk-bg-subtle: #eef0f4;
-  --lk-surface: #ffffff;
-  --lk-surface-raised: #ffffff;
-  --lk-overlay: rgba(16, 18, 24, 0.4);
-  --lk-border: #e2e5ec;
-  --lk-border-strong: #cbd0da;
+  --sp-bg: #f6f7f9;
+  --sp-bg-subtle: #eef0f4;
+  --sp-surface: #ffffff;
+  --sp-surface-raised: #ffffff;
+  --sp-overlay: rgba(16, 18, 24, 0.4);
+  --sp-border: #e2e5ec;
+  --sp-border-strong: #cbd0da;
 
-  --lk-text: #15171c;
-  --lk-text-secondary: #444954;
-  --lk-text-muted: #6b7280;
-  --lk-text-inverse: #ffffff;
-  --lk-text-link: var(--lk-anchor-600);
+  --sp-text: #15171c;
+  --sp-text-secondary: #444954;
+  --sp-text-muted: #6b7280;
+  --sp-text-inverse: #ffffff;
+  --sp-text-link: var(--sp-anchor-600);
 
-  --lk-primary: var(--lk-anchor-500);
-  --lk-primary-hover: var(--lk-anchor-400);
-  --lk-primary-active: var(--lk-anchor-600);
-  --lk-on-primary: #ffffff;
-  --lk-focus-ring: rgba(62, 111, 212, 0.45);
+  --sp-primary: var(--sp-anchor-500);
+  --sp-primary-hover: var(--sp-anchor-400);
+  --sp-primary-active: var(--sp-anchor-600);
+  --sp-on-primary: #ffffff;
+  --sp-focus-ring: rgba(62, 111, 212, 0.45);
 
-  --lk-gradient-surface: linear-gradient(180deg, #ffffff 0%, #f1f3f7 100%);
-  --lk-shadow-1: 0 1px 2px rgba(16, 18, 24, 0.08);
-  --lk-shadow-2: 0 4px 16px rgba(16, 18, 24, 0.1);
-  --lk-shadow-3: 0 16px 48px rgba(16, 18, 24, 0.14);
+  --sp-gradient-surface: linear-gradient(180deg, #ffffff 0%, #f1f3f7 100%);
+  --sp-shadow-1: 0 1px 2px rgba(16, 18, 24, 0.08);
+  --sp-shadow-2: 0 4px 16px rgba(16, 18, 24, 0.1);
+  --sp-shadow-3: 0 16px 48px rgba(16, 18, 24, 0.14);
 
   color-scheme: light;
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --lk-duration-fast: 0ms;
-    --lk-duration: 0ms;
-    --lk-duration-slow: 0ms;
+    --sp-duration-fast: 0ms;
+    --sp-duration: 0ms;
+    --sp-duration-slow: 0ms;
   }
 }
 
 /* ── App extensions: tokens the desktop shell needs that aren't brand-canonical.
    Values preserve the pre-brand layout/type scale. ── */
 :root {
-  --lk-rail-w: 56px;
-  --lk-master-w: 304px;
+  --sp-rail-w: 56px;
+  --sp-master-w: 304px;
 
-  --lk-text-xs: 0.75rem;
-  --lk-text-sm: 0.8125rem;
-  --lk-text-base: 0.9375rem;
-  --lk-text-lg: 1.0625rem;
-  --lk-text-xl: 1.375rem;
-  --lk-text-2xl: 1.875rem;
+  --sp-text-xs: 0.75rem;
+  --sp-text-sm: 0.8125rem;
+  --sp-text-base: 0.9375rem;
+  --sp-text-lg: 1.0625rem;
+  --sp-text-xl: 1.375rem;
+  --sp-text-2xl: 1.875rem;
 }
