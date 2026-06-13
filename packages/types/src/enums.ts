@@ -15,6 +15,8 @@ export const SdkProviderSchema = z.enum([
   "perplexity",
   "cerebras",
   "ollama",
+  "custom",
+  "openrouter",
 ])
 export type SdkProvider = z.infer<typeof SdkProviderSchema>
 
