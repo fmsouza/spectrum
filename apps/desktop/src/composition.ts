@@ -18,6 +18,7 @@ import type { SessionStore } from "@launchkit/sessions"
 import type { SessionId } from "@launchkit/types"
 import type { Result } from "@launchkit/utils"
 
+import { mkdirSync } from "node:fs"
 import { homedir } from "node:os"
 import type {
   AgentDriver,
@@ -198,6 +199,8 @@ export interface CreateAppContextDeps {
   readonly platform: Platform
   readonly env: Readonly<Record<string, string | undefined>>
   readonly resolveAppPaths: typeof resolveAppPaths
+  /** Create a directory (recursively) — used to materialise the data dir on a fresh install. */
+  readonly ensureDir: (dir: string) => void
   readonly migrateLegacyMacosConfig: typeof migrateLegacyMacosConfig
   readonly createFsConfigFile: typeof createFsConfigFile
   readonly createFileConfigStore: typeof createFileConfigStore
@@ -249,6 +252,9 @@ const realDeps: CreateAppContextDeps = {
   platform: detectPlatform(),
   env: process.env,
   resolveAppPaths,
+  ensureDir: (dir: string): void => {
+    mkdirSync(dir, { recursive: true })
+  },
   migrateLegacyMacosConfig,
   createFsConfigFile,
   createFileConfigStore,
@@ -377,6 +383,13 @@ export const createAppContext = (
   const dbFile = paths.dbFile
   const harnessDir = paths.harnessDir
   const runtimeFile = paths.runtimeFile
+
+  // A fresh install has no data directory yet. Create it BEFORE opening the SQLite DB — otherwise
+  // `new Database(dbFile)` throws ("unable to open database file") on the missing parent, which
+  // crashes GUI startup before the proxy ever binds (the config/secret stores only mkdir lazily on
+  // their first write, which is too late for the db opened here). This is the only startup step that
+  // needs the dir to pre-exist.
+  deps.ensureDir(paths.dataDir)
 
   // config: cached( file( fs(configFile) ) ). Wrapped to keep a synchronous snapshot of the latest
   // config (`liveConfig`) updated on every load/save, so the long-running GUI proxy can resolve
