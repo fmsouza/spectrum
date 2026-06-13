@@ -6,4 +6,4 @@
 
 **Depends on:** `react` only. No `@launchkit/*` deps; zero IO; no effects.
 
-**Local rules:** marks are pure/presentational (typed props in, SVG out). Keep `assets/tokens/launchkit-tokens.css` byte-identical to the design reference in `launchkit-brand/tokens/` except for the documented app-extension block. Never import a raster/CSS file as a JS module.
+**Local rules:** marks are pure/presentational (typed props in, SVG out). `assets/tokens/launchkit-tokens.css` is the canonical token set (the original brand-kit reference is intentionally NOT committed — it lives outside the repo / in history). The desktop app's `tokens.css` derives from it plus a documented app-extension block. Never import a raster/CSS file as a JS module.
