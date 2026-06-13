@@ -207,6 +207,15 @@
         "drizzle-orm": "^0.45.2",
       },
     },
+    "packages/providers": {
+      "name": "@spectrum/providers",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectrum/types": "workspace:*",
+        "@spectrum/utils": "workspace:*",
+        "zod": "^3.25.76",
+      },
+    },
     "packages/proxy": {
       "name": "@spectrum/proxy",
       "version": "0.1.0",
@@ -528,6 +537,8 @@
     "@spectrum/platform": ["@spectrum/platform@workspace:packages/platform"],
 
     "@spectrum/projects": ["@spectrum/projects@workspace:packages/projects"],
+
+    "@spectrum/providers": ["@spectrum/providers@workspace:packages/providers"],
 
     "@spectrum/proxy": ["@spectrum/proxy@workspace:packages/proxy"],
 
