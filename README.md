@@ -1,8 +1,8 @@
-![LaunchKit](assets/launchkit-readme-hero.png)
+![Spectrum](assets/spectrum-readme-hero.png)
 
-# LaunchKit
+# Spectrum
 
-LaunchKit is a dual-mode (CLI + GUI) desktop app that lets coding-agent harnesses
+Spectrum is a dual-mode (CLI + GUI) desktop app that lets coding-agent harnesses
 (Claude Code, Codex, opencode, openclaw, …) talk to any LLM provider. It runs a small
 proxy on loopback that receives requests in the Anthropic or OpenAI wire format, resolves
 a model **alias** to a concrete provider + model, and streams the response back via the
@@ -20,16 +20,16 @@ release.
 
 | Platform | GUI app | CLI binary | Download |
 |---|:---:|:---:|---|
-| **macOS** — Apple Silicon (`arm64`) | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-arm64-cli.tar.gz) |
-| **macOS** — Intel (`x64`) | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-x64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-x64-cli.tar.gz) |
-| **Linux** — `x64` | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-x64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-x64-cli.tar.gz) |
-| **Linux** — `arm64` | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-linux-arm64-cli.tar.gz) |
-| **Windows** — `x64` | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-windows-x64-app.zip) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-windows-x64-cli.zip) |
+| **macOS** — Apple Silicon (`arm64`) | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-darwin-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-darwin-arm64-cli.tar.gz) |
+| **macOS** — Intel (`x64`) | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-darwin-x64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-darwin-x64-cli.tar.gz) |
+| **Linux** — `x64` | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-linux-x64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-linux-x64-cli.tar.gz) |
+| **Linux** — `arm64` | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-linux-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-linux-arm64-cli.tar.gz) |
+| **Windows** — `x64` | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-windows-x64-app.zip) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-windows-x64-cli.zip) |
 
-LaunchKit runs GUI + CLI on macOS, Linux, and Windows. Provider API keys are stored in the
+Spectrum runs GUI + CLI on macOS, Linux, and Windows. Provider API keys are stored in the
 platform's secret store — macOS Keychain, Linux Secret Service (libsecret), or Windows DPAPI —
 so stored-key proxy routing works on all three. On a headless Linux box with no keyring, set
-`LAUNCHKIT_SECRET_PASSPHRASE` to enable an encrypted-file fallback (LaunchKit never writes secrets
+`LAUNCHKIT_SECRET_PASSPHRASE` to enable an encrypted-file fallback (Spectrum never writes secrets
 in plaintext). Code signing / notarization is not yet applied, so you may need to allow the app past
 your OS's first-run gatekeeper.
 
@@ -39,14 +39,14 @@ Apple Silicon (`arm64`); for an Intel Mac swap `darwin-arm64` → `darwin-x64` a
 `dev-macos-arm64` → `dev-macos-x64`.
 
 ```sh
-curl -L -o launchkit-app.tar.gz \
-  https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-darwin-arm64-app.tar.gz
-tar xzf launchkit-app.tar.gz
+curl -L -o spectrum-app.tar.gz \
+  https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-darwin-arm64-app.tar.gz
+tar xzf spectrum-app.tar.gz
 
 # the build is unsigned — clear the Gatekeeper quarantine flag, then install
-xattr -dr com.apple.quarantine dev-macos-arm64/LaunchKit-dev.app
-cp -R dev-macos-arm64/LaunchKit-dev.app /Applications/
-open /Applications/LaunchKit-dev.app
+xattr -dr com.apple.quarantine dev-macos-arm64/Spectrum-dev.app
+cp -R dev-macos-arm64/Spectrum-dev.app /Applications/
+open /Applications/Spectrum-dev.app
 ```
 
 On launch the GUI starts a loopback proxy on `127.0.0.1:4000` and adds a menu-bar tray
@@ -59,35 +59,35 @@ Pick the archive for your platform (`darwin-arm64`, `darwin-x64`, `linux-x64`, o
 
 ```sh
 PLATFORM=darwin-arm64   # darwin-x64 | linux-x64 | linux-arm64
-curl -L "https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-${PLATFORM}-cli.tar.gz" | tar xz
-chmod +x "launchkit-${PLATFORM}-cli"
-sudo mv "launchkit-${PLATFORM}-cli" /usr/local/bin/launchkit   # put it on your PATH
+curl -L "https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-${PLATFORM}-cli.tar.gz" | tar xz
+chmod +x "spectrum-${PLATFORM}-cli"
+sudo mv "spectrum-${PLATFORM}-cli" /usr/local/bin/spectrum   # put it on your PATH
 
 # on macOS the first run may be quarantined — if it won't launch:
-# xattr -d com.apple.quarantine /usr/local/bin/launchkit
+# xattr -d com.apple.quarantine /usr/local/bin/spectrum
 
-launchkit list harnesses
+spectrum list harnesses
 ```
 
 ### Linux — GUI app
 
 ```sh
 PLATFORM=linux-x64   # or linux-arm64
-curl -L -o launchkit-app.tar.gz \
-  "https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-${PLATFORM}-app.tar.gz"
-tar xzf launchkit-app.tar.gz
-./dev-${PLATFORM}/LaunchKit-dev/bin/launcher
+curl -L -o spectrum-app.tar.gz \
+  "https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-${PLATFORM}-app.tar.gz"
+tar xzf spectrum-app.tar.gz
+./dev-${PLATFORM}/Spectrum-dev/bin/launcher
 ```
 
 ### Windows — CLI (PowerShell)
 
 ```powershell
-Invoke-WebRequest -OutFile launchkit-cli.zip `
-  https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-windows-x64-cli.zip
-Expand-Archive launchkit-cli.zip
+Invoke-WebRequest -OutFile spectrum-cli.zip `
+  https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-windows-x64-cli.zip
+Expand-Archive spectrum-cli.zip
 # move to a directory on your PATH
-Move-Item launchkit-windows-x64-cli\launchkit.exe C:\Windows\System32\launchkit.exe
-launchkit list harnesses
+Move-Item spectrum-windows-x64-cli\spectrum.exe C:\Windows\System32\spectrum.exe
+spectrum list harnesses
 ```
 
 ### Windows — GUI app
@@ -96,10 +96,10 @@ The build is unsigned — Windows SmartScreen may prompt on first launch. Click
 **More info** → **Run anyway** to proceed.
 
 ```powershell
-Invoke-WebRequest -OutFile launchkit-app.zip `
-  https://github.com/fmsouza/launchkit/releases/latest/download/launchkit-windows-x64-app.zip
-Expand-Archive launchkit-app.zip
-.\dev-windows-x64\LaunchKit-dev\bin\launcher.exe
+Invoke-WebRequest -OutFile spectrum-app.zip `
+  https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-windows-x64-app.zip
+Expand-Archive spectrum-app.zip
+.\dev-windows-x64\Spectrum-dev\bin\launcher.exe
 ```
 
 ### Verify the download (optional)
@@ -140,7 +140,7 @@ This produces an unsigned development bundle under `apps/desktop/build/dev-<os>-
 for your host platform, e.g. on Apple Silicon:
 
 ```
-apps/desktop/build/dev-macos-arm64/LaunchKit-dev.app
+apps/desktop/build/dev-macos-arm64/Spectrum-dev.app
 ```
 
 (The first build may download Electrobun core binaries. Substitute your own
@@ -151,17 +151,17 @@ Install or run it:
 
 ```sh
 # run in place
-open apps/desktop/build/dev-macos-arm64/LaunchKit-dev.app
+open apps/desktop/build/dev-macos-arm64/Spectrum-dev.app
 
 # or install it
-cp -R apps/desktop/build/dev-macos-arm64/LaunchKit-dev.app /Applications/
+cp -R apps/desktop/build/dev-macos-arm64/Spectrum-dev.app /Applications/
 ```
 
 Because the build is **unsigned**, macOS Gatekeeper may block the first launch. Either
 right-click the app → **Open** (then confirm), or strip the quarantine attribute:
 
 ```sh
-xattr -dr com.apple.quarantine apps/desktop/build/dev-macos-arm64/LaunchKit-dev.app
+xattr -dr com.apple.quarantine apps/desktop/build/dev-macos-arm64/Spectrum-dev.app
 ```
 
 On launch the GUI starts a loopback proxy on `127.0.0.1:4000` and adds a menu-bar tray
@@ -172,30 +172,30 @@ icon (launch a harness or quit from there).
 Compile the standalone CLI binary from the repo root:
 
 ```sh
-bun run --filter launchkit compile
+bun run --filter spectrum compile
 ```
 
-This outputs a self-contained executable at `apps/desktop/dist/launchkit-cli`.
+This outputs a self-contained executable at `apps/desktop/dist/spectrum-cli`.
 
 The command surface:
 
 ```sh
 # list what's configured
-./apps/desktop/dist/launchkit-cli list harnesses
-./apps/desktop/dist/launchkit-cli list providers
-./apps/desktop/dist/launchkit-cli list models
+./apps/desktop/dist/spectrum-cli list harnesses
+./apps/desktop/dist/spectrum-cli list providers
+./apps/desktop/dist/spectrum-cli list models
 
 # launch a harness (uses its default model unless --model overrides)
-./apps/desktop/dist/launchkit-cli launch claude
-./apps/desktop/dist/launchkit-cli launch claude --model fast
+./apps/desktop/dist/spectrum-cli launch claude
+./apps/desktop/dist/spectrum-cli launch claude --model fast
 
 # add / remove a provider (secrets are NOT set here — see "Configure providers")
-./apps/desktop/dist/launchkit-cli add provider --id openai --name OpenAI --sdk openai
-./apps/desktop/dist/launchkit-cli remove provider openai
+./apps/desktop/dist/spectrum-cli add provider --id openai --name OpenAI --sdk openai
+./apps/desktop/dist/spectrum-cli remove provider openai
 
 # add / remove a model
-./apps/desktop/dist/launchkit-cli add model --name fast --provider openai --model gpt-4o-mini
-./apps/desktop/dist/launchkit-cli remove model fast
+./apps/desktop/dist/spectrum-cli add model --name fast --provider openai --model gpt-4o-mini
+./apps/desktop/dist/spectrum-cli remove model fast
 ```
 
 `launch` ensures a proxy is up: it reuses a proxy already running on `127.0.0.1:4000`
@@ -207,7 +207,7 @@ generated per-run key.
 Provider API keys are added from the GUI **Providers** page, never from the CLI. Keys are
 stored in the platform's secret store — macOS Keychain, Linux Secret Service (libsecret),
 or Windows DPAPI — and `config.json` holds only a reference to each key, never the value.
-(`launchkit add provider` creates a provider with empty secrets; you then set the key in
+(`spectrum add provider` creates a provider with empty secrets; you then set the key in
 the GUI.)
 
 Map your model **aliases** (`default`, `fast`, `smart`, `local`) to a provider + model on
@@ -250,7 +250,7 @@ security, performance, and package boundaries. For per-package context (responsi
 public API, owned effects, local invariants), read that package's `CLAUDE.md` (every
 package and `apps/desktop` has one).
 
-Workflow skills live under `.claude/skills/` and cover recurring LaunchKit-specific
+Workflow skills live under `.claude/skills/` and cover recurring Spectrum-specific
 tasks:
 
 | Skill | When to use it |
@@ -260,5 +260,5 @@ tasks:
 All other process (TDD, planning, review, debugging) is covered by the superpowers
 skills — invoke `using-superpowers` at the start of a session.
 
-> **GitHub social preview:** upload `assets/launchkit-og-card.png` at
+> **GitHub social preview:** upload `assets/spectrum-og-card.png` at
 > Settings → General → Social preview. (Manual; cannot be automated.)

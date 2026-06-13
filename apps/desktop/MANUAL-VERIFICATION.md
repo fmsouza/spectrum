@@ -12,16 +12,16 @@ the human-facing surface that CI cannot.
 - [ ] Launch a harness (claude/codex/opencode) — it routes through the proxy with the stored key.
 
 ## macOS
-- [ ] Key is stored in the **Keychain** (`security find-generic-password -s launchkit`).
-- [ ] First launch after upgrade migrated `~/.config/launchkit` → `~/Library/Application Support/LaunchKit` (old dir has a `.migrated-to-app-support` marker; data intact).
+- [ ] Key is stored in the **Keychain** (`security find-generic-password -s spectrum`).
+- [ ] First launch after upgrade migrated `~/.config/launchkit` → `~/Library/Application Support/Spectrum` (old dir has a `.migrated-to-app-support` marker; data intact).
 
 ## Linux
 - [ ] Window renders via **CEF**; no missing-GTK errors.
-- [ ] With a desktop keyring: key is stored via **Secret Service** (`secret-tool lookup service launchkit account <ref>`).
-- [ ] Headless (no keyring) with `LAUNCHKIT_SECRET_PASSPHRASE` set: key add/find works (encrypted file under `~/.config/launchkit/secrets/`).
+- [ ] With a desktop keyring: key is stored via **Secret Service** (`secret-tool lookup service spectrum account <ref>`).
+- [ ] Headless (no keyring) with `LAUNCHKIT_SECRET_PASSPHRASE` set: key add/find works (encrypted file under `~/.config/spectrum/secrets/`).
 - [ ] Headless with NO passphrase and NO keyring: adding a key fails with a clear "set a passphrase / install a keyring" message (never silent plaintext).
 
 ## Windows
 - [ ] App launches; window renders. (Debug with `ELECTROBUN_CONSOLE=1` if needed.)
-- [ ] Key stored as a **DPAPI-encrypted file** under `%APPDATA%\LaunchKit\secrets\`; survives restart.
-- [ ] Data lives under `%APPDATA%\LaunchKit` (config.json, launchkit.db, harnesses).
+- [ ] Key stored as a **DPAPI-encrypted file** under `%APPDATA%\Spectrum\secrets\`; survives restart.
+- [ ] Data lives under `%APPDATA%\Spectrum` (config.json, spectrum.db, harnesses).

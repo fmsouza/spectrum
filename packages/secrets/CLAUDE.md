@@ -1,10 +1,10 @@
-# @launchkit/secrets
+# @spectrum/secrets
 
 **Responsibility:** Keychain-backed secret storage so `config.json` stores only `SecretRef`s, never raw API keys. Cross-platform: macOS Keychain, Linux Secret Service (libsecret), Windows DPAPI-encrypted file.
 
 **Public API (barrel `src/index.ts`):** `SecretStore` + `createSecretStore({ backend, idGen })`; `KeychainBackend` + `createInMemoryKeychainBackend()` (test fake) + `createMacosSecurityBackend({ runner })` + `createSecretToolBackend({ runner })` + `createEncryptedFileBackend({ fileOps, secretsDir, cipher })`; `SecretCipher` + `createPassphraseAeadCipher({ getPassphrase })` + `createDpapiCipher({ runner })`; `SecretFileOps` + `createFsSecretFileOps(platform?)` + `createInMemorySecretFileOps()` (test fake); `ProcessRunner` + `createBunProcessRunner()`; `createPlatformKeychainBackend({ platform, runner, fileOps, secretsDir, secretPassphrase, commandExists? })`; `isSecretServiceAvailable({ runner, commandExists? })`; `SecretError`.
 
-**Depends on:** `@launchkit/types` (`SecretRef`), `@launchkit/utils` (`Result`, `redactSecrets`, `IdGen`), `@launchkit/platform` (`Platform`).
+**Depends on:** `@spectrum/types` (`SecretRef`), `@spectrum/utils` (`Result`, `redactSecrets`, `IdGen`), `@spectrum/platform` (`Platform`).
 
 **Effects owned:** keychain (via the `KeychainBackend` interface) + process spawn (via the `ProcessRunner` interface) + filesystem (via the `SecretFileOps` interface) — exposed to consumers as injected interfaces; never reached around.
 

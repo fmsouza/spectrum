@@ -1,4 +1,4 @@
-# @launchkit/platform
+# @spectrum/platform
 
 **Responsibility:** The single source of OS-specific decisions — platform detection, idiomatic per-OS application paths, absolute-path testing, default termination signal, and the legacy-macOS-dir migration plan. Pure; zero IO.
 

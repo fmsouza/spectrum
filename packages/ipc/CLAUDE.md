@@ -1,10 +1,10 @@
-# @launchkit/ipc
+# @spectrum/ipc
 
 **Responsibility:** the typed GUI-main IPC contract + (de)serialization -- a zod schema per method, validated on receive in both directions, plus `createIpcClient`/`createIpcServer` over an injected transport.
 
 **Public API (barrel `src/index.ts`):** `ProviderView` + `ProviderViewSchema`; the per-method `XParamsSchema`/`XResultSchema` + `IpcMethodSchemas` map + `IpcMethods`/`IpcMethodName` types; `IpcError`; `ClientTransport` + `createIpcClient` (+ `IpcClient`); `ServerTransport` + `IpcHandlers` + `createIpcServer` + `IpcRequestError`; `createMemoryTransportPair` (test fake).
 
-**Depends on:** `@launchkit/types`, `@launchkit/utils`
+**Depends on:** `@spectrum/types`, `@spectrum/utils`
 
 **Effects owned:** none -- the message bus is an injected `ClientTransport`/`ServerTransport`; production wires Electrobun in `apps/desktop`, tests use `createMemoryTransportPair`.
 
