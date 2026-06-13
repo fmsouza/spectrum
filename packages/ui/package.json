@@ -13,6 +13,7 @@
     "@spectrum/brand": "workspace:*",
     "@spectrum/types": "workspace:*",
     "@spectrum/utils": "workspace:*",
-    "@spectrum/agent-events": "workspace:*"
+    "@spectrum/agent-events": "workspace:*",
+    "@spectrum/providers": "workspace:*"
   }
 }

@@ -294,6 +294,7 @@
       "dependencies": {
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/brand": "workspace:*",
+        "@spectrum/providers": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
         "react": "^19",
