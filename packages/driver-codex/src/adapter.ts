@@ -198,7 +198,7 @@ export const createCodexAdapter = (
     const transport = createTransport({
       command,
       // `app-server` then ONLY the `-c` provider overrides (`model_providers.spectrum.*`) so it routes
-      // through the LaunchKit proxy. The terminal path's `-m <model>` is dropped (app-server rejects it;
+      // through the Spectrum proxy. The terminal path's `-m <model>` is dropped (app-server rejects it;
       // the model is sent via thread/start below).
       args: ["app-server", ...appServerArgs(input.args ?? [])],
       cwd: input.cwd,

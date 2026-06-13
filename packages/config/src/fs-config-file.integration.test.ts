@@ -13,7 +13,7 @@ const describeIfPosix = process.platform === "win32" ? describe.skip : describe
 describeIfPosix("createFsConfigFile (real filesystem)", () => {
   const dirs: string[] = []
   const freshDir = async (): Promise<string> => {
-    const dir = await mkdtemp(join(tmpdir(), "launchkit-config-"))
+    const dir = await mkdtemp(join(tmpdir(), "spectrum-config-"))
     dirs.push(dir)
     return dir
   }

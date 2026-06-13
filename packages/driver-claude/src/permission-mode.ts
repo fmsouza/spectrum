@@ -15,6 +15,6 @@ const SDK_MODE: Record<PermissionMode, string> = {
   bypass: "bypassPermissions",
 }
 
-/** Normalized LaunchKit mode → the Claude Agent SDK `permissionMode` string. PURE. */
+/** Normalized Spectrum mode → the Claude Agent SDK `permissionMode` string. PURE. */
 export const toClaudePermissionMode = (mode: PermissionMode): string =>
   SDK_MODE[mode]

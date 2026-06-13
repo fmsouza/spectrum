@@ -202,7 +202,7 @@ describe("main (entry wiring)", () => {
 
   it("hands the CLI the argv tail (command at index 0), not the runtime/script prefix", async () => {
     const record: { cliArgv?: readonly string[] } = {}
-    // A real `process.argv` for `launchkit list harnesses` is [runtime, script, "list", "harnesses"].
+    // A real `process.argv` for `spectrum list harnesses` is [runtime, script, "list", "harnesses"].
     await main(
       ["bun", "/path/main.ts", "list", "harnesses"],
       recordingDeps(record),

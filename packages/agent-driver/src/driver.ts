@@ -33,7 +33,7 @@ export interface AgentStartInput {
    * The harness-resolved launch args (the same the terminal path spawns with). A driver whose proxy
    * routing lives in CLI args rather than env needs these — e.g. codex routes only through a provider
    * declared via `-c model_providers.spectrum.*` overrides; without them a native codex session
-   * ignores the LaunchKit proxy. Drivers that route via env (claude/opencode/openclaw) ignore this.
+   * ignores the Spectrum proxy. Drivers that route via env (claude/opencode/openclaw) ignore this.
    */
   readonly args?: readonly string[]
   /** The normalized permission mode the session starts in; absent = "manual". */

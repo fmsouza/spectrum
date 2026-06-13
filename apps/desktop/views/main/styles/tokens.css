@@ -1,12 +1,12 @@
 /* ============================================================================
-   LaunchKit — Design Tokens   ·   theme: "Spectrum Router"
+   Spectrum — Design Tokens   ·   theme: "Spectrum Router"
    ----------------------------------------------------------------------------
-   Dark-first token set for the LaunchKit desktop UI (Electrobun + React).
+   Dark-first token set for the Spectrum desktop UI (Electrobun + React).
    Fonts: Geist (UI) + Geist Mono (code/CLI). Install via `npm i geist`
    or self-host the TTF/woff2. A light theme is provided under
    [data-theme="light"].
 
-   Usage:  import "./launchkit-tokens.css";
+   Usage:  import "./spectrum-tokens.css";
            background: var(--sp-bg);
            color: var(--sp-text);
            font-family: var(--sp-font-sans);
