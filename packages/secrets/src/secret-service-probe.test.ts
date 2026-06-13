@@ -4,7 +4,9 @@ import type { SecretError } from "./backend"
 import type { ProcessRunner } from "./process-runner"
 import { isSecretServiceAvailable } from "./secret-service-probe"
 
-const runnerReturning = (result: Result<{ stdout: string }, SecretError>): ProcessRunner => ({
+const runnerReturning = (
+  result: Result<{ stdout: string }, SecretError>,
+): ProcessRunner => ({
   run: async () => result,
 })
 const throwingRunner: ProcessRunner = {
@@ -24,7 +26,9 @@ describe("isSecretServiceAvailable", () => {
 
   it("returns true when the probe lookup merely reports a missing item (empty stderr)", async () => {
     const available = await isSecretServiceAvailable({
-      runner: runnerReturning(err({ kind: "backend-failed", detail: "exit 1: " })),
+      runner: runnerReturning(
+        err({ kind: "backend-failed", detail: "exit 1: " }),
+      ),
       commandExists: () => true,
     })
     expect(available).toBe(true)
@@ -32,7 +36,12 @@ describe("isSecretServiceAvailable", () => {
 
   it("returns false when the probe fails with a D-Bus connection error", async () => {
     const available = await isSecretServiceAvailable({
-      runner: runnerReturning(err({ kind: "backend-failed", detail: "Cannot autolaunch D-Bus without X11 $DISPLAY" })),
+      runner: runnerReturning(
+        err({
+          kind: "backend-failed",
+          detail: "Cannot autolaunch D-Bus without X11 $DISPLAY",
+        }),
+      ),
       commandExists: () => true,
     })
     expect(available).toBe(false)

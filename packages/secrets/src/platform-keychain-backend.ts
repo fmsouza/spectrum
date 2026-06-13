@@ -23,7 +23,9 @@ export interface PlatformKeychainDeps {
  * probe is async, so it runs lazily (memoized) on first use — keeping the selector synchronous so
  * the synchronous `createAppContext` can call it.
  */
-const createLinuxKeychainBackend = (deps: PlatformKeychainDeps): KeychainBackend => {
+const createLinuxKeychainBackend = (
+  deps: PlatformKeychainDeps,
+): KeychainBackend => {
   let chosen: KeychainBackend | null = null
   const pick = async (): Promise<KeychainBackend> => {
     if (chosen !== null) return chosen
@@ -36,7 +38,9 @@ const createLinuxKeychainBackend = (deps: PlatformKeychainDeps): KeychainBackend
       : createEncryptedFileBackend({
           fileOps: deps.fileOps,
           secretsDir: deps.secretsDir,
-          cipher: createPassphraseAeadCipher({ getPassphrase: deps.secretPassphrase }),
+          cipher: createPassphraseAeadCipher({
+            getPassphrase: deps.secretPassphrase,
+          }),
         })
     return chosen
   }

@@ -6,7 +6,9 @@ import type { ProcessRunner } from "./process-runner"
 import { createInMemorySecretFileOps } from "./secret-file-ops"
 
 type Call = { command: string; args: readonly string[]; stdin?: string }
-const recordingRunner = (results: ReadonlyArray<Result<{ stdout: string }, SecretError>>) => {
+const recordingRunner = (
+  results: ReadonlyArray<Result<{ stdout: string }, SecretError>>,
+) => {
   const calls: Call[] = []
   let i = 0
   const runner: ProcessRunner = {
@@ -27,14 +29,21 @@ const baseDeps = () => ({
 describe("createPlatformKeychainBackend", () => {
   it("uses the macOS security CLI when platform is macos", async () => {
     const { runner, calls } = recordingRunner([ok({ stdout: "" })])
-    const backend = createPlatformKeychainBackend({ platform: "macos", runner, ...baseDeps() })
+    const backend = createPlatformKeychainBackend({
+      platform: "macos",
+      runner,
+      ...baseDeps(),
+    })
     await backend.add("kc_1", "s")
     expect(calls[0]?.command).toBe("security")
   })
 
   it("uses secret-tool on linux when a Secret Service is available", async () => {
     // 1st run = probe lookup (ok), 2nd run = store
-    const { runner, calls } = recordingRunner([ok({ stdout: "" }), ok({ stdout: "" })])
+    const { runner, calls } = recordingRunner([
+      ok({ stdout: "" }),
+      ok({ stdout: "" }),
+    ])
     const backend = createPlatformKeychainBackend({
       platform: "linux",
       runner,
@@ -78,7 +87,11 @@ describe("createPlatformKeychainBackend", () => {
 
   it("uses an in-memory backend for an unknown platform", async () => {
     const { runner } = recordingRunner([])
-    const backend = createPlatformKeychainBackend({ platform: "unknown", runner, ...baseDeps() })
+    const backend = createPlatformKeychainBackend({
+      platform: "unknown",
+      runner,
+      ...baseDeps(),
+    })
     await backend.add("kc_1", "s")
     expect(await backend.find("kc_1")).toEqual({ ok: true, value: "s" })
   })

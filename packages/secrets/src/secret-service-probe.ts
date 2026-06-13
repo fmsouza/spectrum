@@ -24,9 +24,15 @@ export const isSecretServiceAvailable = async (deps: {
   readonly runner: ProcessRunner
   readonly commandExists?: (cmd: string) => boolean
 }): Promise<boolean> => {
-  const commandExists = deps.commandExists ?? ((c: string) => Bun.which(c) !== null)
+  const commandExists =
+    deps.commandExists ?? ((c: string) => Bun.which(c) !== null)
   if (!commandExists("secret-tool")) return false
-  const probe = await deps.runner.run("secret-tool", ["lookup", "service", SERVICE, PROBE_ACCOUNT])
+  const probe = await deps.runner.run("secret-tool", [
+    "lookup",
+    "service",
+    SERVICE,
+    PROBE_ACCOUNT,
+  ])
   if (isOk(probe)) return true
   const detail = probe.error.kind === "backend-failed" ? probe.error.detail : ""
   return !UNAVAILABLE_SIGNATURES.some((sig) => detail.includes(sig))
