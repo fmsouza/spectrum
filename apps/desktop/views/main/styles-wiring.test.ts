@@ -99,8 +99,9 @@ describe("views/main stylesheet partials wiring", () => {
     const runView = await Bun.file(
       new URL("./styles/run-view.css", import.meta.url),
     ).text()
-    expect(tokens).toContain("--master-w")
-    expect(tokens).toContain("prefers-color-scheme")
+    expect(tokens).toContain("--lk-master-w")
+    expect(tokens).toContain('[data-theme="light"]')
+    expect(tokens).not.toContain("prefers-color-scheme")
     expect(controls).toContain("[data-variant=")
     expect(shell).toContain(".lk-shell")
     expect(shell).toContain("[data-app-icon]")
