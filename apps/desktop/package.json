@@ -11,6 +11,7 @@
     "start": "electrobun dev",
     "dev": "electrobun dev --watch",
     "compile": "bun build --compile --minify --outfile dist/launchkit-cli ./src/cli.ts",
+    "smoke": "bun scripts/smoke.ts",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "bun test"
   },
