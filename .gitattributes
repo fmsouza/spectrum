@@ -1,0 +1,14 @@
+# Force LF line endings on checkout so Windows CI doesn't normalize text files to CRLF
+# (Biome's formatter expects LF; the Windows runner's default `core.autocrlf=true`
+# was rewriting every text file at checkout, which produced 570+ "Formatter would
+# have printed the following content" errors in `bun run lint`.)
+* text=auto eol=lf
+
+# Shell scripts must be LF even when run on Windows (Git's CRLF-conversion would
+# break the `#!/usr/bin/env bash` shebang otherwise).
+*.sh text eol=lf
+
+# Native Windows scripts are CRLF by convention.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
