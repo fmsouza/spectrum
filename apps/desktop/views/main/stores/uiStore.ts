@@ -1,4 +1,4 @@
-import type { SessionId } from "@launchkit/types"
+import type { SessionId } from "@spectrum/types"
 import { type StoreApi, createStore } from "zustand/vanilla"
 
 /**

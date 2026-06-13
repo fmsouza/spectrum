@@ -2,27 +2,27 @@ import { afterEach, describe, expect, it } from "bun:test"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { runCli } from "@launchkit/cli"
-import { createMemoryWriter } from "@launchkit/cli"
+import { runCli } from "@spectrum/cli"
+import { createMemoryWriter } from "@spectrum/cli"
 import {
   type Config,
   createCachedConfigStore,
   createFileConfigStore,
   createFsConfigFile,
   exportConfig,
-} from "@launchkit/config"
+} from "@spectrum/config"
 import {
   builtinHarnesses,
   createInMemoryHarnessFileSource,
   createRegistry,
-} from "@launchkit/harnesses"
+} from "@spectrum/harnesses"
 import {
   type LanguageModelGateway,
   createRouter,
   createScriptedGateway,
   isProxyRunning,
   startProxy,
-} from "@launchkit/proxy"
+} from "@spectrum/proxy"
 import { buildTrayMenu } from "./gui/tray-menu"
 
 const dirs: string[] = []

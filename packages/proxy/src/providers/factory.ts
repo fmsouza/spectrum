@@ -1,6 +1,6 @@
-import type { SecretStore } from "@launchkit/secrets"
-import type { Provider } from "@launchkit/types"
-import { type Result, err, ok } from "@launchkit/utils"
+import type { SecretStore } from "@spectrum/secrets"
+import type { Provider } from "@spectrum/types"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { ProxyError } from "../types"
 
 export type ModelHandle = unknown

@@ -1,5 +1,5 @@
-import type { RunnerInbound, RunnerOutbound } from "@launchkit/agent-driver"
-import { type IpcClient, createIpcClient } from "@launchkit/ipc"
+import type { RunnerInbound, RunnerOutbound } from "@spectrum/agent-driver"
+import { type IpcClient, createIpcClient } from "@spectrum/ipc"
 import { Electroview, type RPCSchema } from "electrobun/view"
 import { type ElectrobunRpc, createElectrobunTransport } from "./ipc-client"
 import { type RunnerClient, createRunnerClient } from "./runner/runnerClient"

@@ -1,5 +1,5 @@
 {
-  "name": "@launchkit/db",
+  "name": "@spectrum/db",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "db:check": "drizzle-kit check"
   },
   "dependencies": {
-    "@launchkit/utils": "workspace:*",
+    "@spectrum/utils": "workspace:*",
     "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {

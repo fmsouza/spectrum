@@ -1,6 +1,6 @@
-import type { AgentDriver } from "@launchkit/agent-driver"
-import { createDriver } from "@launchkit/driver-runtime"
-import type { IdGen } from "@launchkit/utils"
+import type { AgentDriver } from "@spectrum/agent-driver"
+import { createDriver } from "@spectrum/driver-runtime"
+import type { IdGen } from "@spectrum/utils"
 import { createOpenclawAdapter } from "./adapter"
 import type { OpenclawConnect } from "./transport"
 

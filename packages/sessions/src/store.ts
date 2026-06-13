@@ -1,11 +1,11 @@
-import { type DbClient, sessions, tryDb } from "@launchkit/db"
+import { type DbClient, sessions, tryDb } from "@spectrum/db"
 import type {
   HarnessId,
   ModelId,
   ProjectId,
   Session,
   SessionId,
-} from "@launchkit/types"
+} from "@spectrum/types"
 import {
   type Clock,
   type IdGen,
@@ -13,7 +13,7 @@ import {
   err,
   isErr,
   ok,
-} from "@launchkit/utils"
+} from "@spectrum/utils"
 import { type SQL, and, desc, eq, gte, isNotNull, isNull } from "drizzle-orm"
 import type { SessionError } from "./errors"
 

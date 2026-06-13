@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { HarnessDefinitionSchema, HarnessIdSchema } from "@launchkit/types"
+import { HarnessDefinitionSchema, HarnessIdSchema } from "@spectrum/types"
 import { ALLOWED_TOKENS } from "../tokens"
 import { builtinHarnesses, claude, codex, openclaw, opencode } from "./index"
 

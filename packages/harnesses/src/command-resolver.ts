@@ -2,8 +2,8 @@ import {
   type Platform,
   detectPlatform,
   isAbsolutePath,
-} from "@launchkit/platform"
-import { type Result, err, ok } from "@launchkit/utils"
+} from "@spectrum/platform"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { HarnessError } from "./errors"
 
 /** Resolves a command name/path to a validated absolute path, or rejects it. */

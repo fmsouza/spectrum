@@ -19,7 +19,7 @@ import type { ElectrobunConfig } from "electrobun"
  *   out of scope for now).
  * - `build.watch`/`build.watchIgnore` → extra paths for `electrobun dev --watch` (rebuild + relaunch
  *   on change). The default watch only covers this app's `src/` + `views/`; we add the workspace
- *   `packages/` so editing a `@launchkit/*` package (proxy, harnesses, drivers, …) also live-reloads.
+ *   `packages/` so editing a `@spectrum/*` package (proxy, harnesses, drivers, …) also live-reloads.
  *   Test files are ignored so running/saving tests doesn't trigger app rebuilds.
  */
 const config = {

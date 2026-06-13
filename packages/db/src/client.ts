@@ -1,5 +1,5 @@
 import { Database as BunDatabase } from "bun:sqlite"
-import { type Result, err, ok } from "@launchkit/utils"
+import { type Result, err, ok } from "@spectrum/utils"
 import { type BunSQLiteDatabase, drizzle } from "drizzle-orm/bun-sqlite"
 import type { DbError } from "./errors"
 import * as schema from "./schema"

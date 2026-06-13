@@ -61,8 +61,8 @@
  */
 
 import { afterEach, describe, expect, it } from "bun:test"
-import type { ProviderView } from "@launchkit/ipc"
-import type { HarnessDefinition, ModelRoute, Session } from "@launchkit/types"
+import type { ProviderView } from "@spectrum/ipc"
+import type { HarnessDefinition, ModelRoute, Session } from "@spectrum/types"
 import { act, cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { render } from "@testing-library/react"
 import { App } from "./app"

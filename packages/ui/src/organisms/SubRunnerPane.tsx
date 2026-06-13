@@ -1,4 +1,4 @@
-import type { RunnerId, RunnerState } from "@launchkit/agent-events"
+import type { RunnerId, RunnerState } from "@spectrum/agent-events"
 import type { ReactElement } from "react"
 import { ConversationTimeline } from "./ConversationTimeline"
 

@@ -2,8 +2,8 @@ import {
   type RunManager,
   type RunnerOutbound,
   decodeRunnerInbound,
-} from "@launchkit/agent-driver"
-import { isOk } from "@launchkit/utils"
+} from "@spectrum/agent-driver"
+import { isOk } from "@spectrum/utils"
 
 export interface RunnerSocket {
   /** `ws://localhost:<port>/` — handed to the webview via the `getRunnerSocketUrl` IPC method. */

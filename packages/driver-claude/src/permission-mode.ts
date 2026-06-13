@@ -1,4 +1,4 @@
-import type { PermissionMode } from "@launchkit/agent-events"
+import type { PermissionMode } from "@spectrum/agent-events"
 
 export const CLAUDE_SUPPORTED_MODES: readonly PermissionMode[] = [
   "manual",

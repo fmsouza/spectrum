@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { HarnessDefinition } from "@launchkit/types"
+import type { HarnessDefinition } from "@spectrum/types"
 import { createInMemoryHarnessFileSource } from "./file-source"
 
 const fixture = (id: string): HarnessDefinition =>

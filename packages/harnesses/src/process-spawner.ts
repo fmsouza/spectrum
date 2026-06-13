@@ -1,4 +1,4 @@
-import { type Result, ok } from "@launchkit/utils"
+import { type Result, ok } from "@spectrum/utils"
 import type { HarnessError } from "./errors"
 
 /** A spawned child's identity + a promise that resolves with its exit code. */

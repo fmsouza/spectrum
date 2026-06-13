@@ -1,4 +1,4 @@
-import { runCli } from "@launchkit/cli"
+import { runCli } from "@spectrum/cli"
 import { type ProxyHandle, type RunAppDeps, runApp } from "./app"
 import { cliDepsFrom } from "./cli-deps"
 import type { createAppContext } from "./composition"

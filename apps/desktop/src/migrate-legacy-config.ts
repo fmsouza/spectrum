@@ -8,7 +8,7 @@ import {
   legacyMacosConfigDir,
   planLegacyMacosMigration,
   resolveAppPaths,
-} from "@launchkit/platform"
+} from "@spectrum/platform"
 
 const { join } = path.posix
 

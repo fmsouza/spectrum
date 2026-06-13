@@ -1,4 +1,4 @@
-import type { PermissionMode } from "@launchkit/agent-events"
+import type { PermissionMode } from "@spectrum/agent-events"
 import type { AskForApproval } from "./bindings/v2/AskForApproval"
 import type { SandboxPolicy } from "./bindings/v2/SandboxPolicy"
 

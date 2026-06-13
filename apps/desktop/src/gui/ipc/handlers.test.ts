@@ -1,18 +1,18 @@
 import { describe, expect, it } from "bun:test"
-import type { StoredEvent } from "@launchkit/agent-events"
-import type { Config } from "@launchkit/config"
+import type { StoredEvent } from "@spectrum/agent-events"
+import type { Config } from "@spectrum/config"
 import {
   createFakeCommandResolver,
   resolveHarnessLaunch,
-} from "@launchkit/harnesses"
+} from "@spectrum/harnesses"
 import type {
   HarnessId,
   ModelId,
   Provider,
   ProviderId,
   Session,
-} from "@launchkit/types"
-import { type Result, err, ok } from "@launchkit/utils"
+} from "@spectrum/types"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { AppContext } from "../../composition"
 import { createIpcHandlers } from "./handlers"
 

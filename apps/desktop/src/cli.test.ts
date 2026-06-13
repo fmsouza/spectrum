@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { err, ok } from "@launchkit/utils"
+import { err, ok } from "@spectrum/utils"
 import { formatCliError, runCliMain } from "./cli"
 
 describe("formatCliError", () => {

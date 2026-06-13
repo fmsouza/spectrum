@@ -2,9 +2,9 @@ import { describe, expect, it, mock } from "bun:test"
 import {
   createInMemoryKeychainBackend,
   createSecretStore,
-} from "@launchkit/secrets"
-import type { Provider } from "@launchkit/types"
-import { createSequentialIdGen } from "@launchkit/utils"
+} from "@spectrum/secrets"
+import type { Provider } from "@spectrum/types"
+import { createSequentialIdGen } from "@spectrum/utils"
 import { createProviderFactory } from "./factory"
 
 const makeProvider = (over: Partial<Provider> = {}): Provider =>

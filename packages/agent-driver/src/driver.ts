@@ -1,11 +1,11 @@
-import type { RunnerId } from "@launchkit/agent-events"
+import type { RunnerId } from "@spectrum/agent-events"
 import type {
   ApprovalDecision,
   CanonicalEvent,
   PermissionMode,
-} from "@launchkit/agent-events"
-import type { HarnessId, ModelId } from "@launchkit/types"
-import type { Result } from "@launchkit/utils"
+} from "@spectrum/agent-events"
+import type { HarnessId, ModelId } from "@spectrum/types"
+import type { Result } from "@spectrum/utils"
 
 export type DriverError = {
   readonly kind:

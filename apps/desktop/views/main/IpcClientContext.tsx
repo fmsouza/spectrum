@@ -1,4 +1,4 @@
-import type { IpcClient } from "@launchkit/ipc"
+import type { IpcClient } from "@spectrum/ipc"
 import {
   type ReactElement,
   type ReactNode,

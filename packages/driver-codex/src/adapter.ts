@@ -1,11 +1,11 @@
-import type { AgentStartInput } from "@launchkit/agent-driver"
-import type { ApprovalDecision, PermissionMode } from "@launchkit/agent-events"
+import type { AgentStartInput } from "@spectrum/agent-driver"
+import type { ApprovalDecision, PermissionMode } from "@spectrum/agent-events"
 import type {
   AdapterCtx,
   AdapterHandle,
   DriverAdapter,
-} from "@launchkit/driver-runtime"
-import type { IdGen } from "@launchkit/utils"
+} from "@spectrum/driver-runtime"
+import type { IdGen } from "@spectrum/utils"
 import { type CodexMapState, mapCodexEvent } from "./map-codex-event"
 import { CODEX_SUPPORTED_MODES, toCodexTurnPolicy } from "./permission-mode"
 import {

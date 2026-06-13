@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import * as harnesses from "./index"
 
-describe("@launchkit/harnesses barrel", () => {
+describe("@spectrum/harnesses barrel", () => {
   it("exports the four built-ins and the builtinHarnesses list", () => {
     for (const name of [
       "claude",

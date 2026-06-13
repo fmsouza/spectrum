@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { IdGen } from "@launchkit/utils"
+import type { IdGen } from "@spectrum/utils"
 import { createJsonRpcDispatcher, isCodexStderrNoise } from "./transport"
 
 const seqIds = (): IdGen => {

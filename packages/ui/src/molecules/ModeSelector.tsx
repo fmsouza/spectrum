@@ -1,4 +1,4 @@
-import type { PermissionMode } from "@launchkit/agent-events"
+import type { PermissionMode } from "@spectrum/agent-events"
 import { type ReactElement, useState } from "react"
 import { Icon, type IconName } from "../atoms/Icon"
 

@@ -1,8 +1,8 @@
-import type { Config } from "@launchkit/config"
-import type { LaunchRoute } from "@launchkit/harnesses"
-import type { RunningProxy } from "@launchkit/proxy"
-import { type ModelId, ModelIdSchema } from "@launchkit/types"
-import { type Result, err, isErr, ok } from "@launchkit/utils"
+import type { Config } from "@spectrum/config"
+import type { LaunchRoute } from "@spectrum/harnesses"
+import type { RunningProxy } from "@spectrum/proxy"
+import { type ModelId, ModelIdSchema } from "@spectrum/types"
+import { type Result, err, isErr, ok } from "@spectrum/utils"
 import type { CliDeps } from "./deps"
 import type { CliError } from "./errors"
 

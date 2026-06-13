@@ -1,4 +1,4 @@
-import { isOk } from "@launchkit/utils"
+import { isOk } from "@spectrum/utils"
 import type { ProcessRunner } from "./process-runner"
 
 const SERVICE = "launchkit"

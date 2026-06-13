@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { createSequentialIdGen } from "@launchkit/utils"
+import { createSequentialIdGen } from "@spectrum/utils"
 import { createInMemoryKeychainBackend } from "./backend"
 import { createSecretStore } from "./store"
 

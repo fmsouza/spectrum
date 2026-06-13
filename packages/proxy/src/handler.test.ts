@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { Config } from "@launchkit/config"
+import type { Config } from "@spectrum/config"
 import { createScriptedGateway } from "./gateway"
 import { createHandler } from "./handler"
 import { createRouter } from "./router"

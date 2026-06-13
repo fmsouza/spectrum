@@ -3,7 +3,7 @@
 // Exits non-zero on any failure.
 import { existsSync, readdirSync, statSync } from "node:fs"
 import { join } from "node:path"
-import { type Platform, detectPlatform } from "@launchkit/platform"
+import { type Platform, detectPlatform } from "@spectrum/platform"
 
 const PORT = Number(process.env.LK_PORT ?? "4000")
 const BUILD_DIR = join(import.meta.dir, "..", "build")

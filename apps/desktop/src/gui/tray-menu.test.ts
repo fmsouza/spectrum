@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { type HarnessDefinition, HarnessIdSchema } from "@launchkit/types"
+import { type HarnessDefinition, HarnessIdSchema } from "@spectrum/types"
 import { buildTrayMenu } from "./tray-menu"
 
 const harness = (id: string, name: string): HarnessDefinition => ({

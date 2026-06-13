@@ -1,5 +1,5 @@
-import type { PermissionMode } from "@launchkit/agent-events"
-import type { ModelRoute } from "@launchkit/types"
+import type { PermissionMode } from "@spectrum/agent-events"
+import type { ModelRoute } from "@spectrum/types"
 import { type KeyboardEvent, type ReactElement, useState } from "react"
 import { Icon } from "../atoms/Icon"
 import { ModeSelector } from "./ModeSelector"

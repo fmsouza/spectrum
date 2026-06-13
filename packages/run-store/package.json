@@ -1,16 +1,16 @@
 {
-  "name": "@launchkit/run-store",
+  "name": "@spectrum/run-store",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "typecheck": "tsc --noEmit", "test": "bun test" },
   "dependencies": {
-    "@launchkit/agent-events": "workspace:*",
-    "@launchkit/db": "workspace:*",
-    "@launchkit/types": "workspace:*",
-    "@launchkit/utils": "workspace:*",
+    "@spectrum/agent-events": "workspace:*",
+    "@spectrum/db": "workspace:*",
+    "@spectrum/types": "workspace:*",
+    "@spectrum/utils": "workspace:*",
     "drizzle-orm": "^0.45.2"
   },
-  "devDependencies": { "@launchkit/sessions": "workspace:*" }
+  "devDependencies": { "@spectrum/sessions": "workspace:*" }
 }

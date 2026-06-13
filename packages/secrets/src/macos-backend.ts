@@ -1,4 +1,4 @@
-import { err, isOk, ok, redactSecrets } from "@launchkit/utils"
+import { err, isOk, ok, redactSecrets } from "@spectrum/utils"
 import type { KeychainBackend, SecretError } from "./backend"
 import type { ProcessRunner } from "./process-runner"
 

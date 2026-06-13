@@ -5,8 +5,8 @@ import {
   type RunnerId,
   initialRunState,
   reduce,
-} from "@launchkit/agent-events"
-import type { SessionId } from "@launchkit/types"
+} from "@spectrum/agent-events"
+import type { SessionId } from "@spectrum/types"
 import { type StoreApi, createStore } from "zustand/vanilla"
 import type { StoreDeps } from "./types"
 

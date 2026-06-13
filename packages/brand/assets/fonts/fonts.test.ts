@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 
 const here = (p: string) => new URL(p, import.meta.url)
 
-describe("@launchkit/brand fonts", () => {
+describe("@spectrum/brand fonts", () => {
   it("ships the two Geist variable woff2 files", async () => {
     expect(await Bun.file(here("./Geist-Variable.woff2")).exists()).toBe(true)
     expect(await Bun.file(here("./GeistMono-Variable.woff2")).exists()).toBe(

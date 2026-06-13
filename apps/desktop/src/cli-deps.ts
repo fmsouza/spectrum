@@ -1,4 +1,4 @@
-import type { CliDeps, StartProxyDeps } from "@launchkit/cli"
+import type { CliDeps, StartProxyDeps } from "@spectrum/cli"
 import type { AppContext } from "./composition"
 
 /** Assemble the CliDeps the CLI runner needs from a wired AppContext. */

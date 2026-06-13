@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test"
-import { isOk } from "@launchkit/utils"
+import { isOk } from "@spectrum/utils"
 import { createBunProcessRunner } from "./bun-process-runner"
 import { createMacosSecurityBackend } from "./macos-backend"
 

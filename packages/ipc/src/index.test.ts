@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import * as ipc from "./index"
 
-describe("@launchkit/ipc barrel", () => {
+describe("@spectrum/ipc barrel", () => {
   it("exports the client/server factories, transport fakes, and schemas", () => {
     for (const name of [
       "ProviderViewSchema",

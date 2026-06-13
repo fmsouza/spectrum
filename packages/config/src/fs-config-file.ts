@@ -8,8 +8,8 @@ import {
   writeFile,
 } from "node:fs/promises"
 import { dirname } from "node:path"
-import { type Platform, detectPlatform } from "@launchkit/platform"
-import { type Result, err, ok } from "@launchkit/utils"
+import { type Platform, detectPlatform } from "@spectrum/platform"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { ConfigError } from "./errors"
 import type { ConfigFile } from "./file"
 

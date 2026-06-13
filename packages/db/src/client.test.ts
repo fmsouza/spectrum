@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { isErr, isOk } from "@launchkit/utils"
+import { isErr, isOk } from "@spectrum/utils"
 import { createSqliteClient } from "./client"
 
 describe("createSqliteClient", () => {

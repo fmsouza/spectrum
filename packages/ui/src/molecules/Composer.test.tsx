@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { ModelRoute } from "@launchkit/types"
+import type { ModelRoute } from "@spectrum/types"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { Composer } from "./Composer"
 

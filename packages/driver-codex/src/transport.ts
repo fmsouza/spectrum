@@ -1,5 +1,5 @@
-import { defaultTerminationSignal, detectPlatform } from "@launchkit/platform"
-import type { IdGen } from "@launchkit/utils"
+import { defaultTerminationSignal, detectPlatform } from "@spectrum/platform"
+import type { IdGen } from "@spectrum/utils"
 
 /** A parsed JSON-RPC line. Routed by the presence of `id`/`method`/`result`/`error`. */
 export type JsonRpcMessage = Record<string, unknown>

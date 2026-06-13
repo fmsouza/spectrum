@@ -1,6 +1,6 @@
-import type { HarnessRegistry } from "@launchkit/harnesses"
-import { type HarnessDefinition, HarnessIdSchema } from "@launchkit/types"
-import { ok } from "@launchkit/utils"
+import type { HarnessRegistry } from "@spectrum/harnesses"
+import { type HarnessDefinition, HarnessIdSchema } from "@spectrum/types"
+import { ok } from "@spectrum/utils"
 import { DEMO_HARNESS_ID } from "./driver-registry"
 
 /**

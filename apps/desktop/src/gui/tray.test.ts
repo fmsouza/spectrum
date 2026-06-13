@@ -2,13 +2,13 @@ import { describe, expect, it, mock } from "bun:test"
 import {
   createFakeCommandResolver,
   resolveHarnessLaunch,
-} from "@launchkit/harnesses"
+} from "@spectrum/harnesses"
 import {
   type HarnessDefinition,
   HarnessIdSchema,
   type Session,
-} from "@launchkit/types"
-import { err, ok } from "@launchkit/utils"
+} from "@spectrum/types"
+import { err, ok } from "@spectrum/utils"
 import type { AppContext } from "../composition"
 import { mountTray } from "./tray"
 import type { MountTrayDeps, TrayHandle } from "./tray"

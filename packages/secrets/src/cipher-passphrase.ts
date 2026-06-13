@@ -4,7 +4,7 @@ import {
   randomBytes,
   scryptSync,
 } from "node:crypto"
-import { err, ok } from "@launchkit/utils"
+import { err, ok } from "@spectrum/utils"
 import type { SecretError } from "./backend"
 import type { SecretCipher } from "./cipher"
 

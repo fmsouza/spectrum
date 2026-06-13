@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { FileChangeItem } from "@launchkit/agent-events"
+import type { FileChangeItem } from "@spectrum/agent-events"
 import { cleanup, render, screen } from "@testing-library/react"
 import { FileDiffCard } from "./FileDiffCard"
 

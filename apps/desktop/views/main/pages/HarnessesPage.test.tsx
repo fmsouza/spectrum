@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { HarnessDefinition } from "@launchkit/types"
+import type { HarnessDefinition } from "@spectrum/types"
 import { screen, waitFor } from "@testing-library/react"
 import { createFakeIpcClient } from "../test/fake-client"
 import { renderWithProviders } from "../test/renderWithProviders"

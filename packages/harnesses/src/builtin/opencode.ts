@@ -1,4 +1,4 @@
-import { type HarnessDefinition, HarnessIdSchema } from "@launchkit/types"
+import { type HarnessDefinition, HarnessIdSchema } from "@spectrum/types"
 
 export const opencode: HarnessDefinition = {
   id: HarnessIdSchema.parse("opencode"),

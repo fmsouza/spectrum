@@ -1,4 +1,4 @@
-import type { ModelRoute } from "@launchkit/types"
+import type { ModelRoute } from "@spectrum/types"
 import type { ReactElement } from "react"
 import { EmptyState } from "../molecules/EmptyState"
 import { ModelRow } from "../molecules/ModelRow"

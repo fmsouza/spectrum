@@ -1,4 +1,4 @@
-import type { CanonicalEvent, RunnerId } from "@launchkit/agent-events"
+import type { CanonicalEvent, RunnerId } from "@spectrum/agent-events"
 import type { OpencodeEvent } from "./transport"
 
 /** Mutable mapping state: session→runner correlation + per-call lifecycle tracking. Owned by the adapter per run. */

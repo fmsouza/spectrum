@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { isOk } from "@launchkit/utils"
+import { isOk } from "@spectrum/utils"
 import { migrations, runMigrations } from "./migrations"
 import { CURRENT_CONFIG_VERSION } from "./schema"
 

@@ -2,9 +2,9 @@ import type {
   CanonicalEvent,
   PermissionMode,
   StoredEvent,
-} from "@launchkit/agent-events"
-import type { HarnessId, ModelId, SessionId } from "@launchkit/types"
-import { type Clock, type Result, isErr, isOk, ok } from "@launchkit/utils"
+} from "@spectrum/agent-events"
+import type { HarnessId, ModelId, SessionId } from "@spectrum/types"
+import { type Clock, type Result, isErr, isOk, ok } from "@spectrum/utils"
 import type { AgentDriver, AgentSession, DriverError } from "./driver"
 import type { RunEventSink, SessionSink } from "./ports"
 import type { RunnerInbound, RunnerOutbound } from "./protocol"

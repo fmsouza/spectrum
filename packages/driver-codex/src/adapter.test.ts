@@ -1,13 +1,13 @@
 import { describe, expect, it } from "bun:test"
-import type { AgentStartInput } from "@launchkit/agent-driver"
+import type { AgentStartInput } from "@spectrum/agent-driver"
 import type {
   ApprovalDecision,
   ApprovalTarget,
   CanonicalEvent,
   RunnerId,
-} from "@launchkit/agent-events"
-import type { AdapterCtx } from "@launchkit/driver-runtime"
-import { createSequentialIdGen } from "@launchkit/utils"
+} from "@spectrum/agent-events"
+import type { AdapterCtx } from "@spectrum/driver-runtime"
+import { createSequentialIdGen } from "@spectrum/utils"
 import { type CreateCodexAdapterDeps, createCodexAdapter } from "./adapter"
 import type {
   JsonRpcTransport,

@@ -1,4 +1,4 @@
-import type { HarnessDefinition } from "@launchkit/types"
+import type { HarnessDefinition } from "@spectrum/types"
 
 /** A single tray entry. A discriminated union so the seam binds the right action per `kind`. */
 export type TrayItem =

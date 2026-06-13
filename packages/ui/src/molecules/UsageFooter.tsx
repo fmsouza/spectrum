@@ -1,4 +1,4 @@
-import type { Usage } from "@launchkit/agent-events"
+import type { Usage } from "@spectrum/agent-events"
 import type { ReactElement } from "react"
 import { TokenCount } from "../atoms/TokenCount"
 

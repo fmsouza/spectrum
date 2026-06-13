@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
-import { runCli } from "@launchkit/cli"
-import type { CliError } from "@launchkit/cli"
-import type { Result } from "@launchkit/utils"
+import { runCli } from "@spectrum/cli"
+import type { CliError } from "@spectrum/cli"
+import type { Result } from "@spectrum/utils"
 import { cliDepsFrom } from "./cli-deps"
 import { createAppContext } from "./composition"
 

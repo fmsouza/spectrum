@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { isOk } from "@launchkit/utils"
+import { isOk } from "@spectrum/utils"
 import { createInMemoryConfigFile } from "./file"
 
 describe("createInMemoryConfigFile", () => {

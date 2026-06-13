@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { RunnerId } from "@launchkit/agent-events"
+import type { RunnerId } from "@spectrum/agent-events"
 import {
   assistantDeltaFixture,
   childRunStartedFixture,

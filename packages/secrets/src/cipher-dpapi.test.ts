@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { type Result, ok } from "@launchkit/utils"
+import { type Result, ok } from "@spectrum/utils"
 import type { SecretError } from "./backend"
 import { createDpapiCipher } from "./cipher-dpapi"
 import type { ProcessRunner } from "./process-runner"

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test"
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { isOk } from "@launchkit/utils"
+import { isOk } from "@spectrum/utils"
 import { createFsConfigFile } from "./fs-config-file"
 
 // POSIX-only: relies on the `mode` bits returned by `fs.stat` and the `chmod 0600`

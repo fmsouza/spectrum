@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { type HarnessRegistry, claude } from "@launchkit/harnesses"
-import { err, ok } from "@launchkit/utils"
+import { type HarnessRegistry, claude } from "@spectrum/harnesses"
+import { err, ok } from "@spectrum/utils"
 import { demoHarness, withDemoHarness } from "./demo-harness"
 import { DEMO_HARNESS_ID } from "./driver-registry"
 

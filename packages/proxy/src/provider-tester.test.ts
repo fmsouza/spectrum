@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import type { Provider } from "@launchkit/types"
-import { type Result, createFixedClock, err, ok } from "@launchkit/utils"
+import type { Provider } from "@spectrum/types"
+import { type Result, createFixedClock, err, ok } from "@spectrum/utils"
 import { createScriptedGateway } from "./gateway"
 import type { LanguageModelGateway } from "./gateway"
 import { createProviderTester } from "./provider-tester"

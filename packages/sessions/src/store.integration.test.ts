@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { createSqliteClient, runMigrations } from "@launchkit/db"
-import { createFixedClock, createSequentialIdGen, isOk } from "@launchkit/utils"
+import { createSqliteClient, runMigrations } from "@spectrum/db"
+import { createFixedClock, createSequentialIdGen, isOk } from "@spectrum/utils"
 import { createSessionStore } from "./store"
 
 const makeStore = () => {

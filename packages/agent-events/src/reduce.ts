@@ -1,4 +1,4 @@
-import type { RunnerId } from "@launchkit/types"
+import type { RunnerId } from "@spectrum/types"
 import type {
   ApprovalDecision,
   ApprovalTarget,

@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 
 const here = (p: string) => new URL(p, import.meta.url)
 
-describe("@launchkit/brand assets", () => {
+describe("@spectrum/brand assets", () => {
   it("ships the canonical token file with the --sp-bg variable", async () => {
     const css = await Bun.file(here("./tokens/spectrum-tokens.css")).text()
     expect(css).toContain("--sp-bg:")

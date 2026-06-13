@@ -4,27 +4,27 @@ import {
   createFileConfigStore,
   createInMemoryConfigFile,
   defaultConfig,
-} from "@launchkit/config"
-import { createSqliteClient, runMigrations } from "@launchkit/db"
-import type { LaunchParams } from "@launchkit/harnesses"
-import { createProjectStore } from "@launchkit/projects"
+} from "@spectrum/config"
+import { createSqliteClient, runMigrations } from "@spectrum/db"
+import type { LaunchParams } from "@spectrum/harnesses"
+import { createProjectStore } from "@spectrum/projects"
 import {
   type RunningProxy,
   type RuntimeState,
   createInMemoryRuntimeState,
-} from "@launchkit/proxy"
+} from "@spectrum/proxy"
 import {
   createInMemoryKeychainBackend,
   createSecretStore,
-} from "@launchkit/secrets"
-import { createSessionStore } from "@launchkit/sessions"
-import type { HarnessDefinition } from "@launchkit/types"
+} from "@spectrum/secrets"
+import { createSessionStore } from "@spectrum/sessions"
+import type { HarnessDefinition } from "@spectrum/types"
 import {
   type Result,
   createFixedClock,
   createSequentialIdGen,
   ok,
-} from "@launchkit/utils"
+} from "@spectrum/utils"
 import type { CliDeps, StartProxyDeps } from "./deps"
 import { type MemoryWriter, createMemoryWriter } from "./writer"
 

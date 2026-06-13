@@ -1,4 +1,4 @@
-import { isOk } from "@launchkit/utils"
+import { isOk } from "@spectrum/utils"
 import type { Tray as ElectrobunTray, MenuItemConfig } from "electrobun/bun"
 import type { AppContext } from "../composition"
 import { type TrayItem, type TrayMenu, buildTrayMenu } from "./tray-menu"

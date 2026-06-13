@@ -1,6 +1,6 @@
-import type { IpcError, IpcMethods } from "@launchkit/ipc"
-import type { ProjectId, Session } from "@launchkit/types"
-import type { Result } from "@launchkit/utils"
+import type { IpcError, IpcMethods } from "@spectrum/ipc"
+import type { ProjectId, Session } from "@spectrum/types"
+import type { Result } from "@spectrum/utils"
 import { type StoreApi, createStore } from "zustand/vanilla"
 import type { StoreDeps } from "./types"
 

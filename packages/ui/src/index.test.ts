@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import * as ui from "./index"
 
-describe("@launchkit/ui barrel", () => {
+describe("@spectrum/ui barrel", () => {
   it("exports every public component when imported", () => {
     for (const name of [
       "Button",

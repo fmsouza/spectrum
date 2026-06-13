@@ -1,10 +1,10 @@
-import type { AgentStartInput } from "@launchkit/agent-driver"
-import type { ApprovalDecision, PermissionMode } from "@launchkit/agent-events"
+import type { AgentStartInput } from "@spectrum/agent-driver"
+import type { ApprovalDecision, PermissionMode } from "@spectrum/agent-events"
 import type {
   AdapterCtx,
   AdapterHandle,
   DriverAdapter,
-} from "@launchkit/driver-runtime"
+} from "@spectrum/driver-runtime"
 import { mapOpencodeEvent, newOpencodeMapState } from "./map-opencode-event"
 import {
   type OpencodeClient,

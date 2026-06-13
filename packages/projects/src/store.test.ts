@@ -3,9 +3,9 @@ import {
   createSqliteClient,
   runMigrations,
   sessions as sessionsTable,
-} from "@launchkit/db"
-import type { DbClient } from "@launchkit/db"
-import { createFixedClock, createSequentialIdGen } from "@launchkit/utils"
+} from "@spectrum/db"
+import type { DbClient } from "@spectrum/db"
+import { createFixedClock, createSequentialIdGen } from "@spectrum/utils"
 import { type ProjectStore, createProjectStore } from "./store"
 
 const makeStore = (): ProjectStore => {

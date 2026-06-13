@@ -1,4 +1,4 @@
-import type { HarnessDefinition, HarnessId } from "@launchkit/types"
+import type { HarnessDefinition, HarnessId } from "@spectrum/types"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { ReactElement } from "react"
 import { Button } from "../atoms/Button"
