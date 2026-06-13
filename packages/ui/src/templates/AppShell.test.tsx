@@ -57,9 +57,10 @@ describe("AppShell", () => {
   })
   it("renders SVG rail icons rather than text glyphs", () => {
     const { container } = render(<AppShell {...baseProps} />)
+    // The primary rail renders exactly 3 SVGs: the brand mark + the two RailItem icons.
     expect(
       container.querySelectorAll("nav[aria-label='Primary'] svg").length,
-    ).toBeGreaterThanOrEqual(2)
+    ).toBe(3)
   })
 
   it("renders the LaunchKit brand mark in the primary rail", () => {
