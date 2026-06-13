@@ -38,7 +38,7 @@ describe("createMacosSecurityBackend", () => {
       "-a",
       "kc_1",
       "-s",
-      "launchkit",
+      "spectrum",
       "-w",
       "sk-secret",
       "-U",
@@ -57,7 +57,7 @@ describe("createMacosSecurityBackend", () => {
       "-a",
       "kc_1",
       "-s",
-      "launchkit",
+      "spectrum",
       "-w",
     ])
   })
@@ -74,7 +74,7 @@ describe("createMacosSecurityBackend", () => {
       "-a",
       "kc_1",
       "-s",
-      "launchkit",
+      "spectrum",
     ])
   })
 
