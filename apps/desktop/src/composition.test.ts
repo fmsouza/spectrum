@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { claude } from "@launchkit/harnesses"
+import { resolveAppPaths } from "@launchkit/platform"
 import { createProjectStore } from "@launchkit/projects"
 import { err, ok } from "@launchkit/utils"
 import { createAppContext } from "./composition"
@@ -20,6 +21,10 @@ const makeFakeDeps = (): {
     }
   const deps: CreateAppContextDeps = {
     homeDir: () => "/home/tester",
+    platform: "linux",
+    env: {},
+    resolveAppPaths,
+    migrateLegacyMacosConfig: record("migrateLegacyMacosConfig") as never,
     createFsConfigFile: record("createFsConfigFile") as never,
     createFileConfigStore: record("createFileConfigStore") as never,
     createCachedConfigStore: record("createCachedConfigStore") as never,
@@ -272,6 +277,16 @@ describe("createAppContext wiring", () => {
     const { deps } = makeFakeDeps()
     const ctx = createAppContext(deps)
     expect(typeof ctx.projects.list).toBe("function")
+  })
+
+  it("runs the legacy macOS migration with the injected platform/home/env before resolving paths", () => {
+    const { deps, calls } = makeFakeDeps()
+    createAppContext(deps)
+    expect(calls.migrateLegacyMacosConfig?.[0]).toEqual({
+      platform: "linux",
+      homeDir: "/home/tester",
+      env: {},
+    })
   })
 })
 

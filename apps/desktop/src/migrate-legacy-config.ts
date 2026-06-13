@@ -25,7 +25,8 @@ const MARKER = ".migrated-to-app-support"
 export const realMigrationFs: MigrationFs = {
   exists: (p) => existsSync(p),
   copyDir: (from, to) => cpSync(from, to, { recursive: true }),
-  writeMarker: (p) => writeFileSync(p, "migrated to ~/Library/Application Support/LaunchKit\n"),
+  writeMarker: (p) =>
+    writeFileSync(p, "migrated to ~/Library/Application Support/LaunchKit\n"),
 }
 
 /**
@@ -45,7 +46,8 @@ export const migrateLegacyMacosConfig = (
     newDataDirExists: fs.exists(newDataDir),
     legacyDirExists: fs.exists(legacyDir),
   })
-  if (plan.kind !== "move" || plan.from === undefined || plan.to === undefined) return
+  if (plan.kind !== "move" || plan.from === undefined || plan.to === undefined)
+    return
   fs.copyDir(plan.from, plan.to)
   fs.writeMarker(join(plan.from, MARKER))
 }
