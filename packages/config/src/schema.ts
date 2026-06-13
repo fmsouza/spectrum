@@ -2,7 +2,7 @@ import { ModelRouteSchema, ProviderSchema } from "@spectrum/types"
 import { z } from "zod"
 
 /** Bump on any breaking config shape change; add a matching `Migration` (see migrations.ts). */
-export const CURRENT_CONFIG_VERSION = 8
+export const CURRENT_CONFIG_VERSION = 9
 
 /**
  * Per-harness "last used" prefs. `mode` is the normalized permission mode the user last selected

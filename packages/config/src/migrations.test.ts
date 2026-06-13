@@ -20,8 +20,8 @@ const v1Config = {
 }
 
 describe("migrations", () => {
-  it("ships ordered v1->v2, v2->v3, v3->v4, v4->v5, v5->v6, v6->v7, and v7->v8 migrations", () => {
-    expect(migrations).toHaveLength(7)
+  it("ships ordered v1->v2, v2->v3, v3->v4, v4->v5, v5->v6, v6->v7, v7->v8, and v8->v9 migrations", () => {
+    expect(migrations).toHaveLength(8)
     expect(migrations[0]?.from).toBe(1)
     expect(migrations[0]?.to).toBe(2)
     expect(migrations[1]?.from).toBe(2)
@@ -36,6 +36,8 @@ describe("migrations", () => {
     expect(migrations[5]?.to).toBe(7)
     expect(migrations[6]?.from).toBe(7)
     expect(migrations[6]?.to).toBe(8)
+    expect(migrations[7]?.from).toBe(8)
+    expect(migrations[7]?.to).toBe(9)
   })
 })
 
@@ -216,6 +218,81 @@ describe("v4 → v5 (drop profiles)", () => {
       expect(result.value.version).toBe(CURRENT_CONFIG_VERSION)
       expect("profiles" in result.value).toBe(false)
     }
+  })
+})
+
+describe("v8 → v9 (ollama → custom)", () => {
+  it("rewrites an ollama provider to custom and normalizes baseUrl to a /v1 serverUrl", () => {
+    const raw = {
+      version: 8,
+      providers: [
+        {
+          id: "p_1",
+          name: "Local",
+          sdkProvider: "ollama",
+          config: { baseUrl: "http://localhost:11434" },
+          secrets: {},
+          models: [],
+        },
+      ],
+      models: [],
+      settings: {},
+    }
+    const r = runMigrations(raw)
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      const p = r.value.providers[0]
+      expect(p?.sdkProvider).toBe("custom")
+      expect(p?.config).toEqual({ serverUrl: "http://localhost:11434/v1" })
+    }
+  })
+
+  it("seeds a default /v1 serverUrl when the ollama provider had no baseUrl", () => {
+    const raw = {
+      version: 8,
+      providers: [
+        {
+          id: "p_2",
+          name: "Local",
+          sdkProvider: "ollama",
+          config: {},
+          secrets: {},
+          models: [],
+        },
+      ],
+      models: [],
+      settings: {},
+    }
+    const r = runMigrations(raw)
+    expect(r.ok).toBe(true)
+    if (r.ok)
+      expect(r.value.providers[0]?.config).toEqual({
+        serverUrl: "http://localhost:11434/v1",
+      })
+  })
+
+  it("does not append /v1 when the baseUrl already ends with it", () => {
+    const raw = {
+      version: 8,
+      providers: [
+        {
+          id: "p_3",
+          name: "Local",
+          sdkProvider: "ollama",
+          config: { baseUrl: "http://host:1234/v1" },
+          secrets: {},
+          models: [],
+        },
+      ],
+      models: [],
+      settings: {},
+    }
+    const r = runMigrations(raw)
+    expect(r.ok).toBe(true)
+    if (r.ok)
+      expect(r.value.providers[0]?.config).toEqual({
+        serverUrl: "http://host:1234/v1",
+      })
   })
 })
 
