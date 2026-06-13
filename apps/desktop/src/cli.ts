@@ -43,7 +43,7 @@ export const runCliMain = async (
 }
 
 // --- entry point: the single side effect -------------------------------------------
-// Both `bun run src/cli.ts <verb>` and the compiled binary `./launchkit-cli <verb>` produce a
+// Both `bun run src/cli.ts <verb>` and the compiled binary `./spectrum-cli <verb>` produce a
 // `process.argv` shaped `[runtime, scriptPath, ...userArgs]`, so the CLI verb sits at index 2.
 // `runCli`/`parseArgs` treat the first token as the command, so drop the two-element prefix here.
 if (import.meta.main) {

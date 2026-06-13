@@ -1,5 +1,5 @@
 {
-  "name": "launchkit",
+  "name": "spectrum",
   "type": "module",
   "private": true,
   "version": "0.1.0",
@@ -10,7 +10,7 @@
     "build": "electrobun build",
     "start": "electrobun dev",
     "dev": "electrobun dev --watch",
-    "compile": "bun build --compile --minify --outfile dist/launchkit-cli ./src/cli.ts",
+    "compile": "bun build --compile --minify --outfile dist/spectrum-cli ./src/cli.ts",
     "smoke": "bun scripts/smoke.ts",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "bun test"
