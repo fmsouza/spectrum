@@ -5,7 +5,9 @@ const here = (p: string) => new URL(p, import.meta.url)
 describe("@launchkit/brand fonts", () => {
   it("ships the two Geist variable woff2 files", async () => {
     expect(await Bun.file(here("./Geist-Variable.woff2")).exists()).toBe(true)
-    expect(await Bun.file(here("./GeistMono-Variable.woff2")).exists()).toBe(true)
+    expect(await Bun.file(here("./GeistMono-Variable.woff2")).exists()).toBe(
+      true,
+    )
   })
 
   it("declares @font-face for Geist and Geist Mono over the full weight range", async () => {

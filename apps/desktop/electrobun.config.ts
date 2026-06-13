@@ -35,6 +35,11 @@ const config = {
     },
     copy: {
       "views/main/index.html": "views/main/index.html",
+      "views/main/styles/fonts.css": "views/main/styles/fonts.css",
+      "views/main/fonts/Geist-Variable.woff2":
+        "views/main/fonts/Geist-Variable.woff2",
+      "views/main/fonts/GeistMono-Variable.woff2":
+        "views/main/fonts/GeistMono-Variable.woff2",
       "views/main/styles/tokens.css": "views/main/styles/tokens.css",
       "views/main/styles/base.css": "views/main/styles/base.css",
       "views/main/styles/controls.css": "views/main/styles/controls.css",

@@ -13,6 +13,7 @@ const electrobunConfig = await Bun.file(
 ).text()
 
 const PARTIALS = [
+  "fonts.css",
   "tokens.css",
   "base.css",
   "controls.css",
@@ -64,6 +65,18 @@ describe("views/main stylesheet partials wiring", () => {
     ).text()
     expect(shell).toContain('nav[aria-label="Primary"]')
     expect(sessions).toContain(".lk-sessions-detail")
+  })
+
+  it("ships the self-hosted Geist woff2 next to app.js via build.copy", () => {
+    const flat = electrobunConfig.replace(/\s+/g, " ")
+    for (const f of ["Geist-Variable.woff2", "GeistMono-Variable.woff2"])
+      expect(flat).toContain(`"views/main/fonts/${f}": "views/main/fonts/${f}"`)
+  })
+
+  it("links fonts.css before tokens.css so @font-face is registered first", () => {
+    expect(indexHtml.indexOf('href="./styles/fonts.css"')).toBeLessThan(
+      indexHtml.indexOf('href="./styles/tokens.css"'),
+    )
   })
 
   it("guards key structural selectors so CSS stays in sync with the shell DOM", async () => {
