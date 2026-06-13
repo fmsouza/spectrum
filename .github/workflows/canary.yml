@@ -60,7 +60,7 @@ jobs:
             os: windows-latest
             asset: launchkit-windows-x64
             archive: zip
-            app: false
+            app: true
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
@@ -97,6 +97,9 @@ jobs:
           Copy-Item "apps/desktop/dist/launchkit-cli.exe" "stage/${{ matrix.asset }}-cli.exe" -ErrorAction SilentlyContinue
           if (-not (Test-Path "stage/${{ matrix.asset }}-cli.exe")) {
             Copy-Item "apps/desktop/dist/launchkit-cli" "stage/${{ matrix.asset }}-cli.exe"
+          }
+          if ("${{ steps.app.outcome }}" -eq "success") {
+            Compress-Archive "apps/desktop/build/*" "stage/${{ matrix.asset }}-app.zip"
           }
           Compress-Archive "stage/${{ matrix.asset }}-cli.exe" "stage/${{ matrix.asset }}-cli.zip"
           Remove-Item "stage/${{ matrix.asset }}-cli.exe"
