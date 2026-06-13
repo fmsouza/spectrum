@@ -15,7 +15,8 @@ import type { ElectrobunConfig } from "electrobun"
  *   sessions-detail, forms, modal, lists, page) next to the bundled `app.js` so the
  *   `views://main/index.html` URL (see `gui/window.ts`) resolves to local, bundled assets only —
  *   each partial is linked same-origin under `style-src 'self'`.
- * - `build.mac.createDmg: false` → a local app-bundle build needs no DMG/codesign tooling.
+ * - `build.mac.createDmg: true` → emit a DMG installer for macOS releases (unsigned — signing is
+ *   out of scope for now).
  * - `build.watch`/`build.watchIgnore` → extra paths for `electrobun dev --watch` (rebuild + relaunch
  *   on change). The default watch only covers this app's `src/` + `views/`; we add the workspace
  *   `packages/` so editing a `@launchkit/*` package (proxy, harnesses, drivers, …) also live-reloads.
@@ -49,7 +50,9 @@ const config = {
       "views/main/styles/lists.css": "views/main/styles/lists.css",
       "views/main/styles/page.css": "views/main/styles/page.css",
     },
-    mac: { createDmg: false },
+    mac: { createDmg: true },
+    linux: { bundleCEF: true, defaultRenderer: "cef" },
+    win: {},
   },
 } satisfies ElectrobunConfig
 

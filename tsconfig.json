@@ -10,6 +10,7 @@
     { "path": "packages/projects" },
     { "path": "packages/db" },
     { "path": "packages/ipc" },
+    { "path": "packages/platform" },
     { "path": "packages/agent-events" },
     { "path": "packages/run-store" },
     { "path": "packages/agent-driver" },

@@ -37,6 +37,7 @@
         "@launchkit/driver-opencode": "workspace:*",
         "@launchkit/harnesses": "workspace:*",
         "@launchkit/ipc": "workspace:*",
+        "@launchkit/platform": "workspace:*",
         "@launchkit/projects": "workspace:*",
         "@launchkit/proxy": "workspace:*",
         "@launchkit/run-store": "workspace:*",
@@ -92,6 +93,7 @@
       "name": "@launchkit/config",
       "version": "0.1.0",
       "dependencies": {
+        "@launchkit/platform": "workspace:*",
         "@launchkit/types": "workspace:*",
         "@launchkit/utils": "workspace:*",
         "zod": "^3.23.8",
@@ -127,6 +129,7 @@
         "@launchkit/agent-driver": "workspace:*",
         "@launchkit/agent-events": "workspace:*",
         "@launchkit/driver-runtime": "workspace:*",
+        "@launchkit/platform": "workspace:*",
         "@launchkit/types": "workspace:*",
         "@launchkit/utils": "workspace:*",
       },
@@ -168,6 +171,7 @@
       "name": "@launchkit/harnesses",
       "version": "0.1.0",
       "dependencies": {
+        "@launchkit/platform": "workspace:*",
         "@launchkit/types": "workspace:*",
         "@launchkit/utils": "workspace:*",
       },
@@ -181,6 +185,10 @@
         "@launchkit/utils": "workspace:*",
         "zod": "^3.24.0",
       },
+    },
+    "packages/platform": {
+      "name": "@launchkit/platform",
+      "version": "0.1.0",
     },
     "packages/projects": {
       "name": "@launchkit/projects",
@@ -239,6 +247,7 @@
       "name": "@launchkit/secrets",
       "version": "0.1.0",
       "dependencies": {
+        "@launchkit/platform": "workspace:*",
         "@launchkit/types": "workspace:*",
         "@launchkit/utils": "workspace:*",
       },
@@ -477,6 +486,8 @@
     "@launchkit/harnesses": ["@launchkit/harnesses@workspace:packages/harnesses"],
 
     "@launchkit/ipc": ["@launchkit/ipc@workspace:packages/ipc"],
+
+    "@launchkit/platform": ["@launchkit/platform@workspace:packages/platform"],
 
     "@launchkit/projects": ["@launchkit/projects@workspace:packages/projects"],
 

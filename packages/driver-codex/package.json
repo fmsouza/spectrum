@@ -9,6 +9,7 @@
     "@launchkit/agent-driver": "workspace:*",
     "@launchkit/agent-events": "workspace:*",
     "@launchkit/driver-runtime": "workspace:*",
+    "@launchkit/platform": "workspace:*",
     "@launchkit/types": "workspace:*",
     "@launchkit/utils": "workspace:*"
   }

@@ -14,7 +14,7 @@ policy); `CODEX_SUPPORTED_MODES` (manual / auto-edits / bypass — plan mode is 
 app-server protocol).
 
 **Depends on:** `@launchkit/driver-runtime`, `@launchkit/agent-driver`, `@launchkit/agent-events`,
-`@launchkit/types`, `@launchkit/utils`. Does NOT import other driver packages, the proxy, or the UI; it
+`@launchkit/types`, `@launchkit/utils`, `@launchkit/platform`. Does NOT import other driver packages, the proxy, or the UI; it
 has no harness SDK (it talks raw JSON-RPC to `codex app-server`).
 
 **Effect owned:** the live `codex app-server` process — spawned ONLY behind the injected
