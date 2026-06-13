@@ -1,8 +1,8 @@
-import { LaunchKitMark, type LaunchKitMarkProps } from "@launchkit/brand"
+import { SpectrumMark, type SpectrumMarkProps } from "@launchkit/brand"
 import type { ReactElement } from "react"
 
-export type BrandMarkProps = LaunchKitMarkProps
+export type BrandMarkProps = SpectrumMarkProps
 
 export const BrandMark = (props: BrandMarkProps): ReactElement => (
-  <LaunchKitMark {...props} />
+  <SpectrumMark {...props} />
 )
