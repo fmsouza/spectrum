@@ -340,6 +340,32 @@ describe("createAppContext wiring", () => {
       env: {},
     })
   })
+
+  it("runs migrateLegacyMacosConfig before migrateLaunchkitToSpectrum (data migration order)", () => {
+    const { deps, calls } = makeFakeDeps()
+    const order: string[] = []
+    const migrateLegacyMacosConfig = ((...args: unknown[]) => {
+      order.push("migrateLegacyMacosConfig")
+      calls.migrateLegacyMacosConfig = args
+    }) as never
+    const migrateLaunchkitToSpectrum = ((...args: unknown[]) => {
+      order.push("migrateLaunchkitToSpectrum")
+      calls.migrateLaunchkitToSpectrum = args
+    }) as never
+    createAppContext({
+      ...deps,
+      migrateLegacyMacosConfig,
+      migrateLaunchkitToSpectrum,
+    })
+
+    expect(order.indexOf("migrateLegacyMacosConfig")).toBeGreaterThanOrEqual(0)
+    expect(order.indexOf("migrateLaunchkitToSpectrum")).toBeGreaterThanOrEqual(
+      0,
+    )
+    expect(order.indexOf("migrateLegacyMacosConfig")).toBeLessThan(
+      order.indexOf("migrateLaunchkitToSpectrum"),
+    )
+  })
 })
 
 describe("createAppContext native run path wiring", () => {
