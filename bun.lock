@@ -39,6 +39,7 @@
         "@spectrum/ipc": "workspace:*",
         "@spectrum/platform": "workspace:*",
         "@spectrum/projects": "workspace:*",
+        "@spectrum/providers": "workspace:*",
         "@spectrum/proxy": "workspace:*",
         "@spectrum/run-store": "workspace:*",
         "@spectrum/secrets": "workspace:*",

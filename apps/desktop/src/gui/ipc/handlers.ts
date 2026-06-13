@@ -1,5 +1,6 @@
 import { PermissionModeSchema } from "@spectrum/agent-events"
 import type { IpcHandlers, ProviderView } from "@spectrum/ipc"
+import { providerCatalog } from "@spectrum/providers"
 import type { ModelId, ModelRoute, Provider, SecretRef } from "@spectrum/types"
 import { isOk } from "@spectrum/utils"
 import type { AppContext } from "../../composition"
@@ -47,6 +48,8 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       const config = await loadConfig()
       return config.providers.map(toProviderView)
     },
+
+    getProviderCatalog: async () => [...providerCatalog()],
 
     addProvider: async (input) => {
       const config = await loadConfig()

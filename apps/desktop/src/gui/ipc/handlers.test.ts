@@ -1113,6 +1113,18 @@ describe("createIpcHandlers.launchHarness (persisted model)", () => {
   })
 })
 
+describe("createIpcHandlers.getProviderCatalog", () => {
+  it("returns the provider catalog with custom, ollama and openrouter entries", async () => {
+    const { ctx } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+    const catalog = await handlers.getProviderCatalog(undefined)
+    const keys = catalog.map((e) => e.key)
+    expect(keys).toContain("custom")
+    expect(keys).toContain("ollama")
+    expect(keys).toContain("openrouter")
+  })
+})
+
 describe("createIpcHandlers.launchHarness selection", () => {
   it("launches a native harness via the runner manager", async () => {
     const { ctx, runnerLaunchInputs } = makeCtx({
