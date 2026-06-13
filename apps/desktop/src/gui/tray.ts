@@ -145,7 +145,15 @@ export const realMountTrayDeps: MountTrayDeps = {
     // The returned handle works before the native tray resolves: `setMenu` buffers into `current`,
     // which is applied as soon as the tray is created.
     void import("electrobun/bun").then(({ Tray }) => {
-      const native = new Tray({ title: "LaunchKit" })
+      // `image` is a bundled brand icon resolved from the app Resources (views://main/…).
+      // `template: false` keeps the colored mark (a template image would be masked to a
+      // monochrome menu-bar glyph). `title` stays as a graceful fallback if the image
+      // path is unavailable on a given platform.
+      const native = new Tray({
+        title: "LaunchKit",
+        image: "views://main/launchkit-tray.png",
+        template: false,
+      })
       tray = native
       native.setMenu(toNativeMenu(current))
       native.on("tray-clicked", (event) => {

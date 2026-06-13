@@ -34,4 +34,9 @@ describe("views/main/index.html CSP", () => {
     expect(directive(csp, "object-src")).toBe("object-src 'none'")
     expect(directive(csp, "frame-ancestors")).toBe("frame-ancestors 'none'")
   })
+
+  it("links the LaunchKit favicon", () => {
+    expect(indexHtml).toContain('rel="icon"')
+    expect(indexHtml).toContain("launchkit-favicon.svg")
+  })
 })

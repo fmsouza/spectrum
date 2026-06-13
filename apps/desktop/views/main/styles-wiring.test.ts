@@ -13,6 +13,7 @@ const electrobunConfig = await Bun.file(
 ).text()
 
 const PARTIALS = [
+  "fonts.css",
   "tokens.css",
   "base.css",
   "controls.css",
@@ -55,6 +56,13 @@ describe("views/main stylesheet partials wiring", () => {
       )
   })
 
+  it("ships the brand tray icon next to app.js via build.copy", () => {
+    const flat = electrobunConfig.replace(/\s+/g, " ")
+    expect(flat).toContain(
+      '"views/main/launchkit-tray.png": "views/main/launchkit-tray.png"',
+    )
+  })
+
   it("still ships the post-redesign shell + sessions detail markers", async () => {
     const shell = await Bun.file(
       new URL("./styles/shell.css", import.meta.url),
@@ -64,6 +72,18 @@ describe("views/main stylesheet partials wiring", () => {
     ).text()
     expect(shell).toContain('nav[aria-label="Primary"]')
     expect(sessions).toContain(".lk-sessions-detail")
+  })
+
+  it("ships the self-hosted Geist woff2 next to app.js via build.copy", () => {
+    const flat = electrobunConfig.replace(/\s+/g, " ")
+    for (const f of ["Geist-Variable.woff2", "GeistMono-Variable.woff2"])
+      expect(flat).toContain(`"views/main/fonts/${f}": "views/main/fonts/${f}"`)
+  })
+
+  it("links fonts.css before tokens.css so @font-face is registered first", () => {
+    expect(indexHtml.indexOf('href="./styles/fonts.css"')).toBeLessThan(
+      indexHtml.indexOf('href="./styles/tokens.css"'),
+    )
   })
 
   it("guards key structural selectors so CSS stays in sync with the shell DOM", async () => {
@@ -86,8 +106,9 @@ describe("views/main stylesheet partials wiring", () => {
     const runView = await Bun.file(
       new URL("./styles/run-view.css", import.meta.url),
     ).text()
-    expect(tokens).toContain("--master-w")
-    expect(tokens).toContain("prefers-color-scheme")
+    expect(tokens).toContain("--lk-master-w")
+    expect(tokens).toContain('[data-theme="light"]')
+    expect(tokens).not.toContain("prefers-color-scheme")
     expect(controls).toContain("[data-variant=")
     expect(shell).toContain(".lk-shell")
     expect(shell).toContain("[data-app-icon]")
