@@ -37,6 +37,7 @@
         "@launchkit/driver-opencode": "workspace:*",
         "@launchkit/harnesses": "workspace:*",
         "@launchkit/ipc": "workspace:*",
+        "@launchkit/platform": "workspace:*",
         "@launchkit/projects": "workspace:*",
         "@launchkit/proxy": "workspace:*",
         "@launchkit/run-store": "workspace:*",
