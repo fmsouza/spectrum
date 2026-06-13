@@ -1,5 +1,7 @@
 # Manual Verification — Cross-Platform GUI
 
+> For the macOS-specific UI regression checklist (Bugs 1-9 layout/responsiveness, Security spot-checks), see [`MANUAL-VERIFICATION.macos.md`](./MANUAL-VERIFICATION.macos.md).
+
 Run on each OS after a release build. CI verifies the launch + proxy smoke; this checklist verifies
 the human-facing surface that CI cannot.
 
