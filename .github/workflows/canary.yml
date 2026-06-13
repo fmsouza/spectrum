@@ -78,9 +78,12 @@ jobs:
         continue-on-error: true
         run: bun run --filter launchkit build
 
-      - name: Install xvfb (Linux GUI smoke)
+      - name: Install Linux GUI runtime deps (xvfb + webkit2gtk)
         if: matrix.app && runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y xvfb
+        # Electrobun's libNativeWrapper.so dlopens libwebkit2gtk-4.1.so.0 at startup even with
+        # bundleCEF, so the runtime lib must be present or the app crashes (ERR_DLOPEN_FAILED)
+        # before the proxy binds. xvfb provides the virtual display the GUI smoke needs.
+        run: sudo apt-get update && sudo apt-get install -y xvfb libwebkit2gtk-4.1-0
 
       - name: Verified-running smoke (Linux)
         if: matrix.app && runner.os == 'Linux' && steps.app.outcome == 'success'
