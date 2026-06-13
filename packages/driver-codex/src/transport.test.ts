@@ -34,7 +34,7 @@ describe("createJsonRpcDispatcher — framing + routing", () => {
       idGen: seqIds(),
     })
     void d.request("initialize", {
-      clientInfo: { name: "launchkit", version: "0" },
+      clientInfo: { name: "spectrum", version: "0" },
       capabilities: null,
     })
     expect(writes).toEqual([
@@ -43,7 +43,7 @@ describe("createJsonRpcDispatcher — framing + routing", () => {
         id: "rpc_1",
         method: "initialize",
         params: {
-          clientInfo: { name: "launchkit", version: "0" },
+          clientInfo: { name: "spectrum", version: "0" },
           capabilities: null,
         },
       })}\n`,
