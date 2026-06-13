@@ -4,3 +4,4 @@ export {
   type ResolveAppPathsInput,
   resolveAppPaths,
 } from "./paths"
+export { isAbsolutePath } from "./abs-path"
