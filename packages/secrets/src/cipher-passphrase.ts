@@ -16,7 +16,7 @@ const KEY_LEN = 32
 const noPassphrase: SecretError = {
   kind: "unavailable",
   detail:
-    "no secret passphrase available — set LAUNCHKIT_SECRET_PASSPHRASE or install a Secret Service keyring",
+    "no secret passphrase available — set SPECTRUM_SECRET_PASSPHRASE or install a Secret Service keyring",
 }
 
 /**

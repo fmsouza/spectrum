@@ -18,7 +18,7 @@ the human-facing surface that CI cannot.
 ## Linux
 - [ ] Window renders via **CEF**; no missing-GTK errors.
 - [ ] With a desktop keyring: key is stored via **Secret Service** (`secret-tool lookup service spectrum account <ref>`).
-- [ ] Headless (no keyring) with `LAUNCHKIT_SECRET_PASSPHRASE` set: key add/find works (encrypted file under `~/.config/spectrum/secrets/`).
+- [ ] Headless (no keyring) with `SPECTRUM_SECRET_PASSPHRASE` set: key add/find works (encrypted file under `~/.config/spectrum/secrets/`).
 - [ ] Headless with NO passphrase and NO keyring: adding a key fails with a clear "set a passphrase / install a keyring" message (never silent plaintext).
 
 ## Windows

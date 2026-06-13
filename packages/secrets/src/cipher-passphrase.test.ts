@@ -38,7 +38,7 @@ describe("createPassphraseAeadCipher", () => {
       ok: false,
       error: {
         kind: "unavailable",
-        detail: expect.stringContaining("LAUNCHKIT_SECRET_PASSPHRASE"),
+        detail: expect.stringContaining("SPECTRUM_SECRET_PASSPHRASE"),
       },
     })
   })

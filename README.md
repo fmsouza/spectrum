@@ -29,7 +29,7 @@ release.
 Spectrum runs GUI + CLI on macOS, Linux, and Windows. Provider API keys are stored in the
 platform's secret store — macOS Keychain, Linux Secret Service (libsecret), or Windows DPAPI —
 so stored-key proxy routing works on all three. On a headless Linux box with no keyring, set
-`LAUNCHKIT_SECRET_PASSPHRASE` to enable an encrypted-file fallback (Spectrum never writes secrets
+`SPECTRUM_SECRET_PASSPHRASE` to enable an encrypted-file fallback (Spectrum never writes secrets
 in plaintext). Code signing / notarization is not yet applied, so you may need to allow the app past
 your OS's first-run gatekeeper.
 

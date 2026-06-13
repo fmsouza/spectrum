@@ -13,7 +13,7 @@ import { DEMO_HARNESS_ID } from "./driver-registry"
  * `launchHarness` returns before `ctx.terminal.launch`, so no process starts. `envTemplate` is empty:
  * a demo launch uses the `direct` route (no model), which skips template rendering entirely.
  *
- * Gated by `LAUNCHKIT_DEMO_HARNESS=1` (see `composition.ts`) — production never sees it, so the embedded
+ * Gated by `SPECTRUM_DEMO_HARNESS=1` (see `composition.ts`) — production never sees it, so the embedded
  * terminal path for every real harness is unchanged.
  */
 export const demoHarness: HarnessDefinition = {

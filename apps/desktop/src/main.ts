@@ -31,10 +31,7 @@ export const buildRealDeps = (
         const reconciled = ctx.sessions.reconcileOrphaned()
         if (!reconciled.ok) {
           // Non-fatal: log and continue rather than crashing GUI startup.
-          console.warn(
-            "[launchkit] reconcileOrphaned failed:",
-            reconciled.error,
-          )
+          console.warn("[spectrum] reconcileOrphaned failed:", reconciled.error)
         }
 
         // Load the live config so the GUI proxy's router knows the real providers + models.

@@ -31,7 +31,7 @@ export const AppShell = ({
     <div className="lk-shell">
       <nav aria-label="Primary">
         <span data-app-icon="">
-          <BrandMark variant="mono-white" size={28} title="LaunchKit" />
+          <BrandMark variant="mono-white" size={28} title="Spectrum" />
         </span>
         <ul>
           <RailItem

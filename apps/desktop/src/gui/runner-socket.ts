@@ -62,7 +62,7 @@ export const startRunnerSocket = (manager: RunManager): RunnerSocket => {
     port: 0,
     fetch(req, srv) {
       if (srv.upgrade(req)) return undefined
-      return new Response("launchkit runner socket", { status: 426 })
+      return new Response("spectrum runner socket", { status: 426 })
     },
     websocket: {
       open(ws) {

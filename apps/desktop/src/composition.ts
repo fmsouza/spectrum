@@ -248,7 +248,7 @@ const defaultGenProxyKey = (): string => {
 
 /** Headless passphrase source for the encrypted-file fallback (GUI prompt is a future addition). */
 const defaultSecretPassphrase = async (): Promise<string | null> =>
-  process.env.LAUNCHKIT_SECRET_PASSPHRASE ?? null
+  process.env.SPECTRUM_SECRET_PASSPHRASE ?? null
 
 /** The real constructors, used when `createAppContext()` is called with no argument. */
 const realDeps: CreateAppContextDeps = {
@@ -289,7 +289,7 @@ const realDeps: CreateAppContextDeps = {
   createFakeDriver,
   createCodexDriver,
   createOpencodeDriver,
-  demoHarnessEnabled: process.env.LAUNCHKIT_DEMO_HARNESS === "1",
+  demoHarnessEnabled: process.env.SPECTRUM_DEMO_HARNESS === "1",
   genProxyKey: defaultGenProxyKey,
 }
 
@@ -489,7 +489,7 @@ export const createAppContext = (
   const baseRegistry = deps.createRegistry({
     fileSource: createInMemoryHarnessFileSource([]),
   })
-  // Dev-only (LAUNCHKIT_DEMO_HARNESS=1): surface a launchable `demo` harness — driven by the FakeDriver
+  // Dev-only (SPECTRUM_DEMO_HARNESS=1): surface a launchable `demo` harness — driven by the FakeDriver
   // registered in the driver registry below — so the native conversation view is reachable from the New
   // Session modal. Production (flag unset) lists only the builtin harnesses.
   const registry = deps.demoHarnessEnabled
@@ -524,7 +524,7 @@ export const createAppContext = (
 
   // Native drivers: `claude`, `codex`, `opencode`, `openclaw` all launch native via their drivers
   // (openclaw is UNVERIFIED — no binary). The demo FakeDriver stays dev-gated
-  // (LAUNCHKIT_DEMO_HARNESS=1). Each driver injects its own effects so the logic stays unit-testable;
+  // (SPECTRUM_DEMO_HARNESS=1). Each driver injects its own effects so the logic stays unit-testable;
   // the runtime owns the sync↔async bridge + lifecycle.
   const idGen = deps.createCryptoIdGen()
   const driverIdGen = deps.createCryptoIdGen()
