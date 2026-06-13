@@ -74,6 +74,13 @@
         "zod": "^3.24.0",
       },
     },
+    "packages/brand": {
+      "name": "@launchkit/brand",
+      "version": "0.1.0",
+      "dependencies": {
+        "react": "^19",
+      },
+    },
     "packages/cli": {
       "name": "@launchkit/cli",
       "version": "0.1.0",
@@ -466,6 +473,8 @@
     "@launchkit/agent-events": ["@launchkit/agent-events@workspace:packages/agent-events"],
 
     "@launchkit/biome-config": ["@launchkit/biome-config@workspace:tooling/biome-config"],
+
+    "@launchkit/brand": ["@launchkit/brand@workspace:packages/brand"],
 
     "@launchkit/cli": ["@launchkit/cli@workspace:packages/cli"],
 
