@@ -58,7 +58,9 @@ const config = {
       "views/main/favicon.ico": "views/main/favicon.ico",
       "views/main/launchkit-tray.png": "views/main/launchkit-tray.png",
     },
-    mac: { createDmg: true },
+    // `icons` points at the macOS .iconset (built from the brand squircle icon); Electrobun
+    // runs `iconutil` at build time to emit AppIcon.icns (CFBundleIconFile) into the bundle.
+    mac: { createDmg: true, icons: "icon.iconset" },
     linux: { bundleCEF: true, defaultRenderer: "cef" },
     win: {},
   },
