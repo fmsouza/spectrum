@@ -78,12 +78,27 @@ jobs:
         continue-on-error: true
         run: bun run --filter launchkit build
 
-      - name: Install Linux GUI runtime deps (xvfb + webkit2gtk)
+      - name: Install Linux GUI runtime deps (xvfb + webkit2gtk + appindicator)
         if: matrix.app && runner.os == 'Linux'
-        # Electrobun's libNativeWrapper.so dlopens libwebkit2gtk-4.1.so.0 at startup even with
-        # bundleCEF, so the runtime lib must be present or the app crashes (ERR_DLOPEN_FAILED)
-        # before the proxy binds. xvfb provides the virtual display the GUI smoke needs.
-        run: sudo apt-get update && sudo apt-get install -y xvfb libwebkit2gtk-4.1-0
+        # Electrobun's libNativeWrapper.so dlopens the GTK/WebKit + app-indicator stack at startup
+        # even with bundleCEF, so those runtime libs must be present or the app crashes
+        # (ERR_DLOPEN_FAILED) before the proxy binds. xvfb provides the virtual display the GUI
+        # smoke needs. The trailing `ldd` surfaces any still-unresolved wrapper deps up front so a
+        # missing lib shows here instead of as an opaque smoke failure.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xvfb \
+            libwebkit2gtk-4.1-0 \
+            libgtk-3-0 \
+            libayatana-appindicator3-1 \
+            librsvg2-2 \
+            libnotify4
+          LIB=$(find apps/desktop/build -name libNativeWrapper.so | head -1)
+          if [ -n "$LIB" ]; then
+            echo "== ldd $LIB =="
+            ldd "$LIB" | (grep 'not found' && echo '::warning::libNativeWrapper.so has unresolved deps (above)' || echo 'all wrapper deps resolved')
+          fi
 
       - name: Verified-running smoke (Linux)
         if: matrix.app && runner.os == 'Linux' && steps.app.outcome == 'success'
