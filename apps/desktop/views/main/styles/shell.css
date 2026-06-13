@@ -27,9 +27,9 @@ nav[aria-label="Primary"] {
   overflow-y: auto;
 }
 
-/* The app mark the component renders (<span data-app-icon>LK</span>): a small
-   monogram tile at the top of the rail. (No CSS ::before wordmark — the DOM owns
-   this text now, so injecting one would double it.) */
+/* The app mark the component renders (<span data-app-icon><BrandMark …/></span>):
+   a small icon tile at the top of the rail. The mark is self-contained — no tile
+   background needed. Layout only. */
 nav[aria-label="Primary"] [data-app-icon] {
   display: flex;
   align-items: center;
@@ -38,12 +38,6 @@ nav[aria-label="Primary"] [data-app-icon] {
   height: 36px;
   margin-bottom: var(--lk-space-2);
   border-radius: var(--lk-radius-md);
-  background: color-mix(in srgb, var(--lk-primary) 22%, var(--lk-graphite-950));
-  color: var(--lk-text);
-  font-weight: 700;
-  font-size: var(--lk-text-sm);
-  letter-spacing: 0.02em;
-  user-select: none;
 }
 
 nav[aria-label="Primary"] ul {

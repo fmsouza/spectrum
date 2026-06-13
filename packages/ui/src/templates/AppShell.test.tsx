@@ -59,7 +59,12 @@ describe("AppShell", () => {
     const { container } = render(<AppShell {...baseProps} />)
     expect(
       container.querySelectorAll("nav[aria-label='Primary'] svg").length,
-    ).toBe(2)
+    ).toBeGreaterThanOrEqual(2)
+  })
+
+  it("renders the LaunchKit brand mark in the primary rail", () => {
+    const { getByRole } = render(<AppShell {...baseProps} />)
+    expect(getByRole("img", { name: "LaunchKit" })).toBeTruthy()
   })
 
   it("shows the proxy port in a tooltip when the rail status is hovered", () => {

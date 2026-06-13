@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from "react"
+import { BrandMark } from "../atoms/BrandMark"
 import { Icon } from "../atoms/Icon"
 import { StatusDot } from "../atoms/StatusDot"
 import { Tooltip } from "../atoms/Tooltip"
@@ -29,8 +30,8 @@ export const AppShell = ({
   return (
     <div className="lk-shell">
       <nav aria-label="Primary">
-        <span aria-hidden="true" data-app-icon="">
-          LK
+        <span data-app-icon="">
+          <BrandMark variant="mono-white" size={28} title="LaunchKit" />
         </span>
         <ul>
           <RailItem
