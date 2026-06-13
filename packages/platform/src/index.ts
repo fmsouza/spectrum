@@ -6,3 +6,9 @@ export {
 } from "./paths"
 export { isAbsolutePath } from "./abs-path"
 export { defaultTerminationSignal } from "./signal"
+export {
+  type LegacyMacosMigration,
+  type PlanLegacyMacosMigrationInput,
+  legacyMacosConfigDir,
+  planLegacyMacosMigration,
+} from "./migration"
