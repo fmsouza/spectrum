@@ -19,5 +19,4 @@ export {
 export type {
   SpectrumMigration,
   PlanSpectrumMigrationInput,
-  LegacyLaunchkitDataDirInput,
 } from "./spectrum-migration"

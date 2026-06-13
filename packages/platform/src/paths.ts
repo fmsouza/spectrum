@@ -19,7 +19,7 @@ export interface ResolveAppPathsInput {
 const APP_DIR_NAME = "Spectrum" // macOS + Windows
 const XDG_DIR_NAME = "spectrum" // Linux / unknown
 
-const nonEmpty = (v: string | undefined): v is string =>
+export const nonEmpty = (v: string | undefined): v is string =>
   v !== undefined && v.length > 0
 
 /** Resolve the single per-OS application directory and the files within it. Pure. */

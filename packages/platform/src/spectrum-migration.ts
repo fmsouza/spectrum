@@ -1,5 +1,6 @@
 import path from "node:path"
-import { resolveAppPaths } from "./paths"
+import { nonEmpty, resolveAppPaths } from "./paths"
+import type { ResolveAppPathsInput } from "./paths"
 import type { Platform } from "./platform"
 
 export interface SpectrumMigration {
@@ -16,22 +17,11 @@ export interface PlanSpectrumMigrationInput {
   readonly newDirExists: boolean
 }
 
-export interface LegacyLaunchkitDataDirInput {
-  readonly platform: Platform
-  readonly homeDir: string
-  readonly env: Readonly<Record<string, string | undefined>>
-}
-
 const OLD_APP_DIR_NAME = "LaunchKit"
 const OLD_XDG_DIR_NAME = "launchkit"
 
-const nonEmpty = (v: string | undefined): v is string =>
-  v !== undefined && v.length > 0
-
 /** The pre-rename Spectrum data dir (named "LaunchKit"/"launchkit"). Pure. */
-export const legacyLaunchkitDataDir = (
-  input: LegacyLaunchkitDataDirInput,
-): string => {
+export const legacyLaunchkitDataDir = (input: ResolveAppPathsInput): string => {
   const { platform, homeDir, env } = input
   const p = platform === "windows" ? path.win32 : path.posix
   switch (platform) {
@@ -66,6 +56,5 @@ export const planLaunchkitToSpectrumMigration = (
     env: input.env,
   }).dataDir
   const from = legacyLaunchkitDataDir(input)
-  if (from === to) return { kind: "noop" }
   return { kind: "move", from, to }
 }
