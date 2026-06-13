@@ -62,7 +62,7 @@ describe("buildTrayMenu", () => {
     })
   })
 
-  it("ends with Open LaunchKit then Quit, separated from the rest", () => {
+  it("ends with Open Spectrum then Quit, separated from the rest", () => {
     const menu = buildTrayMenu({
       harnesses: [harness("claude", "Claude Code")],
       proxyRunning: true,
@@ -70,7 +70,7 @@ describe("buildTrayMenu", () => {
     const tail = menu.items.slice(-3)
     expect(tail).toEqual([
       { kind: "separator" },
-      { kind: "open", label: "Open LaunchKit" },
+      { kind: "open", label: "Open Spectrum" },
       { kind: "quit", label: "Quit" },
     ])
   })

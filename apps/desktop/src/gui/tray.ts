@@ -150,7 +150,7 @@ export const realMountTrayDeps: MountTrayDeps = {
       // monochrome menu-bar glyph). `title` stays as a graceful fallback if the image
       // path is unavailable on a given platform.
       const native = new Tray({
-        title: "LaunchKit",
+        title: "Spectrum",
         image: "views://main/launchkit-tray.png",
         template: false,
       })

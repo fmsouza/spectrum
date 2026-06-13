@@ -53,7 +53,7 @@ export const openWindow = (
 ): void => {
   const window = deps.createWindow({
     url: deps.viewUrl,
-    title: "LaunchKit",
+    title: "Spectrum",
     lockNavigationToOrigin: true,
   })
   const transport = deps.makeTransport(window)

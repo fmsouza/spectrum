@@ -194,7 +194,7 @@ describe("mountTray", () => {
     expect(openWindow).toHaveBeenCalledTimes(1)
   })
 
-  it("invokes openWindow when the Open LaunchKit item is clicked", async () => {
+  it("invokes openWindow when the Open Spectrum item is clicked", async () => {
     const { ctx } = makeCtx()
     const openWindow = mock(() => {})
     const { deps, click } = captureTray()

@@ -25,7 +25,7 @@ export class ErrorBoundary extends Component<
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
     // Surface to the (devtools) console too; the on-screen panel is the primary signal.
-    console.error("[LaunchKit] page error:", error, info.componentStack)
+    console.error("[Spectrum] page error:", error, info.componentStack)
   }
 
   override render(): ReactNode {

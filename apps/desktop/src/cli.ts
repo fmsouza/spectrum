@@ -12,11 +12,11 @@ import { createAppContext } from "./composition"
 export const formatCliError = (error: CliError): string => {
   switch (error.kind) {
     case "unknown-command":
-      return `launchkit: unknown command "${error.command}"`
+      return `spectrum: unknown command "${error.command}"`
     case "usage":
-      return `launchkit: ${error.detail}`
+      return `spectrum: ${error.detail}`
     case "failed":
-      return `launchkit: ${error.detail}`
+      return `spectrum: ${error.detail}`
   }
 }
 
