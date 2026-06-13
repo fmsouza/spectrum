@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { SessionId } from "@launchkit/types"
+import type { SessionId } from "@spectrum/types"
 import { createUiStore, encodeView, parseView } from "./uiStore"
 
 describe("uiStore view helpers", () => {

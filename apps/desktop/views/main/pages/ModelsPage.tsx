@@ -1,4 +1,4 @@
-import type { ModelId, ProviderId } from "@launchkit/types"
+import type { ModelId, ProviderId } from "@spectrum/types"
 import {
   Button,
   EmptyState,
@@ -10,7 +10,7 @@ import {
   SettingsLayout,
   Spinner,
   TextInput,
-} from "@launchkit/ui"
+} from "@spectrum/ui"
 import { type ReactElement, useState } from "react"
 import { useModels } from "../hooks/useModels"
 import { useProviderModels } from "../hooks/useProviderModels"

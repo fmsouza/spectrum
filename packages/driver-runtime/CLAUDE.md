@@ -1,4 +1,4 @@
-# @launchkit/driver-runtime
+# @spectrum/driver-runtime
 
 **Responsibility:** the reusable driver core. `createDriver(adapter)` wraps a per-harness `DriverAdapter`
 into the locked synchronous `AgentDriver`/`AgentSession` seam — owning the sync↔async start bridge
@@ -10,8 +10,8 @@ correlation, outbound command queueing (before the handle exists), and lifecycle
 before the handle exists, like other outbound commands), and reads `DriverAdapter.supportedModes` to
 populate the `runner-started.supportedModes` field emitted up-front on every run start.
 
-**Depends on:** `@launchkit/agent-driver` (the seam + ports), `@launchkit/agent-events` (CanonicalEvent),
-`@launchkit/utils` (Result, IdGen). NO harness SDKs — this package is PURE of harness specifics.
+**Depends on:** `@spectrum/agent-driver` (the seam + ports), `@spectrum/agent-events` (CanonicalEvent),
+`@spectrum/utils` (Result, IdGen). NO harness SDKs — this package is PURE of harness specifics.
 
 **Effect owned:** none — pure logic. The async adapter start runs via an injected `scheduler`
 (defaults to `queueMicrotask`; tests pass `(fn) => fn()`). `idGen` is injected (mints `rnr`/`apr`).

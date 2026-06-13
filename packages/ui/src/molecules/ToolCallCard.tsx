@@ -1,4 +1,4 @@
-import type { Json, ToolCallItem } from "@launchkit/agent-events"
+import type { Json, ToolCallItem } from "@spectrum/agent-events"
 import type { ReactElement } from "react"
 import type { DotStatus } from "../atoms/StatusDot"
 import { StatusDot } from "../atoms/StatusDot"

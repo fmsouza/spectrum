@@ -1,4 +1,4 @@
-import { type Result, err } from "@launchkit/utils"
+import { type Result, err } from "@spectrum/utils"
 import type { ConfigError } from "./errors"
 import { runMigrations } from "./migrations"
 import type { Config } from "./schema"

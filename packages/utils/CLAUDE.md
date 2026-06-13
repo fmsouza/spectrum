@@ -1,4 +1,4 @@
-# @launchkit/utils
+# @spectrum/utils
 
 **Responsibility:** Pure cross-cutting helpers (Result, pipe/flow, renderTemplate, redactSecrets, ids) + shared effect interfaces (Clock, IdGen).
 

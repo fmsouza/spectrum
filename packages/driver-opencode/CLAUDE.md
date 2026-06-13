@@ -1,8 +1,8 @@
-# @launchkit/driver-opencode
+# @spectrum/driver-opencode
 
 **Responsibility:** the OpenCode server adapter — a PURE `mapOpencodeEvent` + injected-transport glue
 (`opencode serve` + `@opencode-ai/sdk`, the GLOBAL SSE bus filtered by `sessionID`), wrapped by
-`@launchkit/driver-runtime` into an `AgentDriver`. Creates a session, subscribes the server-wide event
+`@spectrum/driver-runtime` into an `AgentDriver`. Creates a session, subscribes the server-wide event
 stream, maps each in-scope event to canonical events, bridges `permission.updated` through
 `ctx.requestApproval` (reply `once`/`always`/`reject`), and tears the server down on close.
 
@@ -13,8 +13,8 @@ stream, maps each in-scope event to canonical events, bridges `permission.update
 `permission.updated` has no verified edit discriminator). Plan mode sends prompts with `agent: "plan"`;
 bypass auto-replies `"always"` to permission requests without bridging to the UI.
 
-**Depends on:** `@launchkit/driver-runtime`, `@launchkit/agent-events`, `@launchkit/agent-driver`,
-`@launchkit/utils`, `@opencode-ai/sdk`, `zod`. Does NOT import other driver packages, the proxy, or the UI.
+**Depends on:** `@spectrum/driver-runtime`, `@spectrum/agent-events`, `@spectrum/agent-driver`,
+`@spectrum/utils`, `@opencode-ai/sdk`, `zod`. Does NOT import other driver packages, the proxy, or the UI.
 
 **Effect owned:** the `opencode serve` process + HTTP/SSE connection — behind the injected
 `OpencodeConnect` port; never reached around. No direct fs/spawn in this package's logic (the SDK owns the

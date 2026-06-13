@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import type { CanonicalEvent } from "@launchkit/agent-events"
-import { createSequentialIdGen, isOk } from "@launchkit/utils"
+import type { CanonicalEvent } from "@spectrum/agent-events"
+import { createSequentialIdGen, isOk } from "@spectrum/utils"
 import { createOpencodeDriver } from "./driver"
 import { S_ROOT } from "./fixtures/opencode-events"
 import type { OpencodeClient, OpencodeEvent } from "./transport"

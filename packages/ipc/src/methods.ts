@@ -1,7 +1,4 @@
-import {
-  PermissionModeSchema,
-  StoredEventSchema,
-} from "@launchkit/agent-events"
+import { PermissionModeSchema, StoredEventSchema } from "@spectrum/agent-events"
 import {
   HarnessDefinitionSchema,
   HarnessIdSchema,
@@ -12,7 +9,7 @@ import {
   SdkProviderSchema,
   SessionIdSchema,
   SessionSchema,
-} from "@launchkit/types"
+} from "@spectrum/types"
 import { z } from "zod"
 import { ProviderViewSchema } from "./provider-view"
 

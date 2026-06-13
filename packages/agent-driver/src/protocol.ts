@@ -1,20 +1,20 @@
 import {
   ApprovalDecisionSchema,
   PermissionModeSchema,
-} from "@launchkit/agent-events"
+} from "@spectrum/agent-events"
 import type {
   ApprovalDecision,
   PermissionMode,
   StoredEvent,
-} from "@launchkit/agent-events"
+} from "@spectrum/agent-events"
 import {
   type ModelId,
   ModelIdSchema,
   type SessionId,
   SessionIdSchema,
-} from "@launchkit/types"
+} from "@spectrum/types"
 
-import { type Result, err, ok } from "@launchkit/utils"
+import { type Result, err, ok } from "@spectrum/utils"
 import { z } from "zod"
 
 export type RunnerOutbound = {

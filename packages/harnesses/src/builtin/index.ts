@@ -1,4 +1,4 @@
-import type { HarnessDefinition } from "@launchkit/types"
+import type { HarnessDefinition } from "@spectrum/types"
 import { claude } from "./claude"
 import { codex } from "./codex"
 import { openclaw } from "./openclaw"

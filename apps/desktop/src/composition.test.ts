@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
-import { claude } from "@launchkit/harnesses"
-import { resolveAppPaths } from "@launchkit/platform"
-import { createProjectStore } from "@launchkit/projects"
-import { err, ok } from "@launchkit/utils"
+import { claude } from "@spectrum/harnesses"
+import { resolveAppPaths } from "@spectrum/platform"
+import { createProjectStore } from "@spectrum/projects"
+import { err, ok } from "@spectrum/utils"
 import { createAppContext } from "./composition"
 import type { CreateAppContextDeps } from "./composition"
 import { DEMO_HARNESS_ID } from "./gui/driver-registry"
@@ -28,6 +28,7 @@ const makeFakeDeps = (): {
       calls.ensureDir = [dir]
     }) as never,
     migrateLegacyMacosConfig: record("migrateLegacyMacosConfig") as never,
+    migrateLaunchkitToSpectrum: record("migrateLaunchkitToSpectrum") as never,
     createFsConfigFile: record("createFsConfigFile") as never,
     createFileConfigStore: record("createFileConfigStore") as never,
     createCachedConfigStore: record("createCachedConfigStore") as never,
@@ -174,7 +175,7 @@ describe("createAppContext wiring", () => {
 
     // fs file is created at the resolved config path under the home dir
     expect(calls.createFsConfigFile?.[0] as string).toContain(
-      "/home/tester/.config/launchkit/config.json",
+      "/home/tester/.config/spectrum/config.json",
     )
     // the file store receives that fs file ...
     expect(calls.createFileConfigStore?.[0]).toEqual({
@@ -199,7 +200,7 @@ describe("createAppContext wiring", () => {
     expect(arg.platform).toBe("linux")
     expect(arg.runner).toEqual({ __stub: "createBunProcessRunner" })
     expect(arg.fileOps).toEqual({ __stub: "createSecretFileOps" })
-    expect(arg.secretsDir).toBe("/home/tester/.config/launchkit/secrets")
+    expect(arg.secretsDir).toBe("/home/tester/.config/spectrum/secrets")
     expect(typeof arg.secretPassphrase).toBe("function")
     expect(calls.createSecretStore?.[0]).toEqual({
       backend: { __stub: "createPlatformKeychainBackend" },
@@ -212,7 +213,7 @@ describe("createAppContext wiring", () => {
     createAppContext(deps)
 
     expect(calls.createSqliteClient?.[0] as string).toContain(
-      "/home/tester/.config/launchkit/launchkit.db",
+      "/home/tester/.config/spectrum/spectrum.db",
     )
     const sessionArgs = calls.createSessionStore?.[0] as {
       db: unknown
@@ -254,7 +255,7 @@ describe("createAppContext wiring", () => {
     const ctx = createAppContext(deps)
 
     expect(calls.createFileRuntimeState?.[0] as string).toContain(
-      "/home/tester/.config/launchkit/runtime.json",
+      "/home/tester/.config/spectrum/runtime.json",
     )
     expect(ctx.runtime).toEqual({ __stub: "createFileRuntimeState" })
   })
@@ -328,6 +329,42 @@ describe("createAppContext wiring", () => {
       homeDir: "/home/tester",
       env: {},
     })
+  })
+
+  it("runs the LaunchKit→Spectrum migration with the injected platform/home/env after the legacy migration", () => {
+    const { deps, calls } = makeFakeDeps()
+    createAppContext(deps)
+    expect(calls.migrateLaunchkitToSpectrum?.[0]).toEqual({
+      platform: "linux",
+      homeDir: "/home/tester",
+      env: {},
+    })
+  })
+
+  it("runs migrateLegacyMacosConfig before migrateLaunchkitToSpectrum (data migration order)", () => {
+    const { deps, calls } = makeFakeDeps()
+    const order: string[] = []
+    const migrateLegacyMacosConfig = ((...args: unknown[]) => {
+      order.push("migrateLegacyMacosConfig")
+      calls.migrateLegacyMacosConfig = args
+    }) as never
+    const migrateLaunchkitToSpectrum = ((...args: unknown[]) => {
+      order.push("migrateLaunchkitToSpectrum")
+      calls.migrateLaunchkitToSpectrum = args
+    }) as never
+    createAppContext({
+      ...deps,
+      migrateLegacyMacosConfig,
+      migrateLaunchkitToSpectrum,
+    })
+
+    expect(order.indexOf("migrateLegacyMacosConfig")).toBeGreaterThanOrEqual(0)
+    expect(order.indexOf("migrateLaunchkitToSpectrum")).toBeGreaterThanOrEqual(
+      0,
+    )
+    expect(order.indexOf("migrateLegacyMacosConfig")).toBeLessThan(
+      order.indexOf("migrateLaunchkitToSpectrum"),
+    )
   })
 })
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test"
-import type { CanonicalEvent } from "@launchkit/agent-events"
-import { createSqliteClient, runMigrations } from "@launchkit/db"
-import { createSessionStore } from "@launchkit/sessions"
-import type { SessionId } from "@launchkit/types"
-import { createFixedClock, createSequentialIdGen, isOk } from "@launchkit/utils"
+import type { CanonicalEvent } from "@spectrum/agent-events"
+import { createSqliteClient, runMigrations } from "@spectrum/db"
+import { createSessionStore } from "@spectrum/sessions"
+import type { SessionId } from "@spectrum/types"
+import { createFixedClock, createSequentialIdGen, isOk } from "@spectrum/utils"
 import { createRunStore } from "./store"
 
 const make = () => {

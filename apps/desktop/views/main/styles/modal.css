@@ -6,15 +6,15 @@
    backdrop is fixed/inset:0 so it overlays the whole window above the shell. */
 dialog[aria-modal="true"] {
   position: static;
-  width: min(560px, calc(100vw - 2 * var(--lk-space-8)));
-  max-height: calc(100vh - 2 * var(--lk-space-8));
+  width: min(560px, calc(100vw - 2 * var(--sp-space-8)));
+  max-height: calc(100vh - 2 * var(--sp-space-8));
   margin: 0;
   padding: 0;
-  color: var(--lk-text);
-  background: var(--lk-surface);
-  border: 1px solid var(--lk-border-strong);
-  border-radius: var(--lk-radius-lg);
-  box-shadow: var(--lk-shadow-3);
+  color: var(--sp-text);
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border-strong);
+  border-radius: var(--sp-radius-lg);
+  box-shadow: var(--sp-shadow-3);
   overflow: hidden auto;
 }
 
@@ -23,13 +23,13 @@ dialog[aria-modal="true"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--lk-space-3);
-  padding: var(--lk-space-4) var(--lk-space-6);
-  border-bottom: 1px solid var(--lk-border);
+  gap: var(--sp-space-3);
+  padding: var(--sp-space-4) var(--sp-space-6);
+  border-bottom: 1px solid var(--sp-border);
 }
 
 .lk-modal__header > h2 {
-  font-size: var(--lk-text-lg);
+  font-size: var(--sp-text-lg);
 }
 
 .lk-modal__close {
@@ -40,23 +40,23 @@ dialog[aria-modal="true"] {
   height: 30px;
   padding: 0;
   border: none;
-  border-radius: var(--lk-radius-md);
+  border-radius: var(--sp-radius-md);
   background: transparent;
-  color: var(--lk-text-secondary);
-  font-size: var(--lk-text-xl);
+  color: var(--sp-text-secondary);
+  font-size: var(--sp-text-xl);
   line-height: 1;
-  transition: background var(--lk-duration) var(--lk-ease), color
-    var(--lk-duration) var(--lk-ease);
+  transition: background var(--sp-duration) var(--sp-ease), color
+    var(--sp-duration) var(--sp-ease);
 }
 
 .lk-modal__close:hover {
-  background: var(--lk-bg-subtle);
-  color: var(--lk-text);
+  background: var(--sp-bg-subtle);
+  color: var(--sp-text);
 }
 
 /* The dialog body wraps the form. */
 .lk-modal__body {
-  padding: var(--lk-space-6);
+  padding: var(--sp-space-6);
 }
 
 /* The form is already inside the dialog card, so drop its standalone chrome. */

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "bun:test"
-import type { AgentStartInput } from "@launchkit/agent-driver"
+import type { AgentStartInput } from "@spectrum/agent-driver"
 import type {
   ApprovalDecision,
   ApprovalTarget,
   CanonicalEvent,
   RunnerId,
-} from "@launchkit/agent-events"
-import type { AdapterCtx } from "@launchkit/driver-runtime"
-import { createSequentialIdGen } from "@launchkit/utils"
+} from "@spectrum/agent-events"
+import type { AdapterCtx } from "@spectrum/driver-runtime"
+import { createSequentialIdGen } from "@spectrum/utils"
 import { type CreateCodexAdapterDeps, createCodexAdapter } from "./adapter"
 import type {
   JsonRpcTransport,
@@ -176,9 +176,9 @@ describe("createCodexAdapter.start", () => {
         // The full resolved codex args: `-c` provider overrides PLUS the TUI `-m <model>`.
         args: [
           "-c",
-          "model_provider=launchkit",
+          "model_provider=spectrum",
           "-c",
-          "model_providers.launchkit.base_url=http://127.0.0.1:4000/v1",
+          "model_providers.spectrum.base_url=http://127.0.0.1:4000/v1",
           "-m",
           "minimax-m3",
         ],
@@ -189,9 +189,9 @@ describe("createCodexAdapter.start", () => {
     expect(ft.fake.createDeps()?.args).toEqual([
       "app-server",
       "-c",
-      "model_provider=launchkit",
+      "model_provider=spectrum",
       "-c",
-      "model_providers.launchkit.base_url=http://127.0.0.1:4000/v1",
+      "model_providers.spectrum.base_url=http://127.0.0.1:4000/v1",
     ])
   })
 

@@ -1,2 +1,2 @@
-export { LaunchKitMark } from "./LaunchKitMark"
-export type { LaunchKitMarkProps, MarkVariant } from "./LaunchKitMark"
+export { SpectrumMark } from "./SpectrumMark"
+export type { SpectrumMarkProps, MarkVariant } from "./SpectrumMark"

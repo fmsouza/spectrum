@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test"
-import { isOk } from "@launchkit/utils"
+import { isOk } from "@spectrum/utils"
 import { createBunProcessRunner } from "./bun-process-runner"
 import { createMacosSecurityBackend } from "./macos-backend"
 
@@ -12,7 +12,7 @@ describeDarwin("createMacosSecurityBackend (real security CLI)", () => {
     runner: createBunProcessRunner(),
   })
   // Unique per run so concurrent/leftover runs never collide in the shared keychain.
-  const account = `kc_launchkit_test_${crypto.randomUUID()}`
+  const account = `kc_spectrum_test_${crypto.randomUUID()}`
 
   afterEach(async () => {
     // Best-effort cleanup; ignore not-found if a test already removed it.

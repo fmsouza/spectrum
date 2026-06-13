@@ -1,4 +1,4 @@
-import type { ApprovalDecision, ApprovalItem } from "@launchkit/agent-events"
+import type { ApprovalDecision, ApprovalItem } from "@spectrum/agent-events"
 import type { ReactElement } from "react"
 import { Button } from "../atoms/Button"
 

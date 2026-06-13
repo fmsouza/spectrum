@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { type Result, err, ok } from "@launchkit/utils"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { SecretError } from "./backend"
 import type { ProcessRunner } from "./process-runner"
 import { createSecretToolBackend } from "./secret-tool-backend"
@@ -27,9 +27,9 @@ describe("createSecretToolBackend", () => {
     expect(calls[0]?.command).toBe("secret-tool")
     expect(calls[0]?.args).toEqual([
       "store",
-      "--label=LaunchKit: kc_1",
+      "--label=Spectrum: kc_1",
       "service",
-      "launchkit",
+      "spectrum",
       "account",
       "kc_1",
     ])
@@ -44,7 +44,7 @@ describe("createSecretToolBackend", () => {
     expect(calls[0]?.args).toEqual([
       "lookup",
       "service",
-      "launchkit",
+      "spectrum",
       "account",
       "kc_1",
     ])
@@ -65,7 +65,7 @@ describe("createSecretToolBackend", () => {
     expect(calls[0]?.args).toEqual([
       "clear",
       "service",
-      "launchkit",
+      "spectrum",
       "account",
       "kc_1",
     ])

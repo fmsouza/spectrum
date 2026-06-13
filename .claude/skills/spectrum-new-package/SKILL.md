@@ -1,14 +1,14 @@
 ---
-name: launchkit-new-package
+name: spectrum-new-package
 description: Use when creating a new internal package under packages/
 ---
 
-# launchkit-new-package
+# spectrum-new-package
 
-Checklist for creating a new `@launchkit/<name>` package:
+Checklist for creating a new `@spectrum/<name>` package:
 
 1. Create `packages/<name>/` directory.
-2. Create `package.json`: name `@launchkit/<name>`, `"type": "module"`, `"private": true`, `"exports": { ".": "./src/index.ts" }`, `"scripts": { "typecheck": "tsc --noEmit", "test": "bun test" }`.
+2. Create `package.json`: name `@spectrum/<name>`, `"type": "module"`, `"private": true`, `"exports": { ".": "./src/index.ts" }`, `"scripts": { "typecheck": "tsc --noEmit", "test": "bun test" }`.
 3. Create `tsconfig.json`: extends the right `tooling/tsconfig` preset with `"references"` to dependency packages.
 4. Create `src/index.ts` barrel file.
 5. Create a co-located smoke test.

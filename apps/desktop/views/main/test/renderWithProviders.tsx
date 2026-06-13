@@ -1,4 +1,4 @@
-import type { IpcClient } from "@launchkit/ipc"
+import type { IpcClient } from "@spectrum/ipc"
 import { type RenderResult, render } from "@testing-library/react"
 import type { ReactElement } from "react"
 import { IpcClientProvider } from "../IpcClientContext"

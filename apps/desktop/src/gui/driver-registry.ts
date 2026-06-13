@@ -1,5 +1,5 @@
-import type { AgentDriver } from "@launchkit/agent-driver"
-import type { HarnessId } from "@launchkit/types"
+import type { AgentDriver } from "@spectrum/agent-driver"
+import type { HarnessId } from "@spectrum/types"
 
 /** The dev-only harness id backed by the FakeDriver. Registering ANY real harness here is out of scope. */
 export const DEMO_HARNESS_ID = "demo" as const

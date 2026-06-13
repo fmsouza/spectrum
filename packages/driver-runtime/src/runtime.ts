@@ -2,16 +2,16 @@ import type {
   AgentDriver,
   AgentSession,
   AgentStartInput,
-} from "@launchkit/agent-driver"
+} from "@spectrum/agent-driver"
 import type {
   ApprovalDecision,
   ApprovalTarget,
   CanonicalEvent,
   PermissionMode,
   RunnerId,
-} from "@launchkit/agent-events"
-import type { ModelId } from "@launchkit/types"
-import { type IdGen, type Result, ok } from "@launchkit/utils"
+} from "@spectrum/agent-events"
+import type { ModelId } from "@spectrum/types"
+import { type IdGen, type Result, ok } from "@spectrum/utils"
 import type { AdapterCtx, AdapterHandle, DriverAdapter } from "./adapter"
 
 /**

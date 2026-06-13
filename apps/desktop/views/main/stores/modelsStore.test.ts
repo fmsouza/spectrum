@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { ModelRoute } from "@launchkit/types"
+import type { ModelRoute } from "@spectrum/types"
 import { createFakeIpcClient } from "../test/fake-client"
 import { createModelsStore } from "./modelsStore"
 

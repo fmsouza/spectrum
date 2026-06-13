@@ -8,7 +8,7 @@ import {
   writeFile,
 } from "node:fs/promises"
 import { dirname } from "node:path"
-import { type Result, err, ok } from "@launchkit/utils"
+import { type Result, err, ok } from "@spectrum/utils"
 
 const FILE_MODE = 0o600
 const DIR_MODE = 0o700
@@ -45,7 +45,7 @@ export const createInMemoryRuntimeState = (): RuntimeState => {
 
 /**
  * Production `RuntimeState` backed by a single JSON file (`{ proxyKey }`). Writes are atomic and
- * `0600` (tmp → fsync → rename → chmod), mirroring `@launchkit/config`'s `fs-config-file`. Reads
+ * `0600` (tmp → fsync → rename → chmod), mirroring `@spectrum/config`'s `fs-config-file`. Reads
  * tolerate a missing/malformed file by returning `null`; `clear` is ENOENT-safe and never throws.
  */
 export const createFileRuntimeState = (path: string): RuntimeState => ({

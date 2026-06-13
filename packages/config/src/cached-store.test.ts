@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { type Result, ok } from "@launchkit/utils"
+import { type Result, ok } from "@spectrum/utils"
 import { createCachedConfigStore } from "./cached-store"
 import type { ConfigError } from "./errors"
 import type { Config } from "./schema"

@@ -1,5 +1,5 @@
-import type { ProviderView } from "@launchkit/ipc"
-import type { SdkProvider } from "@launchkit/types"
+import type { ProviderView } from "@spectrum/ipc"
+import type { SdkProvider } from "@spectrum/types"
 import {
   Button,
   EmptyState,
@@ -11,8 +11,8 @@ import {
   SettingsLayout,
   Spinner,
   TextInput,
-} from "@launchkit/ui"
-import type { ProviderRow } from "@launchkit/ui"
+} from "@spectrum/ui"
+import type { ProviderRow } from "@spectrum/ui"
 import { type ReactElement, useState } from "react"
 import { useProviders } from "../hooks/useProviders"
 

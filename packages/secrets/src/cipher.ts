@@ -1,4 +1,4 @@
-import type { Result } from "@launchkit/utils"
+import type { Result } from "@spectrum/utils"
 import type { SecretError } from "./backend"
 
 /** Encrypts/decrypts a single secret string to/from an opaque base64 envelope. */

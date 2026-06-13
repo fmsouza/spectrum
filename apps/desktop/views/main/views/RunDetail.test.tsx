@@ -1,12 +1,12 @@
 import { describe, expect, it } from "bun:test"
-import type { RunnerOutbound } from "@launchkit/agent-driver"
-import type { CanonicalEvent, StoredEvent } from "@launchkit/agent-events"
+import type { RunnerOutbound } from "@spectrum/agent-driver"
+import type { CanonicalEvent, StoredEvent } from "@spectrum/agent-events"
 import {
   type HarnessId,
   type ModelRoute,
   type SessionId,
   SessionIdSchema,
-} from "@launchkit/types"
+} from "@spectrum/types"
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react"
 import type { RunnerClient } from "../runner/runnerClient"
 import { createFakeIpcClient } from "../test/fake-client"

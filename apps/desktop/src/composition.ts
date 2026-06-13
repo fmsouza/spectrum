@@ -1,22 +1,22 @@
-import type { ConfigStore } from "@launchkit/config"
+import type { ConfigStore } from "@spectrum/config"
 import type {
   HarnessError,
   HarnessRegistry,
   LaunchParams,
   ResolvedHarnessLaunch,
-} from "@launchkit/harnesses"
-import type { ProjectStore } from "@launchkit/projects"
-import { createProjectStore } from "@launchkit/projects"
+} from "@spectrum/harnesses"
+import type { ProjectStore } from "@spectrum/projects"
+import { createProjectStore } from "@spectrum/projects"
 import type {
   LanguageModelGateway,
   ProviderFactory,
   RunningProxy,
   RuntimeState,
-} from "@launchkit/proxy"
-import type { SecretStore } from "@launchkit/secrets"
-import type { SessionStore } from "@launchkit/sessions"
-import type { SessionId } from "@launchkit/types"
-import type { Result } from "@launchkit/utils"
+} from "@spectrum/proxy"
+import type { SecretStore } from "@spectrum/secrets"
+import type { SessionStore } from "@spectrum/sessions"
+import type { SessionId } from "@spectrum/types"
+import type { Result } from "@spectrum/utils"
 
 import { mkdirSync } from "node:fs"
 import { homedir } from "node:os"
@@ -24,24 +24,24 @@ import type {
   AgentDriver,
   RunManager,
   SessionSink,
-} from "@launchkit/agent-driver"
+} from "@spectrum/agent-driver"
 import {
   createFakeDriver,
   createRunManager,
   demoScript,
-} from "@launchkit/agent-driver"
-import type { StoredEvent } from "@launchkit/agent-events"
+} from "@spectrum/agent-driver"
+import type { StoredEvent } from "@spectrum/agent-events"
 import {
   createCachedConfigStore,
   createFileConfigStore,
   createFsConfigFile,
   defaultConfig,
-} from "@launchkit/config"
-import { createSqliteClient, runMigrations } from "@launchkit/db"
-import { createClaudeDriver } from "@launchkit/driver-claude"
-import { createCodexDriver } from "@launchkit/driver-codex"
-import { createOpenclawDriver } from "@launchkit/driver-openclaw"
-import { createOpencodeDriver } from "@launchkit/driver-opencode"
+} from "@spectrum/config"
+import { createSqliteClient, runMigrations } from "@spectrum/db"
+import { createClaudeDriver } from "@spectrum/driver-claude"
+import { createCodexDriver } from "@spectrum/driver-codex"
+import { createOpenclawDriver } from "@spectrum/driver-openclaw"
+import { createOpencodeDriver } from "@spectrum/driver-opencode"
 import {
   createBunProcessSpawner,
   createInMemoryHarnessFileSource,
@@ -49,12 +49,12 @@ import {
   createRegistry,
   launchHarness,
   resolveHarnessLaunch,
-} from "@launchkit/harnesses"
+} from "@spectrum/harnesses"
 import {
   type Platform,
   detectPlatform,
   resolveAppPaths,
-} from "@launchkit/platform"
+} from "@spectrum/platform"
 import {
   createFetchHttpGet,
   createFileRuntimeState,
@@ -66,17 +66,17 @@ import {
   isProxyRunning,
   loadSdk,
   startProxy,
-} from "@launchkit/proxy"
-import { createRunStore } from "@launchkit/run-store"
+} from "@spectrum/proxy"
+import { createRunStore } from "@spectrum/run-store"
 import {
   createBunProcessRunner,
   createFsSecretFileOps,
   createPlatformKeychainBackend,
   createSecretStore,
-} from "@launchkit/secrets"
-import { createSessionStore } from "@launchkit/sessions"
-import { createCryptoIdGen, createSystemClock } from "@launchkit/utils"
-import { err } from "@launchkit/utils"
+} from "@spectrum/secrets"
+import { createSessionStore } from "@spectrum/sessions"
+import { createCryptoIdGen, createSystemClock } from "@spectrum/utils"
+import { err } from "@spectrum/utils"
 import { withDemoHarness } from "./gui/demo-harness"
 import {
   DEMO_HARNESS_ID,
@@ -84,7 +84,10 @@ import {
   createDriverRegistry,
 } from "./gui/driver-registry"
 import { startRunnerSocket } from "./gui/runner-socket"
-import { migrateLegacyMacosConfig } from "./migrate-legacy-config"
+import {
+  migrateLaunchkitToSpectrum,
+  migrateLegacyMacosConfig,
+} from "./migrate-legacy-config"
 
 /** Result of testing one provider's live connectivity (mirrors ipc TestProviderResult). */
 export type ProviderTestResult = {
@@ -125,7 +128,7 @@ export interface AppContext {
       host: string
       port: number
       proxyKey: string
-      config: import("@launchkit/config").Config
+      config: import("@spectrum/config").Config
     }): RunningProxy
   }
   readonly factory: ProviderFactory
@@ -202,6 +205,7 @@ export interface CreateAppContextDeps {
   /** Create a directory (recursively) — used to materialise the data dir on a fresh install. */
   readonly ensureDir: (dir: string) => void
   readonly migrateLegacyMacosConfig: typeof migrateLegacyMacosConfig
+  readonly migrateLaunchkitToSpectrum: typeof migrateLaunchkitToSpectrum
   readonly createFsConfigFile: typeof createFsConfigFile
   readonly createFileConfigStore: typeof createFileConfigStore
   readonly createCachedConfigStore: typeof createCachedConfigStore
@@ -244,7 +248,7 @@ const defaultGenProxyKey = (): string => {
 
 /** Headless passphrase source for the encrypted-file fallback (GUI prompt is a future addition). */
 const defaultSecretPassphrase = async (): Promise<string | null> =>
-  process.env.LAUNCHKIT_SECRET_PASSPHRASE ?? null
+  process.env.SPECTRUM_SECRET_PASSPHRASE ?? null
 
 /** The real constructors, used when `createAppContext()` is called with no argument. */
 const realDeps: CreateAppContextDeps = {
@@ -256,6 +260,7 @@ const realDeps: CreateAppContextDeps = {
     mkdirSync(dir, { recursive: true })
   },
   migrateLegacyMacosConfig,
+  migrateLaunchkitToSpectrum,
   createFsConfigFile,
   createFileConfigStore,
   createCachedConfigStore,
@@ -284,12 +289,12 @@ const realDeps: CreateAppContextDeps = {
   createFakeDriver,
   createCodexDriver,
   createOpencodeDriver,
-  demoHarnessEnabled: process.env.LAUNCHKIT_DEMO_HARNESS === "1",
+  demoHarnessEnabled: process.env.SPECTRUM_DEMO_HARNESS === "1",
   genProxyKey: defaultGenProxyKey,
 }
 
 /**
- * Build the `testProvider` function that delegates to `@launchkit/proxy`'s
+ * Build the `testProvider` function that delegates to `@spectrum/proxy`'s
  * `createProviderTester`. Resolves the provider from the live config, picks its
  * first model (falling back to the provider id), and measures connectivity with
  * the already-wired factory + gateway. Extracted so Biome's noUnusedImports
@@ -299,7 +304,7 @@ const createTestProvider = (
   config: ConfigStore,
   factory: ProviderFactory,
   gateway: LanguageModelGateway,
-  createSystemClock: () => import("@launchkit/utils").Clock,
+  createSystemClock: () => import("@spectrum/utils").Clock,
 ): AppContext["testProvider"] => {
   return async (providerId) => {
     const loaded = await config.load()
@@ -320,7 +325,7 @@ const createTestProvider = (
 }
 
 /**
- * Build the `listProviderModels` function that delegates to `@launchkit/proxy`'s
+ * Build the `listProviderModels` function that delegates to `@spectrum/proxy`'s
  * `createModelLister`. Resolves the provider from the live config, resolves its apiKey
  * from the keychain (keyless providers like ollama have no secrets — apiKey stays undefined),
  * then calls the lister. The ModelLister is constructed once and closed over.
@@ -329,7 +334,7 @@ const createTestProvider = (
  */
 const createListProviderModels = (
   config: ConfigStore,
-  secrets: import("@launchkit/secrets").SecretStore,
+  secrets: import("@spectrum/secrets").SecretStore,
 ): AppContext["listProviderModels"] => {
   const lister = createModelLister({ httpGet: createFetchHttpGet() })
   return async (providerId) => {
@@ -374,6 +379,11 @@ export const createAppContext = (
     homeDir: deps.homeDir(),
     env: deps.env,
   })
+  deps.migrateLaunchkitToSpectrum({
+    platform: deps.platform,
+    homeDir: deps.homeDir(),
+    env: deps.env,
+  })
   const paths = deps.resolveAppPaths({
     platform: deps.platform,
     homeDir: deps.homeDir(),
@@ -398,7 +408,7 @@ export const createAppContext = (
   const baseConfig = deps.createCachedConfigStore(
     deps.createFileConfigStore({ file: deps.createFsConfigFile(configFile) }),
   )
-  let liveConfig: import("@launchkit/config").Config | undefined
+  let liveConfig: import("@spectrum/config").Config | undefined
   const config: ConfigStore = {
     load: async () => {
       const loaded = await baseConfig.load()
@@ -479,7 +489,7 @@ export const createAppContext = (
   const baseRegistry = deps.createRegistry({
     fileSource: createInMemoryHarnessFileSource([]),
   })
-  // Dev-only (LAUNCHKIT_DEMO_HARNESS=1): surface a launchable `demo` harness — driven by the FakeDriver
+  // Dev-only (SPECTRUM_DEMO_HARNESS=1): surface a launchable `demo` harness — driven by the FakeDriver
   // registered in the driver registry below — so the native conversation view is reachable from the New
   // Session modal. Production (flag unset) lists only the builtin harnesses.
   const registry = deps.demoHarnessEnabled
@@ -514,7 +524,7 @@ export const createAppContext = (
 
   // Native drivers: `claude`, `codex`, `opencode`, `openclaw` all launch native via their drivers
   // (openclaw is UNVERIFIED — no binary). The demo FakeDriver stays dev-gated
-  // (LAUNCHKIT_DEMO_HARNESS=1). Each driver injects its own effects so the logic stays unit-testable;
+  // (SPECTRUM_DEMO_HARNESS=1). Each driver injects its own effects so the logic stays unit-testable;
   // the runtime owns the sync↔async bridge + lifecycle.
   const idGen = deps.createCryptoIdGen()
   const driverIdGen = deps.createCryptoIdGen()
@@ -569,13 +579,13 @@ export const createAppContext = (
     host: string
     port: number
     proxyKey: string
-    config: import("@launchkit/config").Config
+    config: import("@spectrum/config").Config
   }): RunningProxy => {
     // Seed the live snapshot, then resolve against it on EVERY request: a model/provider added or
     // edited in the GUI (persisted via `config.save`, which updates `liveConfig` above) is picked up
     // by the already-running proxy with no restart. Falls back to the start-time config defensively.
     liveConfig = opts.config
-    const getConfig = (): import("@launchkit/config").Config =>
+    const getConfig = (): import("@spectrum/config").Config =>
       liveConfig ?? opts.config
     return startProxy({
       host: opts.host,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { CanonicalEvent, RunnerId } from "@launchkit/agent-events"
+import type { CanonicalEvent, RunnerId } from "@spectrum/agent-events"
 import * as fx from "./fixtures/codex-events"
 import { type CodexMapState, mapCodexEvent } from "./map-codex-event"
 

@@ -1,4 +1,4 @@
-import type { IpcClient } from "@launchkit/ipc"
+import type { IpcClient } from "@spectrum/ipc"
 
 /**
  * A partial set of method stubs -- each returns the same `Result` the real

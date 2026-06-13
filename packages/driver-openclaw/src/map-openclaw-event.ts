@@ -1,4 +1,4 @@
-import type { CanonicalEvent, RunnerId, Usage } from "@launchkit/agent-events"
+import type { CanonicalEvent, RunnerId, Usage } from "@spectrum/agent-events"
 import type { OpenClawEvent } from "./transport"
 
 /** Mutable mapping state: session→runner correlation + buffered usage. Owned by the adapter per run. */

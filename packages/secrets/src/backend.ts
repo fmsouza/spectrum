@@ -1,4 +1,4 @@
-import { type Result, err, ok } from "@launchkit/utils"
+import { type Result, err, ok } from "@spectrum/utils"
 
 /** Typed failure modes for any keychain operation. */
 export type SecretError =

@@ -7,9 +7,9 @@ import {
   demoScript,
 } from "./index"
 
-describe("@launchkit/agent-driver barrel", () => {
+describe("@spectrum/agent-driver barrel", () => {
   it("re-exports the package marker and the public factories", () => {
-    expect(AGENT_DRIVER_PACKAGE).toBe("@launchkit/agent-driver")
+    expect(AGENT_DRIVER_PACKAGE).toBe("@spectrum/agent-driver")
     expect(typeof createFakeDriver).toBe("function")
     expect(typeof createRunManager).toBe("function")
     expect(typeof decodeRunnerInbound).toBe("function")

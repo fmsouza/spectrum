@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import * as config from "./index"
 
-describe("@launchkit/config barrel", () => {
+describe("@spectrum/config barrel", () => {
   it("exports every public schema, factory, and constant when imported", () => {
     for (const name of [
       "SettingsSchema",

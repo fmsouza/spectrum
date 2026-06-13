@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test"
-import type { Config } from "@launchkit/config"
+import type { Config } from "@spectrum/config"
 import { createScriptedGateway } from "./gateway"
 import { createRouter } from "./router"
 import { isProxyRunning, startProxy } from "./server"

@@ -13,7 +13,7 @@ describeLinux("createSecretToolBackend (real secret-tool)", () => {
       return
     }
     const backend = createSecretToolBackend({ runner })
-    const account = `kc_launchkit_test_${crypto.randomUUID()}`
+    const account = `kc_spectrum_test_${crypto.randomUUID()}`
     const secret = `sk-test-${crypto.randomUUID()}`
     try {
       expect((await backend.add(account, secret)).ok).toBe(true)

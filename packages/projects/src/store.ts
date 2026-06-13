@@ -1,6 +1,6 @@
 import { basename } from "node:path"
-import { type DbClient, projects, sessions, tryDb } from "@launchkit/db"
-import type { Project, ProjectId } from "@launchkit/types"
+import { type DbClient, projects, sessions, tryDb } from "@spectrum/db"
+import type { Project, ProjectId } from "@spectrum/types"
 import {
   type Clock,
   type IdGen,
@@ -8,7 +8,7 @@ import {
   err,
   isErr,
   ok,
-} from "@launchkit/utils"
+} from "@spectrum/utils"
 import { eq, sql } from "drizzle-orm"
 import type { ProjectError } from "./errors"
 

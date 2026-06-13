@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { HarnessId } from "@launchkit/types"
+import type { HarnessId } from "@spectrum/types"
 import { createIpcClient } from "./client"
 import { createMemoryTransportPair } from "./fake-transport"
 import type { IpcHandlers } from "./server"

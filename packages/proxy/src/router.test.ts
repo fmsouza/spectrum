@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import type { Config } from "@launchkit/config"
-import { isErr } from "@launchkit/utils"
+import type { Config } from "@spectrum/config"
+import { isErr } from "@spectrum/utils"
 import { createRouter } from "./router"
 
 const config = {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import type { CanonicalEvent } from "@launchkit/agent-events"
-import { createSequentialIdGen } from "@launchkit/utils"
+import type { CanonicalEvent } from "@spectrum/agent-events"
+import { createSequentialIdGen } from "@spectrum/utils"
 import type { CreateCodexAdapterDeps } from "./adapter"
 import { createCodexDriver } from "./driver"
 import type { JsonRpcTransport } from "./transport"

@@ -4,7 +4,7 @@ import {
   randomBytes,
   scryptSync,
 } from "node:crypto"
-import { err, ok } from "@launchkit/utils"
+import { err, ok } from "@spectrum/utils"
 import type { SecretError } from "./backend"
 import type { SecretCipher } from "./cipher"
 
@@ -16,7 +16,7 @@ const KEY_LEN = 32
 const noPassphrase: SecretError = {
   kind: "unavailable",
   detail:
-    "no secret passphrase available — set LAUNCHKIT_SECRET_PASSPHRASE or install a Secret Service keyring",
+    "no secret passphrase available — set SPECTRUM_SECRET_PASSPHRASE or install a Secret Service keyring",
 }
 
 /**

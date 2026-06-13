@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { type Config, defaultConfig } from "@launchkit/config"
-import { type HarnessDefinition, HarnessIdSchema } from "@launchkit/types"
+import { type Config, defaultConfig } from "@spectrum/config"
+import { type HarnessDefinition, HarnessIdSchema } from "@spectrum/types"
 import { runCli } from "./run"
 import { makeFakeDeps } from "./test-support"
 import { createMemoryWriter } from "./writer"

@@ -25,7 +25,7 @@ describe("planLegacyMacosMigration", () => {
     expect(plan).toEqual({
       kind: "move",
       from: "/Users/me/.config/launchkit",
-      to: "/Users/me/Library/Application Support/LaunchKit",
+      to: "/Users/me/Library/Application Support/Spectrum",
     })
   })
 

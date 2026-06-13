@@ -1,6 +1,6 @@
-import type { Config } from "@launchkit/config"
-import type { Provider } from "@launchkit/types"
-import { type Result, err, ok } from "@launchkit/utils"
+import type { Config } from "@spectrum/config"
+import type { Provider } from "@spectrum/types"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { ProxyError } from "./types"
 
 export interface Router {

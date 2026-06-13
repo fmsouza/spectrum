@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import * as sessions from "./index"
 
-describe("@launchkit/sessions barrel", () => {
+describe("@spectrum/sessions barrel", () => {
   it("exports createSessionStore when imported", () => {
     expect(typeof sessions.createSessionStore).toBe("function")
   })

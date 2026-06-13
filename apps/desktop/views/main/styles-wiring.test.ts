@@ -59,7 +59,7 @@ describe("views/main stylesheet partials wiring", () => {
   it("ships the brand tray icon next to app.js via build.copy", () => {
     const flat = electrobunConfig.replace(/\s+/g, " ")
     expect(flat).toContain(
-      '"views/main/launchkit-tray.png": "views/main/launchkit-tray.png"',
+      '"views/main/spectrum-tray.png": "views/main/spectrum-tray.png"',
     )
   })
 
@@ -106,7 +106,7 @@ describe("views/main stylesheet partials wiring", () => {
     const runView = await Bun.file(
       new URL("./styles/run-view.css", import.meta.url),
     ).text()
-    expect(tokens).toContain("--lk-master-w")
+    expect(tokens).toContain("--sp-master-w")
     expect(tokens).toContain('[data-theme="light"]')
     expect(tokens).not.toContain("prefers-color-scheme")
     expect(controls).toContain("[data-variant=")

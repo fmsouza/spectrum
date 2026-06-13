@@ -12,3 +12,11 @@ export {
   legacyMacosConfigDir,
   planLegacyMacosMigration,
 } from "./migration"
+export {
+  legacyLaunchkitDataDir,
+  planLaunchkitToSpectrumMigration,
+} from "./spectrum-migration"
+export type {
+  SpectrumMigration,
+  PlanSpectrumMigrationInput,
+} from "./spectrum-migration"

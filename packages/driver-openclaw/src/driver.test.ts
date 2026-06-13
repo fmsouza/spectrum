@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import type { CanonicalEvent } from "@launchkit/agent-events"
-import { createSequentialIdGen, isOk } from "@launchkit/utils"
+import type { CanonicalEvent } from "@spectrum/agent-events"
+import { createSequentialIdGen, isOk } from "@spectrum/utils"
 import { createOpenclawDriver } from "./driver"
 import type { OpenClawEvent, OpenclawRun, OpenclawTransport } from "./transport"
 

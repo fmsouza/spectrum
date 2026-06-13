@@ -3,8 +3,8 @@ import type {
   CanonicalEvent,
   PermissionMode,
   RunnerId,
-} from "@launchkit/agent-events"
-import { createSequentialIdGen } from "@launchkit/utils"
+} from "@spectrum/agent-events"
+import { createSequentialIdGen } from "@spectrum/utils"
 import type { AdapterCtx, AdapterHandle, DriverAdapter } from "./adapter"
 import { createDriver } from "./runtime"
 

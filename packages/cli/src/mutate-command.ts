@@ -1,12 +1,12 @@
-import type { Config } from "@launchkit/config"
+import type { Config } from "@spectrum/config"
 import {
   type ModelRoute,
   ModelRouteSchema,
   type Provider,
   ProviderSchema,
   SdkProviderSchema,
-} from "@launchkit/types"
-import { type Result, err, isErr, ok } from "@launchkit/utils"
+} from "@spectrum/types"
+import { type Result, err, isErr, ok } from "@spectrum/utils"
 import type { CliDeps } from "./deps"
 import type { CliError } from "./errors"
 

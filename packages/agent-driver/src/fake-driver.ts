@@ -1,5 +1,5 @@
-import type { CanonicalEvent, RunnerId } from "@launchkit/agent-events"
-import { ok } from "@launchkit/utils"
+import type { CanonicalEvent, RunnerId } from "@spectrum/agent-events"
+import { ok } from "@spectrum/utils"
 import type { AgentDriver, AgentSession } from "./driver"
 
 export type FakeReaction =

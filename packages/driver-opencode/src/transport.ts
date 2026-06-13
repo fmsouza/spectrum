@@ -194,14 +194,14 @@ export interface OpencodeServer {
 }
 
 /**
- * A minimal `opencode` config declaring a single OpenAI-compatible provider pointed at the LaunchKit
+ * A minimal `opencode` config declaring a single OpenAI-compatible provider pointed at the Spectrum
  * proxy (a typed subset of the SDK's `Config`). The SDK serializes this into `OPENCODE_CONFIG_CONTENT`
  * for the spawned `opencode serve`, so it is how the per-run proxy reaches the server — `createOpencode`
  * exposes no `env` option, and `opencode serve` is spawned with the parent `process.env` only.
  */
 export interface OpencodeProxyConfig {
   readonly provider: {
-    readonly launchkit: {
+    readonly spectrum: {
       readonly npm: string
       readonly name: string
       readonly options: { readonly baseURL: string; readonly apiKey?: string }
@@ -225,14 +225,14 @@ export const buildOpencodeProxyConfig = (
   const apiKey = env.OPENAI_API_KEY
   return {
     provider: {
-      launchkit: {
+      spectrum: {
         npm: "@ai-sdk/openai-compatible",
-        name: "LaunchKit",
+        name: "Spectrum",
         options: { baseURL, ...(apiKey !== undefined ? { apiKey } : {}) },
         models: { [model]: {} },
       },
     },
-    model: `launchkit/${model}`,
+    model: `spectrum/${model}`,
   }
 }
 

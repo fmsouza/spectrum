@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { ApprovalDecision, ApprovalItem } from "@launchkit/agent-events"
+import type { ApprovalDecision, ApprovalItem } from "@spectrum/agent-events"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { ApprovalCard } from "./ApprovalCard"
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { HarnessView } from "@launchkit/ipc"
+import type { HarnessView } from "@spectrum/ipc"
 import { createFakeIpcClient } from "../test/fake-client"
 import { createHarnessesStore } from "./harnessesStore"
 

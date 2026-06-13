@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { HarnessIdSchema } from "@launchkit/types"
+import { HarnessIdSchema } from "@spectrum/types"
 import { builtinHarnesses } from "./builtin/index"
 import { createInMemoryHarnessFileSource } from "./file-source"
 import { createRegistry } from "./registry"

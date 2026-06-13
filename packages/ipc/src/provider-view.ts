@@ -1,4 +1,4 @@
-import { ProviderIdSchema, SdkProviderSchema } from "@launchkit/types"
+import { ProviderIdSchema, SdkProviderSchema } from "@spectrum/types"
 import { z } from "zod"
 
 /** Presence flag for one secret field — never a `ref`, never a value. */
