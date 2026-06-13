@@ -151,7 +151,7 @@ export const realMountTrayDeps: MountTrayDeps = {
       // path is unavailable on a given platform.
       const native = new Tray({
         title: "Spectrum",
-        image: "views://main/launchkit-tray.png",
+        image: "views://main/spectrum-tray.png",
         template: false,
       })
       tray = native

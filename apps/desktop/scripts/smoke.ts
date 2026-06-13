@@ -12,12 +12,12 @@ const BUILD_DIR = join(import.meta.dir, "..", "build")
  * The Electrobun bundle's entry point is the `launcher` binary (`launcher.exe` on Windows) —
  * NOT a file named after the app. The bundle also ships other executables (`bun`, `bspatch`, …)
  * that must NOT be picked, so match the launcher by exact basename. App-named binaries
- * (`LaunchKit` / `LaunchKit.exe`) are accepted as a fallback for non-dev release layouts.
+ * (`Spectrum` / `Spectrum.exe`) are accepted as a fallback for non-dev release layouts.
  */
 export const launcherCandidates = (platform: Platform): readonly string[] =>
   platform === "windows"
-    ? ["launcher.exe", "launchkit.exe", "launchkit-dev.exe"]
-    : ["launcher", "launchkit", "launchkit-dev"]
+    ? ["launcher.exe", "spectrum.exe", "spectrum-dev.exe"]
+    : ["launcher", "spectrum", "spectrum-dev"]
 
 export const isLauncherEntry = (entry: string, platform: Platform): boolean =>
   launcherCandidates(platform).includes(entry.toLowerCase())
@@ -44,7 +44,7 @@ export const resolveAppExecutable = (
   }
   const exe = walk(buildDir)
   if (!exe)
-    throw new Error(`could not locate a LaunchKit launcher under ${buildDir}`)
+    throw new Error(`could not locate a Spectrum launcher under ${buildDir}`)
   return exe
 }
 

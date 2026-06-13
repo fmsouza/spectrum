@@ -1,7 +1,7 @@
 import type { ElectrobunConfig } from "electrobun"
 
 /**
- * Electrobun build configuration for the LaunchKit binary (Electrobun v1.18.x schema).
+ * Electrobun build configuration for the Spectrum binary (Electrobun v1.18.x schema).
  *
  * - `build.bun.entrypoint` → the main (Bun) process; bundled to `bun/index.js`. The Electrobun
  *   launcher loads that file via `new Worker(...)`, where `import.meta.main` is always `false`, so
@@ -24,8 +24,8 @@ import type { ElectrobunConfig } from "electrobun"
  */
 const config = {
   app: {
-    name: "LaunchKit",
-    identifier: "dev.launchkit.app",
+    name: "Spectrum",
+    identifier: "dev.spectrum.app",
     version: "0.1.0",
   },
   build: {
@@ -54,9 +54,9 @@ const config = {
       "views/main/styles/modal.css": "views/main/styles/modal.css",
       "views/main/styles/lists.css": "views/main/styles/lists.css",
       "views/main/styles/page.css": "views/main/styles/page.css",
-      "views/main/launchkit-favicon.svg": "views/main/launchkit-favicon.svg",
+      "views/main/spectrum-favicon.svg": "views/main/spectrum-favicon.svg",
       "views/main/favicon.ico": "views/main/favicon.ico",
-      "views/main/launchkit-tray.png": "views/main/launchkit-tray.png",
+      "views/main/spectrum-tray.png": "views/main/spectrum-tray.png",
     },
     // `icons` points at the macOS .iconset (built from the brand squircle icon); Electrobun
     // runs `iconutil` at build time to emit AppIcon.icns (CFBundleIconFile) into the bundle.
