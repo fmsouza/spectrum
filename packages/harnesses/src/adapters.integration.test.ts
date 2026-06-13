@@ -29,11 +29,16 @@ afterEach(() => {
 })
 
 describe("createPathCommandResolver (real)", () => {
-  it("resolves a real on-PATH command to an absolute path", () => {
-    const r = createPathCommandResolver().resolve("true")
-    expect(r.ok).toBe(true)
-    if (r.ok) expect(r.value.startsWith("/")).toBe(true)
-  })
+  // POSIX-only: `Bun.which("true")` resolves to `/usr/bin/true` on macOS/Linux
+  // but `true` isn't a real on-PATH command on Windows.
+  it.skipIf(process.platform === "win32")(
+    "resolves a real on-PATH command to an absolute path",
+    () => {
+      const r = createPathCommandResolver().resolve("true")
+      expect(r.ok).toBe(true)
+      if (r.ok) expect(r.value.startsWith("/")).toBe(true)
+    },
+  )
 
   it("rejects a relative command without touching PATH", () => {
     const r = createPathCommandResolver().resolve("./nope")
@@ -43,16 +48,21 @@ describe("createPathCommandResolver (real)", () => {
 })
 
 describe("createBunProcessSpawner (real)", () => {
-  it("spawns a harmless command and returns a numeric pid", () => {
-    const resolver = createPathCommandResolver()
-    const resolved = resolver.resolve("true")
-    expect(resolved.ok).toBe(true)
-    if (!resolved.ok) return
+  // POSIX-only: depends on `true` resolving to a real on-PATH command
+  // (it isn't on Windows).
+  it.skipIf(process.platform === "win32")(
+    "spawns a harmless command and returns a numeric pid",
+    () => {
+      const resolver = createPathCommandResolver()
+      const resolved = resolver.resolve("true")
+      expect(resolved.ok).toBe(true)
+      if (!resolved.ok) return
 
-    const r = createBunProcessSpawner().spawn(resolved.value, [], {})
-    expect(r.ok).toBe(true)
-    if (r.ok) expect(typeof r.value.pid).toBe("number")
-  })
+      const r = createBunProcessSpawner().spawn(resolved.value, [], {})
+      expect(r.ok).toBe(true)
+      if (r.ok) expect(typeof r.value.pid).toBe("number")
+    },
+  )
 
   it("inherits the parent env and lets rendered vars override inherited ones", async () => {
     const dir = makeTempDir()
@@ -91,23 +101,27 @@ describe("createBunProcessSpawner (real)", () => {
     }
   })
 
-  it("spawns the child process in the given cwd", async () => {
-    const dir = makeTempDir()
-    const out = join(dir, "where.txt")
-    const spawner = createBunProcessSpawner()
-    // Write the child's cwd to a file (stdio is inherited, so assert via the filesystem).
-    const r = spawner.spawn(
-      "/bin/sh",
-      ["-c", `pwd -P > ${out}`],
-      { ...process.env } as Record<string, string>,
-      dir,
-    )
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
-    await r.value.exited
-    const written = readFileSync(out, "utf8").trim()
-    expect(written).toBe(realpathSync(dir))
-  })
+  // POSIX-only: uses `/bin/sh -c`, which doesn't exist on Windows.
+  it.skipIf(process.platform === "win32")(
+    "spawns the child process in the given cwd",
+    async () => {
+      const dir = makeTempDir()
+      const out = join(dir, "where.txt")
+      const spawner = createBunProcessSpawner()
+      // Write the child's cwd to a file (stdio is inherited, so assert via the filesystem).
+      const r = spawner.spawn(
+        "/bin/sh",
+        ["-c", `pwd -P > ${out}`],
+        { ...process.env } as Record<string, string>,
+        dir,
+      )
+      expect(r.ok).toBe(true)
+      if (!r.ok) return
+      await r.value.exited
+      const written = readFileSync(out, "utf8").trim()
+      expect(written).toBe(realpathSync(dir))
+    },
+  )
 })
 
 describe("createDirHarnessFileSource (real)", () => {

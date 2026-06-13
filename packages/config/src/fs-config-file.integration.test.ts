@@ -5,7 +5,12 @@ import { join } from "node:path"
 import { isOk } from "@launchkit/utils"
 import { createFsConfigFile } from "./fs-config-file"
 
-describe("createFsConfigFile (real filesystem)", () => {
+// POSIX-only: relies on the `mode` bits returned by `fs.stat` and the `chmod 0600`
+// inside `writeAtomic`. Windows has no POSIX mode bits, so the chmod assertion
+// (and any chmod behavior in `writeAtomic`) is meaningless there.
+const describeIfPosix = process.platform === "win32" ? describe.skip : describe
+
+describeIfPosix("createFsConfigFile (real filesystem)", () => {
   const dirs: string[] = []
   const freshDir = async (): Promise<string> => {
     const dir = await mkdtemp(join(tmpdir(), "launchkit-config-"))

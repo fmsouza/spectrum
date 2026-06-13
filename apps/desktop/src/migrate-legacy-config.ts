@@ -1,11 +1,16 @@
 import { cpSync, existsSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+// `plan.from` is a POSIX legacy path (`/Users/me/.config/launchkit`) that must
+// stay POSIX regardless of host OS, so we use `path.posix.join` — not `path.join`,
+// which is `path.win32.join` on Windows and would convert separators to `\`.
+import path from "node:path"
 import {
   type Platform,
   legacyMacosConfigDir,
   planLegacyMacosMigration,
   resolveAppPaths,
 } from "@launchkit/platform"
+
+const { join } = path.posix
 
 export interface MigrateLegacyMacosConfigInput {
   readonly platform: Platform
