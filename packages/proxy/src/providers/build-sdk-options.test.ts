@@ -61,4 +61,13 @@ describe("buildSdkOptions", () => {
       secretAccessKey: "shh",
     })
   })
+
+  it("ignores a malformed headers config string instead of throwing", () => {
+    const opts = buildSdkOptions(
+      getDescriptor("custom"),
+      { headers: "not-json" },
+      {},
+    )
+    expect(opts).toEqual({})
+  })
 })

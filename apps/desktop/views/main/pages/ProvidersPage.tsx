@@ -98,9 +98,9 @@ export const ProvidersPage = (): ReactElement => {
 
   const submitEdit = async (): Promise<void> => {
     if (editFor === undefined) return
-    const r = await update(editFor.id as Parameters<typeof update>[0], {
+    const r = await update(editFor.id, {
       name: editFor.name,
-      sdkProvider: editFor.sdkProvider as SdkProvider,
+      sdkProvider: editFor.sdkProvider,
       config: editConfig,
       secretFieldNames: Object.keys(editFor.secretFields),
       models: editFor.models,

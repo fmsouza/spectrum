@@ -41,8 +41,16 @@ export const buildSdkOptions = (
     if (name === "serverUrl") continue
     if (value === "") continue
     if (name === "headers") {
-      const parsed = JSON.parse(value) as Record<string, string>
-      Object.assign(headers, parsed)
+      try {
+        const parsed: unknown = JSON.parse(value)
+        if (typeof parsed === "object" && parsed !== null) {
+          for (const [hk, hv] of Object.entries(parsed)) {
+            if (typeof hv === "string") headers[hk] = hv
+          }
+        }
+      } catch {
+        // malformed headers are ignored; validateProviderConfig rejects them at write time
+      }
       continue
     }
     if (headerFieldNames.has(name)) {
