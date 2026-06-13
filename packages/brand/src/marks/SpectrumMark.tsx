@@ -22,8 +22,7 @@ const MONO_WHITE_BODY = `<g stroke="#FFFFFF" stroke-linecap="round" stroke-width
 // Verbatim inner markup from spectrum-brand/logo/spectrum-mark-mono-black.svg.
 const MONO_BLACK_BODY = `<g stroke="#000000" stroke-linecap="round" stroke-width="7.5"><line x1="50" y1="128" x2="95" y2="128"/><line x1="134.69" y1="107.77" x2="183.48" y2="40.63"/><line x1="142.28" y1="116.65" x2="216.23" y2="78.97"/><line x1="145.00" y1="128.00" x2="228.00" y2="128.00"/><line x1="142.28" y1="139.35" x2="216.23" y2="177.03"/><line x1="134.69" y1="148.23" x2="183.48" y2="215.37"/></g><g fill="#000000"><circle cx="38" cy="128" r="11"/><circle cx="183.48" cy="40.63" r="12.50"/><circle cx="216.23" cy="78.97" r="12.50"/><circle cx="228.00" cy="128.00" r="12.50"/><circle cx="216.23" cy="177.03" r="12.50"/><circle cx="183.48" cy="215.37" r="12.50"/><circle cx="120" cy="128" r="22" fill="none" stroke="#000000" stroke-width="7"/><circle cx="120" cy="128" r="6"/></g>`
 
-const BODY: Record<MarkVariant, string> = {
-  color: COLOR_BODY,
+const MONO_BODY: Record<Exclude<MarkVariant, "color">, string> = {
   "mono-white": MONO_WHITE_BODY,
   "mono-black": MONO_BLACK_BODY,
 }
@@ -40,7 +39,9 @@ export const SpectrumMark = ({
   }
   const hubId = hubIdRef.current
   const body =
-    variant === "color" ? COLOR_BODY.replaceAll("mk_hub", hubId) : BODY[variant]
+    variant === "color"
+      ? COLOR_BODY.replaceAll("mk_hub", hubId)
+      : MONO_BODY[variant]
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
