@@ -10,7 +10,8 @@
       "**/node_modules/**",
       "**/src/migrations/**",
       "packages/driver-codex/src/bindings/**",
-      "apps/desktop/views/main/xterm.css"
+      "apps/desktop/views/main/xterm.css",
+      "spectrum-brand/**"
     ]
   }
 }
