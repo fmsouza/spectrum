@@ -6,15 +6,15 @@
    backdrop is fixed/inset:0 so it overlays the whole window above the shell. */
 dialog[aria-modal="true"] {
   position: static;
-  width: min(560px, calc(100vw - 2 * var(--space-6)));
-  max-height: calc(100vh - 2 * var(--space-6));
+  width: min(560px, calc(100vw - 2 * var(--lk-space-8)));
+  max-height: calc(100vh - 2 * var(--lk-space-8));
   margin: 0;
   padding: 0;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  color: var(--lk-text);
+  background: var(--lk-surface);
+  border: 1px solid var(--lk-border-strong);
+  border-radius: var(--lk-radius-lg);
+  box-shadow: var(--lk-shadow-3);
   overflow: hidden auto;
 }
 
@@ -23,13 +23,13 @@ dialog[aria-modal="true"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--border);
+  gap: var(--lk-space-3);
+  padding: var(--lk-space-4) var(--lk-space-6);
+  border-bottom: 1px solid var(--lk-border);
 }
 
 .lk-modal__header > h2 {
-  font-size: var(--text-lg);
+  font-size: var(--lk-text-lg);
 }
 
 .lk-modal__close {
@@ -40,22 +40,23 @@ dialog[aria-modal="true"] {
   height: 30px;
   padding: 0;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--lk-radius-md);
   background: transparent;
-  color: var(--text-muted);
-  font-size: var(--text-xl);
+  color: var(--lk-text-secondary);
+  font-size: var(--lk-text-xl);
   line-height: 1;
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  transition: background var(--lk-duration) var(--lk-ease), color
+    var(--lk-duration) var(--lk-ease);
 }
 
 .lk-modal__close:hover {
-  background: var(--surface-inset);
-  color: var(--text);
+  background: var(--lk-bg-subtle);
+  color: var(--lk-text);
 }
 
 /* The dialog body wraps the form. */
 .lk-modal__body {
-  padding: var(--space-5);
+  padding: var(--lk-space-6);
 }
 
 /* The form is already inside the dialog card, so drop its standalone chrome. */

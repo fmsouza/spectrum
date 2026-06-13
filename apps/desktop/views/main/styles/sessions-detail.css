@@ -16,7 +16,7 @@ main:has(> .lk-sessions-detail) {
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  background: #111216;
+  background: var(--lk-bg);
   overflow: hidden;
 }
 
