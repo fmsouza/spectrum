@@ -10,8 +10,9 @@ jobs:
       fail-fast: false
       matrix:
         # ubuntu is the primary gate; macos additionally exercises the macOS-only
-        # keychain integration test (the real `security` CLI), which skips on Linux.
-        os: [ubuntu-latest, macos-latest]
+        # keychain integration test (the real `security` CLI), which skips on Linux;
+        # windows exercises the DPAPI-file keychain path.
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
