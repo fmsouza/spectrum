@@ -74,6 +74,7 @@ jobs:
       - name: Build desktop app (best-effort)
         id: app
         if: matrix.app
+        # continue-on-error: true until verified-running smoke is green on every platform (Task 5.2)
         continue-on-error: true
         run: bun run --filter launchkit build
 
@@ -97,6 +98,8 @@ jobs:
           cp apps/desktop/dist/launchkit-cli "stage/${{ matrix.asset }}-cli"
           if [ "${{ steps.app.outcome }}" = "success" ]; then
             tar czf "stage/${{ matrix.asset }}-app.tar.gz" -C apps/desktop/build .
+            # installer (Electrobun emits the per-OS installer under apps/desktop/build; record its path during the spike)
+            find apps/desktop/build -maxdepth 3 \( -name '*.dmg' -o -name '*.deb' \) -exec cp {} "stage/" \;
           fi
           tar czf "stage/${{ matrix.asset }}-cli.tar.gz" -C stage "${{ matrix.asset }}-cli"
           rm -f "stage/${{ matrix.asset }}-cli"
