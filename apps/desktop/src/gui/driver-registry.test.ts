@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
-import type { AgentDriver } from "@launchkit/agent-driver"
-import { HarnessIdSchema } from "@launchkit/types"
-import { ok } from "@launchkit/utils"
+import type { AgentDriver } from "@spectrum/agent-driver"
+import { HarnessIdSchema } from "@spectrum/types"
+import { ok } from "@spectrum/utils"
 import { DEMO_HARNESS_ID, createDriverRegistry } from "./driver-registry"
 
 const fakeDriver: AgentDriver = {

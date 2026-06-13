@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { IpcError } from "@launchkit/ipc"
-import type { Result } from "@launchkit/utils"
+import type { IpcError } from "@spectrum/ipc"
+import type { Result } from "@spectrum/utils"
 import { createResource } from "./resource"
 
 type Bag = {

@@ -1,4 +1,4 @@
-import type { Session, SessionId } from "@launchkit/types"
+import type { Session, SessionId } from "@spectrum/types"
 import type { ReactElement } from "react"
 import { Badge } from "../atoms/Badge"
 import { Button } from "../atoms/Button"

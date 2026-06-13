@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { HarnessId, ModelId, ProviderId } from "@launchkit/types"
+import type { HarnessId, ModelId, ProviderId } from "@spectrum/types"
 import {
   AddModelParamsSchema,
   AddModelResultSchema,

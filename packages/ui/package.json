@@ -1,5 +1,5 @@
 {
-  "name": "@launchkit/ui",
+  "name": "@spectrum/ui",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,9 +10,9 @@
     "react-dom": "^19",
     "react-markdown": "^9",
     "remark-gfm": "^4",
-    "@launchkit/brand": "workspace:*",
-    "@launchkit/types": "workspace:*",
-    "@launchkit/utils": "workspace:*",
-    "@launchkit/agent-events": "workspace:*"
+    "@spectrum/brand": "workspace:*",
+    "@spectrum/types": "workspace:*",
+    "@spectrum/utils": "workspace:*",
+    "@spectrum/agent-events": "workspace:*"
   }
 }

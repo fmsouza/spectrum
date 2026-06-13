@@ -1,23 +1,23 @@
 import { describe, expect, it } from "bun:test"
-import { err, ok } from "@launchkit/utils"
+import { err, ok } from "@spectrum/utils"
 import { formatCliError, runCliMain } from "./cli"
 
 describe("formatCliError", () => {
   it("renders unknown-command with the offending command quoted", () => {
     expect(formatCliError({ kind: "unknown-command", command: "bogus" })).toBe(
-      'launchkit: unknown command "bogus"',
+      'spectrum: unknown command "bogus"',
     )
   })
 
   it("renders a usage error with its detail", () => {
     expect(formatCliError({ kind: "usage", detail: "missing <harness>" })).toBe(
-      "launchkit: missing <harness>",
+      "spectrum: missing <harness>",
     )
   })
 
   it("renders a failed error with its detail", () => {
     expect(formatCliError({ kind: "failed", detail: "spawn refused" })).toBe(
-      "launchkit: spawn refused",
+      "spectrum: spawn refused",
     )
   })
 
@@ -65,6 +65,6 @@ describe("runCliMain", () => {
       },
     })
     expect(code).toBe(1)
-    expect(written).toBe('launchkit: unknown command "bogus"')
+    expect(written).toBe('spectrum: unknown command "bogus"')
   })
 })

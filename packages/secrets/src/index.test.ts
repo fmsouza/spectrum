@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import * as secrets from "./index"
 
-describe("@launchkit/secrets barrel", () => {
+describe("@spectrum/secrets barrel", () => {
   it("exports every public factory when imported", () => {
     for (const name of [
       "createSecretStore",

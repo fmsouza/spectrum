@@ -1,4 +1,4 @@
-import { SettingsLayout, Spinner, StatusDot } from "@launchkit/ui"
+import { SettingsLayout, Spinner, StatusDot } from "@spectrum/ui"
 import type { ReactElement } from "react"
 import { useProxyStatus } from "../hooks/useProxyStatus"
 

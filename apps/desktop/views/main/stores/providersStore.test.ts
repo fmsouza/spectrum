@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { ProviderView } from "@launchkit/ipc"
+import type { ProviderView } from "@spectrum/ipc"
 import { createFakeIpcClient } from "../test/fake-client"
 import { createProvidersStore } from "./providersStore"
 

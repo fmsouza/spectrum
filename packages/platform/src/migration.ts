@@ -22,7 +22,7 @@ export const legacyMacosConfigDir = (homeDir: string): string =>
 
 /**
  * Decide whether the legacy `~/.config/launchkit` dir should be copied to the idiomatic macOS
- * `~/Library/Application Support/LaunchKit`. Pure — the caller performs the copy. Only macOS
+ * `~/Library/Application Support/Spectrum`. Pure — the caller performs the copy. Only macOS
  * migrates (Linux already lives at `~/.config/launchkit`; Windows is new).
  */
 export const planLegacyMacosMigration = (

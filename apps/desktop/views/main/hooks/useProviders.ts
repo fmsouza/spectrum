@@ -1,4 +1,4 @@
-import type { ProviderView } from "@launchkit/ipc"
+import type { ProviderView } from "@spectrum/ipc"
 import { useEffect } from "react"
 import { useStore } from "zustand"
 import { useStores } from "../stores/createStores"

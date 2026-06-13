@@ -35,8 +35,12 @@ describe("views/main/index.html CSP", () => {
     expect(directive(csp, "frame-ancestors")).toBe("frame-ancestors 'none'")
   })
 
-  it("links the LaunchKit favicon", () => {
+  it("links the Spectrum favicon", () => {
     expect(indexHtml).toContain('rel="icon"')
-    expect(indexHtml).toContain("launchkit-favicon.svg")
+    expect(indexHtml).toContain("spectrum-favicon.svg")
+  })
+
+  it("sets the Spectrum window title", () => {
+    expect(indexHtml).toContain("<title>Spectrum</title>")
   })
 })

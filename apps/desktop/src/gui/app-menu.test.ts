@@ -10,12 +10,12 @@ type Item = {
 type Menu = { label?: string; submenu?: Item[] }
 
 describe("buildAppMenu", () => {
-  const menu = buildAppMenu("LaunchKit") as Menu[]
+  const menu = buildAppMenu("Spectrum") as Menu[]
   const edit = menu.find((m) => m.label === "Edit")?.submenu ?? []
   const role = (r: string): Item | undefined => edit.find((i) => i.role === r)
 
   it("names the first (application) submenu after the app", () => {
-    expect(menu[0]?.label).toBe("LaunchKit")
+    expect(menu[0]?.label).toBe("Spectrum")
   })
 
   it("exposes the standard Edit roles so the webview gets clipboard selectors", () => {

@@ -3,8 +3,8 @@ import type {
   PermissionMode,
   RunnerId,
   RunnerState,
-} from "@launchkit/agent-events"
-import type { ModelRoute } from "@launchkit/types"
+} from "@spectrum/agent-events"
+import type { ModelRoute } from "@spectrum/types"
 import { type ReactElement, useEffect, useRef } from "react"
 import { TypingIndicator } from "../atoms/TypingIndicator"
 import { Composer } from "../molecules/Composer"

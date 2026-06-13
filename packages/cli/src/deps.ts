@@ -1,11 +1,11 @@
-import type { Config, ConfigStore } from "@launchkit/config"
-import type { LaunchParams } from "@launchkit/harnesses"
-import type { ProjectStore } from "@launchkit/projects"
-import type { RunningProxy, RuntimeState } from "@launchkit/proxy"
-import type { SecretStore } from "@launchkit/secrets"
-import type { SessionStore } from "@launchkit/sessions"
-import type { HarnessDefinition } from "@launchkit/types"
-import type { Result } from "@launchkit/utils"
+import type { Config, ConfigStore } from "@spectrum/config"
+import type { LaunchParams } from "@spectrum/harnesses"
+import type { ProjectStore } from "@spectrum/projects"
+import type { RunningProxy, RuntimeState } from "@spectrum/proxy"
+import type { SecretStore } from "@spectrum/secrets"
+import type { SessionStore } from "@spectrum/sessions"
+import type { HarnessDefinition } from "@spectrum/types"
+import type { Result } from "@spectrum/utils"
 import type { Writer } from "./writer"
 
 /** Options the CLI passes to `proxy.start` for an ephemeral launch-time proxy. */
@@ -20,10 +20,10 @@ export type StartProxyDeps = {
  * Everything a command needs, injected. Each field is an interface owned by another
  * package (or a tiny function seam), so commands stay pure and fully fakeable.
  *
- * - `registry.list()` mirrors `HarnessRegistry.list()` from `@launchkit/harnesses`.
+ * - `registry.list()` mirrors `HarnessRegistry.list()` from `@spectrum/harnesses`.
  * - `launch` is `launchHarness(deps)` already partially applied by the app shell — a
  *   single call `(params) => Result<{ pid }, unknown>`.
- * - `proxy.start` returns the `RunningProxy` from `@launchkit/proxy`; `proxy.isRunning`
+ * - `proxy.start` returns the `RunningProxy` from `@spectrum/proxy`; `proxy.isRunning`
  *   wraps `isProxyRunning(baseUrl)`.
  * - `genProxyKey` mints the per-run ≥32-byte proxy key (security.md). Its value reaches
  *   the harness env via `launch` only — never the `Writer`.

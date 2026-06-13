@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { ProviderView } from "@launchkit/ipc"
+import type { ProviderView } from "@spectrum/ipc"
 import { fireEvent, screen, waitFor } from "@testing-library/react"
 import { createFakeIpcClient } from "../test/fake-client"
 import { renderWithProviders } from "../test/renderWithProviders"

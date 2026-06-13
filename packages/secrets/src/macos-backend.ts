@@ -1,8 +1,8 @@
-import { err, isOk, ok, redactSecrets } from "@launchkit/utils"
+import { err, isOk, ok, redactSecrets } from "@spectrum/utils"
 import type { KeychainBackend, SecretError } from "./backend"
 import type { ProcessRunner } from "./process-runner"
 
-const SERVICE = "launchkit"
+const SERVICE = "spectrum"
 
 /** Scrub the live secret out of any backend-failed detail before it propagates. */
 const redactError = (

@@ -1,4 +1,4 @@
-# @launchkit/types
+# @spectrum/types
 
 **Responsibility:** The four core domain types + zod schemas + branded ids.
 

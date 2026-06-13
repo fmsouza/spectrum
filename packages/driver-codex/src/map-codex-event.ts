@@ -1,4 +1,4 @@
-import type { CanonicalEvent, RunnerId } from "@launchkit/agent-events"
+import type { CanonicalEvent, RunnerId } from "@spectrum/agent-events"
 import type { CodexServerNotification, CodexThreadItem } from "./protocol"
 
 /**

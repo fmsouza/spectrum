@@ -1,4 +1,4 @@
-import { SettingsNav } from "@launchkit/ui"
+import { SettingsNav } from "@spectrum/ui"
 import type { ReactNode } from "react"
 import { ErrorBoundary } from "../ErrorBoundary"
 import { GeneralPage, HarnessesPage, ModelsPage, ProvidersPage } from "../pages"

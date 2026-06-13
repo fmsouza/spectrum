@@ -1,4 +1,4 @@
-import { type Result, err, isErr, ok } from "@launchkit/utils"
+import { type Result, err, isErr, ok } from "@spectrum/utils"
 import type { CliDeps } from "./deps"
 import type { CliError } from "./errors"
 

@@ -1,4 +1,4 @@
-import { type Result, err, ok } from "@launchkit/utils"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { DbClient } from "./client"
 import type { DbError } from "./errors"
 import { bundledMigrations } from "./migrations.generated"

@@ -1,4 +1,4 @@
-import { isErr } from "@launchkit/utils"
+import { isErr } from "@spectrum/utils"
 import { parseAnthropicRequest } from "./adapters/anthropic-request"
 import { serializeAnthropicStream } from "./adapters/anthropic-stream"
 import { parseOpenAIRequest } from "./adapters/openai-request"

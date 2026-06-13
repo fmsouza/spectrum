@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { ToolCallItem } from "@launchkit/agent-events"
+import type { ToolCallItem } from "@spectrum/agent-events"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { ToolCallCard, toolCallSummary } from "./ToolCallCard"
 

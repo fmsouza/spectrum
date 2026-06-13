@@ -1,13 +1,13 @@
 {
-  "name": "@launchkit/harnesses",
+  "name": "@spectrum/harnesses",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "typecheck": "tsc --noEmit", "test": "bun test" },
   "dependencies": {
-    "@launchkit/types": "workspace:*",
-    "@launchkit/utils": "workspace:*",
-    "@launchkit/platform": "workspace:*"
+    "@spectrum/types": "workspace:*",
+    "@spectrum/utils": "workspace:*",
+    "@spectrum/platform": "workspace:*"
   }
 }

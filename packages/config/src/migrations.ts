@@ -1,4 +1,4 @@
-import { type Result, err, ok } from "@launchkit/utils"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { ConfigError } from "./errors"
 import {
   CURRENT_CONFIG_VERSION,
@@ -22,7 +22,7 @@ const asRecord = (value: unknown): Record<string, unknown> =>
 /**
  * v1 stored each provider's API key inline as `provider.apiKey`. v2 moves secrets to the
  * keychain, so this strips the inline `apiKey` string and initialises `secrets: {}`
- * (the keychain reference is re-established later by `@launchkit/secrets`). It also fills a
+ * (the keychain reference is re-established later by `@spectrum/secrets`). It also fills a
  * default `settings` block, which v1 documents did not have.
  */
 const v1ToV2: Migration = {

@@ -1,5 +1,5 @@
 {
-  "name": "@launchkit/proxy",
+  "name": "@spectrum/proxy",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -19,10 +19,10 @@
     "@ai-sdk/openai": "^3",
     "@ai-sdk/perplexity": "^3",
     "@ai-sdk/xai": "^3",
-    "@launchkit/config": "workspace:*",
-    "@launchkit/secrets": "workspace:*",
-    "@launchkit/types": "workspace:*",
-    "@launchkit/utils": "workspace:*",
+    "@spectrum/config": "workspace:*",
+    "@spectrum/secrets": "workspace:*",
+    "@spectrum/types": "workspace:*",
+    "@spectrum/utils": "workspace:*",
     "ai": "^6",
     "ollama-ai-provider-v2": "^3",
     "zod": "^3.25.76"

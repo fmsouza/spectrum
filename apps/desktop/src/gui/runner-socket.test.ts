@@ -3,8 +3,8 @@ import type {
   RunManager,
   RunnerInbound,
   RunnerOutbound,
-} from "@launchkit/agent-driver"
-import { SessionIdSchema } from "@launchkit/types"
+} from "@spectrum/agent-driver"
+import { SessionIdSchema } from "@spectrum/types"
 import { makeRunnerSocketHandlers } from "./runner-socket"
 
 const id = SessionIdSchema.parse("s_00000000-0000-4000-8000-000000000000")

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { Usage } from "@launchkit/agent-events"
+import type { Usage } from "@spectrum/agent-events"
 import { cleanup, render, screen } from "@testing-library/react"
 import { UsageFooter } from "./UsageFooter"
 

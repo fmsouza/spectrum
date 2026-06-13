@@ -18,7 +18,7 @@ describe("createBunProcessRunner", () => {
 
   it("returns a backend-failed error when the command cannot be spawned", async () => {
     const runner = createBunProcessRunner()
-    const result = await runner.run("launchkit-no-such-binary-xyz", [])
+    const result = await runner.run("spectrum-no-such-binary-xyz", [])
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error.kind).toBe("backend-failed")

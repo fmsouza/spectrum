@@ -1,10 +1,10 @@
-import type { AgentStartInput } from "@launchkit/agent-driver"
-import type { ApprovalDecision, ApprovalTarget } from "@launchkit/agent-events"
+import type { AgentStartInput } from "@spectrum/agent-driver"
+import type { ApprovalDecision, ApprovalTarget } from "@spectrum/agent-events"
 import type {
   AdapterCtx,
   AdapterHandle,
   DriverAdapter,
-} from "@launchkit/driver-runtime"
+} from "@spectrum/driver-runtime"
 import { initialClaudeMapState, mapClaudeMessage } from "./map-claude-message"
 import {
   CLAUDE_SUPPORTED_MODES,

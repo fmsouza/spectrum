@@ -1,5 +1,5 @@
-import { defaultTerminationSignal, detectPlatform } from "@launchkit/platform"
-import type { IdGen } from "@launchkit/utils"
+import { defaultTerminationSignal, detectPlatform } from "@spectrum/platform"
+import type { IdGen } from "@spectrum/utils"
 
 /** A parsed JSON-RPC line. Routed by the presence of `id`/`method`/`result`/`error`. */
 export type JsonRpcMessage = Record<string, unknown>
@@ -204,9 +204,9 @@ export const createStdioJsonRpcTransport = (deps: {
 }
 
 /**
- * Benign, repeating `codex app-server` stderr lines that LaunchKit drops (forwarding everything else).
+ * Benign, repeating `codex app-server` stderr lines that Spectrum drops (forwarding everything else).
  * codex polls the provider's `/models` for its model PICKER, expecting an Ollama-style `{models:[…]}`;
- * the LaunchKit proxy serves the OpenAI-standard `{data:[…]}`, so the refresh fails every ~15s. LaunchKit
+ * the Spectrum proxy serves the OpenAI-standard `{data:[…]}`, so the refresh fails every ~15s. Spectrum
  * sets the model explicitly via `thread/start`, so the picker is unused and the warning is pure noise.
  */
 export const isCodexStderrNoise = (line: string): boolean =>

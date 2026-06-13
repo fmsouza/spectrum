@@ -1,7 +1,7 @@
-import { type ClientTransport, createIpcClient } from "@launchkit/ipc"
+import { type ClientTransport, createIpcClient } from "@spectrum/ipc"
 
 /** Re-export the webview's client type so pages/hooks import it from one place. */
-export type { IpcClient } from "@launchkit/ipc"
+export type { IpcClient } from "@spectrum/ipc"
 export { createIpcClient }
 
 /**

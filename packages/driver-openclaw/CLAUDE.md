@@ -1,4 +1,4 @@
-# @launchkit/driver-openclaw
+# @spectrum/driver-openclaw
 
 **Responsibility:** OpenClaw Gateway adapter: pure `mapOpenclawEvent` + injected-transport glue, wrapped
 by driver-runtime into an `AgentDriver`. **FLAGGED UNVERIFIED** (no binary; `@openclaw/sdk` unreleased).
@@ -7,8 +7,8 @@ by driver-runtime into an `AgentDriver`. **FLAGGED UNVERIFIED** (no binary; `@op
 `OpenclawDriverDeps`, `OpenclawMapState`, `OpenClawEvent`, `OpenclawRun`, `OpenclawTransport`,
 `OpenclawConnect`).
 
-**Depends on:** `@launchkit/driver-runtime`, `@launchkit/agent-events`, `@launchkit/agent-driver`,
-`@launchkit/utils`, `zod`.
+**Depends on:** `@spectrum/driver-runtime`, `@spectrum/agent-events`, `@spectrum/agent-driver`,
+`@spectrum/utils`, `zod`.
 
 **Effects owned:** the OpenClaw Gateway connection — behind the injected `OpenclawTransport` port; never
 reached around. No direct fs/net/spawn in this package's logic.

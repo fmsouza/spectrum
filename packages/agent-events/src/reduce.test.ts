@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { RunnerId } from "@launchkit/types"
+import type { RunnerId } from "@spectrum/types"
 import type { CanonicalEvent } from "./events"
 import {
   type RunState,

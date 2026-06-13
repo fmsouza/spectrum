@@ -16,10 +16,10 @@ export interface ResolveAppPathsInput {
   readonly env: Readonly<Record<string, string | undefined>>
 }
 
-const APP_DIR_NAME = "LaunchKit" // macOS + Windows
-const XDG_DIR_NAME = "launchkit" // Linux / unknown
+const APP_DIR_NAME = "Spectrum" // macOS + Windows
+const XDG_DIR_NAME = "spectrum" // Linux / unknown
 
-const nonEmpty = (v: string | undefined): v is string =>
+export const nonEmpty = (v: string | undefined): v is string =>
   v !== undefined && v.length > 0
 
 /** Resolve the single per-OS application directory and the files within it. Pure. */
@@ -28,7 +28,7 @@ export const resolveAppPaths = (input: ResolveAppPathsInput): AppPaths => {
   const p = platform === "windows" ? path.win32 : path.posix
 
   const dataDir = ((): string => {
-    if (nonEmpty(env.LAUNCHKIT_DATA_DIR)) return env.LAUNCHKIT_DATA_DIR
+    if (nonEmpty(env.SPECTRUM_DATA_DIR)) return env.SPECTRUM_DATA_DIR
     switch (platform) {
       case "macos":
         return p.join(homeDir, "Library", "Application Support", APP_DIR_NAME)
@@ -50,7 +50,7 @@ export const resolveAppPaths = (input: ResolveAppPathsInput): AppPaths => {
   return {
     dataDir,
     configFile: p.join(dataDir, "config.json"),
-    dbFile: p.join(dataDir, "launchkit.db"),
+    dbFile: p.join(dataDir, "spectrum.db"),
     harnessDir: p.join(dataDir, "harnesses"),
     runtimeFile: p.join(dataDir, "runtime.json"),
     secretsDir: p.join(dataDir, "secrets"),

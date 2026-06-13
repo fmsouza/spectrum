@@ -1,5 +1,5 @@
-import type { HarnessDefinition, ModelId } from "@launchkit/types"
-import { type Result, err, isErr, ok, renderTemplate } from "@launchkit/utils"
+import type { HarnessDefinition, ModelId } from "@spectrum/types"
+import { type Result, err, isErr, ok, renderTemplate } from "@spectrum/utils"
 import type { CommandResolver } from "./command-resolver"
 import type { HarnessError } from "./errors"
 import type { ProcessSpawner, SpawnedProcess } from "./process-spawner"

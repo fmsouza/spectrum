@@ -45,4 +45,4 @@ build-plan/
 docs/superpowers/
 
 # AI-generated brand kit reference — consumed assets are vendored in packages/brand (do not commit)
-launchkit-brand/
+spectrum-brand/

@@ -1,4 +1,4 @@
-import type { ModelRoute } from "@launchkit/types"
+import type { ModelRoute } from "@spectrum/types"
 import { type ReactElement, useState } from "react"
 import { Icon } from "../atoms/Icon"
 

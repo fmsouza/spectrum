@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 
 const dir = new URL("./", import.meta.url)
 
-// Legacy token names that must be fully migrated to --lk-*.
+// Legacy token names that must be fully migrated to --sp-*.
 const LEGACY = [
   "--bg",
   "--bg-grain",
@@ -62,11 +62,11 @@ const LEGACY = [
 ]
 
 // True if css references var(--name) where --name is the EXACT legacy token
-// (a trailing [\w-] would mean a longer token like --lk-..., so we negate it).
+// (a trailing [\w-] would mean a longer token like --sp-..., so we negate it).
 const usesLegacy = (css: string, name: string): boolean =>
   new RegExp(`var\\(\\s*${name}(?![\\w-])`).test(css)
 
-describe("partials reference only --lk-* tokens", () => {
+describe("partials reference only --sp-* tokens", () => {
   it("contains no legacy var(--…) references in any partial except tokens.css", async () => {
     // Discover the partials via the resolved filesystem path (fileURLToPath handles
     // the Windows `/D:/…` URL form that breaks Glob's `cwd`); read each via a file URL

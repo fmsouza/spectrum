@@ -9,47 +9,47 @@
   flex-direction: column;
   gap: 3px;
   width: 100%;
-  padding: var(--lk-space-2) var(--lk-space-3);
+  padding: var(--sp-space-2) var(--sp-space-3);
   text-align: left;
   border: 1px solid transparent;
-  border-radius: var(--lk-radius-md);
+  border-radius: var(--sp-radius-md);
   background: transparent;
-  color: var(--lk-text);
-  transition: background var(--lk-duration) var(--lk-ease), border-color
-    var(--lk-duration) var(--lk-ease);
+  color: var(--sp-text);
+  transition: background var(--sp-duration) var(--sp-ease), border-color
+    var(--sp-duration) var(--sp-ease);
 }
 
 .lk-session-row:hover {
-  background: var(--lk-bg-subtle);
+  background: var(--sp-bg-subtle);
 }
 
 .lk-session-row[data-selected="true"] {
-  background: var(--lk-info-soft);
-  border-color: color-mix(in srgb, var(--lk-primary) 35%, transparent);
+  background: var(--sp-info-soft);
+  border-color: color-mix(in srgb, var(--sp-primary) 35%, transparent);
 }
 
 /* Line 1: status dot + name (.lk-truncate) + badge pushed to the right. */
 .lk-session-row__line {
   display: flex;
   align-items: center;
-  gap: var(--lk-space-2);
+  gap: var(--sp-space-2);
   font-weight: 600;
-  font-size: var(--lk-text-sm);
+  font-size: var(--sp-text-sm);
 }
 
 /* Lines 2 & 3: harness·model and cwd·time — smaller, muted. */
 .lk-session-row__sub {
-  font-size: var(--lk-text-xs);
-  color: var(--lk-text-secondary);
+  font-size: var(--sp-text-xs);
+  color: var(--sp-text-secondary);
 }
 
 .lk-session-row__meta {
-  font-size: var(--lk-text-xs);
+  font-size: var(--sp-text-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--lk-text-muted);
-  font-family: var(--lk-font-mono);
+  color: var(--sp-text-muted);
+  font-family: var(--sp-font-mono);
 }
 
 /* The selected row keeps its inner text legible on the accent-soft wash. */
@@ -57,8 +57,8 @@
 .lk-session-row[data-selected="true"] .lk-session-row__meta {
   color: color-mix(
     in srgb,
-    var(--lk-text-secondary) 80%,
-    var(--lk-primary-active)
+    var(--sp-text-secondary) 80%,
+    var(--sp-primary-active)
   );
 }
 
@@ -66,32 +66,32 @@
 .lk-project-group {
   display: flex;
   flex-direction: column;
-  gap: var(--lk-space-1);
+  gap: var(--sp-space-1);
 }
 
 .lk-project-group__header {
   display: flex;
   align-items: center;
-  gap: var(--lk-space-2);
+  gap: var(--sp-space-2);
   width: 100%;
-  padding: var(--lk-space-1) var(--lk-space-2);
+  padding: var(--sp-space-1) var(--sp-space-2);
   text-align: left;
   border: 1px solid transparent;
-  border-radius: var(--lk-radius-md);
+  border-radius: var(--sp-radius-md);
   background: transparent;
-  color: var(--lk-text);
-  font-size: var(--lk-text-sm);
+  color: var(--sp-text);
+  font-size: var(--sp-text-sm);
   font-weight: 650;
 }
 
 .lk-project-group__header:hover {
-  background: var(--lk-bg-subtle);
+  background: var(--sp-bg-subtle);
 }
 
 .lk-project-group__toggle {
   display: inline-block;
-  color: var(--lk-text-muted);
-  transition: transform var(--lk-duration) var(--lk-ease);
+  color: var(--sp-text-muted);
+  transition: transform var(--sp-duration) var(--sp-ease);
   transform: rotate(90deg);
 }
 
@@ -109,6 +109,6 @@
 .lk-project-group__body {
   display: flex;
   flex-direction: column;
-  gap: var(--lk-space-1);
-  padding-left: var(--lk-space-2);
+  gap: var(--sp-space-1);
+  padding-left: var(--sp-space-2);
 }

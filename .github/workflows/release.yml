@@ -32,29 +32,29 @@ jobs:
         include:
           - name: macOS arm64
             os: macos-latest
-            asset: launchkit-darwin-arm64
+            asset: spectrum-darwin-arm64
             archive: tar.gz
             app: true
           - name: macOS x64
             # macos-13 (Intel) was retired by GitHub on 2025-12-04; macos-15-intel
             # is the replacement x86_64 label (Intel support ends Fall 2027).
             os: macos-15-intel
-            asset: launchkit-darwin-x64
+            asset: spectrum-darwin-x64
             archive: tar.gz
             app: true
           - name: Linux x64
             os: ubuntu-latest
-            asset: launchkit-linux-x64
+            asset: spectrum-linux-x64
             archive: tar.gz
             app: true
           - name: Linux arm64
             os: ubuntu-24.04-arm
-            asset: launchkit-linux-arm64
+            asset: spectrum-linux-arm64
             archive: tar.gz
             app: true
           - name: Windows x64
             os: windows-latest
-            asset: launchkit-windows-x64
+            asset: spectrum-windows-x64
             archive: zip
             app: true
     steps:
@@ -65,14 +65,14 @@ jobs:
       - run: bun install --frozen-lockfile
 
       - name: Compile CLI binary
-        run: bun run --filter launchkit compile
+        run: bun run --filter spectrum compile
 
       - name: Build desktop app (best-effort)
         id: app
         if: matrix.app
         # continue-on-error: true until verified-running smoke is green on every platform (Task 5.2)
         continue-on-error: true
-        run: bun run --filter launchkit build
+        run: bun run --filter spectrum build
 
       - name: Install xvfb (Linux GUI smoke)
         if: matrix.app && runner.os == 'Linux'
@@ -80,18 +80,18 @@ jobs:
 
       - name: Verified-running smoke (Linux)
         if: matrix.app && runner.os == 'Linux' && steps.app.outcome == 'success'
-        run: xvfb-run -a bun run --filter launchkit smoke
+        run: xvfb-run -a bun run --filter spectrum smoke
 
       - name: Verified-running smoke (macOS/Windows)
         if: matrix.app && runner.os != 'Linux' && steps.app.outcome == 'success'
-        run: bun run --filter launchkit smoke
+        run: bun run --filter spectrum smoke
 
       - name: Stage artifacts (unix)
         if: matrix.archive == 'tar.gz'
         shell: bash
         run: |
           mkdir -p stage
-          cp apps/desktop/dist/launchkit-cli "stage/${{ matrix.asset }}-cli"
+          cp apps/desktop/dist/spectrum-cli "stage/${{ matrix.asset }}-cli"
           if [ "${{ steps.app.outcome }}" = "success" ]; then
             tar czf "stage/${{ matrix.asset }}-app.tar.gz" -C apps/desktop/build .
             # installer (Electrobun emits the per-OS installer under apps/desktop/build; record its path during the spike)
@@ -105,9 +105,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path stage | Out-Null
-          Copy-Item "apps/desktop/dist/launchkit-cli.exe" "stage/${{ matrix.asset }}-cli.exe" -ErrorAction SilentlyContinue
+          Copy-Item "apps/desktop/dist/spectrum-cli.exe" "stage/${{ matrix.asset }}-cli.exe" -ErrorAction SilentlyContinue
           if (-not (Test-Path "stage/${{ matrix.asset }}-cli.exe")) {
-            Copy-Item "apps/desktop/dist/launchkit-cli" "stage/${{ matrix.asset }}-cli.exe"
+            Copy-Item "apps/desktop/dist/spectrum-cli" "stage/${{ matrix.asset }}-cli.exe"
           }
           if ("${{ steps.app.outcome }}" -eq "success") {
             Compress-Archive "apps/desktop/build/*" "stage/${{ matrix.asset }}-app.zip"
@@ -139,6 +139,6 @@ jobs:
         run: |
           gh release create ${{ github.ref_name }} \
             --title "${{ github.ref_name }}" \
-            --notes "LaunchKit ${{ github.ref_name }} (${{ github.sha }})." \
+            --notes "Spectrum ${{ github.ref_name }} (${{ github.sha }})." \
             --target ${{ github.sha }} \
             artifacts/*

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { defaultConfig } from "@launchkit/config"
+import { defaultConfig } from "@spectrum/config"
 import { runCli } from "./run"
 import { makeFakeDeps } from "./test-support"
 

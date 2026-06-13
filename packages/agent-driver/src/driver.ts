@@ -1,11 +1,11 @@
-import type { RunnerId } from "@launchkit/agent-events"
+import type { RunnerId } from "@spectrum/agent-events"
 import type {
   ApprovalDecision,
   CanonicalEvent,
   PermissionMode,
-} from "@launchkit/agent-events"
-import type { HarnessId, ModelId } from "@launchkit/types"
-import type { Result } from "@launchkit/utils"
+} from "@spectrum/agent-events"
+import type { HarnessId, ModelId } from "@spectrum/types"
+import type { Result } from "@spectrum/utils"
 
 export type DriverError = {
   readonly kind:
@@ -32,8 +32,8 @@ export interface AgentStartInput {
   /**
    * The harness-resolved launch args (the same the terminal path spawns with). A driver whose proxy
    * routing lives in CLI args rather than env needs these — e.g. codex routes only through a provider
-   * declared via `-c model_providers.launchkit.*` overrides; without them a native codex session
-   * ignores the LaunchKit proxy. Drivers that route via env (claude/opencode/openclaw) ignore this.
+   * declared via `-c model_providers.spectrum.*` overrides; without them a native codex session
+   * ignores the Spectrum proxy. Drivers that route via env (claude/opencode/openclaw) ignore this.
    */
   readonly args?: readonly string[]
   /** The normalized permission mode the session starts in; absent = "manual". */

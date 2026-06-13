@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import type { SdkProvider } from "@launchkit/types"
-import { type Result, err, ok } from "@launchkit/utils"
+import type { SdkProvider } from "@spectrum/types"
+import { type Result, err, ok } from "@spectrum/utils"
 import { createModelLister } from "./model-lister"
 import type { HttpGet } from "./model-lister"
 import type { ProxyError } from "./types"

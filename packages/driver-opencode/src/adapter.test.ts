@@ -1,12 +1,12 @@
 import { describe, expect, it } from "bun:test"
-import type { AgentStartInput } from "@launchkit/agent-driver"
+import type { AgentStartInput } from "@spectrum/agent-driver"
 import type {
   ApprovalDecision,
   ApprovalTarget,
   CanonicalEvent,
   PermissionMode,
   RunnerId,
-} from "@launchkit/agent-events"
+} from "@spectrum/agent-events"
 import { OPENCODE_SUPPORTED_MODES, createOpencodeAdapter } from "./adapter"
 import { S_ROOT } from "./fixtures/opencode-events"
 import type {
@@ -249,7 +249,7 @@ describe("createOpencodeAdapter", () => {
     expect(t.emitted).toContainEqual({ type: "runner-started", runnerId: ROOT })
   })
 
-  it("passes a launchkit proxy provider config to connect when the proxy env is present", async () => {
+  it("passes a spectrum proxy provider config to connect when the proxy env is present", async () => {
     const t = setup()
     await t.adapter.start(
       {
@@ -264,14 +264,14 @@ describe("createOpencodeAdapter", () => {
     )
     expect(t.connectCfg?.config).toEqual({
       provider: {
-        launchkit: {
+        spectrum: {
           npm: "@ai-sdk/openai-compatible",
-          name: "LaunchKit",
+          name: "Spectrum",
           options: { baseURL: "http://127.0.0.1:4000/v1", apiKey: "rk_1" },
           models: { "minimax-m3": {} },
         },
       },
-      model: "launchkit/minimax-m3",
+      model: "spectrum/minimax-m3",
     })
   })
 
@@ -596,8 +596,8 @@ describe("createOpencodeAdapter", () => {
 
     // First connect happened with the initial model.
     expect(connectConfigs).toHaveLength(1)
-    expect(connectConfigs[0]?.config?.model).toBe("launchkit/minimax-m3")
-    expect(connectConfigs[0]?.config?.provider.launchkit.models).toEqual({
+    expect(connectConfigs[0]?.config?.model).toBe("spectrum/minimax-m3")
+    expect(connectConfigs[0]?.config?.provider.spectrum.models).toEqual({
       "minimax-m3": {},
     })
     expect(createdSessionIds).toEqual(["ses_1"])
@@ -614,8 +614,8 @@ describe("createOpencodeAdapter", () => {
 
     // (a) connect was called again with a config whose model reflects mdl_new.
     expect(connectConfigs).toHaveLength(2)
-    expect(connectConfigs[1]?.config?.model).toBe("launchkit/mdl_new")
-    expect(connectConfigs[1]?.config?.provider.launchkit.models).toEqual({
+    expect(connectConfigs[1]?.config?.model).toBe("spectrum/mdl_new")
+    expect(connectConfigs[1]?.config?.provider.spectrum.models).toEqual({
       mdl_new: {},
     })
     // (b) a new session was created.

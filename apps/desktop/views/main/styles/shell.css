@@ -6,7 +6,7 @@
  * A 3-column grid lays them out; each zone owns its own scroll. */
 .lk-shell {
   display: grid;
-  grid-template-columns: var(--lk-rail-w) clamp(232px, 24vw, var(--lk-master-w)) minmax(
+  grid-template-columns: var(--sp-rail-w) clamp(232px, 24vw, var(--sp-master-w)) minmax(
       0,
       1fr
     );
@@ -20,10 +20,10 @@ nav[aria-label="Primary"] {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--lk-space-3);
-  padding: var(--lk-space-4) var(--lk-space-2);
-  background: var(--lk-graphite-950);
-  border-right: 1px solid color-mix(in srgb, #000 35%, var(--lk-graphite-950));
+  gap: var(--sp-space-3);
+  padding: var(--sp-space-4) var(--sp-space-2);
+  background: var(--sp-graphite-950);
+  border-right: 1px solid color-mix(in srgb, #000 35%, var(--sp-graphite-950));
   overflow-y: auto;
 }
 
@@ -36,8 +36,8 @@ nav[aria-label="Primary"] [data-app-icon] {
   justify-content: center;
   width: 36px;
   height: 36px;
-  margin-bottom: var(--lk-space-2);
-  border-radius: var(--lk-radius-md);
+  margin-bottom: var(--sp-space-2);
+  border-radius: var(--sp-radius-md);
 }
 
 nav[aria-label="Primary"] ul {
@@ -46,7 +46,7 @@ nav[aria-label="Primary"] ul {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--lk-space-2);
+  gap: var(--sp-space-2);
 }
 
 nav[aria-label="Primary"] li {
@@ -64,31 +64,31 @@ nav[aria-label="Primary"] button {
   height: 40px;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: var(--lk-radius-md);
+  border-radius: var(--sp-radius-md);
   background: transparent;
-  color: var(--lk-text-secondary);
-  font-size: var(--lk-text-lg);
+  color: var(--sp-text-secondary);
+  font-size: var(--sp-text-lg);
   line-height: 1;
-  transition: background var(--lk-duration) var(--lk-ease), color
-    var(--lk-duration) var(--lk-ease), border-color var(--lk-duration)
-    var(--lk-ease);
+  transition: background var(--sp-duration) var(--sp-ease), color
+    var(--sp-duration) var(--sp-ease), border-color var(--sp-duration)
+    var(--sp-ease);
 }
 
 nav[aria-label="Primary"] button:hover {
-  background: color-mix(in srgb, #fff 8%, var(--lk-graphite-950));
-  color: var(--lk-text);
+  background: color-mix(in srgb, #fff 8%, var(--sp-graphite-950));
+  color: var(--sp-text);
 }
 
 nav[aria-label="Primary"] button[data-active="true"] {
-  background: color-mix(in srgb, var(--lk-primary) 20%, var(--lk-graphite-950));
-  border-color: color-mix(in srgb, var(--lk-primary) 40%, transparent);
-  color: var(--lk-text);
+  background: color-mix(in srgb, var(--sp-primary) 20%, var(--sp-graphite-950));
+  border-color: color-mix(in srgb, var(--sp-primary) 40%, transparent);
+  color: var(--sp-text);
 }
 
 /* The proxy status (now wrapped in a Tooltip) is the last child; pin it down. */
 nav[aria-label="Primary"] > .lk-tooltip {
   margin-top: auto;
-  margin-bottom: var(--lk-space-1);
+  margin-bottom: var(--sp-space-1);
 }
 
 /* ── Master (column 2): the Sessions / Settings list column. ──
@@ -99,9 +99,9 @@ nav[aria-label="Settings"] {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: var(--lk-space-4);
-  background: var(--lk-surface-raised);
-  border-right: 1px solid var(--lk-border);
+  padding: var(--sp-space-4);
+  background: var(--sp-surface-raised);
+  border-right: 1px solid var(--sp-border);
   overflow-y: auto;
 }
 
@@ -120,23 +120,23 @@ nav[aria-label="Settings"] {
 
 .lk-settings-nav a {
   display: block;
-  padding: var(--lk-space-2) var(--lk-space-3);
-  border-radius: var(--lk-radius-md);
-  color: var(--lk-text-secondary);
-  font-size: var(--lk-text-sm);
+  padding: var(--sp-space-2) var(--sp-space-3);
+  border-radius: var(--sp-radius-md);
+  color: var(--sp-text-secondary);
+  font-size: var(--sp-text-sm);
   font-weight: 550;
-  transition: background var(--lk-duration) var(--lk-ease), color
-    var(--lk-duration) var(--lk-ease);
+  transition: background var(--sp-duration) var(--sp-ease), color
+    var(--sp-duration) var(--sp-ease);
 }
 
 .lk-settings-nav a:hover {
-  background: var(--lk-bg-subtle);
-  color: var(--lk-text);
+  background: var(--sp-bg-subtle);
+  color: var(--sp-text);
 }
 
 .lk-settings-nav a[aria-current="page"] {
-  background: var(--lk-info-soft);
-  color: var(--lk-primary-active);
+  background: var(--sp-info-soft);
+  color: var(--sp-primary-active);
   font-weight: 650;
 }
 
@@ -146,7 +146,7 @@ main {
   min-width: 0;
   height: 100%;
   min-height: 0;
-  padding: var(--lk-space-12) var(--lk-space-12);
+  padding: var(--sp-space-12) var(--sp-space-12);
   overflow-y: auto;
 }
 
@@ -158,7 +158,7 @@ main {
    neither overlaps. The rail spans both rows on the left. */
 @media (max-width: 720px) {
   .lk-shell {
-    grid-template-columns: var(--lk-rail-w) minmax(0, 1fr);
+    grid-template-columns: var(--sp-rail-w) minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
   }
   nav[aria-label="Primary"] {

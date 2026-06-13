@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { type Result, err, ok } from "@launchkit/utils"
+import { type Result, err, ok } from "@spectrum/utils"
 import type { SecretError } from "./backend"
 import type { ProcessRunner } from "./process-runner"
 import { isSecretServiceAvailable } from "./secret-service-probe"

@@ -1,11 +1,6 @@
-import { type RunState, initialRunState, reduce } from "@launchkit/agent-events"
-import type {
-  HarnessId,
-  ModelId,
-  ModelRoute,
-  SessionId,
-} from "@launchkit/types"
-import { EmptyState, RunView, Spinner } from "@launchkit/ui"
+import { type RunState, initialRunState, reduce } from "@spectrum/agent-events"
+import type { HarnessId, ModelId, ModelRoute, SessionId } from "@spectrum/types"
+import { EmptyState, RunView, Spinner } from "@spectrum/ui"
 import { type ReactElement, useEffect, useState } from "react"
 import { useStore } from "zustand"
 import { useIpcClient } from "../IpcClientContext"

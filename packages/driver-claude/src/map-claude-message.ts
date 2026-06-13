@@ -1,4 +1,4 @@
-import type { CanonicalEvent, RunnerId, Usage } from "@launchkit/agent-events"
+import type { CanonicalEvent, RunnerId, Usage } from "@spectrum/agent-events"
 import type {
   SdkAssistantMessage,
   SdkContentBlock,

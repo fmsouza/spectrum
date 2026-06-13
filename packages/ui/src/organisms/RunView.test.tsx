@@ -4,9 +4,9 @@ import {
   type RunState,
   initialRunState,
   reduce,
-} from "@launchkit/agent-events"
-import { RunnerIdSchema } from "@launchkit/types"
-import type { ModelRoute } from "@launchkit/types"
+} from "@spectrum/agent-events"
+import { RunnerIdSchema } from "@spectrum/types"
+import type { ModelRoute } from "@spectrum/types"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { RunView } from "./RunView"
 

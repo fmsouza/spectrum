@@ -1,8 +1,8 @@
-import { isOk } from "@launchkit/utils"
+import { isOk } from "@spectrum/utils"
 import type { ProcessRunner } from "./process-runner"
 
-const SERVICE = "launchkit"
-const PROBE_ACCOUNT = "__launchkit_probe__"
+const SERVICE = "spectrum"
+const PROBE_ACCOUNT = "__spectrum_probe__"
 
 // Substrings indicating the Secret Service / D-Bus session is unreachable (vs. a plain cache miss).
 // Heuristic — may need tuning per distro.

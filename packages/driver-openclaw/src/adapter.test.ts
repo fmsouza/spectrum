@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test"
-import type { AgentStartInput } from "@launchkit/agent-driver"
+import type { AgentStartInput } from "@spectrum/agent-driver"
 import type {
   ApprovalDecision,
   ApprovalTarget,
   CanonicalEvent,
   RunnerId,
-} from "@launchkit/agent-events"
+} from "@spectrum/agent-events"
 import { createOpenclawAdapter } from "./adapter"
 import type {
   OpenClawEvent,

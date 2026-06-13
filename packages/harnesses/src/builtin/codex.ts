@@ -1,4 +1,4 @@
-import { type HarnessDefinition, HarnessIdSchema } from "@launchkit/types"
+import { type HarnessDefinition, HarnessIdSchema } from "@spectrum/types"
 
 export const codex: HarnessDefinition = {
   id: HarnessIdSchema.parse("codex"),
@@ -14,15 +14,15 @@ export const codex: HarnessDefinition = {
   },
   argsTemplate: [
     "-c",
-    "model_provider=launchkit",
+    "model_provider=spectrum",
     "-c",
-    'model_providers.launchkit.name="LaunchKit"',
+    'model_providers.spectrum.name="Spectrum"',
     "-c",
-    'model_providers.launchkit.base_url="{{proxyUrl}}/v1"',
+    'model_providers.spectrum.base_url="{{proxyUrl}}/v1"',
     "-c",
-    'model_providers.launchkit.env_key="OPENAI_API_KEY"',
+    'model_providers.spectrum.env_key="OPENAI_API_KEY"',
     "-c",
-    'model_providers.launchkit.wire_api="responses"',
+    'model_providers.spectrum.wire_api="responses"',
     "-m",
     "{{model}}",
   ],

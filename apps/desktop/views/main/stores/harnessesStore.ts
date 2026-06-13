@@ -1,4 +1,4 @@
-import type { HarnessView } from "@launchkit/ipc"
+import type { HarnessView } from "@spectrum/ipc"
 import { type StoreApi, createStore } from "zustand/vanilla"
 import { type ResourceState, createResource } from "./resource"
 import type { StoreDeps } from "./types"
