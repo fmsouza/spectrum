@@ -3,8 +3,13 @@ import {
   type ServerTransport,
   createIpcServer,
 } from "@launchkit/ipc"
+import { detectPlatform } from "@launchkit/platform"
 import type { AppContext } from "../composition"
 import { createIpcHandlers } from "./ipc/handlers"
+
+// Linux must use CEF (GTK/WebKit can't handle Electrobun's webview layering); native elsewhere.
+const RENDERER: "cef" | "native" =
+  detectPlatform() === "linux" ? "cef" : "native"
 
 /** The subset of BrowserWindow options this shell sets (security.md webview hardening). */
 export interface WindowOptions {
@@ -111,6 +116,7 @@ export const realOpenWindowDeps: OpenWindowDeps = {
           title: opts.title,
           url: opts.url,
           frame: { width: 1024, height: 720, x: 100, y: 100 },
+          renderer: RENDERER,
           rpc,
         })
       },

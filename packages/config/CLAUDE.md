@@ -4,8 +4,8 @@
 
 **Public API (barrel `src/index.ts`):** `Config`/`ConfigSchema`, `Settings`/`SettingsSchema`, `HarnessPrefs`/`HarnessPrefsSchema`, `CURRENT_CONFIG_VERSION`, `defaultConfig()`; `Migration`/`migrations`/`runMigrations`; `ConfigError`; `ConfigFile`/`createInMemoryConfigFile()` (test fake)/`createFsConfigFile()` (real adapter); `ConfigStore`/`createFileConfigStore({ file })`/`createCachedConfigStore(inner)`.
 
-**Depends on:** `@launchkit/types` (`Provider`, `ModelRoute`, `SecretRef`), `@launchkit/utils` (`Result`, `ok`, `err`, `isOk`, `Clock`)md.
+**Depends on:** `@launchkit/types` (`Provider`, `ModelRoute`, `SecretRef`), `@launchkit/utils` (`Result`, `ok`, `err`, `isOk`, `Clock`), `@launchkit/platform` (`Platform`, `detectPlatform`).
 
 **Effects owned:** config file (via the injected `ConfigFile` interface) — exposed to consumers as an injected interface; never reached around.
 
-**Local rules:** atomic writes (`<file>.tmp` → fsync → rename), `chmod 0600` on the file / `0700` on the dir, zod-validate on load AND after migration, versioned forward migrations only. Secrets are references only — a provider with an inline raw secret string MUST fail `ConfigSchema`. `proxyHost` is the literal `127.0.0.1` (loopback only). The cached store is the read path; disk is read once.
+**Local rules:** atomic writes (`<file>.tmp` → fsync → rename), `chmod 0600`/`0700` on POSIX; skipped on Windows (relies on `%APPDATA%` ACLs), zod-validate on load AND after migration, versioned forward migrations only. Secrets are references only — a provider with an inline raw secret string MUST fail `ConfigSchema`. `proxyHost` is the literal `127.0.0.1` (loopback only). The cached store is the read path; disk is read once.

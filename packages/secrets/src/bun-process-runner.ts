@@ -11,9 +11,13 @@ export const createBunProcessRunner = (): ProcessRunner => ({
   run: async (
     command: string,
     args: readonly string[],
+    opts?: { readonly stdin?: string },
   ): Promise<Result<{ stdout: string }, SecretError>> => {
     try {
       const proc = Bun.spawn([command, ...args], {
+        ...(opts?.stdin !== undefined
+          ? { stdin: new TextEncoder().encode(opts.stdin) }
+          : {}),
         stdout: "pipe",
         stderr: "pipe",
       })

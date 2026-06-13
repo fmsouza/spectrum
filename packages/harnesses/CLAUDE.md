@@ -4,7 +4,7 @@
 
 **Public API (barrel `src/index.ts`):** `ALLOWED_TOKENS`, `validateEnvTemplate`, `claude`/`codex`/`opencode`/`openclaw`, `builtinHarnesses`, `createInMemoryHarnessFileSource`, `createFakeCommandResolver`, `createRecordingProcessSpawner`, `createRegistry`, `launchHarness`, `createPathCommandResolver`, `createBunProcessSpawner`, `createDirHarnessFileSource`. Type-only: `HarnessError`, `HarnessFileSource`, `CommandResolver`, `ProcessSpawner`, `SpawnCall`, `RecordingProcessSpawner`, `HarnessRegistry`, `LaunchParams`, `LaunchRoute`, `AllowedToken`.
 
-**Depends on:** `@launchkit/types`, `@launchkit/utils`
+**Depends on:** `@launchkit/types`, `@launchkit/utils`, `@launchkit/platform`
 
 **Effects owned:** process spawn + reading harness JSON.
 — exposed to consumers as injected interfaces; never reached around.

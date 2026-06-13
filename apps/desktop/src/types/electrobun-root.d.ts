@@ -20,5 +20,7 @@ export interface ElectrobunConfig {
     buildFolder?: string
     targets?: string
     mac?: { codesign?: boolean; createDmg?: boolean; notarize?: boolean }
+    linux?: { bundleCEF?: boolean; defaultRenderer?: "native" | "cef" }
+    win?: { bundleCEF?: boolean; defaultRenderer?: "native" | "cef" }
   }
 }

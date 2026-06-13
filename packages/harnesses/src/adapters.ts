@@ -1,5 +1,10 @@
 import { chmod, mkdir, open, readdir, rename, unlink } from "node:fs/promises"
 import { join } from "node:path"
+import {
+  type Platform,
+  detectPlatform,
+  isAbsolutePath,
+} from "@launchkit/platform"
 import { HarnessDefinitionSchema } from "@launchkit/types"
 import { type Result, err, ok } from "@launchkit/utils"
 import { type CommandResolver, guardCommand } from "./command-resolver"
@@ -8,11 +13,13 @@ import type { HarnessFileSource } from "./file-source"
 import type { ProcessSpawner, SpawnedProcess } from "./process-spawner"
 
 /** Real resolver: guard the input, then resolve bare names via `Bun.which`. */
-export const createPathCommandResolver = (): CommandResolver => ({
+export const createPathCommandResolver = (
+  platform: Platform = detectPlatform(),
+): CommandResolver => ({
   resolve: (command: string): Result<string, HarnessError> => {
-    const guarded = guardCommand(command)
+    const guarded = guardCommand(command, platform)
     if (!guarded.ok) return guarded
-    if (command.startsWith("/")) return ok(command)
+    if (isAbsolutePath(command, platform)) return ok(command)
     const found = Bun.which(command)
     if (found === null) {
       return err({
