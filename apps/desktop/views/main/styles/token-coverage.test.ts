@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { Glob } from "bun"
+import { readdirSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 
 const dir = new URL("./", import.meta.url)
 
@@ -67,14 +68,20 @@ const usesLegacy = (css: string, name: string): boolean =>
 
 describe("partials reference only --lk-* tokens", () => {
   it("contains no legacy var(--…) references in any partial except tokens.css", async () => {
-    const glob = new Glob("*.css")
+    // Discover the partials via the resolved filesystem path (fileURLToPath handles
+    // the Windows `/D:/…` URL form that breaks Glob's `cwd`); read each via a file URL
+    // so reads stay cross-platform.
+    const cssFiles = readdirSync(fileURLToPath(dir)).filter((f) =>
+      f.endsWith(".css"),
+    )
     const offenders: string[] = []
-    for await (const file of glob.scan({ cwd: dir.pathname })) {
+    for (const file of cssFiles) {
       if (file === "tokens.css" || file === "fonts.css") continue
       const css = await Bun.file(new URL(file, dir)).text()
       for (const name of LEGACY)
         if (usesLegacy(css, name)) offenders.push(`${file}: ${name}`)
     }
+    expect(cssFiles.length).toBeGreaterThan(0) // guard against an empty scan passing vacuously
     expect(offenders).toEqual([])
   })
 })
