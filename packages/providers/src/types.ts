@@ -45,7 +45,11 @@ export type ProviderCatalogEntry = z.infer<typeof ProviderCatalogEntrySchema>
 /** How a provider's `apiKey` secret reaches the SDK. */
 export type ApiKeyMapping =
   | { readonly kind: "option"; readonly name: string }
-  | { readonly kind: "header"; readonly name: string; readonly scheme: "Bearer" }
+  | {
+      readonly kind: "header"
+      readonly name: string
+      readonly scheme: "Bearer"
+    }
   | { readonly kind: "none" }
 
 /** How to list models for a provider. */

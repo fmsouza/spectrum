@@ -4,7 +4,9 @@ import { getDescriptor, listDescriptors, providerCatalog } from "./catalog"
 
 describe("provider catalog", () => {
   it("has exactly one descriptor for every SdkProvider value", () => {
-    const keys = listDescriptors().map((d) => d.key).sort()
+    const keys = listDescriptors()
+      .map((d) => d.key)
+      .sort()
     const expected = [...SdkProviderSchema.options].sort()
     expect(keys).toEqual(expected)
   })
@@ -15,7 +17,9 @@ describe("provider catalog", () => {
     expect(d.discovery.strategy).toBe("openai-models")
     expect(d.configFields.some((f) => f.name === "serverUrl")).toBe(true)
     expect(d.configFields.some((f) => f.kind === "headers")).toBe(true)
-    expect(d.secretFields.find((s) => s.name === "apiKey")?.required).toBe(false)
+    expect(d.secretFields.find((s) => s.name === "apiKey")?.required).toBe(
+      false,
+    )
   })
 
   it("maps the ollama cloud api key to an Authorization Bearer header", () => {
@@ -48,7 +52,13 @@ describe("provider catalog", () => {
     const entry = providerCatalog().find((e) => e.key === "custom")
     expect(entry).toBeDefined()
     expect(Object.keys(entry ?? {}).sort()).toEqual(
-      ["configFields", "key", "label", "secretFields", "supportsCustomHeaders"].sort(),
+      [
+        "configFields",
+        "key",
+        "label",
+        "secretFields",
+        "supportsCustomHeaders",
+      ].sort(),
     )
   })
 })

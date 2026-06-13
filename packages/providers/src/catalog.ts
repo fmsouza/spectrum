@@ -32,7 +32,10 @@ const openAiCompatible = (
   secretFields: [API_KEY_REQUIRED],
   supportsCustomHeaders: false,
   configSchema: emptyConfig,
-  sdkMapping: { baseUrlOption: "baseURL", apiKey: { kind: "option", name: "apiKey" } },
+  sdkMapping: {
+    baseUrlOption: "baseURL",
+    apiKey: { kind: "option", name: "apiKey" },
+  },
   discovery: { strategy: "openai-models", defaultBaseUrl: discoveryBaseUrl },
 })
 
@@ -49,7 +52,10 @@ const noDiscovery = (
   secretFields: [API_KEY_REQUIRED],
   supportsCustomHeaders: false,
   configSchema,
-  sdkMapping: { baseUrlOption: "baseURL", apiKey: { kind: "option", name: "apiKey" } },
+  sdkMapping: {
+    baseUrlOption: "baseURL",
+    apiKey: { kind: "option", name: "apiKey" },
+  },
   discovery: { strategy: "none" },
 })
 
@@ -67,7 +73,11 @@ const descriptors: Record<SdkProvider, ProviderDescriptor> = {
     "Perplexity",
     "https://api.perplexity.ai/v1",
   ),
-  cerebras: openAiCompatible("cerebras", "Cerebras", "https://api.cerebras.ai/v1"),
+  cerebras: openAiCompatible(
+    "cerebras",
+    "Cerebras",
+    "https://api.cerebras.ai/v1",
+  ),
   mistral: openAiCompatible("mistral", "Mistral", "https://api.mistral.ai/v1"),
   cohere: openAiCompatible(
     "cohere",
@@ -94,8 +104,18 @@ const descriptors: Record<SdkProvider, ProviderDescriptor> = {
       })
       .strict(),
     [
-      { name: "resourceName", label: "Resource name", kind: "text", required: true },
-      { name: "deploymentId", label: "Deployment id", kind: "text", required: true },
+      {
+        name: "resourceName",
+        label: "Resource name",
+        kind: "text",
+        required: true,
+      },
+      {
+        name: "deploymentId",
+        label: "Deployment id",
+        kind: "text",
+        required: true,
+      },
     ],
   ),
 
@@ -111,7 +131,12 @@ const descriptors: Record<SdkProvider, ProviderDescriptor> = {
         required: false,
         placeholder: "http://localhost:11434/v1",
       },
-      { name: "headers", label: "Custom headers", kind: "headers", required: false },
+      {
+        name: "headers",
+        label: "Custom headers",
+        kind: "headers",
+        required: false,
+      },
     ],
     secretFields: [API_KEY_OPTIONAL],
     supportsCustomHeaders: true,
@@ -221,7 +246,9 @@ export const listDescriptors = (): readonly ProviderDescriptor[] =>
   Object.values(descriptors)
 
 /** Project one descriptor to its presentational, IPC-safe entry. */
-export const toCatalogEntry = (d: ProviderDescriptor): ProviderCatalogEntry => ({
+export const toCatalogEntry = (
+  d: ProviderDescriptor,
+): ProviderCatalogEntry => ({
   key: d.key,
   label: d.label,
   configFields: [...d.configFields],
