@@ -1,1 +1,1 @@
-export {}
+export { type Platform, detectPlatform } from "./platform"
