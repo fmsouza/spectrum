@@ -67,11 +67,11 @@ jobs:
       - name: Compile CLI binary
         run: bun run --filter spectrum compile
 
-      - name: Build desktop app (best-effort)
+      - name: Build desktop app
         id: app
         if: matrix.app
-        # continue-on-error: true until verified-running smoke is green on every platform (Task 5.2)
-        continue-on-error: true
+        # Hard gate: the verified-running smoke is green on every platform, so an app-build
+        # regression must fail the release rather than silently shipping CLI-only artifacts.
         run: bun run --filter spectrum build
 
       - name: Install Linux GUI runtime deps (xvfb + webkit2gtk + appindicator)
