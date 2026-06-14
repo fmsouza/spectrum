@@ -27,6 +27,8 @@ export type {
   ToolCallItem,
 } from "./reduce"
 export { initialRunState, reduce } from "./reduce"
+export type { TaskItem, TaskList, TaskStatus } from "./select-task-list"
+export { isTodoTool, selectTaskList } from "./select-task-list"
 // Re-export the canonical-model id so downstream packages (agent-driver, ui, apps/desktop)
 // import RunnerId from a single place — the canonical-model package — per shared-contracts C3.
 export { RunnerIdSchema, type RunnerId } from "@spectrum/types"
