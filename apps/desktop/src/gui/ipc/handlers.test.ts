@@ -285,6 +285,20 @@ describe("createIpcHandlers.getProviders", () => {
 })
 
 describe("createIpcHandlers.addProvider", () => {
+  it("throws so the server surfaces handler-failed when the custom config has malformed headers", async () => {
+    const { ctx } = makeCtx({ providers: [] })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.addProvider({
+        sdkProvider: "custom",
+        config: { headers: "not-json" },
+        secretFieldNames: [],
+        models: [],
+      }),
+    ).rejects.toThrow()
+  })
+
   it("falls back to the sdkProvider name when no name is given", async () => {
     const { ctx, saves } = makeCtx({ providers: [] })
     const handlers = createIpcHandlers(ctx)
@@ -351,6 +365,23 @@ describe("createIpcHandlers.updateProvider", () => {
     expect(view.name).toBe("anthropic")
     const savedProviders = saves.at(-1)?.providers ?? []
     expect(savedProviders.at(-1)?.name).toBe("anthropic")
+  })
+
+  it("throws so the server surfaces handler-failed when the custom config has malformed headers", async () => {
+    const { ctx } = makeCtx({ providers: [provider()] })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.updateProvider({
+        id: provider().id,
+        input: {
+          sdkProvider: "custom",
+          config: { headers: "not-json" },
+          secretFieldNames: [],
+          models: [],
+        },
+      }),
+    ).rejects.toThrow()
   })
 })
 
@@ -1110,6 +1141,18 @@ describe("createIpcHandlers.launchHarness (persisted model)", () => {
 
     const input = runnerLaunchInputs[0] as { modelId?: string }
     expect(input.modelId).toBe("mdl_explicit")
+  })
+})
+
+describe("createIpcHandlers.getProviderCatalog", () => {
+  it("returns the provider catalog with custom, ollama and openrouter entries", async () => {
+    const { ctx } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+    const catalog = await handlers.getProviderCatalog(undefined)
+    const keys = catalog.map((e) => e.key)
+    expect(keys).toContain("custom")
+    expect(keys).toContain("ollama")
+    expect(keys).toContain("openrouter")
   })
 })
 

@@ -30,6 +30,7 @@
     "@spectrum/harnesses": "workspace:*",
     "@spectrum/ipc": "workspace:*",
     "@spectrum/platform": "workspace:*",
+    "@spectrum/providers": "workspace:*",
     "@spectrum/proxy": "workspace:*",
     "@spectrum/secrets": "workspace:*",
     "@spectrum/sessions": "workspace:*",

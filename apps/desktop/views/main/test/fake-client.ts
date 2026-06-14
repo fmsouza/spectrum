@@ -16,6 +16,7 @@ export type FakeIpcClient = IpcClient & {
 
 const METHOD_NAMES = [
   "getProviders",
+  "getProviderCatalog",
   "addProvider",
   "updateProvider",
   "deleteProvider",

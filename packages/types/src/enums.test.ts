@@ -21,6 +21,8 @@ describe("SdkProviderSchema", () => {
       "perplexity",
       "cerebras",
       "ollama",
+      "custom",
+      "openrouter",
     ]
     expect([...SdkProviderSchema.options]).toMatchObject(expected)
   })
@@ -34,5 +36,12 @@ describe("ApiFormatSchema", () => {
     expect(ApiFormatSchema.safeParse("anthropic").success).toBe(true)
     expect(ApiFormatSchema.safeParse("openai").success).toBe(true)
     expect(ApiFormatSchema.safeParse("grpc").success).toBe(false)
+  })
+})
+
+describe("SdkProviderSchema custom/openrouter", () => {
+  it("includes custom and openrouter", () => {
+    expect(SdkProviderSchema.safeParse("custom").success).toBe(true)
+    expect(SdkProviderSchema.safeParse("openrouter").success).toBe(true)
   })
 })

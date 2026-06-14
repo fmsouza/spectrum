@@ -71,4 +71,34 @@ describe("createProviderFactory", () => {
     )
     expect(r.ok === false && r.error.kind).toBe("unsupported-provider")
   })
+  it("passes descriptor-mapped options (baseURL + Authorization header) to the SDK for ollama cloud", async () => {
+    const captured: Record<string, unknown>[] = []
+    const loadSdk = async () => ({
+      create: (cfg: Record<string, unknown>) => {
+        captured.push(cfg)
+        return (id: string) => ({ id })
+      },
+    })
+    const secretStore: import("@spectrum/secrets").SecretStore = {
+      set: async () => ({ ok: true as const, value: { ref: "r" } }),
+      get: async () => ({ ok: true as const, value: "cloud-key" }),
+      delete: async () => ({ ok: true as const, value: undefined }),
+      has: async () => true,
+    }
+    const factory = createProviderFactory({ secretStore, loadSdk })
+    const provider: Provider = {
+      id: "p_1" as Provider["id"],
+      name: "Ollama Cloud",
+      sdkProvider: "ollama",
+      config: {},
+      secrets: { apiKey: { ref: "r" } },
+      models: [],
+    }
+    const r = await factory.getModel(provider, "llama3.2")
+    expect(r.ok).toBe(true)
+    expect(captured[0]).toEqual({
+      baseURL: "https://ollama.com/api",
+      headers: { Authorization: "Bearer cloud-key" },
+    })
+  })
 })
