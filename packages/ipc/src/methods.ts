@@ -1,4 +1,5 @@
 import { PermissionModeSchema, StoredEventSchema } from "@spectrum/agent-events"
+import { ProviderCatalogEntrySchema } from "@spectrum/providers"
 import {
   HarnessDefinitionSchema,
   HarnessIdSchema,
@@ -20,6 +21,11 @@ const VoidSchema = z.null()
 
 export const GetProvidersParamsSchema = z.undefined()
 export const GetProvidersResultSchema = z.array(ProviderViewSchema)
+
+export const GetProviderCatalogParamsSchema = z.undefined()
+export const GetProviderCatalogResultSchema = z.array(
+  ProviderCatalogEntrySchema,
+)
 
 /**
  * Add/Update provider inputs carry only NON-secret config + the list of secret
@@ -248,6 +254,10 @@ export const IpcMethodSchemas = {
   getProviders: {
     params: GetProvidersParamsSchema,
     result: GetProvidersResultSchema,
+  },
+  getProviderCatalog: {
+    params: GetProviderCatalogParamsSchema,
+    result: GetProviderCatalogResultSchema,
   },
   addProvider: {
     params: AddProviderParamsSchema,

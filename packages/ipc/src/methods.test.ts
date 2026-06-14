@@ -429,3 +429,22 @@ describe("UpdateHarnessPrefsParamsSchema", () => {
     ).toBe(false)
   })
 })
+
+describe("getProviderCatalog method", () => {
+  it("is registered with a params + result schema", () => {
+    expect(IpcMethodSchemas.getProviderCatalog).toBeDefined()
+  })
+
+  it("validates a catalog array result", () => {
+    const r = IpcMethodSchemas.getProviderCatalog.result.safeParse([
+      {
+        key: "custom",
+        label: "Custom (OpenAI-compatible)",
+        configFields: [],
+        secretFields: [],
+        supportsCustomHeaders: true,
+      },
+    ])
+    expect(r.success).toBe(true)
+  })
+})

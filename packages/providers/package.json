@@ -1,19 +1,13 @@
 {
-  "name": "@spectrum/ui",
+  "name": "@spectrum/providers",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "typecheck": "tsc --noEmit", "test": "bun test" },
   "dependencies": {
-    "react": "^19",
-    "react-dom": "^19",
-    "react-markdown": "^9",
-    "remark-gfm": "^4",
-    "@spectrum/brand": "workspace:*",
     "@spectrum/types": "workspace:*",
     "@spectrum/utils": "workspace:*",
-    "@spectrum/agent-events": "workspace:*",
-    "@spectrum/providers": "workspace:*"
+    "zod": "^3.25.76"
   }
 }

@@ -2,9 +2,9 @@
 
 **Responsibility:** React atomic design system — pure, presentational components (atoms → templates) that the desktop pages compose.
 
-**Public API (barrel `src/index.ts`):** atoms (`Button`, `TextInput`, `Select`, `Badge`, `StatusDot`, `Spinner`, `Label`, `Tooltip`, `Icon`), molecules (`FormField`, `ModelRow`, `EmptyState`, `Composer`, `ModeSelector`), organisms (`ProviderList`, `ModelTable`, `ProjectGroup`, `ProjectList`), templates (`AppShell`, `SettingsLayout`) — each re-exported via its level barrel and the package barrel. The `Icon` glyph set has grown to include `send`, `stop`, `chevron-down`, `shield`, `pencil`, `list`, and `zap`. `StatusDot` now has an `error` (red) variant in addition to the existing status states.
+**Public API (barrel `src/index.ts`):** atoms (`Button`, `TextInput`, `Select`, `Badge`, `StatusDot`, `Spinner`, `Label`, `Tooltip`, `Icon`), molecules (`FormField`, `ModelRow`, `EmptyState`, `Composer`, `ModeSelector`), organisms (`ProviderList`, `ProviderForm`, `ModelTable`, `ProjectGroup`, `ProjectList`), templates (`AppShell`, `SettingsLayout`) — each re-exported via its level barrel and the package barrel. The `Icon` glyph set has grown to include `send`, `stop`, `chevron-down`, `shield`, `pencil`, `list`, and `zap`. `StatusDot` now has an `error` (red) variant in addition to the existing status states.
 
-**Depends on:** `@spectrum/types`, `@spectrum/utils`, `@spectrum/agent-events`, `@spectrum/brand` (prop shapes, pure formatting, and the canonical event/view-state vocabulary only; never `ipc`/`config`/`proxy`/`sessions`/`harnesses`).
+**Depends on:** `@spectrum/types`, `@spectrum/utils`, `@spectrum/agent-events`, `@spectrum/brand`, `@spectrum/providers` (prop shapes, pure formatting, the canonical event/view-state vocabulary, and the pure `ConfigFieldSpec` catalog type for `ProviderForm`; never `ipc`/`config`/`proxy`/`sessions`/`harnesses`).
 
 **Effects owned:** none. No data fetching, no IPC, no global state.
 

@@ -34,6 +34,10 @@ export const loadSdk: LoadSdk = async (sdkProvider): Promise<SdkModule> => {
       return { create: (await import("@ai-sdk/cerebras")).createCerebras }
     case "ollama":
       return { create: (await import("ollama-ai-provider-v2")).createOllama }
+    case "custom":
+      return { create: (await import("@ai-sdk/openai")).createOpenAI }
+    case "openrouter":
+      return { create: (await import("@ai-sdk/openai")).createOpenAI }
     default:
       throw new Error(`unsupported sdkProvider: ${sdkProvider}`)
   }

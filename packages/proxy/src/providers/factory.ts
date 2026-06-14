@@ -1,7 +1,9 @@
+import { getDescriptor } from "@spectrum/providers"
 import type { SecretStore } from "@spectrum/secrets"
 import type { Provider } from "@spectrum/types"
 import { type Result, err, ok } from "@spectrum/utils"
 import type { ProxyError } from "../types"
+import { buildSdkOptions } from "./build-sdk-options"
 
 export type ModelHandle = unknown
 
@@ -59,7 +61,13 @@ export const createProviderFactory = (deps: {
             sdkProvider: provider.sdkProvider,
           })
         }
-        instance = mod.create({ ...provider.config, ...secrets.value })
+        instance = mod.create(
+          buildSdkOptions(
+            getDescriptor(provider.sdkProvider),
+            provider.config,
+            secrets.value,
+          ),
+        )
         instanceCache.set(cacheKey, instance)
       }
       const inst = instance as (id: string) => unknown

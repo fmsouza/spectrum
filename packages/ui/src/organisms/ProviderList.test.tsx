@@ -15,7 +15,9 @@ const providers: readonly ProviderRow[] = [
 
 describe("ProviderList", () => {
   it("shows an empty state when there are no providers", () => {
-    render(<ProviderList providers={[]} onSetSecret={() => {}} />)
+    render(
+      <ProviderList providers={[]} onSetSecret={() => {}} onEdit={() => {}} />,
+    )
     expect(
       screen.getByRole("heading", { name: /no providers/i }),
     ).toBeInTheDocument()
@@ -23,7 +25,11 @@ describe("ProviderList", () => {
 
   it("renders a table with a row per provider", () => {
     const { container } = render(
-      <ProviderList providers={providers} onSetSecret={() => {}} />,
+      <ProviderList
+        providers={providers}
+        onSetSecret={() => {}}
+        onEdit={() => {}}
+      />,
     )
     expect(container.querySelector("table")).not.toBeNull()
     const rows = container.querySelectorAll("tbody tr")
@@ -31,14 +37,24 @@ describe("ProviderList", () => {
   })
 
   it("renders the provider name in each row", () => {
-    render(<ProviderList providers={providers} onSetSecret={() => {}} />)
+    render(
+      <ProviderList
+        providers={providers}
+        onSetSecret={() => {}}
+        onEdit={() => {}}
+      />,
+    )
     expect(screen.getByText("OpenAI")).toBeInTheDocument()
     expect(screen.getByText("Anthropic")).toBeInTheDocument()
   })
 
   it("renders an info Badge with sdkProvider in each row", () => {
     const { container } = render(
-      <ProviderList providers={providers} onSetSecret={() => {}} />,
+      <ProviderList
+        providers={providers}
+        onSetSecret={() => {}}
+        onEdit={() => {}}
+      />,
     )
     const infoBadges = Array.from(
       container.querySelectorAll("span[data-tone='info']"),
@@ -56,7 +72,11 @@ describe("ProviderList", () => {
       secretSet: true,
     }
     const { container } = render(
-      <ProviderList providers={[setProvider]} onSetSecret={() => {}} />,
+      <ProviderList
+        providers={[setProvider]}
+        onSetSecret={() => {}}
+        onEdit={() => {}}
+      />,
     )
     const badge = container.querySelector("span[data-tone='success']")
     expect(badge).not.toBeNull()
@@ -71,7 +91,11 @@ describe("ProviderList", () => {
       secretSet: false,
     }
     const { container } = render(
-      <ProviderList providers={[unsetProvider]} onSetSecret={() => {}} />,
+      <ProviderList
+        providers={[unsetProvider]}
+        onSetSecret={() => {}}
+        onEdit={() => {}}
+      />,
     )
     const badge = container.querySelector("span[data-tone='neutral']")
     expect(badge).not.toBeNull()
@@ -80,7 +104,11 @@ describe("ProviderList", () => {
 
   it("renders a 'Set secret' button in lk-cell-actions td per row", () => {
     const { container } = render(
-      <ProviderList providers={providers} onSetSecret={() => {}} />,
+      <ProviderList
+        providers={providers}
+        onSetSecret={() => {}}
+        onEdit={() => {}}
+      />,
     )
     const rows = Array.from(container.querySelectorAll("tbody tr"))
     for (const row of rows) {
@@ -96,7 +124,11 @@ describe("ProviderList", () => {
   it("calls onSetSecret with the provider id when 'Set secret' is clicked", () => {
     const onSetSecret = mock((_id: string) => {})
     const { container } = render(
-      <ProviderList providers={providers} onSetSecret={onSetSecret} />,
+      <ProviderList
+        providers={providers}
+        onSetSecret={onSetSecret}
+        onEdit={() => {}}
+      />,
     )
     // Click the first row's Set secret button
     const firstRow = container.querySelector("tbody tr") as HTMLElement
@@ -107,9 +139,47 @@ describe("ProviderList", () => {
 
   it("does not render an article element or lk-list-row--card class", () => {
     const { container } = render(
-      <ProviderList providers={providers} onSetSecret={() => {}} />,
+      <ProviderList
+        providers={providers}
+        onSetSecret={() => {}}
+        onEdit={() => {}}
+      />,
     )
     expect(container.querySelector("article")).toBeNull()
     expect(container.querySelector(".lk-list-row--card")).toBeNull()
+  })
+
+  it("renders an 'Edit' button in lk-cell-actions td per row", () => {
+    const { container } = render(
+      <ProviderList
+        providers={providers}
+        onSetSecret={() => {}}
+        onEdit={() => {}}
+      />,
+    )
+    const rows = Array.from(container.querySelectorAll("tbody tr"))
+    for (const row of rows) {
+      const actionsCell = row.querySelector("td.lk-cell-actions")
+      expect(actionsCell).not.toBeNull()
+      const btn = within(actionsCell as HTMLElement).getByRole("button", {
+        name: /^edit$/i,
+      })
+      expect(btn).toBeInTheDocument()
+    }
+  })
+
+  it("calls onEdit with the provider id when 'Edit' is clicked", () => {
+    const onEdit = mock((_id: string) => {})
+    const { container } = render(
+      <ProviderList
+        providers={providers}
+        onSetSecret={() => {}}
+        onEdit={onEdit}
+      />,
+    )
+    const firstRow = container.querySelector("tbody tr") as HTMLElement
+    const btn = within(firstRow).getByRole("button", { name: /^edit$/i })
+    fireEvent.click(btn)
+    expect(onEdit).toHaveBeenCalledWith("p_openai")
   })
 })

@@ -1,3 +1,4 @@
+import { getDescriptor } from "@spectrum/providers"
 import type { SdkProvider } from "@spectrum/types"
 import { type Result, err, ok } from "@spectrum/utils"
 import type { ProxyError } from "./types"
@@ -49,45 +50,6 @@ export const createFetchHttpGet = (): HttpGet => async (url, headers) => {
   }
 
   return ok(body)
-}
-
-// ── Provider classification ───────────────────────────────────────────────────
-
-/** SDK providers that expose the OpenAI-compatible `/v1/models` endpoint. */
-const OPENAI_COMPATIBLE_PROVIDERS = new Set<SdkProvider>([
-  "openai",
-  "groq",
-  "xai",
-  "fireworks",
-  "perplexity",
-  "cerebras",
-  "mistral",
-  "cohere",
-])
-
-/**
- * SDK providers that do not expose a public model-listing endpoint that we
- * support. They return an `unsupported-model-discovery` error so the UI can
- * fall back to free-text input.
- */
-const UNSUPPORTED_PROVIDERS = new Set<SdkProvider>([
-  "anthropic",
-  "google",
-  "vertex",
-  "bedrock",
-  "azure",
-])
-
-/** Default base URLs per SDK (used when `config.baseUrl` is absent). */
-const DEFAULT_BASE_URLS: Partial<Record<SdkProvider, string>> = {
-  openai: "https://api.openai.com",
-  groq: "https://api.groq.com/openai",
-  mistral: "https://api.mistral.ai",
-  xai: "https://api.x.ai",
-  fireworks: "https://api.fireworks.ai/inference",
-  cerebras: "https://api.cerebras.ai",
-  perplexity: "https://api.perplexity.ai",
-  cohere: "https://api.cohere.ai/compatibility",
 }
 
 // ── Response validators ───────────────────────────────────────────────────────
@@ -170,7 +132,7 @@ const parseOpenAIModels = (
 export type ModelListerInput = {
   /** The SDK provider identifier (e.g. "openai", "ollama"). */
   readonly sdkProvider: SdkProvider
-  /** Non-secret config including optional `baseUrl`. */
+  /** Non-secret config including optional `serverUrl`. */
   readonly config: Readonly<Record<string, string>>
   /** Resolved secret API key (absent for keyless providers like ollama). */
   readonly apiKey?: string
@@ -196,48 +158,49 @@ export type ModelLister = (
 export const createModelLister =
   (deps: { readonly httpGet: HttpGet }): ModelLister =>
   async ({ sdkProvider, config, apiKey }) => {
-    // ── Unsupported ────────────────────────────────────────────────────────────
-    if (UNSUPPORTED_PROVIDERS.has(sdkProvider)) {
+    const discovery = getDescriptor(sdkProvider).discovery
+
+    if (discovery.strategy === "none") {
+      return err({ kind: "unsupported-model-discovery", sdkProvider })
+    }
+
+    const base =
+      config.serverUrl !== undefined && config.serverUrl !== ""
+        ? config.serverUrl
+        : (discovery.defaultBaseUrl ?? "")
+    if (base === "") {
       return err({
-        kind: "unsupported-model-discovery",
-        sdkProvider,
+        kind: "provider-failed",
+        detail: `no base URL configured for provider "${sdkProvider}" and no default is known`,
       })
     }
 
-    // ── Ollama ─────────────────────────────────────────────────────────────────
-    if (sdkProvider === "ollama") {
-      const base = config.baseUrl ?? "http://localhost:11434"
-      const url = `${base}/api/tags`
-      const response = await deps.httpGet(url)
+    if (discovery.strategy === "ollama-tags") {
+      const headers: Record<string, string> = {}
+      if (
+        discovery.sendAuthHeader &&
+        apiKey !== undefined &&
+        apiKey.length > 0
+      ) {
+        headers.Authorization = `Bearer ${apiKey}`
+      }
+      const response = await deps.httpGet(
+        `${base}/tags`,
+        Object.keys(headers).length > 0 ? headers : undefined,
+      )
       if (!response.ok) return response
       return parseOllamaTags(response.value)
     }
 
-    // ── OpenAI-compatible ──────────────────────────────────────────────────────
-    if (OPENAI_COMPATIBLE_PROVIDERS.has(sdkProvider)) {
-      const defaultBase = DEFAULT_BASE_URLS[sdkProvider]
-      const base = config.baseUrl ?? defaultBase ?? ""
-      if (base === "") {
-        return err({
-          kind: "provider-failed",
-          detail: `no base URL configured for provider "${sdkProvider}" and no default is known`,
-        })
-      }
-      const url = `${base}/v1/models`
-      const headers: Record<string, string> = {}
-      if (apiKey !== undefined && apiKey.length > 0) {
-        headers.Authorization = `Bearer ${apiKey}`
-      }
-      const response = await deps.httpGet(url, headers)
-      if (!response.ok) return response
-      return parseOpenAIModels(response.value)
+    // strategy === "openai-models"
+    const headers: Record<string, string> = {}
+    if (apiKey !== undefined && apiKey.length > 0) {
+      headers.Authorization = `Bearer ${apiKey}`
     }
-
-    // Should not be reachable given the full SdkProvider union — every value is
-    // covered by the branches above. TypeScript cannot narrow Set.has() to never,
-    // so this fallback is required for compilation.
-    return err({
-      kind: "unsupported-model-discovery",
-      sdkProvider,
-    })
+    const response = await deps.httpGet(
+      `${base}/models`,
+      Object.keys(headers).length > 0 ? headers : undefined,
+    )
+    if (!response.ok) return response
+    return parseOpenAIModels(response.value)
   }
