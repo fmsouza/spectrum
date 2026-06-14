@@ -54,6 +54,38 @@ describe("createElectrobunUpdater", () => {
     let emit:
       | ((e: { status: string; details?: { progress?: number } }) => void)
       | null = null
+    // Deferred resolve lets us capture the mid-download progress before completion
+    let resolveDownload!: () => void
+    const u = createElectrobunUpdater({
+      loadEngine: async () =>
+        baseEngine({
+          onStatusChange: (cb) => {
+            emit = cb
+          },
+          downloadUpdate: () =>
+            new Promise<void>((resolve) => {
+              resolveDownload = resolve
+              // Electrobun emits progress as a 0–100 percentage; verify normalization to 0–1
+              emit?.({ status: "download-progress", details: { progress: 50 } })
+            }),
+        }),
+    })
+    await u.check("stable")
+    u.startDownload()
+    await new Promise((r) => setTimeout(r, 0))
+    // Mid-download: percentage 50 must be normalized to 0.5 (not forwarded verbatim)
+    expect(u.getRaw().progress).toBe(0.5)
+    // Now complete the download
+    emit?.({ status: "download-complete" })
+    resolveDownload()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(u.getRaw().phase).toBe("downloaded")
+  })
+
+  it("clamps an out-of-range download-progress percentage to [0,1]", async () => {
+    let emit:
+      | ((e: { status: string; details?: { progress?: number } }) => void)
+      | null = null
     const u = createElectrobunUpdater({
       loadEngine: async () =>
         baseEngine({
@@ -61,15 +93,14 @@ describe("createElectrobunUpdater", () => {
             emit = cb
           },
           downloadUpdate: async () => {
-            emit?.({ status: "download-progress", details: { progress: 0.5 } })
-            emit?.({ status: "download-complete" })
+            emit?.({ status: "download-progress", details: { progress: 150 } })
           },
         }),
     })
     await u.check("stable")
     u.startDownload()
     await new Promise((r) => setTimeout(r, 0))
-    expect(u.getRaw().phase).toBe("downloaded")
+    expect(u.getRaw().progress).toBe(1)
   })
 
   it("does not regress phase to error when a late error event follows download-complete", async () => {

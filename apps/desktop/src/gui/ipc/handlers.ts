@@ -436,6 +436,9 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       if (!isOk(saved)) return fail("could not persist update channel")
       const switched = await ctx.updater.setChannel(channel)
       if (!isOk(switched)) return fail("could not switch update channel")
+      // Re-check so the returned state reflects the latest status. NOTE: the engine
+      // still follows the pre-restart channel (version.json is cached for the process),
+      // so this queries the current channel until Spectrum restarts — see setChannel.
       await ctx.updater.check(channel)
       return buildUpdateState()
     },

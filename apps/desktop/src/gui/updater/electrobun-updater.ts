@@ -83,7 +83,7 @@ export const createElectrobunUpdater = (
           raw = {
             ...raw,
             phase: "downloading",
-            progress: e.details?.progress ?? raw.progress,
+            progress: toFraction(e.details?.progress, raw.progress),
           }
           break
         case "download-complete":
@@ -180,3 +180,10 @@ export const createElectrobunUpdater = (
 /** Message-safe error text (no stack), for the `detail` field. */
 const errorText = (e: unknown): string =>
   e instanceof Error ? e.message : String(e)
+
+/** Electrobun emits download progress as a 0–100 percentage; normalize to 0–1, clamped. */
+const toFraction = (pct: number | undefined, fallback: number): number => {
+  if (pct === undefined) return fallback
+  const f = pct / 100
+  return f < 0 ? 0 : f > 1 ? 1 : f
+}
