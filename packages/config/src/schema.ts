@@ -37,8 +37,8 @@ export const SettingsSchema = z
     /** Release channel the in-app updater follows. Default "stable". */
     updateChannel: z.enum(["stable", "canary"]).default("stable"),
     /**
-     * The version string of an update the user dismissed from the startup
-     * banner. The banner stays hidden for exactly this version; a newer
+     * The version string of an update the user dismissed from the update
+     * notification banner. The banner stays hidden for exactly this version; a newer
      * version re-triggers it. `null` = nothing dismissed.
      */
     dismissedUpdateVersion: z.string().nullable().default(null),

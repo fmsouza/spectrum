@@ -225,23 +225,6 @@ describe("v4 → v5 (drop profiles)", () => {
   })
 })
 
-describe("v9 → v10 (updateChannel + dismissedUpdateVersion)", () => {
-  it("migrates a v9 document to v10 with default update settings", () => {
-    const v9 = {
-      version: 9,
-      providers: [],
-      models: [],
-      settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
-    }
-    const result = runMigrations(v9)
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.value.version).toBe(10)
-    expect(result.value.settings.updateChannel).toBe("stable")
-    expect(result.value.settings.dismissedUpdateVersion).toBeNull()
-  })
-})
-
 describe("v8 → v9 (ollama → custom)", () => {
   it("rewrites an ollama provider to custom and normalizes baseUrl to a /v1 serverUrl", () => {
     const raw = {
@@ -314,6 +297,23 @@ describe("v8 → v9 (ollama → custom)", () => {
       expect(r.value.providers[0]?.config).toEqual({
         serverUrl: "http://host:1234/v1",
       })
+  })
+})
+
+describe("v9 → v10 (updateChannel + dismissedUpdateVersion)", () => {
+  it("migrates a v9 document to v10 with default update settings", () => {
+    const v9 = {
+      version: 9,
+      providers: [],
+      models: [],
+      settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+    }
+    const result = runMigrations(v9)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.version).toBe(CURRENT_CONFIG_VERSION)
+    expect(result.value.settings.updateChannel).toBe("stable")
+    expect(result.value.settings.dismissedUpdateVersion).toBeNull()
   })
 })
 
