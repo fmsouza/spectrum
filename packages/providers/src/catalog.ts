@@ -164,6 +164,9 @@ const descriptors: Record<SdkProvider, ProviderDescriptor> = {
     sdkMapping: {
       baseUrlOption: "baseURL",
       apiKey: { kind: "option", name: "apiKey" },
+      // Local OpenAI-compatible servers (Ollama, LM Studio, …) need no key, but
+      // @ai-sdk/openai throws without one — send a harmless placeholder when unset.
+      placeholderApiKey: "not-needed",
     },
     discovery: { strategy: "openai-models" },
   },

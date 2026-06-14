@@ -21,7 +21,27 @@ describe("buildSdkOptions", () => {
       { headers: '{"X-Org":"acme"}' },
       {},
     )
-    expect(opts).toEqual({ headers: { "X-Org": "acme" } })
+    expect(opts).toEqual({
+      apiKey: "not-needed",
+      headers: { "X-Org": "acme" },
+    })
+  })
+
+  it("injects a placeholder apiKey for keyless custom so the OpenAI SDK does not throw", () => {
+    const opts = buildSdkOptions(
+      getDescriptor("custom"),
+      { serverUrl: "http://localhost:11434/v1" },
+      {},
+    )
+    expect(opts).toEqual({
+      baseURL: "http://localhost:11434/v1",
+      apiKey: "not-needed",
+    })
+  })
+
+  it("does not inject a placeholder apiKey for openrouter (key is required)", () => {
+    const opts = buildSdkOptions(getDescriptor("openrouter"), {}, {})
+    expect(opts.apiKey).toBeUndefined()
   })
 
   it("injects the ollama cloud api key as an Authorization Bearer header", () => {
@@ -68,6 +88,6 @@ describe("buildSdkOptions", () => {
       { headers: "not-json" },
       {},
     )
-    expect(opts).toEqual({})
+    expect(opts).toEqual({ apiKey: "not-needed" })
   })
 })

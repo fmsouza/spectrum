@@ -70,6 +70,12 @@ export type SdkMapping = {
   readonly defaultBaseUrl?: string
   /** How the `apiKey` secret is delivered. */
   readonly apiKey: ApiKeyMapping
+  /**
+   * Placeholder key used (for `apiKey.kind === "option"`) when no `apiKey` secret is set,
+   * so SDKs that require a non-empty key don't throw against keyless local servers. Only
+   * set where a missing key is legitimate (e.g. Custom → local Ollama/LM Studio).
+   */
+  readonly placeholderApiKey?: string
   /** Static headers always sent (rare; most attribution headers come from config fields). */
   readonly defaultHeaders?: Readonly<Record<string, string>>
 }

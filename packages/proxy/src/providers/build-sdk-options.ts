@@ -11,6 +11,9 @@ import type { ProviderDescriptor } from "@spectrum/providers"
  * - the `apiKey` secret is delivered per `descriptor.sdkMapping.apiKey`
  *   (Authorization header for header-auth providers; otherwise an option).
  * - all other secrets pass through as options (e.g. AWS credentials).
+ * - when an option-style provider declares `placeholderApiKey` and no `apiKey`
+ *   secret is set, the placeholder is used so SDKs that REQUIRE a non-empty key
+ *   (e.g. `@ai-sdk/openai`) don't throw against keyless local servers like Ollama.
  *
  * This replaces the legacy `{...config, ...secrets}` spread and fixes the
  * `baseUrl`→`baseURL` mismatch by mapping through the descriptor.
@@ -68,6 +71,16 @@ export const buildSdkOptions = (
       continue
     }
     opts[name] = value
+  }
+
+  // 4. placeholder api key: keyless option-auth providers (Custom → local servers)
+  // still need a non-empty key string for SDKs that require one.
+  if (
+    m.apiKey.kind === "option" &&
+    opts[m.apiKey.name] === undefined &&
+    m.placeholderApiKey !== undefined
+  ) {
+    opts[m.apiKey.name] = m.placeholderApiKey
   }
 
   if (Object.keys(headers).length > 0) opts.headers = headers

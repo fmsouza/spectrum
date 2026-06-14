@@ -20,6 +20,7 @@ describe("provider catalog", () => {
     expect(d.secretFields.find((s) => s.name === "apiKey")?.required).toBe(
       false,
     )
+    expect(d.sdkMapping.placeholderApiKey).toBe("not-needed")
   })
 
   it("maps the ollama cloud api key to an Authorization Bearer header", () => {
