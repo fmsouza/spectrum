@@ -6,6 +6,7 @@
       "**/.claude/**",
       "**/dist/**",
       "**/build/**",
+      "**/artifacts/**",
       "**/.turbo/**",
       "**/node_modules/**",
       "**/src/migrations/**",
