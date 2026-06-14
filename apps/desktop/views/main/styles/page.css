@@ -88,6 +88,7 @@
 
 .settings-updates__choice {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: var(--sp-space-2);
   padding: var(--sp-space-2) var(--sp-space-4);
@@ -96,12 +97,26 @@
   background: var(--sp-bg-subtle);
   font-size: var(--sp-text-sm);
   color: var(--sp-text);
+  white-space: nowrap;
   cursor: pointer;
 }
 
+/*
+ * Reset the global `input, select` control styling (width:100% + min-height:38px
+ * + border/background) so the channel radio renders as a small native radio
+ * instead of a stretched bordered circle that would eat the pill and clip the label.
+ */
 .settings-updates__choice input {
-  accent-color: var(--sp-primary);
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  min-height: 0;
+  padding: 0;
   margin: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  accent-color: var(--sp-primary);
 }
 
 .settings-updates__hint {
