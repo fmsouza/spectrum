@@ -370,6 +370,14 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return null
     },
 
+    // ── Updates ──────────────────────────────────────────────────────────────
+    getUpdateState: async () => fail("update service not yet wired"),
+    checkForUpdate: async () => fail("update service not yet wired"),
+    startUpdateDownload: async () => fail("update service not yet wired"),
+    applyUpdate: async () => fail("update service not yet wired"),
+    dismissUpdate: async () => fail("update service not yet wired"),
+    setUpdateChannel: async () => fail("update service not yet wired"),
+
     // ── Dialogs ───────────────────────────────────────────────────────────────
     pickFolder: async (params) => {
       const startingFolder = params?.startingFolder

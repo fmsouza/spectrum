@@ -379,6 +379,12 @@ describe("IpcMethodSchemas", () => {
       "getRunnerSocketUrl",
       "getRunEvents",
       "updateHarnessPrefs",
+      "getUpdateState",
+      "checkForUpdate",
+      "startUpdateDownload",
+      "applyUpdate",
+      "dismissUpdate",
+      "setUpdateChannel",
     ] as const
     for (const name of expected) {
       expect(IpcMethodSchemas[name]).toBeDefined()
