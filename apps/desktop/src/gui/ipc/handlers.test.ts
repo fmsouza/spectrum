@@ -1294,4 +1294,20 @@ describe("createIpcHandlers update handlers", () => {
     expect(saves.at(-1)?.settings.updateChannel).toBe("canary")
     expect(result.channel).toBe("canary")
   })
+
+  it("applyUpdate returns null and drives the fake updater to phase applying", async () => {
+    const updater = createFakeUpdater({
+      currentVersion: "1.0.0",
+      latest: "1.1.0",
+    })
+    const { ctx } = makeCtx({ updater })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.applyUpdate(undefined)
+
+    // Fire-and-forget — FakeUpdater.apply() sets phase synchronously before resolving.
+    await Promise.resolve()
+    expect(result).toBeNull()
+    expect(updater.getRaw().phase).toBe("applying")
+  })
 })
