@@ -186,4 +186,164 @@ describe("RunView", () => {
     expect(screen.getByText("First task")).toBeInTheDocument()
     cleanup()
   })
+
+  it("shows the segmented Tasks/Sub-agent header when a sub-runner is open", () => {
+    const rid = RunnerIdSchema.parse("run_root2")
+    const cid = RunnerIdSchema.parse("run_child2")
+    const st = (
+      [
+        { type: "runner-started", runnerId: rid },
+        {
+          type: "tool-call-started",
+          runnerId: rid,
+          callId: "c2",
+          tool: "TodoWrite",
+          input: {
+            todos: [
+              {
+                content: "Root task A",
+                activeForm: "Doing root",
+                status: "pending",
+              },
+            ],
+          },
+        },
+        {
+          type: "runner-started",
+          runnerId: cid,
+          parentRunnerId: rid,
+          title: "child-sub",
+        },
+        {
+          type: "text-delta",
+          runnerId: cid,
+          messageId: "m3",
+          text: "child working",
+        },
+      ] satisfies readonly CanonicalEvent[]
+    ).reduce(reduce, initialRunState)
+    const rootRunner2 = st.runners.get(rid)
+    const childRunner2 = st.runners.get(cid)
+    if (rootRunner2 === undefined || childRunner2 === undefined)
+      throw new Error("missing runners")
+
+    render(
+      <RunView
+        {...base}
+        root={rootRunner2}
+        runners={st.runners}
+        openRunner={childRunner2}
+      />,
+    )
+    expect(screen.getByRole("tab", { name: "Sub-agent" })).toBeInTheDocument()
+    expect(screen.getByText("child working")).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "Tasks" })).toBeDisabled()
+    cleanup()
+  })
+
+  it("shows the focused sub-runner's own tasks under the Tasks tab", () => {
+    const rid = RunnerIdSchema.parse("run_root3")
+    const cid = RunnerIdSchema.parse("run_child3")
+    const st = (
+      [
+        { type: "runner-started", runnerId: rid },
+        {
+          type: "tool-call-started",
+          runnerId: rid,
+          callId: "c3",
+          tool: "TodoWrite",
+          input: {
+            todos: [
+              {
+                content: "Root-only task",
+                activeForm: "Doing root",
+                status: "pending",
+              },
+            ],
+          },
+        },
+        {
+          type: "runner-started",
+          runnerId: cid,
+          parentRunnerId: rid,
+          title: "child-sub2",
+        },
+        {
+          type: "tool-call-started",
+          runnerId: cid,
+          callId: "c4",
+          tool: "TodoWrite",
+          input: {
+            todos: [
+              {
+                content: "Sub-only task",
+                activeForm: "Doing sub",
+                status: "pending",
+              },
+            ],
+          },
+        },
+      ] satisfies readonly CanonicalEvent[]
+    ).reduce(reduce, initialRunState)
+    const rootRunner3 = st.runners.get(rid)
+    const childRunner3 = st.runners.get(cid)
+    if (rootRunner3 === undefined || childRunner3 === undefined)
+      throw new Error("missing runners")
+
+    render(
+      <RunView
+        {...base}
+        root={rootRunner3}
+        runners={st.runners}
+        openRunner={childRunner3}
+      />,
+    )
+    const tasksTab = screen.getByRole("tab", { name: "Tasks" })
+    expect(tasksTab).not.toBeDisabled()
+    fireEvent.click(tasksTab)
+    expect(screen.getByText("Sub-only task")).toBeInTheDocument()
+    expect(screen.queryByText("Root-only task")).toBeNull()
+    cleanup()
+  })
+
+  it("hides the rail again when the sub closes and root has no tasks", () => {
+    const rid = RunnerIdSchema.parse("run_root4")
+    const cid = RunnerIdSchema.parse("run_child4")
+    const st = (
+      [
+        { type: "runner-started", runnerId: rid },
+        {
+          type: "runner-started",
+          runnerId: cid,
+          parentRunnerId: rid,
+          title: "child-sub3",
+        },
+        {
+          type: "text-delta",
+          runnerId: cid,
+          messageId: "m4",
+          text: "child content",
+        },
+      ] satisfies readonly CanonicalEvent[]
+    ).reduce(reduce, initialRunState)
+    const rootRunner4 = st.runners.get(rid)
+    const childRunner4 = st.runners.get(cid)
+    if (rootRunner4 === undefined || childRunner4 === undefined)
+      throw new Error("missing runners")
+
+    const { rerender } = render(
+      <RunView
+        {...base}
+        root={rootRunner4}
+        runners={st.runners}
+        openRunner={childRunner4}
+      />,
+    )
+    expect(screen.getByText("child content")).toBeInTheDocument()
+
+    rerender(<RunView {...base} root={rootRunner4} runners={st.runners} />)
+    expect(screen.queryByText("Tasks")).toBeNull()
+    expect(screen.queryByText("child content")).toBeNull()
+    cleanup()
+  })
 })
