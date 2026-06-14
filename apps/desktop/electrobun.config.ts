@@ -33,8 +33,7 @@ const config = {
   // per-channel `<channel>-<os>-<arch>-update.json` + patch + tarball there.
   // Channel lives in the artifact filename, so one baseUrl serves both channels.
   release: {
-    baseUrl:
-      "https://github.com/fmsouza/spectrum/releases/download/updates",
+    baseUrl: "https://github.com/fmsouza/spectrum/releases/download/updates",
     generatePatch: true,
   },
   build: {

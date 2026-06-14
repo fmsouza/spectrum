@@ -71,11 +71,13 @@ jobs:
       - name: Compile CLI binary
         run: bun run --filter spectrum compile
 
-      - name: Build desktop app (best-effort)
+      - name: Build desktop app (canary channel, best-effort)
         id: app
         if: matrix.app
         # continue-on-error: true until verified-running smoke is green on every platform (Task 5.2)
         continue-on-error: true
+        # SPIKE (Task 12): set the Electrobun canary channel flag so artifacts are
+        # prefixed `canary-…` (e.g. an `--env canary` / config channel).
         run: bun run --filter spectrum build
 
       - name: Install Linux GUI runtime deps (xvfb + webkit2gtk + appindicator)
@@ -137,6 +139,17 @@ jobs:
           Compress-Archive "stage/${{ matrix.asset }}-cli.exe" "stage/${{ matrix.asset }}-cli.zip"
           Remove-Item "stage/${{ matrix.asset }}-cli.exe"
 
+      - name: Stage update artifacts
+        if: matrix.app && steps.app.outcome == 'success'
+        shell: bash
+        run: |
+          mkdir -p stage
+          # Flat-named update metadata + patches + zst tarballs for the auto-updater.
+          # SPIKE (Task 12): confirm the emitted artifact path under apps/desktop/build.
+          find apps/desktop/build -maxdepth 4 \
+            \( -name '*-update.json' -o -name '*.patch' -o -name '*.tar.zst' \) \
+            -exec cp {} stage/ \; || true
+
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset }}
@@ -174,3 +187,22 @@ jobs:
             --notes "Automated canary build from \`main\` (${{ github.sha }}). Unstable pre-release." \
             --prerelease --target ${{ github.sha }} \
             artifacts/*
+
+      - name: Publish update artifacts to rolling tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Ensure the rolling release exists, then clobber its update assets so the
+          # baked baseUrl (.../releases/download/updates/) always serves the newest.
+          # Canary artifacts are prefixed `canary-…` and coexist with stable on the
+          # same rolling release because the channel is baked into the filename.
+          gh release view updates >/dev/null 2>&1 || \
+            gh release create updates \
+              --title "Auto-update channel feed" \
+              --notes "Rolling update metadata + patches. Managed by CI." \
+              --prerelease
+          shopt -s nullglob
+          UPDATE_ASSETS=(artifacts/*-update.json artifacts/*.patch artifacts/*.tar.zst)
+          if [ ${#UPDATE_ASSETS[@]} -gt 0 ]; then
+            gh release upload updates "${UPDATE_ASSETS[@]}" --clobber
+          fi
