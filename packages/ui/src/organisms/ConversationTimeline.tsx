@@ -1,4 +1,4 @@
-import { isTodoTool } from "@spectrum/agent-events"
+import { isTaskTool } from "@spectrum/agent-events"
 import type {
   ApprovalDecision,
   RunnerId,
@@ -42,7 +42,7 @@ export const ConversationTimeline = ({
   return (
     <div className="lk-timeline" data-runner={runner.id}>
       {runner.items
-        .filter((item) => !(item.kind === "tool-call" && isTodoTool(item.tool)))
+        .filter((item) => !(item.kind === "tool-call" && isTaskTool(item.tool)))
         .map((item, i) => {
           switch (item.kind) {
             case "message":
