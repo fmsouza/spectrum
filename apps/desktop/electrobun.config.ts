@@ -28,6 +28,15 @@ const config = {
     identifier: "dev.spectrum.app",
     version: "0.1.0",
   },
+  // Auto-update distribution. `baseUrl` is the STABLE rolling-tag URL that CI
+  // force-moves on every release, so the running app always finds the newest
+  // per-channel `<channel>-<os>-<arch>-update.json` + patch + tarball there.
+  // Channel lives in the artifact filename, so one baseUrl serves both channels.
+  release: {
+    baseUrl:
+      "https://github.com/fmsouza/spectrum/releases/download/updates",
+    generatePatch: true,
+  },
   build: {
     bun: { entrypoint: "src/index.ts" },
     views: {
