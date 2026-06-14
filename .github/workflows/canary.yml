@@ -71,59 +71,15 @@ jobs:
       - name: Compile CLI binary
         run: bun run --filter spectrum compile
 
-      - name: Build desktop app (dev bundle, for the verified-running smoke)
-        id: smokebuild
-        if: matrix.app
-        # best-effort (canary) until the verified-running smoke is green on every platform.
-        continue-on-error: true
-        # The smoke launches a loose, directly-runnable bundle. The channel build
-        # packages a self-extracting installer on Linux/Windows that the loose-bundle
-        # smoke can't launch, so the app is verified against the dev bundle here and the
-        # canary channel build (below, after the smoke) emits the distributable + flat
-        # update artifacts. Same app code, so this is a faithful runtime gate.
-        run: bun run --filter spectrum build
-
-      - name: Install Linux GUI runtime deps (xvfb + webkit2gtk + appindicator)
-        if: matrix.app && runner.os == 'Linux'
-        # Electrobun's libNativeWrapper.so dlopens the GTK/WebKit + app-indicator stack at startup
-        # even with bundleCEF, so those runtime libs must be present or the app crashes
-        # (ERR_DLOPEN_FAILED) before the proxy binds. xvfb provides the virtual display the GUI
-        # smoke needs. The trailing `ldd` surfaces any still-unresolved wrapper deps up front so a
-        # missing lib shows here instead of as an opaque smoke failure.
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            xvfb \
-            libwebkit2gtk-4.1-0 \
-            libgtk-3-0 \
-            libayatana-appindicator3-1 \
-            librsvg2-2 \
-            libnotify4
-          LIB=$(find apps/desktop/build -name libNativeWrapper.so | head -1)
-          if [ -n "$LIB" ]; then
-            echo "== ldd $LIB =="
-            ldd "$LIB" | (grep 'not found' && echo '::warning::libNativeWrapper.so has unresolved deps (above)' || echo 'all wrapper deps resolved')
-          fi
-
-      - name: Verified-running smoke (Linux)
-        if: matrix.app && runner.os == 'Linux' && steps.smokebuild.outcome == 'success'
-        run: xvfb-run -a bun run --filter spectrum smoke
-
-      - name: Verified-running smoke (macOS/Windows)
-        if: matrix.app && runner.os != 'Linux' && steps.smokebuild.outcome == 'success'
-        run: bun run --filter spectrum smoke
-
       - name: Build desktop app (canary channel, for distribution + update artifacts)
         id: app
         if: matrix.app
         continue-on-error: true
-        shell: bash
-        # Clean the dev bundle first so build/ and artifacts/ hold only the channel
-        # outputs the staging steps publish. build:canary runs
-        # `electrobun build --env=canary` → artifacts prefixed `canary-<os>-<arch>-…`.
-        run: |
-          rm -rf apps/desktop/build apps/desktop/artifacts
-          bun run --filter spectrum build:canary
+        # Built on a clean checkout (the dev/smoke build runs LAST), so build/ + artifacts/
+        # here hold only the channel outputs the staging steps publish — and no smoked-app
+        # file lock can break a `rm`. build:canary runs `electrobun build --env=canary`
+        # → artifacts prefixed `canary-<os>-<arch>-…`.
+        run: bun run --filter spectrum build:canary
 
       - name: Stage artifacts (unix)
         if: matrix.archive == 'tar.gz'
@@ -168,6 +124,53 @@ jobs:
           find apps/desktop/artifacts -maxdepth 2 \
             \( -name '*-update.json' -o -name '*.patch' -o -name '*.tar.zst' \) \
             -exec cp {} stage/ \; || true
+
+      - name: Build desktop app (dev bundle, for the verified-running smoke)
+        id: smokebuild
+        if: matrix.app
+        # best-effort (canary) until the verified-running smoke is green on every platform.
+        continue-on-error: true
+        shell: bash
+        # The channel build above ships a self-extracting installer on Linux/Windows that
+        # the loose-bundle smoke can't launch, so verify the app runs against a
+        # directly-runnable dev bundle (same app code → faithful runtime gate). Remove the
+        # channel bundle first so the smoke deterministically launches THIS dev bundle. The
+        # channel bundle was only built (never executed), so this `rm` is safe on Windows —
+        # unlike removing a bundle whose launcher the smoke just ran (a still-held lock →
+        # "Device or resource busy"), which is why the dev build + smoke run LAST.
+        run: |
+          rm -rf apps/desktop/build
+          bun run --filter spectrum build
+
+      - name: Install Linux GUI runtime deps (xvfb + webkit2gtk + appindicator)
+        if: matrix.app && runner.os == 'Linux'
+        # Electrobun's libNativeWrapper.so dlopens the GTK/WebKit + app-indicator stack at startup
+        # even with bundleCEF, so those runtime libs must be present or the app crashes
+        # (ERR_DLOPEN_FAILED) before the proxy binds. xvfb provides the virtual display the GUI
+        # smoke needs. The trailing `ldd` surfaces any still-unresolved wrapper deps up front so a
+        # missing lib shows here instead of as an opaque smoke failure.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xvfb \
+            libwebkit2gtk-4.1-0 \
+            libgtk-3-0 \
+            libayatana-appindicator3-1 \
+            librsvg2-2 \
+            libnotify4
+          LIB=$(find apps/desktop/build -name libNativeWrapper.so | head -1)
+          if [ -n "$LIB" ]; then
+            echo "== ldd $LIB =="
+            ldd "$LIB" | (grep 'not found' && echo '::warning::libNativeWrapper.so has unresolved deps (above)' || echo 'all wrapper deps resolved')
+          fi
+
+      - name: Verified-running smoke (Linux)
+        if: matrix.app && runner.os == 'Linux' && steps.smokebuild.outcome == 'success'
+        run: xvfb-run -a bun run --filter spectrum smoke
+
+      - name: Verified-running smoke (macOS/Windows)
+        if: matrix.app && runner.os != 'Linux' && steps.smokebuild.outcome == 'success'
+        run: bun run --filter spectrum smoke
 
       - uses: actions/upload-artifact@v7
         with:
