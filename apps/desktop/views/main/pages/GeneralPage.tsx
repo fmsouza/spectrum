@@ -57,6 +57,9 @@ export const GeneralPage = (): ReactElement => {
             Canary
           </label>
         </fieldset>
+        <p className="settings-updates__hint">
+          Channel changes take effect after you restart Spectrum.
+        </p>
 
         <button type="button" onClick={update.check}>
           Check for updates

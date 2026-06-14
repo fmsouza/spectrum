@@ -28,6 +28,11 @@ export interface UpdaterEngine {
 export interface ElectrobunUpdaterDeps {
   /** Resolve the engine. Production lazily imports Electrobun; tests inject a fake. */
   readonly loadEngine: () => Promise<UpdaterEngine>
+  /** Read/write the bundle's Resources/version.json (channel switch). Injected for tests. */
+  readonly versionFile?: {
+    read: () => Promise<string>
+    write: (contents: string) => Promise<void>
+  }
 }
 
 /** Production loader: lazy-import so `bun test` never loads native FFI. */
@@ -36,6 +41,13 @@ const realLoadEngine = async (): Promise<UpdaterEngine> => {
     Updater: UpdaterEngine
   }
   return Updater
+}
+
+/** Production version.json accessor (Electrobun uses ../Resources/version.json relative to process cwd). */
+const realVersionFile = {
+  read: (): Promise<string> => Bun.file("../Resources/version.json").text(),
+  write: (contents: string): Promise<void> =>
+    Bun.write("../Resources/version.json", contents).then(() => undefined),
 }
 
 export const createElectrobunUpdater = (
@@ -145,24 +157,21 @@ export const createElectrobunUpdater = (
     setChannel: async (
       channel: Channel,
     ): Promise<Result<void, UpdaterError>> => {
-      // Resolved (Task 12, option ii — documented no-op):
-      //
-      // Electrobun's Updater.getLocalInfo() reads `../Resources/version.json`
-      // relative to the process working directory and caches the result in a
-      // module-level `let localInfo` variable. There is no exported API to clear
-      // that cache, so even if we rewrote the file the in-process Updater would
-      // continue using the old channel value for the lifetime of the app.
-      //
-      // The `check()` method on this adapter receives the desired `channel` as a
-      // parameter and the IPC handler persists the choice in config
-      // (`updateChannel`). On the next `check()` call the handler passes the
-      // persisted channel, so the correct per-channel `update.json` is fetched
-      // without needing to touch `version.json`. Channel changes therefore take
-      // effect on the very next update check — no reinstall required.
-      //
-      // If future Electrobun versions expose a cache-invalidation API, this stub
-      // can be upgraded to rewrite `version.json` + call that API.
-      void channel
+      // Electrobun derives the active channel from the bundle's Resources/version.json,
+      // which Updater caches for the process lifetime (no public cache-clear). So a
+      // channel switch is written to that file and takes effect on the NEXT app
+      // restart. Best-effort: a read-only bundle simply keeps the prior channel until
+      // a writable reinstall — the user's preference is still persisted in config by
+      // the handler, so we never fail the toggle here.
+      const vf = deps.versionFile ?? realVersionFile
+      try {
+        const raw = await vf.read()
+        const parsed = JSON.parse(raw) as Record<string, unknown>
+        parsed.channel = channel
+        await vf.write(JSON.stringify(parsed, null, 2))
+      } catch {
+        // swallow — preference persists in config; engine picks it up after a writable reinstall
+      }
       return ok(undefined)
     },
   }

@@ -80,7 +80,7 @@ jobs:
         # `--env=canary` sets buildEnvironment="canary" so artifacts are prefixed
         # `canary-<os>-<arch>-…`. Without this flag the default is "dev".
         # Source: apps/desktop/node_modules/electrobun/src/cli/index.ts lines 2079-2083.
-        run: bun run --filter spectrum build -- --env=canary
+        run: bun run --filter spectrum build:canary
 
       - name: Install Linux GUI runtime deps (xvfb + webkit2gtk + appindicator)
         if: matrix.app && runner.os == 'Linux'

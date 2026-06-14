@@ -93,4 +93,55 @@ describe("createElectrobunUpdater", () => {
     await new Promise((r) => setTimeout(r, 0))
     expect(u.getRaw().phase).toBe("downloaded")
   })
+
+  it("setChannel rewrites the channel field in version.json", async () => {
+    const initialJson = JSON.stringify({
+      identifier: "x",
+      channel: "stable",
+      version: "1.0.0",
+      hash: "h",
+      baseUrl: "u",
+      name: "Spectrum",
+    })
+    let written: string | null = null
+    const u = createElectrobunUpdater({
+      loadEngine: async () => baseEngine(),
+      versionFile: {
+        read: async () => initialJson,
+        write: async (contents) => {
+          written = contents
+        },
+      },
+    })
+    const r = await u.setChannel("canary")
+    expect(r.ok).toBe(true)
+    expect(written).not.toBeNull()
+    const parsed = JSON.parse(written ?? "") as Record<string, unknown>
+    expect(parsed.channel).toBe("canary")
+    expect(parsed.version).toBe("1.0.0")
+    expect(parsed.hash).toBe("h")
+    expect(parsed.baseUrl).toBe("u")
+  })
+
+  it("setChannel resolves ok even when the version file write fails", async () => {
+    const u = createElectrobunUpdater({
+      loadEngine: async () => baseEngine(),
+      versionFile: {
+        read: async () =>
+          JSON.stringify({
+            identifier: "x",
+            channel: "stable",
+            version: "1.0.0",
+            hash: "h",
+            baseUrl: "u",
+            name: "Spectrum",
+          }),
+        write: async () => {
+          throw new Error("read-only filesystem")
+        },
+      },
+    })
+    const r = await u.setChannel("canary")
+    expect(r.ok).toBe(true)
+  })
 })

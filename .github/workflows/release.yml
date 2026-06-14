@@ -76,7 +76,7 @@ jobs:
         # the default is "dev", so we must pass `--env=stable` explicitly to get artifacts
         # prefixed `stable-<os>-<arch>-…`.
         # Source: apps/desktop/node_modules/electrobun/src/cli/index.ts lines 2079-2083.
-        run: bun run --filter spectrum build -- --env=stable
+        run: bun run --filter spectrum build:stable
 
       - name: Install Linux GUI runtime deps (xvfb + webkit2gtk + appindicator)
         if: matrix.app && runner.os == 'Linux'
