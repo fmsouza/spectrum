@@ -38,6 +38,12 @@ const METHOD_NAMES = [
   "getRunnerSocketUrl",
   "getRunEvents",
   "updateHarnessPrefs",
+  "getUpdateState",
+  "checkForUpdate",
+  "startUpdateDownload",
+  "applyUpdate",
+  "dismissUpdate",
+  "setUpdateChannel",
 ] as const satisfies ReadonlyArray<keyof IpcClient>
 
 /**
