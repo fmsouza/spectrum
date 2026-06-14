@@ -71,16 +71,17 @@ jobs:
       - name: Compile CLI binary
         run: bun run --filter spectrum compile
 
-      - name: Build desktop app (canary channel, best-effort)
-        id: app
+      - name: Build desktop app (dev bundle, for the verified-running smoke)
+        id: smokebuild
         if: matrix.app
-        # continue-on-error: true until verified-running smoke is green on every platform (Task 5.2)
+        # best-effort (canary) until the verified-running smoke is green on every platform.
         continue-on-error: true
-        # Confirmed (Task 12): the Electrobun channel flag is `--env=<channel>`. Passing
-        # `--env=canary` sets buildEnvironment="canary" so artifacts are prefixed
-        # `canary-<os>-<arch>-…`. Without this flag the default is "dev".
-        # Source: apps/desktop/node_modules/electrobun/src/cli/index.ts lines 2079-2083.
-        run: bun run --filter spectrum build:canary
+        # The smoke launches a loose, directly-runnable bundle. The channel build
+        # packages a self-extracting installer on Linux/Windows that the loose-bundle
+        # smoke can't launch, so the app is verified against the dev bundle here and the
+        # canary channel build (below, after the smoke) emits the distributable + flat
+        # update artifacts. Same app code, so this is a faithful runtime gate.
+        run: bun run --filter spectrum build
 
       - name: Install Linux GUI runtime deps (xvfb + webkit2gtk + appindicator)
         if: matrix.app && runner.os == 'Linux'
@@ -105,12 +106,24 @@ jobs:
           fi
 
       - name: Verified-running smoke (Linux)
-        if: matrix.app && runner.os == 'Linux' && steps.app.outcome == 'success'
+        if: matrix.app && runner.os == 'Linux' && steps.smokebuild.outcome == 'success'
         run: xvfb-run -a bun run --filter spectrum smoke
 
       - name: Verified-running smoke (macOS/Windows)
-        if: matrix.app && runner.os != 'Linux' && steps.app.outcome == 'success'
+        if: matrix.app && runner.os != 'Linux' && steps.smokebuild.outcome == 'success'
         run: bun run --filter spectrum smoke
+
+      - name: Build desktop app (canary channel, for distribution + update artifacts)
+        id: app
+        if: matrix.app
+        continue-on-error: true
+        shell: bash
+        # Clean the dev bundle first so build/ and artifacts/ hold only the channel
+        # outputs the staging steps publish. build:canary runs
+        # `electrobun build --env=canary` → artifacts prefixed `canary-<os>-<arch>-…`.
+        run: |
+          rm -rf apps/desktop/build apps/desktop/artifacts
+          bun run --filter spectrum build:canary
 
       - name: Stage artifacts (unix)
         if: matrix.archive == 'tar.gz'
@@ -120,8 +133,9 @@ jobs:
           cp apps/desktop/dist/spectrum-cli "stage/${{ matrix.asset }}-cli"
           if [ "${{ steps.app.outcome }}" = "success" ]; then
             tar czf "stage/${{ matrix.asset }}-app.tar.gz" -C apps/desktop/build .
-            # installer (Electrobun emits the per-OS installer under apps/desktop/build; record its path during the spike)
-            find apps/desktop/build -maxdepth 3 \( -name '*.dmg' -o -name '*.deb' \) -exec cp {} "stage/" \;
+            # Electrobun emits the per-OS installer (.dmg / .deb) into apps/desktop/artifacts
+            # (the channel build's artifactFolder), alongside the build/ bundle.
+            find apps/desktop/build apps/desktop/artifacts -maxdepth 3 \( -name '*.dmg' -o -name '*.deb' \) -exec cp {} "stage/" \;
           fi
           tar czf "stage/${{ matrix.asset }}-cli.tar.gz" -C stage "${{ matrix.asset }}-cli"
           rm -f "stage/${{ matrix.asset }}-cli"
