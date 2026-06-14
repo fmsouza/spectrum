@@ -576,6 +576,116 @@
   cursor: auto;
 }
 
+/* ───────────────────────── Side rail (tasks + sub-runner) ───────────────── */
+/* The shared right column. Holds the task rail alone, or a segmented header that
+   swaps between the task rail and the sub-runner pane. */
+.lk-side-rail {
+  flex: 0 0 380px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--sp-border);
+  background: var(--sp-surface);
+}
+
+/* When the sub-runner pane is nested inside the rail, drop its own column sizing
+   and border so it fills the shared column below the segmented header. */
+.lk-side-rail .lk-sub-runner-pane {
+  flex: 1 1 auto;
+  border-left: none;
+}
+
+.lk-side-rail__seg {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--sp-space-1);
+  padding: var(--sp-space-2);
+  border-bottom: 1px solid var(--sp-border);
+}
+
+.lk-side-rail__tab {
+  font: inherit;
+  font-size: var(--sp-text-sm);
+  padding: var(--sp-space-1) var(--sp-space-3);
+  border-radius: var(--sp-radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--sp-text-muted);
+  cursor: pointer;
+}
+.lk-side-rail__tab[aria-selected="true"] {
+  background: var(--sp-surface-raised);
+  color: var(--sp-text);
+  border-color: var(--sp-border);
+}
+.lk-side-rail__tab:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Task rail */
+.lk-task-rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.lk-task-rail__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-space-3);
+  font-size: var(--sp-text-sm);
+  color: var(--sp-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.lk-task-rail__count {
+  font-variant-numeric: tabular-nums;
+}
+.lk-task-rail__progress {
+  flex: 0 0 auto;
+  height: 3px;
+  background: var(--sp-border);
+}
+.lk-task-rail__progress > i {
+  display: block;
+  height: 100%;
+  background: var(--sp-success);
+  transition: width 160ms ease;
+}
+.lk-task-rail__rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Task row */
+.lk-task-row {
+  display: flex;
+  gap: var(--sp-space-2);
+  align-items: flex-start;
+  padding: var(--sp-space-2);
+  border-radius: var(--sp-radius-sm);
+  font-size: var(--sp-text-sm);
+  line-height: 1.35;
+}
+.lk-task-row[data-status="in_progress"] {
+  background: var(--sp-warning-soft);
+}
+.lk-task-row__label {
+  color: var(--sp-text);
+}
+.lk-task-row[data-status="completed"] .lk-task-row__label {
+  color: var(--sp-text-muted);
+  text-decoration: line-through;
+}
+
 /* Mode selector: a pill in the composer bar opening an upward menu of the
    harness's supported normalized modes. */
 .lk-mode-selector {
