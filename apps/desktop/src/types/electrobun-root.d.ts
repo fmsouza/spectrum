@@ -30,4 +30,11 @@ export interface ElectrobunConfig {
     linux?: { bundleCEF?: boolean; defaultRenderer?: "native" | "cef" }
     win?: { bundleCEF?: boolean; defaultRenderer?: "native" | "cef" }
   }
+  /** Release and distribution configuration for auto-updates. */
+  release?: {
+    /** Base URL for artifact distribution (e.g. GitHub Releases rolling tag). */
+    baseUrl?: string
+    /** Generate delta patch files by diffing against the previous release. @default true */
+    generatePatch?: boolean
+  }
 }

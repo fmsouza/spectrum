@@ -15,6 +15,7 @@ import { type ProxyStore, createProxyStore } from "./proxyStore"
 import { type RunViewStore, createRunViewStore } from "./runViewStore"
 import type { StoreDeps } from "./types"
 import { type UiStore, createUiStore } from "./uiStore"
+import { type UpdateStore, createUpdateStore } from "./updateStore"
 
 /** The full bundle of domain stores. Grows as each domain is migrated. */
 export type Stores = {
@@ -25,6 +26,7 @@ export type Stores = {
   readonly projects: StoreApi<ProjectsStore>
   readonly ui: StoreApi<UiStore>
   readonly runView: StoreApi<RunViewStore>
+  readonly update: StoreApi<UpdateStore>
 }
 
 export type CreateStoresOptions = {
@@ -46,6 +48,7 @@ export const createStores = ({
     projects: createProjectsStore(deps),
     ui: createUiStore(initialView),
     runView: createRunViewStore(deps),
+    update: createUpdateStore(deps),
   }
 }
 

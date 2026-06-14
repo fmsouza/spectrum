@@ -4,6 +4,8 @@ import { providerCatalog, validateProviderConfig } from "@spectrum/providers"
 import type { ModelId, ModelRoute, Provider, SecretRef } from "@spectrum/types"
 import { isOk } from "@spectrum/utils"
 import type { AppContext } from "../../composition"
+import { decideBanner } from "../updater/policy"
+import type { Channel } from "../updater/updater-adapter"
 
 /**
  * Project a `Provider` to the secret-free `ProviderView` that crosses IPC to the webview.
@@ -40,6 +42,26 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
     const loaded = await ctx.config.load()
     if (!isOk(loaded)) return fail("could not load config")
     return loaded.value
+  }
+
+  /**
+   * Build the full UpdateState by combining the raw adapter snapshot with the
+   * config-owned channel and dismissal fields. Pure helper — no side effects.
+   */
+  const buildUpdateState = async (): Promise<
+    import("@spectrum/ipc").IpcMethods["getUpdateState"]["result"]
+  > => {
+    const config = await loadConfig()
+    const channel = config.settings.updateChannel as Channel
+    const dismissed = config.settings.dismissedUpdateVersion
+    const raw = ctx.updater.getRaw()
+    const showBanner =
+      decideBanner({
+        available: raw.available,
+        latestVersion: raw.latestVersion,
+        dismissedVersion: dismissed,
+      }) === "show"
+    return { ...raw, channel, showBanner }
   }
 
   return {
@@ -368,6 +390,57 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       })
       if (!isOk(saved)) return fail("could not save harness prefs")
       return null
+    },
+
+    // ── Updates ──────────────────────────────────────────────────────────────
+    getUpdateState: async () => buildUpdateState(),
+
+    checkForUpdate: async () => {
+      const config = await loadConfig()
+      // A failed check is non-fatal — the adapter records phase "error" in its
+      // raw snapshot; we do NOT re-throw so the webview gets the error state.
+      await ctx.updater.check(config.settings.updateChannel as Channel)
+      return buildUpdateState()
+    },
+
+    startUpdateDownload: async () => {
+      ctx.updater.startDownload()
+      return null
+    },
+
+    applyUpdate: async () => {
+      // Fire-and-forget: apply() may relaunch the app and never return.
+      void ctx.updater.apply()
+      return null
+    },
+
+    dismissUpdate: async ({ version }: { version: string }) => {
+      const config = await loadConfig()
+      const saved = await ctx.config.save({
+        ...config,
+        settings: {
+          ...config.settings,
+          dismissedUpdateVersion: version,
+        },
+      })
+      if (!isOk(saved)) return fail("could not persist dismissed version")
+      return null
+    },
+
+    setUpdateChannel: async ({ channel }: { channel: Channel }) => {
+      const config = await loadConfig()
+      const saved = await ctx.config.save({
+        ...config,
+        settings: { ...config.settings, updateChannel: channel },
+      })
+      if (!isOk(saved)) return fail("could not persist update channel")
+      const switched = await ctx.updater.setChannel(channel)
+      if (!isOk(switched)) return fail("could not switch update channel")
+      // Re-check so the returned state reflects the latest status. NOTE: the engine
+      // still follows the pre-restart channel (version.json is cached for the process),
+      // so this queries the current channel until Spectrum restarts — see setChannel.
+      await ctx.updater.check(channel)
+      return buildUpdateState()
     },
 
     // ── Dialogs ───────────────────────────────────────────────────────────────

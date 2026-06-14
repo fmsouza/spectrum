@@ -192,22 +192,6 @@ span[role="img"][data-color="amber"] {
   box-shadow: 0 0 0 3px var(--sp-warning-soft);
 }
 
-/* The dashboard wraps the dot in <div aria-label="Proxy status">. Give it a
-   pill so the running/stopped state reads at a glance. */
-div[aria-label="Proxy status"] {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-space-2);
-  padding: var(--sp-space-2) var(--sp-space-4);
-  background: var(--sp-surface);
-  border: 1px solid var(--sp-border);
-  border-radius: var(--sp-radius-pill);
-  box-shadow: var(--sp-shadow-1);
-  font-size: var(--sp-text-sm);
-  font-weight: 500;
-  color: var(--sp-text-secondary);
-}
-
 /* ───────────────────── Spinner (span role=status busy) ──────────────────── */
 span[role="status"][aria-busy="true"] {
   display: inline-block;
