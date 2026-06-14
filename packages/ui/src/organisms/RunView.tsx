@@ -4,12 +4,13 @@ import type {
   RunnerId,
   RunnerState,
 } from "@spectrum/agent-events"
+import { selectTaskList } from "@spectrum/agent-events"
 import type { ModelRoute } from "@spectrum/types"
-import { type ReactElement, useEffect, useRef } from "react"
+import { type ReactElement, useEffect, useRef, useState } from "react"
 import { TypingIndicator } from "../atoms/TypingIndicator"
 import { Composer } from "../molecules/Composer"
 import { ConversationTimeline } from "./ConversationTimeline"
-import { SubRunnerPane } from "./SubRunnerPane"
+import { RunSideRail } from "./RunSideRail"
 
 export type RunViewProps = {
   readonly root: RunnerState
@@ -75,8 +76,23 @@ export const RunView = ({
     if (el !== null) el.scrollTop = el.scrollHeight
   }, [tick, busy])
 
+  // Collapsed state lives here, above RunSideRail's per-sub `key`, so it survives drilling in and out
+  // of sub-runners (it resets only when this conversation view unmounts).
+  const [railCollapsed, setRailCollapsed] = useState(false)
+
+  const rootList = selectTaskList(root)
+  const rootTaskList =
+    rootList !== undefined && rootList.total > 0 ? rootList : undefined
+  const subList =
+    openRunner === undefined ? undefined : selectTaskList(openRunner)
+  const subTaskList =
+    subList !== undefined && subList.total > 0 ? subList : undefined
+
   return (
-    <div className="lk-run-view" data-sub-open={openRunner !== undefined}>
+    <div
+      className="lk-run-view"
+      data-sub-open={openRunner !== undefined || rootTaskList !== undefined}
+    >
       <section className="lk-run-view__main">
         <div className="lk-run-view__scroll" ref={scrollRef}>
           {root.error !== undefined ? (
@@ -115,15 +131,18 @@ export const RunView = ({
           {...(onModelChange === undefined ? {} : { onModelChange })}
         />
       </section>
-      {openRunner === undefined ? null : (
-        <SubRunnerPane
-          runner={openRunner}
-          runners={runners}
-          breadcrumb={subBreadcrumb}
-          onOpenSubRunner={onOpenSubRunner}
-          onClose={onCloseSub}
-        />
-      )}
+      <RunSideRail
+        key={openRunner?.id ?? "root"}
+        {...(rootTaskList === undefined ? {} : { rootTaskList })}
+        {...(openRunner === undefined ? {} : { subRunner: openRunner })}
+        {...(subTaskList === undefined ? {} : { subTaskList })}
+        runners={runners}
+        subBreadcrumb={subBreadcrumb}
+        onOpenSubRunner={onOpenSubRunner}
+        onCloseSub={onCloseSub}
+        collapsed={railCollapsed}
+        onToggleCollapsed={() => setRailCollapsed((c) => !c)}
+      />
     </div>
   )
 }

@@ -187,6 +187,11 @@ span[role="img"][data-color="red"] {
   box-shadow: 0 0 0 3px var(--sp-danger-soft);
 }
 
+span[role="img"][data-color="amber"] {
+  background: var(--sp-warning);
+  box-shadow: 0 0 0 3px var(--sp-warning-soft);
+}
+
 /* The dashboard wraps the dot in <div aria-label="Proxy status">. Give it a
    pill so the running/stopped state reads at a glance. */
 div[aria-label="Proxy status"] {

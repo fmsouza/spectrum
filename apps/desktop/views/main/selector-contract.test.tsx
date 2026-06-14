@@ -58,6 +58,9 @@
  *   - `span[role="img"][data-color="red"]` (StatusDot error) — only rendered by
  *     ToolCallCard when status="error". No contract state renders a conversation
  *     with an errored tool call. Verified by ToolCallCard.test.tsx and StatusDot.test.tsx.
+ *   - `span[role="img"][data-color="amber"]` (StatusDot in-progress) — only rendered
+ *     by TaskRow when status="in_progress". No contract state renders a TaskRail with
+ *     an in-progress task. Verified by TaskRow.test.tsx and StatusDot.test.tsx.
  */
 
 import { afterEach, describe, expect, it } from "bun:test"
@@ -385,6 +388,10 @@ const isDocumentedGap = (s: string): boolean => {
   // renders a conversation/ToolCallCard with an error status. Verified by
   // ToolCallCard.test.tsx and StatusDot.test.tsx.
   if (s === 'span[role="img"][data-color="red"]') return true
+  // Amber StatusDot — only rendered by TaskRow when status="in_progress". No contract
+  // state renders a TaskRail with an in-progress task. Verified by TaskRow.test.tsx
+  // and StatusDot.test.tsx.
+  if (s === 'span[role="img"][data-color="amber"]') return true
   return false
 }
 

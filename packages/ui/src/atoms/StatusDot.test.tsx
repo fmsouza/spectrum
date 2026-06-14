@@ -28,4 +28,11 @@ describe("StatusDot", () => {
       "red",
     )
   })
+  it("marks the dot amber when the status is active", () => {
+    render(<StatusDot status="active" label="task in progress" />)
+    expect(screen.getByLabelText("task in progress")).toHaveAttribute(
+      "data-color",
+      "amber",
+    )
+  })
 })
