@@ -150,4 +150,40 @@ describe("RunView", () => {
     expect(picked).toBe("mdl_fast")
     cleanup()
   })
+
+  it("hides the side rail when the root has no task list and no sub is open", () => {
+    render(<RunView {...base} />)
+    expect(screen.queryByText("Tasks")).toBeNull()
+    cleanup()
+  })
+
+  it("shows the task rail when the root has a todo call", () => {
+    const rid = RunnerIdSchema.parse("run_root")
+    const withTasks = (
+      [
+        { type: "runner-started", runnerId: rid },
+        {
+          type: "tool-call-started",
+          runnerId: rid,
+          callId: "c1",
+          tool: "TodoWrite",
+          input: {
+            todos: [
+              {
+                content: "First task",
+                activeForm: "Doing first",
+                status: "pending",
+              },
+            ],
+          },
+        },
+      ] satisfies readonly CanonicalEvent[]
+    ).reduce(reduce, initialRunState)
+    const runner = withTasks.runners.get(rid)
+    if (runner === undefined) throw new Error("missing runner")
+
+    render(<RunView {...base} root={runner} runners={withTasks.runners} />)
+    expect(screen.getByText("First task")).toBeInTheDocument()
+    cleanup()
+  })
 })
