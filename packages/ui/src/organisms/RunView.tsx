@@ -6,7 +6,7 @@ import type {
 } from "@spectrum/agent-events"
 import { selectTaskList } from "@spectrum/agent-events"
 import type { ModelRoute } from "@spectrum/types"
-import { type ReactElement, useEffect, useRef } from "react"
+import { type ReactElement, useEffect, useRef, useState } from "react"
 import { TypingIndicator } from "../atoms/TypingIndicator"
 import { Composer } from "../molecules/Composer"
 import { ConversationTimeline } from "./ConversationTimeline"
@@ -76,6 +76,10 @@ export const RunView = ({
     if (el !== null) el.scrollTop = el.scrollHeight
   }, [tick, busy])
 
+  // Collapsed state lives here, above RunSideRail's per-sub `key`, so it survives drilling in and out
+  // of sub-runners (it resets only when this conversation view unmounts).
+  const [railCollapsed, setRailCollapsed] = useState(false)
+
   const rootList = selectTaskList(root)
   const rootTaskList =
     rootList !== undefined && rootList.total > 0 ? rootList : undefined
@@ -136,6 +140,8 @@ export const RunView = ({
         subBreadcrumb={subBreadcrumb}
         onOpenSubRunner={onOpenSubRunner}
         onCloseSub={onCloseSub}
+        collapsed={railCollapsed}
+        onToggleCollapsed={() => setRailCollapsed((c) => !c)}
       />
     </div>
   )

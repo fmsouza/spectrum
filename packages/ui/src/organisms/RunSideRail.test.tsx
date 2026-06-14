@@ -96,4 +96,49 @@ describe("RunSideRail", () => {
     expect(screen.getByText("child says hi")).toBeInTheDocument()
     cleanup()
   })
+
+  it("reduces to a thin strip with an expand control when collapsed", () => {
+    render(<RunSideRail {...base} rootTaskList={rootList} collapsed />)
+    // The task rows are hidden; only the expand control + count remain.
+    expect(screen.queryByText("Root task")).toBeNull()
+    expect(
+      screen.getByRole("button", { name: "Expand tasks panel" }),
+    ).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("invokes onToggleCollapsed from the expand control", () => {
+    let toggled = false
+    render(
+      <RunSideRail
+        {...base}
+        rootTaskList={rootList}
+        collapsed
+        onToggleCollapsed={() => {
+          toggled = true
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Expand tasks panel" }))
+    expect(toggled).toBe(true)
+    cleanup()
+  })
+
+  it("invokes onToggleCollapsed from the task-rail collapse control", () => {
+    let toggled = false
+    render(
+      <RunSideRail
+        {...base}
+        rootTaskList={rootList}
+        onToggleCollapsed={() => {
+          toggled = true
+        }}
+      />,
+    )
+    fireEvent.click(
+      screen.getByRole("button", { name: "Collapse tasks panel" }),
+    )
+    expect(toggled).toBe(true)
+    cleanup()
+  })
 })

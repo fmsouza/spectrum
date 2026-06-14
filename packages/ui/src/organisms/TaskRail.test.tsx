@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { TaskList } from "@spectrum/agent-events"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { TaskRail } from "./TaskRail"
 
 const list: TaskList = {
@@ -36,6 +36,31 @@ describe("TaskRail", () => {
       "aria-valuenow",
       "25",
     )
+    cleanup()
+  })
+
+  it("renders no collapse control when onCollapse is absent", () => {
+    render(<TaskRail taskList={list} />)
+    expect(
+      screen.queryByRole("button", { name: "Collapse tasks panel" }),
+    ).toBeNull()
+    cleanup()
+  })
+
+  it("invokes onCollapse when the collapse control is clicked", () => {
+    let collapsed = false
+    render(
+      <TaskRail
+        taskList={list}
+        onCollapse={() => {
+          collapsed = true
+        }}
+      />,
+    )
+    fireEvent.click(
+      screen.getByRole("button", { name: "Collapse tasks panel" }),
+    )
+    expect(collapsed).toBe(true)
     cleanup()
   })
 })

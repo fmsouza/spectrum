@@ -745,3 +745,50 @@
   color: var(--sp-text-secondary);
   font-size: var(--sp-text-xs);
 }
+
+/* ───────────────────── Side rail collapse / expand ──────────────────────── */
+/* Collapsed: the column shrinks to a thin strip with an expand control + count. */
+.lk-side-rail--collapsed {
+  flex: 0 0 auto;
+  width: 40px;
+  align-items: center;
+  gap: var(--sp-space-2);
+  padding: var(--sp-space-2) 0;
+}
+
+.lk-side-rail__expand,
+.lk-side-rail__collapse,
+.lk-task-rail__collapse {
+  font: inherit;
+  line-height: 1;
+  border: none;
+  background: transparent;
+  color: var(--sp-text-muted);
+  cursor: pointer;
+  border-radius: var(--sp-radius-sm);
+  padding: 2px 6px;
+}
+.lk-side-rail__expand:hover,
+.lk-side-rail__collapse:hover,
+.lk-task-rail__collapse:hover {
+  color: var(--sp-text);
+  background: var(--sp-surface-raised);
+}
+.lk-side-rail__expand {
+  font-size: var(--sp-text-base);
+}
+.lk-side-rail__collapsed-count {
+  font-size: var(--sp-text-xs);
+  color: var(--sp-text-muted);
+  font-variant-numeric: tabular-nums;
+  writing-mode: vertical-rl;
+}
+
+/* Collapse buttons sit at the trailing edge of their header. */
+.lk-side-rail__collapse {
+  margin-left: auto;
+}
+/* Let the task-rail title take the slack so the count + collapse button group right. */
+.lk-task-rail__title {
+  flex: 1 1 auto;
+}

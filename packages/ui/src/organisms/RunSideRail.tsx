@@ -14,6 +14,10 @@ export type RunSideRailProps = {
   readonly subBreadcrumb: readonly string[]
   readonly onOpenSubRunner: (id: RunnerId) => void
   readonly onCloseSub: () => void
+  /** When true the column is reduced to a thin strip with an expand control. Default false. */
+  readonly collapsed?: boolean
+  /** Toggle the collapsed state. Required for the collapse/expand controls to do anything. */
+  readonly onToggleCollapsed?: () => void
 }
 
 export const RunSideRail = ({
@@ -24,17 +28,44 @@ export const RunSideRail = ({
   subBreadcrumb,
   onOpenSubRunner,
   onCloseSub,
+  collapsed = false,
+  onToggleCollapsed = () => {},
 }: RunSideRailProps): ReactElement | null => {
   // Which segment is showing. Defaults to the sub-agent; the caller keys this component by the open
   // sub-runner id so a new sub re-mounts and resets here.
   const [segment, setSegment] = useState<"tasks" | "sub">("sub")
 
-  // No sub open: the column is the root task rail, or nothing.
+  // Nothing to show (no tasks, no sub) → render nothing, collapsed or not.
+  if (subRunner === undefined && rootTaskList === undefined) return null
+
+  // Collapsed: a thin strip with an expand control and the focused list's count.
+  if (collapsed) {
+    const countList = rootTaskList ?? subTaskList
+    return (
+      <aside className="lk-side-rail lk-side-rail--collapsed">
+        <button
+          type="button"
+          className="lk-side-rail__expand"
+          aria-label="Expand tasks panel"
+          onClick={() => onToggleCollapsed()}
+        >
+          ‹
+        </button>
+        {countList === undefined ? null : (
+          <span className="lk-side-rail__collapsed-count">
+            {countList.completed}/{countList.total}
+          </span>
+        )}
+      </aside>
+    )
+  }
+
+  // No sub open: the column is the root task rail.
   if (subRunner === undefined) {
     if (rootTaskList === undefined) return null
     return (
       <aside className="lk-side-rail">
-        <TaskRail taskList={rootTaskList} />
+        <TaskRail taskList={rootTaskList} onCollapse={onToggleCollapsed} />
       </aside>
     )
   }
@@ -63,6 +94,14 @@ export const RunSideRail = ({
           onClick={() => setSegment("sub")}
         >
           Sub-agent
+        </button>
+        <button
+          type="button"
+          className="lk-side-rail__collapse"
+          aria-label="Collapse tasks panel"
+          onClick={() => onToggleCollapsed()}
+        >
+          ›
         </button>
       </div>
       {showingTasks && subTaskList !== undefined ? (

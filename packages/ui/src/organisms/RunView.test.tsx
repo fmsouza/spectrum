@@ -187,6 +187,44 @@ describe("RunView", () => {
     cleanup()
   })
 
+  it("collapses the rail and expands it again via the controls", () => {
+    const rid = RunnerIdSchema.parse("run_root")
+    const withTasks = (
+      [
+        { type: "runner-started", runnerId: rid },
+        {
+          type: "tool-call-started",
+          runnerId: rid,
+          callId: "c1",
+          tool: "TodoWrite",
+          input: {
+            todos: [
+              {
+                content: "First task",
+                activeForm: "Doing first",
+                status: "pending",
+              },
+            ],
+          },
+        },
+      ] satisfies readonly CanonicalEvent[]
+    ).reduce(reduce, initialRunState)
+    const runner = withTasks.runners.get(rid)
+    if (runner === undefined) throw new Error("missing runner")
+
+    render(<RunView {...base} root={runner} runners={withTasks.runners} />)
+    expect(screen.getByText("First task")).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Collapse tasks panel" }),
+    )
+    expect(screen.queryByText("First task")).toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand tasks panel" }))
+    expect(screen.getByText("First task")).toBeInTheDocument()
+    cleanup()
+  })
+
   it("shows the segmented Tasks/Sub-agent header when a sub-runner is open", () => {
     const rid = RunnerIdSchema.parse("run_root2")
     const cid = RunnerIdSchema.parse("run_child2")
