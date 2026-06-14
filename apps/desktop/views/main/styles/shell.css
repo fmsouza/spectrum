@@ -180,3 +180,21 @@ main {
     height: 100%;
   }
 }
+
+/* ── Update banner: spans full width above the shell. ── */
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: var(--sp-info-soft, #1f2937);
+  color: var(--sp-text, #e5e7eb);
+  font-size: 0.875rem;
+}
+.update-banner__hint {
+  opacity: 0.7;
+  font-size: 0.8125rem;
+}
+.update-banner__dismiss {
+  margin-left: auto;
+}

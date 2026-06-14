@@ -247,6 +247,57 @@ export const SetCollapsedProjectsParamsSchema = z
   .strict()
 export const SetCollapsedProjectsResultSchema = VoidSchema
 
+// ── Updates ─────────────────────────────────────────────────────────────────
+
+export const ChannelSchema = z.enum(["stable", "canary"])
+
+export const UpdatePhaseSchema = z.enum([
+  "idle",
+  "checking",
+  "up-to-date",
+  "available",
+  "downloading",
+  "downloaded",
+  "applying",
+  "error",
+])
+
+/** Full updater state crossing to the webview. `void` mutations return null. */
+export const UpdateStateSchema = z
+  .object({
+    phase: UpdatePhaseSchema,
+    currentVersion: z.string(),
+    latestVersion: z.string().nullable(),
+    available: z.boolean(),
+    progress: z.number().min(0).max(1),
+    error: z.string().nullable(),
+    channel: ChannelSchema,
+    showBanner: z.boolean(),
+  })
+  .strict()
+
+export const GetUpdateStateParamsSchema = z.undefined()
+export const GetUpdateStateResultSchema = UpdateStateSchema
+
+export const CheckForUpdateParamsSchema = z.undefined()
+export const CheckForUpdateResultSchema = UpdateStateSchema
+
+export const StartUpdateDownloadParamsSchema = z.undefined()
+export const StartUpdateDownloadResultSchema = VoidSchema
+
+export const ApplyUpdateParamsSchema = z.undefined()
+export const ApplyUpdateResultSchema = VoidSchema
+
+export const DismissUpdateParamsSchema = z
+  .object({ version: z.string().min(1) })
+  .strict()
+export const DismissUpdateResultSchema = VoidSchema
+
+export const SetUpdateChannelParamsSchema = z
+  .object({ channel: ChannelSchema })
+  .strict()
+export const SetUpdateChannelResultSchema = UpdateStateSchema
+
 // ── The method → {params, result} schema map ──────────────────────────────────
 
 /** Maps each contract method to its on-the-wire param + result zod schemas. */
@@ -339,6 +390,30 @@ export const IpcMethodSchemas = {
   updateHarnessPrefs: {
     params: UpdateHarnessPrefsParamsSchema,
     result: UpdateHarnessPrefsResultSchema,
+  },
+  getUpdateState: {
+    params: GetUpdateStateParamsSchema,
+    result: GetUpdateStateResultSchema,
+  },
+  checkForUpdate: {
+    params: CheckForUpdateParamsSchema,
+    result: CheckForUpdateResultSchema,
+  },
+  startUpdateDownload: {
+    params: StartUpdateDownloadParamsSchema,
+    result: StartUpdateDownloadResultSchema,
+  },
+  applyUpdate: {
+    params: ApplyUpdateParamsSchema,
+    result: ApplyUpdateResultSchema,
+  },
+  dismissUpdate: {
+    params: DismissUpdateParamsSchema,
+    result: DismissUpdateResultSchema,
+  },
+  setUpdateChannel: {
+    params: SetUpdateChannelParamsSchema,
+    result: SetUpdateChannelResultSchema,
   },
 } as const
 

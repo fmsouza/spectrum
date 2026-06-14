@@ -726,5 +726,73 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
     cleanup()
   }
 
+  // ── State 8: Update banner — available phase (.update-banner + .update-banner__dismiss) ──
+  {
+    const updateStateAvailable = {
+      ok: true as const,
+      value: {
+        phase: "available" as const,
+        currentVersion: "1.0.0",
+        latestVersion: "1.1.0",
+        available: true,
+        progress: 0,
+        error: null,
+        channel: "stable" as const,
+        showBanner: true,
+      },
+    }
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      checkForUpdate: async () => updateStateAvailable,
+      getUpdateState: async () => updateStateAvailable,
+    })
+    const { container } = render(
+      <App
+        client={client}
+        runnerClient={fakeRunnerClient}
+        initialView="sessions"
+      />,
+    )
+    await waitFor(() => {
+      expect(container.querySelector(".update-banner")).not.toBeNull()
+    })
+    containers.push(container.cloneNode(true) as ParentNode)
+    cleanup()
+  }
+
+  // ── State 9: Update banner — downloaded phase (.update-banner__hint) ──────
+  {
+    const updateStateDownloaded = {
+      ok: true as const,
+      value: {
+        phase: "downloaded" as const,
+        currentVersion: "1.0.0",
+        latestVersion: "1.1.0",
+        available: true,
+        progress: 1,
+        error: null,
+        channel: "stable" as const,
+        showBanner: true,
+      },
+    }
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      checkForUpdate: async () => updateStateDownloaded,
+      getUpdateState: async () => updateStateDownloaded,
+    })
+    const { container } = render(
+      <App
+        client={client}
+        runnerClient={fakeRunnerClient}
+        initialView="sessions"
+      />,
+    )
+    await waitFor(() => {
+      expect(container.querySelector(".update-banner__hint")).not.toBeNull()
+    })
+    containers.push(container.cloneNode(true) as ParentNode)
+    cleanup()
+  }
+
   return containers
 }
