@@ -39,6 +39,7 @@
         "@spectrum/ipc": "workspace:*",
         "@spectrum/platform": "workspace:*",
         "@spectrum/projects": "workspace:*",
+        "@spectrum/providers": "workspace:*",
         "@spectrum/proxy": "workspace:*",
         "@spectrum/run-store": "workspace:*",
         "@spectrum/secrets": "workspace:*",
@@ -188,6 +189,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@spectrum/agent-events": "workspace:*",
+        "@spectrum/providers": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
         "zod": "^3.24.0",
@@ -205,6 +207,15 @@
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
         "drizzle-orm": "^0.45.2",
+      },
+    },
+    "packages/providers": {
+      "name": "@spectrum/providers",
+      "version": "0.1.0",
+      "dependencies": {
+        "@spectrum/types": "workspace:*",
+        "@spectrum/utils": "workspace:*",
+        "zod": "^3.25.76",
       },
     },
     "packages/proxy": {
@@ -225,6 +236,7 @@
         "@ai-sdk/perplexity": "^3",
         "@ai-sdk/xai": "^3",
         "@spectrum/config": "workspace:*",
+        "@spectrum/providers": "workspace:*",
         "@spectrum/secrets": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
@@ -282,6 +294,7 @@
       "dependencies": {
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/brand": "workspace:*",
+        "@spectrum/providers": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
         "react": "^19",
@@ -528,6 +541,8 @@
     "@spectrum/platform": ["@spectrum/platform@workspace:packages/platform"],
 
     "@spectrum/projects": ["@spectrum/projects@workspace:packages/projects"],
+
+    "@spectrum/providers": ["@spectrum/providers@workspace:packages/providers"],
 
     "@spectrum/proxy": ["@spectrum/proxy@workspace:packages/proxy"],
 

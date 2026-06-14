@@ -171,6 +171,40 @@ const v7ToV8: Migration = {
   },
 }
 
+/**
+ * v9 turns the legacy local-"Ollama" provider into the generic OpenAI-compatible
+ * "custom" provider. Each `sdkProvider:"ollama"` entry becomes `"custom"`, and its
+ * old Ollama-native `config.baseUrl` is moved to `config.serverUrl`, normalized to
+ * the OpenAI-compatible `/v1` path (Ollama serves `/v1/chat/completions` + `/v1/models`).
+ * Missing/blank URLs seed `http://localhost:11434/v1`. The legacy `baseUrl` key is dropped.
+ * (The `"ollama"` provider key is reused for the new Ollama Cloud provider going forward.)
+ */
+const v8ToV9: Migration = {
+  from: 8,
+  to: 9,
+  migrate: (raw) => {
+    const providers = Array.isArray(raw.providers) ? raw.providers : []
+    const migrated = providers.map((entry) => {
+      const p = asRecord(entry)
+      if (p.sdkProvider !== "ollama") return p
+      const config = asRecord(p.config)
+      const rawBase =
+        typeof config.baseUrl === "string" && config.baseUrl !== ""
+          ? config.baseUrl
+          : "http://localhost:11434"
+      const serverUrl = rawBase.endsWith("/v1") ? rawBase : `${rawBase}/v1`
+      const { baseUrl: _drop, ...restConfig } = config
+      void _drop
+      return {
+        ...p,
+        sdkProvider: "custom",
+        config: { ...restConfig, serverUrl },
+      }
+    })
+    return { ...raw, version: 9, providers: migrated }
+  },
+}
+
 /** Ordered list of forward migrations. Append a new step whenever `CURRENT_CONFIG_VERSION` bumps. */
 export const migrations: readonly Migration[] = [
   v1ToV2,
@@ -180,6 +214,7 @@ export const migrations: readonly Migration[] = [
   v5ToV6,
   v6ToV7,
   v7ToV8,
+  v8ToV9,
 ]
 
 /**

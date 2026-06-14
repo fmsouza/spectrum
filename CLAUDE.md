@@ -23,6 +23,7 @@ Test-first (RED observed) → implemented (GREEN) → refactored → `bun run ty
 - `@spectrum/sessions` — session history (depends on db, types, utils)
 - `@spectrum/projects` — project find-or-create + listing (depends on db, types, utils)
 - `@spectrum/platform` — pure OS detection + idiomatic per-OS path resolution + small platform helpers (depends on nothing)
+- `@spectrum/providers` — declarative provider catalog (one descriptor per SdkProvider) + per-provider config validation (depends on types, utils; zero IO)
 - `@spectrum/brand` — brand identity source of truth: pure `SpectrumMark` + canonical tokens/fonts/raster assets (depends on react only)
 - `@spectrum/agent-events` — canonical event schemas + pure reducer (depends on types, utils; zero IO)
 - `@spectrum/run-store` — append-only run-event persistence (depends on db, agent-events, types, utils)

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { ProviderView } from "@spectrum/ipc"
+import type { ProviderCatalogEntry } from "@spectrum/providers"
 import { fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { createFakeIpcClient } from "../test/fake-client"
 import { renderWithProviders } from "../test/renderWithProviders"
@@ -14,9 +15,51 @@ const view: ProviderView = {
   models: ["gpt-4o"],
 } as unknown as ProviderView
 
+/** Minimal catalog used as default stub in all tests. */
+const defaultCatalog: ProviderCatalogEntry[] = [
+  {
+    key: "openai",
+    label: "OpenAI",
+    configFields: [],
+    secretFields: [{ name: "apiKey", label: "API key", required: true }],
+    supportsCustomHeaders: false,
+  },
+  {
+    key: "groq",
+    label: "Groq",
+    configFields: [],
+    secretFields: [{ name: "apiKey", label: "API key", required: true }],
+    supportsCustomHeaders: false,
+  },
+  {
+    key: "custom",
+    label: "Custom (OpenAI-compatible)",
+    configFields: [
+      {
+        name: "serverUrl",
+        label: "Server URL",
+        kind: "url",
+        required: false,
+      },
+      {
+        name: "headers",
+        label: "Custom headers",
+        kind: "headers",
+        required: false,
+      },
+    ],
+    secretFields: [{ name: "apiKey", label: "API key", required: false }],
+    supportsCustomHeaders: true,
+  },
+]
+
 const renderPage = (stubs: Parameters<typeof createFakeIpcClient>[0]) => {
   const client = createFakeIpcClient({
     getProviders: async () => ({ ok: true, value: [view] }),
+    getProviderCatalog: async () => ({
+      ok: true,
+      value: defaultCatalog,
+    }),
     ...stubs,
   })
   renderWithProviders(<ProvidersPage />, client)
@@ -225,5 +268,106 @@ describe("ProvidersPage", () => {
     expect(params).toMatchObject({ name: "Groq", sdkProvider: "groq" })
     // No raw secret ever travels with an add.
     expect(params).not.toHaveProperty("secrets")
+  })
+
+  it("renders the Server URL field when Custom is selected in the add form", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+
+    // Open the add-provider modal
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    await screen.findByRole("dialog", { name: /add provider/i })
+
+    // Select the "custom" SDK provider
+    fireEvent.change(screen.getByLabelText("SDK provider"), {
+      target: { value: "custom" },
+    })
+
+    // The catalog-driven ProviderForm should render the Server URL field
+    await waitFor(() =>
+      expect(screen.getByLabelText("Server URL")).toBeInTheDocument(),
+    )
+  })
+
+  it("opens edit modal pre-filled with current config when Edit is clicked", async () => {
+    const customView: ProviderView = {
+      id: "p_custom",
+      name: "My Custom",
+      sdkProvider: "custom",
+      config: { serverUrl: "http://old:1/v1" },
+      secretFields: {},
+      models: [],
+    } as unknown as ProviderView
+
+    renderPage({
+      getProviders: async () => ({ ok: true, value: [customView] }),
+    })
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("cell", { name: "My Custom" }),
+      ).toBeInTheDocument(),
+    )
+
+    // Click the Edit button in the table row
+    const row = document.querySelector("tbody tr") as HTMLElement
+    const actionsCell = row.querySelector("td.lk-cell-actions") as HTMLElement
+    fireEvent.click(
+      within(actionsCell).getByRole("button", { name: /^edit$/i }),
+    )
+
+    // Edit modal opens and Server URL field is pre-filled
+    await screen.findByRole("dialog", { name: /edit provider/i })
+    const serverUrlInput = screen.getByLabelText(
+      "Server URL",
+    ) as HTMLInputElement
+    expect(serverUrlInput.value).toBe("http://old:1/v1")
+  })
+
+  it("calls updateProvider with updated config when edit form is saved", async () => {
+    const customView: ProviderView = {
+      id: "p_custom",
+      name: "My Custom",
+      sdkProvider: "custom",
+      config: { serverUrl: "http://old:1/v1" },
+      secretFields: {},
+      models: [],
+    } as unknown as ProviderView
+
+    const client = renderPage({
+      getProviders: async () => ({ ok: true, value: [customView] }),
+      updateProvider: async () => ({ ok: true, value: undefined }),
+    })
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("cell", { name: "My Custom" }),
+      ).toBeInTheDocument(),
+    )
+
+    const row = document.querySelector("tbody tr") as HTMLElement
+    const actionsCell = row.querySelector("td.lk-cell-actions") as HTMLElement
+    fireEvent.click(
+      within(actionsCell).getByRole("button", { name: /^edit$/i }),
+    )
+
+    await screen.findByRole("dialog", { name: /edit provider/i })
+
+    // Change the Server URL value
+    fireEvent.change(screen.getByLabelText("Server URL"), {
+      target: { value: "http://new:2/v1" },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: /save changes/i }))
+
+    await waitFor(() => expect(client.calls.updateProvider.length).toBe(1))
+    expect(client.calls.updateProvider[0]).toMatchObject({
+      id: "p_custom",
+      input: expect.objectContaining({
+        config: { serverUrl: "http://new:2/v1" },
+      }),
+    })
   })
 })

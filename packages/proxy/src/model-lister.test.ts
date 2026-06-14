@@ -44,10 +44,10 @@ const capturingHttpGet = (
   return { httpGet, calls }
 }
 
-// ── ollama ────────────────────────────────────────────────────────────────────
+// ── ollama (cloud) ────────────────────────────────────────────────────────────
 
-describe("createModelLister – ollama", () => {
-  it("returns model names from /api/tags response", async () => {
+describe("createModelLister – ollama (cloud)", () => {
+  it("returns model names from /tags response", async () => {
     const body = {
       models: [
         { name: "llama3.2", digest: "abc" },
@@ -61,34 +61,40 @@ describe("createModelLister – ollama", () => {
     const result = await lister({
       sdkProvider: "ollama" as SdkProvider,
       config: {},
+      apiKey: "k1",
     })
 
     expect(result).toEqual({ ok: true, value: ["llama3.2", "mistral:latest"] })
   })
 
-  it("uses the default ollama base URL when config has no baseUrl", async () => {
-    const { httpGet, calls } = capturingHttpGet(ok({ models: [] }))
-    const lister = createModelLister({ httpGet })
-
-    await lister({ sdkProvider: "ollama" as SdkProvider, config: {} })
-
-    expect(calls).toHaveLength(1)
-    expect(calls[0]?.url).toBe("http://localhost:11434/api/tags")
-  })
-
-  it("uses baseUrl from config when provided", async () => {
+  it("uses the default ollama cloud base URL when config has no serverUrl", async () => {
     const { httpGet, calls } = capturingHttpGet(ok({ models: [] }))
     const lister = createModelLister({ httpGet })
 
     await lister({
       sdkProvider: "ollama" as SdkProvider,
-      config: { baseUrl: "http://my-ollama:8080" },
+      config: {},
+      apiKey: "k",
     })
 
-    expect(calls[0]?.url).toBe("http://my-ollama:8080/api/tags")
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.url).toBe("https://ollama.com/api/tags")
   })
 
-  it("sends NO Authorization header for ollama", async () => {
+  it("uses serverUrl from config when provided", async () => {
+    const { httpGet, calls } = capturingHttpGet(ok({ models: [] }))
+    const lister = createModelLister({ httpGet })
+
+    await lister({
+      sdkProvider: "ollama" as SdkProvider,
+      config: { serverUrl: "https://my-ollama-cloud.example.com/api" },
+      apiKey: "k",
+    })
+
+    expect(calls[0]?.url).toBe("https://my-ollama-cloud.example.com/api/tags")
+  })
+
+  it("sends Authorization header for ollama cloud", async () => {
     const capturedHeaders: Array<Readonly<Record<string, string>> | undefined> =
       []
     const lister = createModelLister({
@@ -98,12 +104,11 @@ describe("createModelLister – ollama", () => {
     await lister({
       sdkProvider: "ollama" as SdkProvider,
       config: {},
-      apiKey: "should-not-appear",
+      apiKey: "my-cloud-key",
     })
 
-    // headers should be undefined or not contain Authorization
     const h = capturedHeaders[0]
-    expect(h?.Authorization).toBeUndefined()
+    expect(h?.Authorization).toBe("Bearer my-cloud-key")
   })
 
   it("returns err on http error for ollama", async () => {
@@ -116,6 +121,7 @@ describe("createModelLister – ollama", () => {
     const result = await lister({
       sdkProvider: "ollama" as SdkProvider,
       config: {},
+      apiKey: "k",
     })
 
     expect(result.ok).toBe(false)
@@ -129,6 +135,7 @@ describe("createModelLister – ollama", () => {
     const result = await lister({
       sdkProvider: "ollama" as SdkProvider,
       config: {},
+      apiKey: "k",
     })
 
     expect(result.ok).toBe(false)
@@ -142,6 +149,7 @@ describe("createModelLister – ollama", () => {
     const result = await lister({
       sdkProvider: "ollama" as SdkProvider,
       config: {},
+      apiKey: "k",
     })
 
     expect(result.ok).toBe(false)
@@ -197,13 +205,13 @@ describe("createModelLister – openai", () => {
     expect(calls[0]?.url).toBe("https://api.openai.com/v1/models")
   })
 
-  it("uses baseUrl from config for openai-compatible provider", async () => {
+  it("uses serverUrl from config for openai-compatible provider", async () => {
     const { httpGet, calls } = capturingHttpGet(ok({ data: [] }))
     const lister = createModelLister({ httpGet })
 
     await lister({
       sdkProvider: "groq" as SdkProvider,
-      config: { baseUrl: "https://api.groq.com/openai" },
+      config: { serverUrl: "https://api.groq.com/openai/v1" },
       apiKey: "gsk-key",
     })
 
@@ -319,16 +327,12 @@ describe("createModelLister – default base URL resolution", () => {
     const { httpGet, calls } = capturingHttpGet(ok({ data: [] }))
     const lister = createModelLister({ httpGet })
 
-    // "unknown-compat" is not in DEFAULT_BASE_URLS and the test passes no baseUrl,
-    // so the resolved base collapses to "". The lister must guard this and error
-    // without hitting the network.
-    // We need a provider that is in OPENAI_COMPATIBLE_PROVIDERS but has no default URL.
-    // We'll cast a fictional provider id that would fall through to the empty-base guard.
-    // Since all known providers now have defaults, we verify via a provider with explicit "" baseUrl.
+    // custom has no defaultBaseUrl, and an explicit empty serverUrl collapses to "".
+    // The lister must guard this and error without hitting the network.
     const result = await lister({
-      sdkProvider: "groq" as SdkProvider,
-      config: { baseUrl: "" },
-      apiKey: "gsk-test",
+      sdkProvider: "custom" as SdkProvider,
+      config: { serverUrl: "" },
+      apiKey: "sk-test",
     })
 
     expect(result.ok).toBe(false)
@@ -364,4 +368,60 @@ describe.each([
       expect(result.error.kind).toBe("unsupported-model-discovery")
     }
   })
+})
+
+// ── Descriptor-driven new cases ───────────────────────────────────────────────
+
+it("lists ollama CLOUD models from {base}/tags with the Authorization header", async () => {
+  const calls: { url: string; headers: Record<string, string> | undefined }[] =
+    []
+  const httpGet = async (url: string, headers?: Record<string, string>) => {
+    calls.push({ url, headers })
+    return { ok: true as const, value: { models: [{ name: "gpt-oss:120b" }] } }
+  }
+  const lister = createModelLister({ httpGet })
+  const r = await lister({ sdkProvider: "ollama", config: {}, apiKey: "k1" })
+  expect(r.ok).toBe(true)
+  if (r.ok) expect(r.value).toEqual(["gpt-oss:120b"])
+  expect(calls[0]?.url).toBe("https://ollama.com/api/tags")
+  expect(calls[0]?.headers).toEqual({ Authorization: "Bearer k1" })
+})
+
+it("lists custom models from {serverUrl}/models with a bearer header when keyed", async () => {
+  const calls: { url: string; headers: Record<string, string> | undefined }[] =
+    []
+  const httpGet = async (url: string, headers?: Record<string, string>) => {
+    calls.push({ url, headers })
+    return { ok: true as const, value: { data: [{ id: "model-a" }] } }
+  }
+  const lister = createModelLister({ httpGet })
+  const r = await lister({
+    sdkProvider: "custom",
+    config: { serverUrl: "http://localhost:11434/v1" },
+    apiKey: "sk",
+  })
+  expect(r.ok).toBe(true)
+  if (r.ok) expect(r.value).toEqual(["model-a"])
+  expect(calls[0]?.url).toBe("http://localhost:11434/v1/models")
+  expect(calls[0]?.headers).toEqual({ Authorization: "Bearer sk" })
+})
+
+it("lists openrouter models from its fixed base /models (public)", async () => {
+  const calls: { url: string }[] = []
+  const httpGet = async (url: string) => {
+    calls.push({ url })
+    return { ok: true as const, value: { data: [{ id: "openai/gpt-4o" }] } }
+  }
+  const lister = createModelLister({ httpGet })
+  const r = await lister({ sdkProvider: "openrouter", config: {} })
+  expect(r.ok).toBe(true)
+  if (r.ok) expect(r.value).toEqual(["openai/gpt-4o"])
+  expect(calls[0]?.url).toBe("https://openrouter.ai/api/v1/models")
+})
+
+it("returns provider-failed for custom with no server url configured", async () => {
+  const httpGet = async () => ({ ok: true as const, value: {} })
+  const lister = createModelLister({ httpGet })
+  const r = await lister({ sdkProvider: "custom", config: {} })
+  expect(r.ok).toBe(false)
 })

@@ -154,7 +154,7 @@ describe("defaultConfig", () => {
   it("produces a config that satisfies ConfigSchema", () => {
     expect(ConfigSchema.safeParse(defaultConfig()).success).toBe(true)
   })
-  it("uses the bumped CURRENT_CONFIG_VERSION of 8", () => {
-    expect(CURRENT_CONFIG_VERSION).toBe(8)
+  it("uses the bumped CURRENT_CONFIG_VERSION of 9", () => {
+    expect(CURRENT_CONFIG_VERSION).toBe(9)
   })
 })
