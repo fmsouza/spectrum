@@ -67,11 +67,14 @@ jobs:
       - name: Compile CLI binary
         run: bun run --filter spectrum compile
 
-      - name: Build desktop app
+      - name: Build desktop app (stable channel)
         id: app
         if: matrix.app
         # Hard gate: the verified-running smoke is green on every platform, so an app-build
         # regression must fail the release rather than silently shipping CLI-only artifacts.
+        # SPIKE (Task 12): confirm the exact Electrobun channel flag. The default
+        # build env is "stable", so the no-flag build already emits artifacts
+        # prefixed `stable-<os>-<arch>-…`. If an explicit flag is needed, set it here.
         run: bun run --filter spectrum build
 
       - name: Install Linux GUI runtime deps (xvfb + webkit2gtk + appindicator)
@@ -133,6 +136,17 @@ jobs:
           Compress-Archive "stage/${{ matrix.asset }}-cli.exe" "stage/${{ matrix.asset }}-cli.zip"
           Remove-Item "stage/${{ matrix.asset }}-cli.exe"
 
+      - name: Stage update artifacts
+        if: matrix.app && steps.app.outcome == 'success'
+        shell: bash
+        run: |
+          mkdir -p stage
+          # Flat-named update metadata + patches + zst tarballs for the auto-updater.
+          # SPIKE (Task 12): confirm the emitted artifact path under apps/desktop/build.
+          find apps/desktop/build -maxdepth 4 \
+            \( -name '*-update.json' -o -name '*.patch' -o -name '*.tar.zst' \) \
+            -exec cp {} stage/ \; || true
+
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset }}
@@ -160,3 +174,20 @@ jobs:
             --notes "Spectrum ${{ github.ref_name }} (${{ github.sha }})." \
             --target ${{ github.sha }} \
             artifacts/*
+
+      - name: Publish update artifacts to rolling tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Ensure the rolling release exists, then clobber its update assets so the
+          # baked baseUrl (.../releases/download/updates/) always serves the newest.
+          gh release view updates >/dev/null 2>&1 || \
+            gh release create updates \
+              --title "Auto-update channel feed" \
+              --notes "Rolling update metadata + patches. Managed by CI." \
+              --prerelease
+          shopt -s nullglob
+          UPDATE_ASSETS=(artifacts/*-update.json artifacts/*.patch artifacts/*.tar.zst)
+          if [ ${#UPDATE_ASSETS[@]} -gt 0 ]; then
+            gh release upload updates "${UPDATE_ASSETS[@]}" --clobber
+          fi
