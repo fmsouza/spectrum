@@ -6,11 +6,13 @@ import { createRoot } from "react-dom/client"
 import { useStore } from "zustand"
 import { IpcClientProvider, useIpcClient } from "./IpcClientContext"
 import { createRealClients } from "./clients"
+import { UpdateBanner } from "./components/UpdateBanner"
 import { useHarnesses } from "./hooks/useHarnesses"
 import { useModels } from "./hooks/useModels"
 import { useProjects } from "./hooks/useProjects"
 import { useProviders } from "./hooks/useProviders"
 import { useProxyStatus } from "./hooks/useProxyStatus"
+import { useUpdate } from "./hooks/useUpdate"
 import type { RunnerClient } from "./runner/runnerClient"
 import { StoreProvider, useStores } from "./stores/createStores"
 import { type LocationAdapter, windowLocationAdapter } from "./stores/location"
@@ -74,6 +76,7 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   // composer's model selector persists per-harness directly (no modal state).
   const [initialHarnessId, setInitialHarnessId] = useState<string>("")
   const proxy = useProxyStatus()
+  const update = useUpdate()
 
   // Prefill the New Session modal with the last launched folder/harness
   // (persisted by a successful launch). Page-level fetch — the modal stays dumb
@@ -189,6 +192,12 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
 
   return (
     <>
+      <UpdateBanner
+        state={update.state}
+        onDownload={update.download}
+        onRestart={update.apply}
+        onDismiss={update.dismiss}
+      />
       <AppShell
         mode={mode}
         onModeChange={onModeChange}
