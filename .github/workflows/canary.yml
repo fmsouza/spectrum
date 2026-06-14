@@ -76,9 +76,11 @@ jobs:
         if: matrix.app
         # continue-on-error: true until verified-running smoke is green on every platform (Task 5.2)
         continue-on-error: true
-        # SPIKE (Task 12): set the Electrobun canary channel flag so artifacts are
-        # prefixed `canary-…` (e.g. an `--env canary` / config channel).
-        run: bun run --filter spectrum build
+        # Confirmed (Task 12): the Electrobun channel flag is `--env=<channel>`. Passing
+        # `--env=canary` sets buildEnvironment="canary" so artifacts are prefixed
+        # `canary-<os>-<arch>-…`. Without this flag the default is "dev".
+        # Source: apps/desktop/node_modules/electrobun/src/cli/index.ts lines 2079-2083.
+        run: bun run --filter spectrum build -- --env=canary
 
       - name: Install Linux GUI runtime deps (xvfb + webkit2gtk + appindicator)
         if: matrix.app && runner.os == 'Linux'
@@ -144,9 +146,12 @@ jobs:
         shell: bash
         run: |
           mkdir -p stage
-          # Flat-named update metadata + patches + zst tarballs for the auto-updater.
-          # SPIKE (Task 12): confirm the emitted artifact path under apps/desktop/build.
-          find apps/desktop/build -maxdepth 4 \
+          # Confirmed (Task 12): electrobun build writes the flat-named update artifacts
+          # (update.json, .tar.zst, .patch) to `apps/desktop/artifacts/` (the config
+          # `build.artifactFolder` default), not under `build/`. The build folder holds
+          # only the intermediate app bundle. No separate command is needed.
+          # Source: apps/desktop/node_modules/electrobun/src/cli/index.ts lines 4192-4236.
+          find apps/desktop/artifacts -maxdepth 2 \
             \( -name '*-update.json' -o -name '*.patch' -o -name '*.tar.zst' \) \
             -exec cp {} stage/ \; || true
 

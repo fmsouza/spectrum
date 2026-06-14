@@ -145,10 +145,23 @@ export const createElectrobunUpdater = (
     setChannel: async (
       channel: Channel,
     ): Promise<Result<void, UpdaterError>> => {
-      // SPIKE (Task 12): rewrite the bundle's Resources/version.json `channel`
-      // field so Electrobun's download/apply follow the new channel. Until the
-      // spike lands, persist intent in config (handler) and re-check; a full
-      // channel switch may require reinstall on read-only bundles.
+      // Resolved (Task 12, option ii — documented no-op):
+      //
+      // Electrobun's Updater.getLocalInfo() reads `../Resources/version.json`
+      // relative to the process working directory and caches the result in a
+      // module-level `let localInfo` variable. There is no exported API to clear
+      // that cache, so even if we rewrote the file the in-process Updater would
+      // continue using the old channel value for the lifetime of the app.
+      //
+      // The `check()` method on this adapter receives the desired `channel` as a
+      // parameter and the IPC handler persists the choice in config
+      // (`updateChannel`). On the next `check()` call the handler passes the
+      // persisted channel, so the correct per-channel `update.json` is fetched
+      // without needing to touch `version.json`. Channel changes therefore take
+      // effect on the very next update check — no reinstall required.
+      //
+      // If future Electrobun versions expose a cache-invalidation API, this stub
+      // can be upgraded to rewrite `version.json` + call that API.
       void channel
       return ok(undefined)
     },

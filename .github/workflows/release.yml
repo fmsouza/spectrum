@@ -72,10 +72,11 @@ jobs:
         if: matrix.app
         # Hard gate: the verified-running smoke is green on every platform, so an app-build
         # regression must fail the release rather than silently shipping CLI-only artifacts.
-        # SPIKE (Task 12): confirm the exact Electrobun channel flag. The default
-        # build env is "stable", so the no-flag build already emits artifacts
-        # prefixed `stable-<os>-<arch>-…`. If an explicit flag is needed, set it here.
-        run: bun run --filter spectrum build
+        # Confirmed (Task 12): the Electrobun channel flag is `--env=<channel>`. Without it
+        # the default is "dev", so we must pass `--env=stable` explicitly to get artifacts
+        # prefixed `stable-<os>-<arch>-…`.
+        # Source: apps/desktop/node_modules/electrobun/src/cli/index.ts lines 2079-2083.
+        run: bun run --filter spectrum build -- --env=stable
 
       - name: Install Linux GUI runtime deps (xvfb + webkit2gtk + appindicator)
         if: matrix.app && runner.os == 'Linux'
@@ -141,9 +142,12 @@ jobs:
         shell: bash
         run: |
           mkdir -p stage
-          # Flat-named update metadata + patches + zst tarballs for the auto-updater.
-          # SPIKE (Task 12): confirm the emitted artifact path under apps/desktop/build.
-          find apps/desktop/build -maxdepth 4 \
+          # Confirmed (Task 12): electrobun build writes the flat-named update artifacts
+          # (update.json, .tar.zst, .patch) to `apps/desktop/artifacts/` (the config
+          # `build.artifactFolder` default), not under `build/`. The build folder holds
+          # only the intermediate app bundle. No separate command is needed.
+          # Source: apps/desktop/node_modules/electrobun/src/cli/index.ts lines 4192-4236.
+          find apps/desktop/artifacts -maxdepth 2 \
             \( -name '*-update.json' -o -name '*.patch' -o -name '*.tar.zst' \) \
             -exec cp {} stage/ \; || true
 
