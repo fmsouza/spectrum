@@ -66,4 +66,44 @@ describe("UpdateBanner", () => {
     fireEvent.click(screen.getByRole("button", { name: /restart now/i }))
     expect(calls).toEqual(["restart"])
   })
+
+  it("renders nothing when state is undefined", () => {
+    const { container } = render(
+      <UpdateBanner
+        state={undefined}
+        onDownload={() => {}}
+        onRestart={() => {}}
+        onDismiss={() => {}}
+      />,
+    )
+    expect(container.firstChild).toBeNull()
+  })
+
+  it("fires onDismiss when the dismiss button is clicked", () => {
+    const calls: string[] = []
+    render(
+      <UpdateBanner
+        state={base}
+        onDownload={() => {}}
+        onRestart={() => {}}
+        onDismiss={() => calls.push("dismiss")}
+      />,
+    )
+    fireEvent.click(
+      screen.getByRole("button", { name: /dismiss update notification/i }),
+    )
+    expect(calls).toEqual(["dismiss"])
+  })
+
+  it("shows the download percentage while downloading", () => {
+    render(
+      <UpdateBanner
+        state={{ ...base, phase: "downloading", progress: 0.42 }}
+        onDownload={() => {}}
+        onRestart={() => {}}
+        onDismiss={() => {}}
+      />,
+    )
+    expect(screen.getByText(/42%/)).toBeTruthy()
+  })
 })

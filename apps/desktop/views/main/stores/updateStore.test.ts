@@ -73,4 +73,18 @@ describe("createUpdateStore", () => {
     await store.getState().setChannel("canary")
     expect(store.getState().state?.channel).toBe("canary")
   })
+
+  it("dismiss does NOT call dismissUpdate when there is no state yet", async () => {
+    let dismissCalled = false
+    const store = createUpdateStore({
+      client: fakeClient({
+        dismissUpdate: async () => {
+          dismissCalled = true
+          return ok(null)
+        },
+      }),
+    })
+    await store.getState().dismiss()
+    expect(dismissCalled).toBe(false)
+  })
 })
