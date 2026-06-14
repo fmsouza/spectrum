@@ -121,6 +121,45 @@ describe("ConversationTimeline", () => {
     cleanup()
   })
 
+  it("does not render todo tool-calls inline", () => {
+    const rid = RunnerIdSchema.parse("run_root")
+    const state = (
+      [
+        { type: "runner-started", runnerId: rid },
+        {
+          type: "tool-call-started",
+          runnerId: rid,
+          callId: "c1",
+          tool: "TodoWrite",
+          input: {
+            todos: [{ content: "A", activeForm: "Doing A", status: "pending" }],
+          },
+        },
+        {
+          type: "tool-call-started",
+          runnerId: rid,
+          callId: "c2",
+          tool: "Bash",
+          input: { command: "ls" },
+        },
+      ] satisfies readonly CanonicalEvent[]
+    ).reduce(reduce, initialRunState)
+    const runner = state.runners.get(rid)
+    if (runner === undefined) throw new Error("missing runner")
+
+    render(
+      <ConversationTimeline
+        runner={runner}
+        runners={state.runners}
+        onOpenSubRunner={() => {}}
+        onDecide={() => {}}
+      />,
+    )
+    expect(screen.queryByText("TodoWrite")).toBeNull()
+    expect(screen.getByText("Bash")).toBeInTheDocument()
+    cleanup()
+  })
+
   it("renders a sub-runner card for a tool call that spawned a runner and forwards open", () => {
     const events: readonly CanonicalEvent[] = [
       { type: "runner-started", runnerId: root },

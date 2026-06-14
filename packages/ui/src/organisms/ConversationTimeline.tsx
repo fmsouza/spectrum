@@ -1,3 +1,4 @@
+import { isTodoTool } from "@spectrum/agent-events"
 import type {
   ApprovalDecision,
   RunnerId,
@@ -40,65 +41,67 @@ export const ConversationTimeline = ({
 
   return (
     <div className="lk-timeline" data-runner={runner.id}>
-      {runner.items.map((item, i) => {
-        switch (item.kind) {
-          case "message":
-            return (
-              <MessageBubble
-                key={`m-${item.messageId}`}
-                text={item.text}
-                author={item.role}
-                {...(item.tone !== undefined ? { tone: item.tone } : {})}
-              />
-            )
-          case "reasoning":
-            return (
-              <ReasoningBlock
-                key={`r-${item.messageId}`}
-                text={item.text}
-                expanded={expanded.has(item.messageId)}
-                onToggle={() => toggle(item.messageId)}
-              />
-            )
-          case "tool-call": {
-            if (item.spawnedRunnerId !== undefined) {
-              const childRunner = runners.get(item.spawnedRunnerId)
+      {runner.items
+        .filter((item) => !(item.kind === "tool-call" && isTodoTool(item.tool)))
+        .map((item, i) => {
+          switch (item.kind) {
+            case "message":
               return (
-                <SubRunnerCard
-                  key={`s-${item.callId}`}
-                  runnerId={item.spawnedRunnerId}
-                  title={childRunner?.title ?? item.tool}
-                  status={childRunner?.status ?? "running"}
-                  onOpen={onOpenSubRunner}
+                <MessageBubble
+                  key={`m-${item.messageId}`}
+                  text={item.text}
+                  author={item.role}
+                  {...(item.tone !== undefined ? { tone: item.tone } : {})}
+                />
+              )
+            case "reasoning":
+              return (
+                <ReasoningBlock
+                  key={`r-${item.messageId}`}
+                  text={item.text}
+                  expanded={expanded.has(item.messageId)}
+                  onToggle={() => toggle(item.messageId)}
+                />
+              )
+            case "tool-call": {
+              if (item.spawnedRunnerId !== undefined) {
+                const childRunner = runners.get(item.spawnedRunnerId)
+                return (
+                  <SubRunnerCard
+                    key={`s-${item.callId}`}
+                    runnerId={item.spawnedRunnerId}
+                    title={childRunner?.title ?? item.tool}
+                    status={childRunner?.status ?? "running"}
+                    onOpen={onOpenSubRunner}
+                  />
+                )
+              }
+              return (
+                <ToolCallCard
+                  key={`c-${item.callId}`}
+                  item={item}
+                  expanded={expanded.has(item.callId)}
+                  onToggle={() => toggle(item.callId)}
                 />
               )
             }
-            return (
-              <ToolCallCard
-                key={`c-${item.callId}`}
-                item={item}
-                expanded={expanded.has(item.callId)}
-                onToggle={() => toggle(item.callId)}
-              />
-            )
+            case "file-change":
+              return <FileDiffCard key={`f-${i}-${item.path}`} item={item} />
+            case "approval":
+              return (
+                <ApprovalCard
+                  key={`a-${item.requestId}`}
+                  item={item}
+                  inert={inert}
+                  onDecide={(d) => onDecide(item.requestId, d)}
+                />
+              )
+            default: {
+              const _exhaustive: never = item
+              return _exhaustive
+            }
           }
-          case "file-change":
-            return <FileDiffCard key={`f-${i}-${item.path}`} item={item} />
-          case "approval":
-            return (
-              <ApprovalCard
-                key={`a-${item.requestId}`}
-                item={item}
-                inert={inert}
-                onDecide={(d) => onDecide(item.requestId, d)}
-              />
-            )
-          default: {
-            const _exhaustive: never = item
-            return _exhaustive
-          }
-        }
-      })}
+        })}
       {runner.usage === undefined ? null : <UsageFooter usage={runner.usage} />}
     </div>
   )
