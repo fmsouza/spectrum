@@ -71,4 +71,26 @@ describe("createElectrobunUpdater", () => {
     await new Promise((r) => setTimeout(r, 0))
     expect(u.getRaw().phase).toBe("downloaded")
   })
+
+  it("does not regress phase to error when a late error event follows download-complete", async () => {
+    let emit:
+      | ((e: { status: string; details?: { progress?: number } }) => void)
+      | null = null
+    const u = createElectrobunUpdater({
+      loadEngine: async () =>
+        baseEngine({
+          onStatusChange: (cb) => {
+            emit = cb
+          },
+          downloadUpdate: async () => {
+            emit?.({ status: "download-complete" })
+            emit?.({ status: "error" })
+          },
+        }),
+    })
+    await u.check("stable")
+    u.startDownload()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(u.getRaw().phase).toBe("downloaded")
+  })
 })

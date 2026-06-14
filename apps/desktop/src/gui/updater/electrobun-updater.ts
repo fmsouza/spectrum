@@ -51,10 +51,16 @@ export const createElectrobunUpdater = (
   }
   let subscribed = false
 
-  const subscribe = (engine: UpdaterEngine): void => {
+  let enginePromise: Promise<UpdaterEngine> | null = null
+  const engine = (): Promise<UpdaterEngine> => {
+    if (enginePromise === null) enginePromise = deps.loadEngine()
+    return enginePromise
+  }
+
+  const subscribe = (eng: UpdaterEngine): void => {
     if (subscribed) return
     subscribed = true
-    engine.onStatusChange((e) => {
+    eng.onStatusChange((e) => {
       switch (e.status) {
         case "downloading":
         case "downloading-full-bundle":
@@ -73,7 +79,11 @@ export const createElectrobunUpdater = (
           raw = { ...raw, phase: "downloaded", progress: 1 }
           break
         case "error":
-          raw = { ...raw, phase: "error", error: "download-failed" }
+          // A late error (e.g. post-download cleanup) must not regress a
+          // successfully staged update back to a failed state.
+          if (raw.phase !== "downloaded") {
+            raw = { ...raw, phase: "error", error: "download-failed" }
+          }
           break
         default:
           break
@@ -87,10 +97,10 @@ export const createElectrobunUpdater = (
     check: async (_channel: Channel): Promise<Result<void, UpdaterError>> => {
       raw = { ...raw, phase: "checking", error: null }
       try {
-        const engine = await deps.loadEngine()
-        subscribe(engine)
-        const current = await engine.localInfo.version()
-        const info = await engine.checkForUpdate()
+        const eng = await engine()
+        subscribe(eng)
+        const current = await eng.localInfo.version()
+        const info = await eng.checkForUpdate()
         raw = {
           ...raw,
           phase: info.updateAvailable ? "available" : "up-to-date",
@@ -110,11 +120,10 @@ export const createElectrobunUpdater = (
       raw = { ...raw, phase: "downloading", progress: 0, error: null }
       // Fire-and-forget: a download can exceed the 5s IPC budget. Progress and
       // completion flow through the onStatusChange subscription into `raw`.
-      void deps
-        .loadEngine()
-        .then((engine) => {
-          subscribe(engine)
-          return engine.downloadUpdate()
+      void engine()
+        .then((eng) => {
+          subscribe(eng)
+          return eng.downloadUpdate()
         })
         .catch(() => {
           raw = { ...raw, phase: "error", error: "download-failed" }
@@ -124,8 +133,8 @@ export const createElectrobunUpdater = (
     apply: async (): Promise<Result<void, UpdaterError>> => {
       raw = { ...raw, phase: "applying", error: null }
       try {
-        const engine = await deps.loadEngine()
-        await engine.applyUpdate() // swaps the bundle + relaunches (may not return)
+        const eng = await engine()
+        await eng.applyUpdate() // swaps the bundle + relaunches (may not return)
         return ok(undefined)
       } catch (e) {
         raw = { ...raw, phase: "error", error: "apply-failed" }
