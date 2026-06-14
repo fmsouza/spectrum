@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import type { ElectrobunConfig } from "electrobun"
 
 /**
@@ -22,11 +23,18 @@ import type { ElectrobunConfig } from "electrobun"
  *   `packages/` so editing a `@spectrum/*` package (proxy, harnesses, drivers, …) also live-reloads.
  *   Test files are ignored so running/saving tests doesn't trigger app rebuilds.
  */
+// Single source of truth for the app version: the monorepo root package.json
+// (bumped by the release process). Read at build time so the bundled version.json
+// — and thus the in-app "Current version" — always matches the released version.
+const rootPackage = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+) as { version: string }
+
 const config = {
   app: {
     name: "Spectrum",
     identifier: "dev.spectrum.app",
-    version: "0.1.0",
+    version: rootPackage.version,
   },
   // Auto-update distribution. `baseUrl` is the STABLE rolling-tag URL that CI
   // force-moves on every release, so the running app always finds the newest

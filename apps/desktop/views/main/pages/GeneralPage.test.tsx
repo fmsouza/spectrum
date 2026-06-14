@@ -21,7 +21,6 @@ describe("GeneralPage updates section", () => {
     renderWithProviders(
       <GeneralPage />,
       createFakeIpcClient({
-        getProxyStatus: async () => ok({ running: true, port: 4000 }),
         checkForUpdate: async () => ok(upToDate),
         getUpdateState: async () => ok(upToDate),
       }),
@@ -34,7 +33,6 @@ describe("GeneralPage updates section", () => {
     renderWithProviders(
       <GeneralPage />,
       createFakeIpcClient({
-        getProxyStatus: async () => ok({ running: true, port: 4000 }),
         checkForUpdate: async () => ok(upToDate),
         getUpdateState: async () => ok(upToDate),
         setUpdateChannel: async ({ channel }) => {
