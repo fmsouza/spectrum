@@ -2,7 +2,7 @@ import { ModelRouteSchema, ProviderSchema } from "@spectrum/types"
 import { z } from "zod"
 
 /** Bump on any breaking config shape change; add a matching `Migration` (see migrations.ts). */
-export const CURRENT_CONFIG_VERSION = 9
+export const CURRENT_CONFIG_VERSION = 10
 
 /**
  * Per-harness "last used" prefs. `mode` is the normalized permission mode the user last selected
@@ -34,6 +34,14 @@ export const SettingsSchema = z
     collapsedProjects: z.array(z.string()).default([]),
     /** Per-harness "last used" prefs, keyed by harness id. Defaults to `{}`. */
     lastByHarness: z.record(z.string(), HarnessPrefsSchema).default({}),
+    /** Release channel the in-app updater follows. Default "stable". */
+    updateChannel: z.enum(["stable", "canary"]).default("stable"),
+    /**
+     * The version string of an update the user dismissed from the startup
+     * banner. The banner stays hidden for exactly this version; a newer
+     * version re-triggers it. `null` = nothing dismissed.
+     */
+    dismissedUpdateVersion: z.string().nullable().default(null),
   })
   .strict()
 

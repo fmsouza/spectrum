@@ -20,8 +20,8 @@ const v1Config = {
 }
 
 describe("migrations", () => {
-  it("ships ordered v1->v2, v2->v3, v3->v4, v4->v5, v5->v6, v6->v7, v7->v8, and v8->v9 migrations", () => {
-    expect(migrations).toHaveLength(8)
+  it("ships ordered v1->v2, v2->v3, v3->v4, v4->v5, v5->v6, v6->v7, v7->v8, v8->v9, and v9->v10 migrations", () => {
+    expect(migrations).toHaveLength(9)
     expect(migrations[0]?.from).toBe(1)
     expect(migrations[0]?.to).toBe(2)
     expect(migrations[1]?.from).toBe(2)
@@ -38,6 +38,8 @@ describe("migrations", () => {
     expect(migrations[6]?.to).toBe(8)
     expect(migrations[7]?.from).toBe(8)
     expect(migrations[7]?.to).toBe(9)
+    expect(migrations[8]?.from).toBe(9)
+    expect(migrations[8]?.to).toBe(10)
   })
 })
 
@@ -66,6 +68,8 @@ describe("runMigrations", () => {
         lastSelectedHarnessId: "",
         collapsedProjects: [],
         lastByHarness: {},
+        updateChannel: "stable" as const,
+        dismissedUpdateVersion: null,
       },
     }
     expect(runMigrations(current)).toEqual({ ok: true, value: current })
@@ -218,6 +222,23 @@ describe("v4 → v5 (drop profiles)", () => {
       expect(result.value.version).toBe(CURRENT_CONFIG_VERSION)
       expect("profiles" in result.value).toBe(false)
     }
+  })
+})
+
+describe("v9 → v10 (updateChannel + dismissedUpdateVersion)", () => {
+  it("migrates a v9 document to v10 with default update settings", () => {
+    const v9 = {
+      version: 9,
+      providers: [],
+      models: [],
+      settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+    }
+    const result = runMigrations(v9)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.version).toBe(10)
+    expect(result.value.settings.updateChannel).toBe("stable")
+    expect(result.value.settings.dismissedUpdateVersion).toBeNull()
   })
 })
 

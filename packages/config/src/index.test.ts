@@ -34,6 +34,8 @@ describe("@spectrum/config barrel", () => {
         lastSelectedHarnessId: "",
         collapsedProjects: [],
         lastByHarness: {},
+        updateChannel: "stable" as const,
+        dismissedUpdateVersion: null,
       },
     }
     const saved = await store.save(next)

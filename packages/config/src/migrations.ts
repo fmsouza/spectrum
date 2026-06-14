@@ -205,6 +205,18 @@ const v8ToV9: Migration = {
   },
 }
 
+/**
+ * v10 adds `settings.updateChannel` (default "stable") and
+ * `settings.dismissedUpdateVersion` (default null) for the in-app updater. Both
+ * have schema-level defaults, so v9 documents simply gain them on first load —
+ * no data transformation beyond bumping the version.
+ */
+const v9ToV10: Migration = {
+  from: 9,
+  to: 10,
+  migrate: (raw) => ({ ...raw, version: 10 }),
+}
+
 /** Ordered list of forward migrations. Append a new step whenever `CURRENT_CONFIG_VERSION` bumps. */
 export const migrations: readonly Migration[] = [
   v1ToV2,
@@ -215,6 +227,7 @@ export const migrations: readonly Migration[] = [
   v6ToV7,
   v7ToV8,
   v8ToV9,
+  v9ToV10,
 ]
 
 /**

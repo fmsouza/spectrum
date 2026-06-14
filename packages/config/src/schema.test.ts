@@ -24,6 +24,8 @@ describe("SettingsSchema", () => {
       lastSelectedHarnessId: "",
       collapsedProjects: [],
       lastByHarness: {},
+      updateChannel: "stable",
+      dismissedUpdateVersion: null,
     })
   })
   it("rejects a non-loopback proxyHost so the proxy can never bind a public interface", () => {
@@ -89,6 +91,24 @@ describe("SettingsSchema", () => {
         .success,
     ).toBe(false)
   })
+
+  it("defaults updateChannel to stable and dismissedUpdateVersion to null", () => {
+    const s = SettingsSchema.parse({})
+    expect(s.updateChannel).toBe("stable")
+    expect(s.dismissedUpdateVersion).toBeNull()
+  })
+
+  it("accepts canary as an update channel", () => {
+    expect(
+      SettingsSchema.parse({ updateChannel: "canary" }).updateChannel,
+    ).toBe("canary")
+  })
+
+  it("rejects an unknown update channel", () => {
+    expect(SettingsSchema.safeParse({ updateChannel: "beta" }).success).toBe(
+      false,
+    )
+  })
 })
 
 describe("ConfigSchema", () => {
@@ -106,6 +126,8 @@ describe("ConfigSchema", () => {
         lastSelectedHarnessId: "",
         collapsedProjects: [],
         lastByHarness: {},
+        updateChannel: "stable",
+        dismissedUpdateVersion: null,
       },
     }
     expect(ConfigSchema.parse(config)).toEqual(config)
@@ -148,13 +170,15 @@ describe("defaultConfig", () => {
         lastSelectedHarnessId: "",
         collapsedProjects: [],
         lastByHarness: {},
+        updateChannel: "stable",
+        dismissedUpdateVersion: null,
       },
     })
   })
   it("produces a config that satisfies ConfigSchema", () => {
     expect(ConfigSchema.safeParse(defaultConfig()).success).toBe(true)
   })
-  it("uses the bumped CURRENT_CONFIG_VERSION of 9", () => {
-    expect(CURRENT_CONFIG_VERSION).toBe(9)
+  it("uses the bumped CURRENT_CONFIG_VERSION of 10", () => {
+    expect(CURRENT_CONFIG_VERSION).toBe(10)
   })
 })
