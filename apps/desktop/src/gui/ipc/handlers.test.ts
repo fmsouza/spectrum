@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { StoredEvent } from "@spectrum/agent-events"
 import type { Config } from "@spectrum/config"
+import { defaultConfig } from "@spectrum/config"
 import {
   createFakeCommandResolver,
   resolveHarnessLaunch,
@@ -14,6 +15,8 @@ import type {
 } from "@spectrum/types"
 import { type Result, err, ok } from "@spectrum/utils"
 import type { AppContext } from "../../composition"
+import { createFakeUpdater } from "../updater/fake-updater"
+import type { UpdaterAdapter } from "../updater/updater-adapter"
 import { createIpcHandlers } from "./handlers"
 
 // --- a fully in-memory AppContext fake -------------------------------------------------
@@ -33,19 +36,24 @@ const baseConfig = (
   providers: readonly Provider[],
   lastSelectedFolder = "",
   lastSelectedHarnessId = "",
-): Config =>
-  ({
-    version: 2,
-    providers,
-    models: [],
-    settings: {
-      proxyPort: 4000,
-      proxyHost: "127.0.0.1",
-      lastSelectedFolder,
-      lastSelectedHarnessId,
-      collapsedProjects: [],
-    },
-  }) as Config
+  updateSettings: {
+    updateChannel?: "stable" | "canary"
+    dismissedUpdateVersion?: string | null
+  } = {},
+): Config => ({
+  ...defaultConfig(),
+  providers: [...providers],
+  settings: {
+    ...defaultConfig().settings,
+    proxyPort: 4000,
+    proxyHost: "127.0.0.1",
+    lastSelectedFolder,
+    lastSelectedHarnessId,
+    collapsedProjects: [],
+    updateChannel: updateSettings.updateChannel ?? "stable",
+    dismissedUpdateVersion: updateSettings.dismissedUpdateVersion ?? null,
+  },
+})
 
 /** Build a fake AppContext, capturing every save + secret set so tests can assert behavior. */
 const makeCtx = (
@@ -66,6 +74,9 @@ const makeCtx = (
       { readonly kind: "db-failed"; readonly detail: string }
     >
     nativeHarnessId?: string
+    updater?: UpdaterAdapter
+    updateChannel?: "stable" | "canary"
+    dismissedUpdateVersion?: string | null
   } = {},
 ): {
   ctx: AppContext
@@ -88,6 +99,10 @@ const makeCtx = (
     over.providers ?? [provider()],
     over.lastSelectedFolder ?? "",
     over.lastSelectedHarnessId ?? "",
+    {
+      updateChannel: over.updateChannel,
+      dismissedUpdateVersion: over.dismissedUpdateVersion,
+    },
   )
 
   // The handler resolves the harness command+env via ctx.resolveLaunch — use the REAL renderer
@@ -207,6 +222,9 @@ const makeCtx = (
       isNative: (harnessId: unknown) =>
         String(harnessId) === (over.nativeHarnessId ?? "claude"),
     },
+    updater:
+      over.updater ??
+      createFakeUpdater({ currentVersion: "1.0.0", latest: undefined }),
   } as unknown as AppContext
 
   return {
@@ -1186,5 +1204,110 @@ describe("createIpcHandlers.launchHarness selection", () => {
       handlers.launchHarness({ id: "claude" as never }),
     ).rejects.toThrow()
     expect(runnerLaunchInputs).toHaveLength(0)
+  })
+})
+
+// ── Update handlers ───────────────────────────────────────────────────────────
+
+describe("createIpcHandlers update handlers", () => {
+  it("checkForUpdate returns available===true, latestVersion, channel, showBanner===true when version is newer than dismissed", async () => {
+    const fakeUpdater = createFakeUpdater({
+      currentVersion: "1.0.0",
+      latest: "1.1.0",
+    })
+    const { ctx } = makeCtx({
+      updater: fakeUpdater,
+      updateChannel: "stable",
+      dismissedUpdateVersion: null,
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.checkForUpdate(undefined)
+
+    expect(result.available).toBe(true)
+    expect(result.latestVersion).toBe("1.1.0")
+    expect(result.channel).toBe("stable")
+    expect(result.showBanner).toBe(true)
+  })
+
+  it("checkForUpdate returns showBanner===false when the available version was dismissed", async () => {
+    const fakeUpdater = createFakeUpdater({
+      currentVersion: "1.0.0",
+      latest: "1.1.0",
+    })
+    const { ctx } = makeCtx({
+      updater: fakeUpdater,
+      updateChannel: "stable",
+      dismissedUpdateVersion: "1.1.0",
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.checkForUpdate(undefined)
+
+    expect(result.available).toBe(true)
+    expect(result.showBanner).toBe(false)
+  })
+
+  it("startUpdateDownload returns null and drives the fake updater to phase downloaded", async () => {
+    const fakeUpdater = createFakeUpdater({
+      currentVersion: "1.0.0",
+      latest: "1.1.0",
+    })
+    const { ctx } = makeCtx({ updater: fakeUpdater })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.startUpdateDownload(undefined)
+
+    expect(result).toBeNull()
+    expect(fakeUpdater.getRaw().phase).toBe("downloaded")
+  })
+
+  it("dismissUpdate persists the dismissed version in config", async () => {
+    const fakeUpdater = createFakeUpdater({ currentVersion: "1.0.0" })
+    const { ctx, saves } = makeCtx({
+      updater: fakeUpdater,
+      dismissedUpdateVersion: null,
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.dismissUpdate({ version: "1.1.0" })
+
+    expect(result).toBeNull()
+    expect(saves.at(-1)?.settings.dismissedUpdateVersion).toBe("1.1.0")
+  })
+
+  it("setUpdateChannel switches the channel, persists it, and returns state with new channel", async () => {
+    const fakeUpdater = createFakeUpdater({
+      currentVersion: "1.0.0",
+      latest: "1.2.0",
+    })
+    const { ctx, saves } = makeCtx({
+      updater: fakeUpdater,
+      updateChannel: "stable",
+      dismissedUpdateVersion: null,
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.setUpdateChannel({ channel: "canary" })
+
+    expect(fakeUpdater.lastChannel).toBe("canary")
+    expect(saves.at(-1)?.settings.updateChannel).toBe("canary")
+    expect(result.channel).toBe("canary")
+  })
+
+  it("applyUpdate returns null and drives the fake updater to phase applying", async () => {
+    const updater = createFakeUpdater({
+      currentVersion: "1.0.0",
+      latest: "1.1.0",
+    })
+    const { ctx } = makeCtx({ updater })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.applyUpdate(undefined)
+
+    // Fire-and-forget — FakeUpdater.apply() sets phase synchronously before resolving.
+    await Promise.resolve()
+    expect(result).toBeNull()
+    expect(updater.getRaw().phase).toBe("applying")
   })
 })

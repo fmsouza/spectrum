@@ -8,6 +8,8 @@
   },
   "scripts": {
     "build": "electrobun build",
+    "build:stable": "electrobun build --env=stable",
+    "build:canary": "electrobun build --env=canary",
     "start": "electrobun dev",
     "dev": "electrobun dev --watch",
     "compile": "bun build --compile --minify --outfile dist/spectrum-cli ./src/cli.ts",

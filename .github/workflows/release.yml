@@ -67,12 +67,16 @@ jobs:
       - name: Compile CLI binary
         run: bun run --filter spectrum compile
 
-      - name: Build desktop app
+      - name: Build desktop app (stable channel)
         id: app
         if: matrix.app
         # Hard gate: the verified-running smoke is green on every platform, so an app-build
         # regression must fail the release rather than silently shipping CLI-only artifacts.
-        run: bun run --filter spectrum build
+        # Confirmed (Task 12): the Electrobun channel flag is `--env=<channel>`. Without it
+        # the default is "dev", so we must pass `--env=stable` explicitly to get artifacts
+        # prefixed `stable-<os>-<arch>-…`.
+        # Source: apps/desktop/node_modules/electrobun/src/cli/index.ts lines 2079-2083.
+        run: bun run --filter spectrum build:stable
 
       - name: Install Linux GUI runtime deps (xvfb + webkit2gtk + appindicator)
         if: matrix.app && runner.os == 'Linux'
@@ -133,6 +137,20 @@ jobs:
           Compress-Archive "stage/${{ matrix.asset }}-cli.exe" "stage/${{ matrix.asset }}-cli.zip"
           Remove-Item "stage/${{ matrix.asset }}-cli.exe"
 
+      - name: Stage update artifacts
+        if: matrix.app && steps.app.outcome == 'success'
+        shell: bash
+        run: |
+          mkdir -p stage
+          # Confirmed (Task 12): electrobun build writes the flat-named update artifacts
+          # (update.json, .tar.zst, .patch) to `apps/desktop/artifacts/` (the config
+          # `build.artifactFolder` default), not under `build/`. The build folder holds
+          # only the intermediate app bundle. No separate command is needed.
+          # Source: apps/desktop/node_modules/electrobun/src/cli/index.ts lines 4192-4236.
+          find apps/desktop/artifacts -maxdepth 2 \
+            \( -name '*-update.json' -o -name '*.patch' -o -name '*.tar.zst' \) \
+            -exec cp {} stage/ \; || true
+
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset }}
@@ -160,3 +178,20 @@ jobs:
             --notes "Spectrum ${{ github.ref_name }} (${{ github.sha }})." \
             --target ${{ github.sha }} \
             artifacts/*
+
+      - name: Publish update artifacts to rolling tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Ensure the rolling release exists, then clobber its update assets so the
+          # baked baseUrl (.../releases/download/updates/) always serves the newest.
+          gh release view updates >/dev/null 2>&1 || \
+            gh release create updates \
+              --title "Auto-update channel feed" \
+              --notes "Rolling update metadata + patches. Managed by CI." \
+              --prerelease
+          shopt -s nullglob
+          UPDATE_ASSETS=(artifacts/*-update.json artifacts/*.patch artifacts/*.tar.zst)
+          if [ ${#UPDATE_ASSETS[@]} -gt 0 ]; then
+            gh release upload updates "${UPDATE_ASSETS[@]}" --clobber
+          fi

@@ -24,6 +24,8 @@ const configWithProvider = (): Config => ({
     lastSelectedHarnessId: "",
     collapsedProjects: [],
     lastByHarness: {},
+    updateChannel: "stable" as const,
+    dismissedUpdateVersion: null,
   },
 })
 

@@ -84,6 +84,8 @@ import {
   createDriverRegistry,
 } from "./gui/driver-registry"
 import { startRunnerSocket } from "./gui/runner-socket"
+import { createElectrobunUpdater } from "./gui/updater/electrobun-updater"
+import type { UpdaterAdapter } from "./gui/updater/updater-adapter"
 import {
   migrateLaunchkitToSpectrum,
   migrateLegacyMacosConfig,
@@ -190,6 +192,12 @@ export interface AppContext {
   readonly pickFolder: (opts: {
     readonly startingFolder?: string
   }) => Promise<readonly string[]>
+  /**
+   * The injected updater seam. Real apps wire `createElectrobunUpdater()`; tests inject
+   * `createFakeUpdater(...)`. IPC handlers call `getRaw()`, `check()`, `startDownload()`,
+   * `apply()`, and `setChannel()` through this interface — never through Electrobun directly.
+   */
+  readonly updater: UpdaterAdapter
 }
 
 /**
@@ -598,6 +606,9 @@ export const createAppContext = (
     })
   }
 
+  // In-app updater: lazy Electrobun engine, real production adapter.
+  const updater = createElectrobunUpdater()
+
   // Native folder picker — behind a LAZY dynamic import so bun test never loads native FFI.
   const pickFolder: AppContext["pickFolder"] = async (opts) => {
     const { Utils } = await import("electrobun/bun")
@@ -639,6 +650,7 @@ export const createAppContext = (
     runEvents: { read: runStore.read },
     driverRegistry,
     pickFolder,
+    updater,
     paths: { configFile, dbFile, harnessDir },
   }
 }
