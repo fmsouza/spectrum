@@ -36,7 +36,14 @@ async function discoverWorkspaceManifestPaths(): Promise<string[]> {
 }
 
 async function main(): Promise<void> {
-  const root = (await Bun.file("package.json").json()) as { version: string }
+  const root = (await Bun.file("package.json").json()) as { version?: unknown }
+  if (typeof root.version !== "string" || root.version.length === 0) {
+    console.error(
+      "sync-workspace-versions: root package.json has no valid `version` (run from the monorepo root)",
+    )
+    process.exit(1)
+  }
+  const rootVersion = root.version
   const paths = await discoverWorkspaceManifestPaths()
   const manifests: Manifest[] = await Promise.all(
     paths.map(async (path) => ({
@@ -44,14 +51,14 @@ async function main(): Promise<void> {
       version: ((await Bun.file(path).json()) as { version?: string }).version,
     })),
   )
-  const updates = computeVersionUpdates(root.version, manifests)
+  const updates = computeVersionUpdates(rootVersion, manifests)
   for (const update of updates) {
     const json = (await Bun.file(update.path).json()) as Record<string, unknown>
     json.version = update.nextVersion
     await Bun.write(update.path, `${JSON.stringify(json, null, 2)}\n`)
   }
   console.log(
-    `Synced ${updates.length} package.json file(s) to ${root.version}`,
+    `Synced ${updates.length} package.json file(s) to ${rootVersion}`,
   )
 }
 
