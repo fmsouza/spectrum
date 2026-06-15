@@ -273,7 +273,11 @@ describe("createAppContext wiring", () => {
     expect(calls.createFileRuntimeState?.[0] as string).toContain(
       "/home/tester/.config/spectrum/runtime.json",
     )
-    expect(ctx.runtime).toEqual({ __stub: "createFileRuntimeState" })
+    // runtime is decorated by withRuntimeKeyRegistration (registers a restored/written proxy key
+    // for redaction), so it is no longer the raw stub — assert the wrapper exposes the RuntimeState shape.
+    expect(typeof ctx.runtime.readProxyKey).toBe("function")
+    expect(typeof ctx.runtime.writeProxyKey).toBe("function")
+    expect(typeof ctx.runtime.clear).toBe("function")
   })
 
   it("runs migrations against the opened client so the schema exists before first use", () => {

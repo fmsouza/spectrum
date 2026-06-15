@@ -1,9 +1,14 @@
 import { describe, expect, it } from "bun:test"
 import { createLogger } from "@spectrum/logger"
 import type { LogRecord, Sink } from "@spectrum/logger"
+import type { RuntimeState } from "@spectrum/proxy"
 import type { SecretRef } from "@spectrum/types"
 import { createFixedClock, ok, redactSecrets } from "@spectrum/utils"
-import { createSecretRegistry, withSecretRegistration } from "./secret-registry"
+import {
+  createSecretRegistry,
+  withRuntimeKeyRegistration,
+  withSecretRegistration,
+} from "./secret-registry"
 
 describe("createSecretRegistry", () => {
   it("registers a long secret and exposes it in the snapshot", () => {
@@ -78,6 +83,39 @@ describe("withSecretRegistration", () => {
     expect(await store.has(ref)).toBe(true)
     const del = await store.delete(ref)
     expect(del.ok).toBe(true)
+  })
+})
+
+describe("withRuntimeKeyRegistration", () => {
+  const base: RuntimeState = {
+    readProxyKey: async () => "restored-proxy-key-0123456789abcdef",
+    writeProxyKey: async () => ok(undefined),
+    clear: async () => {},
+  }
+
+  it("registers the key returned by readProxyKey", async () => {
+    const reg = createSecretRegistry()
+    const rt = withRuntimeKeyRegistration(base, reg)
+    expect(await rt.readProxyKey()).toBe("restored-proxy-key-0123456789abcdef")
+    expect(reg.snapshot()).toContain("restored-proxy-key-0123456789abcdef")
+  })
+
+  it("registers nothing when readProxyKey returns null", async () => {
+    const reg = createSecretRegistry()
+    const rt = withRuntimeKeyRegistration(
+      { ...base, readProxyKey: async () => null },
+      reg,
+    )
+    expect(await rt.readProxyKey()).toBeNull()
+    expect(reg.snapshot()).toEqual([])
+  })
+
+  it("registers the key written via writeProxyKey and delegates clear", async () => {
+    const reg = createSecretRegistry()
+    const rt = withRuntimeKeyRegistration(base, reg)
+    await rt.writeProxyKey("written-proxy-key-fedcba9876543210")
+    expect(reg.snapshot()).toContain("written-proxy-key-fedcba9876543210")
+    await rt.clear() // should not throw
   })
 })
 

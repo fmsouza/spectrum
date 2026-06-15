@@ -105,7 +105,11 @@ import {
   migrateLaunchkitToSpectrum,
   migrateLegacyMacosConfig,
 } from "./migrate-legacy-config"
-import { createSecretRegistry, withSecretRegistration } from "./secret-registry"
+import {
+  createSecretRegistry,
+  withRuntimeKeyRegistration,
+  withSecretRegistration,
+} from "./secret-registry"
 
 /** Result of testing one provider's live connectivity (mirrors ipc TestProviderResult). */
 export type ProviderTestResult = {
@@ -606,8 +610,13 @@ export const createAppContext = (
   })
   const gateway = deps.createRealGateway()
 
-  // runtime: persists only the running proxy's per-run key so the CLI can reuse it
-  const runtime = deps.createFileRuntimeState(runtimeFile)
+  // runtime: persists only the running proxy's per-run key so the CLI can reuse it. Wrapped so a
+  // key RESTORED from persisted state (cross-process / GUI-restart reuse) — not just a freshly
+  // minted one — is also registered for redaction, closing that path symmetrically.
+  const runtime = withRuntimeKeyRegistration(
+    deps.createFileRuntimeState(runtimeFile),
+    secretRegistry,
+  )
 
   // Native run path: structured canonical events persisted to the shared db and streamed over a
   // loopback socket. The RunStore structurally satisfies the RunManager's RunEventSink; sessionSink

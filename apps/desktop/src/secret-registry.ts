@@ -1,3 +1,4 @@
+import type { RuntimeState } from "@spectrum/proxy"
 import type { SecretStore } from "@spectrum/secrets"
 
 /** Minimum length a value must have to be registered — guards against over-redaction
@@ -48,4 +49,25 @@ export const withSecretRegistration = (
   },
   delete: (ref) => store.delete(ref),
   has: (ref) => store.has(ref),
+})
+
+/**
+ * Decorate RuntimeState so the per-run proxy key is registered for redaction on BOTH paths:
+ * a key read back from persisted state (cross-process / restart reuse) and a key written.
+ * Behavior/Results are unchanged — this only observes the key value.
+ */
+export const withRuntimeKeyRegistration = (
+  runtime: RuntimeState,
+  registry: SecretRegistry,
+): RuntimeState => ({
+  readProxyKey: async () => {
+    const key = await runtime.readProxyKey()
+    registry.register(key)
+    return key
+  },
+  writeProxyKey: async (key) => {
+    registry.register(key)
+    return runtime.writeProxyKey(key)
+  },
+  clear: () => runtime.clear(),
 })
