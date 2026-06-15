@@ -6,6 +6,7 @@ import {
   createFakeCommandResolver,
   resolveHarnessLaunch,
 } from "@spectrum/harnesses"
+import { type Logger, createNoopLogger } from "@spectrum/logger"
 import type {
   HarnessId,
   ModelId,
@@ -87,6 +88,7 @@ const makeCtx = (
       { readonly kind: "db-failed"; readonly detail: string }
     >
     resetAppResult?: Result<void, ResetError>
+    log?: Logger
   } = {},
 ): {
   ctx: AppContext
@@ -128,6 +130,7 @@ const makeCtx = (
   })
 
   const ctx = {
+    log: over.log ?? createNoopLogger(),
     config: {
       load: async (): Promise<Result<Config, never>> => ok(current),
       save: async (next: Config): Promise<Result<void, never>> => {
@@ -1413,5 +1416,70 @@ describe("createIpcHandlers.resetApp", () => {
     const handlers = createIpcHandlers(ctx)
 
     await expect(handlers.resetApp(undefined)).rejects.toThrow()
+  })
+})
+
+describe("createIpcHandlers fail() central logging", () => {
+  it("logs an error on the ipc child scope before throwing when a handler hits fail()", async () => {
+    const calls: Array<{ scope: string; msg: string }> = []
+    const child = (scope: string): Logger => ({
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: (msg: string) => calls.push({ scope, msg }),
+      fatal: (msg: string) => calls.push({ scope, msg }),
+      child: () => child(scope),
+    })
+    const fakeLog: Logger = {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      fatal: () => {},
+      child,
+    }
+    // Force loadConfig() to fail so getProviders() reaches fail("could not load config").
+    const { ctx } = makeCtx({ log: fakeLog })
+    ;(ctx.config as { load: unknown }).load = async () => err({ kind: "io" })
+    const handlers = createIpcHandlers(ctx)
+
+    // The thrown-error → handler-failed behavior is preserved (still throws) ...
+    await expect(handlers.getProviders(undefined)).rejects.toThrow(
+      "could not load config",
+    )
+    // ... AND the failure left a persisted trace: one error on the "ipc" scope.
+    expect(calls).toEqual([{ scope: "ipc", msg: "could not load config" }])
+  })
+})
+
+describe("createIpcHandlers.logClientError", () => {
+  it("logClientError forwards a webview error to ctx.log", async () => {
+    const calls: Array<{ scope: string; msg: string }> = []
+    const child = (scope: string): Logger => ({
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: (msg: string) => calls.push({ scope, msg }),
+      fatal: (msg: string) => calls.push({ scope, msg }),
+      child: () => child(scope),
+    })
+    const fakeLog: Logger = {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      fatal: () => {},
+      child,
+    }
+    const { ctx } = makeCtx({ log: fakeLog })
+    const handlers = createIpcHandlers(ctx)
+    const r = await handlers.logClientError({
+      scope: "ErrorBoundary",
+      level: "error",
+      msg: "crash",
+    })
+    expect(r).toBeNull()
+    expect(calls[0]?.msg).toBe("crash")
+    expect(calls[0]?.scope).toBe("webview.ErrorBoundary")
   })
 })

@@ -25,11 +25,6 @@ const toProviderView = (provider: Provider): ProviderView => ({
   models: provider.models,
 })
 
-/** Raised inside a handler so the ipc server wraps it as a typed handler-failed IpcError. */
-const fail = (message: string): never => {
-  throw new Error(message)
-}
-
 /**
  * Bind the `@spectrum/ipc` contract to the wired subsystems. Each handler is `async` and either
  * returns the validated result shape or throws (the ipc server turns a throw into a `handler-failed`
@@ -37,6 +32,14 @@ const fail = (message: string): never => {
  * `void` results are encoded as `null` (the ipc VoidSchema), matching `04-ipc.md`.
  */
 export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
+  // Raised inside a handler so the ipc server wraps it as a typed handler-failed IpcError.
+  // Logged once centrally so every handler failure leaves a persisted trace (message only —
+  // handlers never put secrets in fail() messages).
+  const fail = (message: string): never => {
+    ctx.log.child("ipc").error(message)
+    throw new Error(message)
+  }
+
   /** Load config or throw a message-safe handler error. */
   const loadConfig = async () => {
     const loaded = await ctx.config.load()
@@ -477,6 +480,14 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       const result = await ctx.listProviderModels(String(providerId))
       if (!isOk(result)) return fail("could not list provider models")
       return { models: [...result.value] }
+    },
+
+    // ── Client logging ──────────────────────────────────────────────────────
+    logClientError: async ({ scope, level, msg, fields }) => {
+      const child = ctx.log.child(`webview.${scope}`)
+      if (level === "fatal") child.fatal(msg, fields)
+      else child.error(msg, fields)
+      return null
     },
   }
 }

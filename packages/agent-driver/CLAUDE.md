@@ -12,7 +12,9 @@
 `AgentSession` has an optional `setMode` method for mid-session mode changes; `AgentStartInput` carries
 an optional `permissionMode` field (absent means manual).
 
-**Depends on:** `@spectrum/agent-events`, `@spectrum/types`, `@spectrum/utils`.
+**Depends on:** `@spectrum/agent-events`, `@spectrum/types`, `@spectrum/utils`, `@spectrum/logger`.
+
+RunManager accepts an injected `Logger` (default noop); logs `info` on session launch/open/close (ids/harnessId only) and `error` on driver start failure (`{ kind }`); never logs message content or secrets.
 
 **Effect owned:** none — pure logic. The `RunManager` receives its `send` sink, `Clock`, `SessionSink`,
 `RunEventSink`, and `AgentDriver` injected; `apps/desktop` constructs the real SessionStore + RunStore

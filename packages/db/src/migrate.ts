@@ -1,3 +1,4 @@
+import { type Logger, createNoopLogger } from "@spectrum/logger"
 import { type Result, err, ok } from "@spectrum/utils"
 import type { DbClient } from "./client"
 import type { DbError } from "./errors"
@@ -44,7 +45,11 @@ const dropLegacyTables = (connection: DbClient["connection"]): void => {
 }
 
 /** Apply all pending bundled migrations. Forward-only; tracked in __drizzle_migrations by tag. */
-export const runMigrations = (client: DbClient): Result<void, DbError> => {
+export const runMigrations = (
+  client: DbClient,
+  deps: { logger?: Logger } = {},
+): Result<void, DbError> => {
+  const logger = deps.logger ?? createNoopLogger()
   const { connection } = client
   try {
     connection.run(CREATE_TRACKING_TABLE)
@@ -68,6 +73,9 @@ export const runMigrations = (client: DbClient): Result<void, DbError> => {
 
     return ok(undefined)
   } catch (cause) {
-    return err({ kind: "migration-failed", detail: detailOf(cause) })
+    const detail = detailOf(cause)
+    // Observation only — the Result below is the control-flow signal.
+    logger.error("migration failed", { detail })
+    return err({ kind: "migration-failed", detail })
   }
 }

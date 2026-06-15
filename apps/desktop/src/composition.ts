@@ -20,6 +20,7 @@ import type { Result } from "@spectrum/utils"
 
 import { mkdirSync, rmSync } from "node:fs"
 import { homedir } from "node:os"
+import { join } from "node:path"
 import type {
   AgentDriver,
   RunManager,
@@ -53,6 +54,14 @@ import {
   resolveHarnessLaunch,
 } from "@spectrum/harnesses"
 import {
+  type Logger,
+  createConsoleSink,
+  createFsLogFileOps,
+  createLogger,
+  createRotatingFileSink,
+  resolveMinLevel,
+} from "@spectrum/logger"
+import {
   type Platform,
   detectAppEnv,
   detectPlatform,
@@ -79,7 +88,7 @@ import {
 } from "@spectrum/secrets"
 import { createSessionStore } from "@spectrum/sessions"
 import { createCryptoIdGen, createSystemClock } from "@spectrum/utils"
-import { err } from "@spectrum/utils"
+import { err, redactSecrets } from "@spectrum/utils"
 import { withDemoHarness } from "./gui/demo-harness"
 import {
   DEMO_HARNESS_ID,
@@ -96,6 +105,11 @@ import {
   migrateLaunchkitToSpectrum,
   migrateLegacyMacosConfig,
 } from "./migrate-legacy-config"
+import {
+  createSecretRegistry,
+  withRuntimeKeyRegistration,
+  withSecretRegistration,
+} from "./secret-registry"
 
 /** Result of testing one provider's live connectivity (mirrors ipc TestProviderResult). */
 export type ProviderTestResult = {
@@ -191,6 +205,8 @@ export interface AppContext {
   readonly resetApp: () => Promise<Result<void, ResetError>>
   /** Which harnesses have a registered native driver (every launchable harness does). */
   readonly driverRegistry: DriverRegistry
+  /** Structured application logger (console + rotating file). Inject child scopes into subsystems. */
+  readonly log: Logger
   /** Resolved settings paths (config + db + harness dir), surfaced for diagnostics/tests. */
   readonly paths: {
     readonly configFile: string
@@ -438,12 +454,51 @@ export const createAppContext = (
   // needs the dir to pre-exist.
   deps.ensureDir(paths.dataDir)
 
+  // Defense-in-depth secret registry (spec §6): fed at the secret chokepoints (resolved/written
+  // apiKeys via the wrapped secrets store; the minted per-run proxy key below) and read lazily by
+  // the logger's `redact` so no record can persist a known secret value.
+  const secretRegistry = createSecretRegistry()
+
+  // Wrap the minted per-run proxy key so each value is registered for redaction (it does NOT flow
+  // through the secret store, so it must be registered here).
+  const genProxyKey = (): string => {
+    const key = deps.genProxyKey()
+    secretRegistry.register(key)
+    return key
+  }
+
+  const log = createLogger({
+    sinks: [
+      createConsoleSink({
+        write: (line) => {
+          process.stderr.write(line)
+        },
+        pretty: appEnv === "development",
+      }),
+      createRotatingFileSink({
+        fileOps: createFsLogFileOps(),
+        dir: join(paths.dataDir, "logs"),
+        maxBytes: 5 * 1024 * 1024,
+        maxFiles: 3,
+      }),
+    ],
+    clock: deps.createSystemClock(),
+    minLevel: resolveMinLevel(appEnv, deps.env),
+    // Defense-in-depth (spec §6): scrub any in-process secret (the per-run proxy key,
+    // resolved apiKeys) from every record at log time. Call sites must still never pass
+    // raw secrets as fields — this is the backstop, especially for webview-forwarded records.
+    redact: (text) => redactSecrets(text, secretRegistry.snapshot()),
+  })
+
   // config: cached( file( fs(configFile) ) ). Wrapped to keep a synchronous snapshot of the latest
   // config (`liveConfig`) updated on every load/save, so the long-running GUI proxy can resolve
   // against live provider/model changes without an app restart. (The cached store already refreshes
   // its own cache on save; this just exposes that latest value synchronously to the proxy router.)
   const baseConfig = deps.createCachedConfigStore(
-    deps.createFileConfigStore({ file: deps.createFsConfigFile(configFile) }),
+    deps.createFileConfigStore({
+      file: deps.createFsConfigFile(configFile),
+      logger: log.child("config"),
+    }),
   )
   let liveConfig: import("@spectrum/config").Config | undefined
   const config: ConfigStore = {
@@ -461,27 +516,31 @@ export const createAppContext = (
 
   // secrets: store( per-OS keychain backend (security / secret-tool / DPAPI-file) over a Bun runner )
   const keychainService = appEnv === "development" ? "spectrum-dev" : "spectrum"
-  const secrets = deps.createSecretStore({
-    backend: deps.createPlatformKeychainBackend({
-      platform: deps.platform,
-      runner: deps.createBunProcessRunner(),
-      fileOps: deps.createSecretFileOps(),
-      secretsDir: paths.secretsDir,
-      secretPassphrase: deps.secretPassphrase,
-      keychainService,
+  const secrets = withSecretRegistration(
+    deps.createSecretStore({
+      backend: deps.createPlatformKeychainBackend({
+        platform: deps.platform,
+        runner: deps.createBunProcessRunner(),
+        fileOps: deps.createSecretFileOps(),
+        secretsDir: paths.secretsDir,
+        secretPassphrase: deps.secretPassphrase,
+        keychainService,
+      }),
+      idGen: deps.createCryptoIdGen(),
+      logger: log.child("secrets"),
     }),
-    idGen: deps.createCryptoIdGen(),
-  })
+    secretRegistry,
+  )
 
   // sessions: open sqlite at dbFile, apply migrations, then build the store.
-  const dbOpen = deps.createSqliteClient(dbFile)
+  const dbOpen = deps.createSqliteClient(dbFile, { logger: log.child("db") })
   if (!dbOpen.ok) {
     throw new Error(
       `failed to open database at ${dbFile}: ${dbOpen.error.detail}`,
     )
   }
   const dbClient = dbOpen.value
-  const migrated = deps.runMigrations(dbClient)
+  const migrated = deps.runMigrations(dbClient, { logger: log.child("db") })
   if (!migrated.ok) {
     throw new Error(`failed to migrate database: ${migrated.error.detail}`)
   }
@@ -540,6 +599,7 @@ export const createAppContext = (
   const launch = deps.launchHarness({
     resolver,
     spawner: deps.createBunProcessSpawner(),
+    logger: log.child("harness"),
   })
   const resolveLaunch = resolveHarnessLaunch({ resolver })
 
@@ -550,8 +610,13 @@ export const createAppContext = (
   })
   const gateway = deps.createRealGateway()
 
-  // runtime: persists only the running proxy's per-run key so the CLI can reuse it
-  const runtime = deps.createFileRuntimeState(runtimeFile)
+  // runtime: persists only the running proxy's per-run key so the CLI can reuse it. Wrapped so a
+  // key RESTORED from persisted state (cross-process / GUI-restart reuse) — not just a freshly
+  // minted one — is also registered for redaction, closing that path symmetrically.
+  const runtime = withRuntimeKeyRegistration(
+    deps.createFileRuntimeState(runtimeFile),
+    secretRegistry,
+  )
 
   // Native run path: structured canonical events persisted to the shared db and streamed over a
   // loopback socket. The RunStore structurally satisfies the RunManager's RunEventSink; sessionSink
@@ -597,6 +662,7 @@ export const createAppContext = (
     sessions: sessionSink,
     events: runStore,
     clock: deps.createSystemClock(),
+    logger: log.child("runner"),
     send: () => {},
   })
   // The dedicated loopback WebSocket for the run-event stream binds `runner`'s send sink on connect.
@@ -612,6 +678,7 @@ export const createAppContext = (
     removeDir: deps.removeDir,
     relaunch: deps.relaunch,
     dataDir: paths.dataDir,
+    logger: log.child("reset"),
   })
 
   // proxy settings resolved from the default config shape (loopback only, security.md)
@@ -646,6 +713,7 @@ export const createAppContext = (
       factory,
       gateway,
       listModels: () => getConfig().models.map((m) => String(m.id)),
+      logger: log.child("proxy"),
     })
   }
 
@@ -687,7 +755,7 @@ export const createAppContext = (
     listProviderModels: createListProviderModels(config, secrets),
     proxyPort,
     proxyBaseUrl,
-    genProxyKey: deps.genProxyKey,
+    genProxyKey,
     runner,
     runnerSocketUrl,
     runEvents: { read: runStore.read },
@@ -696,6 +764,7 @@ export const createAppContext = (
     driverRegistry,
     pickFolder,
     updater,
+    log,
     paths: { configFile, dbFile, harnessDir },
   }
 }

@@ -5,6 +5,7 @@ import type {
   RunnerId,
   StoredEvent,
 } from "@spectrum/agent-events"
+import type { Logger } from "@spectrum/logger"
 import {
   HarnessIdSchema,
   type ModelId,
@@ -52,6 +53,30 @@ const finishEvent: CanonicalEvent = {
 }
 
 const sync = (fn: () => void): void => fn()
+
+type LogCall = {
+  level: "debug" | "info" | "warn" | "error" | "fatal"
+  msg: string
+  fields?: Record<string, unknown>
+}
+
+const createFakeLogger = (): { logger: Logger; calls: LogCall[] } => {
+  const calls: LogCall[] = []
+  const record =
+    (level: LogCall["level"]) =>
+    (msg: string, fields?: Record<string, unknown>): void => {
+      calls.push({ level, msg, ...(fields !== undefined ? { fields } : {}) })
+    }
+  const logger: Logger = {
+    debug: record("debug"),
+    info: record("info"),
+    warn: record("warn"),
+    error: record("error"),
+    fatal: record("fatal"),
+    child: () => logger,
+  }
+  return { logger, calls }
+}
 
 const makeDeps = (
   script: FakeScript,
@@ -247,6 +272,59 @@ describe("createRunManager.launch", () => {
     // Assert: no frames forwarded (append failed), but session was still closed
     expect(sent).toEqual([])
     expect(closed).toEqual([{ id: sessionId, code: 0 }])
+  })
+
+  it("logs info with safe ids when a session launches", () => {
+    const { deps } = makeDeps(scriptOf([]))
+    const { logger, calls } = createFakeLogger()
+    const manager = createRunManager({ ...deps, logger })
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    const launched = calls.find(
+      (c) => c.level === "info" && c.msg === "session launched",
+    )
+    expect(launched).toBeDefined()
+    expect(launched?.fields).toEqual({ sessionId, harnessId })
+  })
+
+  it("logs error with the failure kind when the driver fails to start", () => {
+    const failingDriver: AgentDriver = {
+      start: () => err({ kind: "start-failed", detail: "boom" }),
+    }
+    const { deps } = makeDeps(scriptOf([]))
+    const { logger, calls } = createFakeLogger()
+    const manager = createRunManager({ ...deps, driver: failingDriver, logger })
+    const res = manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    expect(res.ok).toBe(false)
+    const failed = calls.find((c) => c.level === "error")
+    expect(failed).toBeDefined()
+    expect(failed?.fields).toEqual({ kind: "start-failed", harnessId })
+  })
+
+  it("logs info when the root runner finishes and the session closes", () => {
+    const { deps } = makeDeps(scriptOf([startEvent, finishEvent]))
+    const { logger, calls } = createFakeLogger()
+    const manager = createRunManager({ ...deps, logger })
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    const closedLog = calls.find(
+      (c) => c.level === "info" && c.msg === "session closed",
+    )
+    expect(closedLog).toBeDefined()
+    expect(closedLog?.fields).toEqual({ sessionId })
+  })
+
+  it("never logs message content or prompts", () => {
+    const { deps } = makeDeps(scriptOf([startEvent, textEvent]))
+    const { logger, calls } = createFakeLogger()
+    const manager = createRunManager({ ...deps, logger })
+    manager.launch({
+      harnessId,
+      cwd: "/tmp",
+      env: {},
+      initialPrompt: "SECRET-PROMPT-XYZ",
+    })
+    const serialized = JSON.stringify(calls)
+    expect(serialized).not.toContain("SECRET-PROMPT-XYZ")
+    expect(serialized).not.toContain("hi")
   })
 })
 

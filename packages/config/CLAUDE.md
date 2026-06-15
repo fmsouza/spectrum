@@ -8,4 +8,6 @@
 
 **Effects owned:** config file (via the injected `ConfigFile` interface) — exposed to consumers as an injected interface; never reached around.
 
+`createFileConfigStore` accepts an injected `Logger` (default noop); logs `error` on parse/write/migration failure (`{ kind, detail }`; never raw config or secrets).
+
 **Local rules:** atomic writes (`<file>.tmp` → fsync → rename), `chmod 0600`/`0700` on POSIX; skipped on Windows (relies on `%APPDATA%` ACLs), zod-validate on load AND after migration, versioned forward migrations only. Secrets are references only — a provider with an inline raw secret string MUST fail `ConfigSchema`. `proxyHost` is the literal `127.0.0.1` (loopback only). The cached store is the read path; disk is read once.

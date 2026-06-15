@@ -13,6 +13,7 @@
     "db:check": "drizzle-kit check"
   },
   "dependencies": {
+    "@spectrum/logger": "workspace:*",
     "@spectrum/utils": "workspace:*",
     "drizzle-orm": "catalog:"
   },

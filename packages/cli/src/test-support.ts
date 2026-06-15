@@ -7,6 +7,7 @@ import {
 } from "@spectrum/config"
 import { createSqliteClient, runMigrations } from "@spectrum/db"
 import type { LaunchParams } from "@spectrum/harnesses"
+import type { Logger } from "@spectrum/logger"
 import { createProjectStore } from "@spectrum/projects"
 import {
   type RunningProxy,
@@ -47,6 +48,7 @@ export type FakeDepsOverrides = {
   readonly proxyStopSpy?: () => void
   readonly proxyKey?: string
   readonly runtime?: RuntimeState
+  readonly logger?: Logger
 }
 
 export const makeFakeDeps = (over: FakeDepsOverrides = {}): CliDeps => {
@@ -117,5 +119,6 @@ export const makeFakeDeps = (over: FakeDepsOverrides = {}): CliDeps => {
     },
     genProxyKey: (): string =>
       over.proxyKey ?? "test-proxy-key-0000000000000000000000",
+    ...(over.logger ? { logger: over.logger } : {}),
   }
 }

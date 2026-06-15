@@ -184,9 +184,13 @@ describe("createAppContext wiring", () => {
       "/home/tester/.config/spectrum/config.json",
     )
     // the file store receives that fs file ...
-    expect(calls.createFileConfigStore?.[0]).toEqual({
-      file: { __stub: "createFsConfigFile" },
-    })
+    const fileStoreArg = calls.createFileConfigStore?.[0] as {
+      file: unknown
+      logger: { child: unknown }
+    }
+    expect(fileStoreArg.file).toEqual({ __stub: "createFsConfigFile" })
+    // ... and an injected (scoped) logger
+    expect(typeof fileStoreArg.logger.child).toBe("function")
     // ... and the cached store wraps the file store
     expect(calls.createCachedConfigStore?.[0]).toEqual({
       __stub: "createFileConfigStore",
@@ -208,10 +212,16 @@ describe("createAppContext wiring", () => {
     expect(arg.fileOps).toEqual({ __stub: "createSecretFileOps" })
     expect(arg.secretsDir).toBe("/home/tester/.config/spectrum/secrets")
     expect(typeof arg.secretPassphrase).toBe("function")
-    expect(calls.createSecretStore?.[0]).toEqual({
-      backend: { __stub: "createPlatformKeychainBackend" },
-      idGen: { __stub: "createCryptoIdGen" },
+    const secretStoreArg = calls.createSecretStore?.[0] as {
+      backend: unknown
+      idGen: unknown
+      logger: { child: unknown }
+    }
+    expect(secretStoreArg.backend).toEqual({
+      __stub: "createPlatformKeychainBackend",
     })
+    expect(secretStoreArg.idGen).toEqual({ __stub: "createCryptoIdGen" })
+    expect(typeof secretStoreArg.logger.child).toBe("function")
   })
 
   it("builds the session store from a bun:sqlite database at the resolved db path with a system clock", () => {
@@ -263,7 +273,11 @@ describe("createAppContext wiring", () => {
     expect(calls.createFileRuntimeState?.[0] as string).toContain(
       "/home/tester/.config/spectrum/runtime.json",
     )
-    expect(ctx.runtime).toEqual({ __stub: "createFileRuntimeState" })
+    // runtime is decorated by withRuntimeKeyRegistration (registers a restored/written proxy key
+    // for redaction), so it is no longer the raw stub — assert the wrapper exposes the RuntimeState shape.
+    expect(typeof ctx.runtime.readProxyKey).toBe("function")
+    expect(typeof ctx.runtime.writeProxyKey).toBe("function")
+    expect(typeof ctx.runtime.clear).toBe("function")
   })
 
   it("runs migrations against the opened client so the schema exists before first use", () => {
@@ -289,10 +303,17 @@ describe("createAppContext wiring", () => {
     const { deps, calls } = makeFakeDeps()
     createAppContext(deps)
 
-    expect(calls.launchHarness?.[0]).toEqual({
-      resolver: { __stub: "createPathCommandResolver" },
-      spawner: { __stub: "createBunProcessSpawner" },
+    const launchArg = calls.launchHarness?.[0] as {
+      resolver: unknown
+      spawner: unknown
+      logger: { child: unknown }
+    }
+    expect(launchArg.resolver).toEqual({
+      __stub: "createPathCommandResolver",
     })
+    expect(launchArg.spawner).toEqual({ __stub: "createBunProcessSpawner" })
+    // ... and an injected (scoped) logger
+    expect(typeof launchArg.logger.child).toBe("function")
   })
 
   it("builds the provider factory with the secret store + loadSdk seam", () => {
@@ -300,10 +321,20 @@ describe("createAppContext wiring", () => {
     createAppContext(deps)
 
     const factoryArgs = calls.createProviderFactory?.[0] as {
-      secretStore: unknown
+      secretStore: {
+        get: unknown
+        set: unknown
+        delete: unknown
+        has: unknown
+      }
       loadSdk: unknown
     }
-    expect(factoryArgs.secretStore).toEqual({ __stub: "createSecretStore" })
+    // The secret store is wrapped by withSecretRegistration (for log redaction) before being
+    // handed to the factory, so it is the decorator (delegating to the stub), not the raw stub.
+    expect(typeof factoryArgs.secretStore.get).toBe("function")
+    expect(typeof factoryArgs.secretStore.set).toBe("function")
+    expect(typeof factoryArgs.secretStore.delete).toBe("function")
+    expect(typeof factoryArgs.secretStore.has).toBe("function")
     expect(typeof factoryArgs.loadSdk).toBe("function")
   })
 
@@ -325,6 +356,17 @@ describe("createAppContext wiring", () => {
     const { deps } = makeFakeDeps()
     const ctx = createAppContext(deps)
     expect(typeof ctx.projects.list).toBe("function")
+  })
+
+  it("exposes a structured logger with all severity methods and child scoping", () => {
+    const ctx = createAppContext(makeFakeDeps().deps)
+    expect(typeof ctx.log.info).toBe("function")
+    expect(typeof ctx.log.debug).toBe("function")
+    expect(typeof ctx.log.warn).toBe("function")
+    expect(typeof ctx.log.error).toBe("function")
+    expect(typeof ctx.log.fatal).toBe("function")
+    // child returns a Logger and logging never throws (clock stub is never invoked at construction)
+    expect(() => ctx.log.child("test")).not.toThrow()
   })
 
   it("runs the legacy macOS migration with the injected platform/home/env before resolving paths", () => {
