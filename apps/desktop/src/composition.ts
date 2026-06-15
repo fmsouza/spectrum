@@ -507,14 +507,14 @@ export const createAppContext = (
   })
 
   // sessions: open sqlite at dbFile, apply migrations, then build the store.
-  const dbOpen = deps.createSqliteClient(dbFile)
+  const dbOpen = deps.createSqliteClient(dbFile, { logger: log.child("db") })
   if (!dbOpen.ok) {
     throw new Error(
       `failed to open database at ${dbFile}: ${dbOpen.error.detail}`,
     )
   }
   const dbClient = dbOpen.value
-  const migrated = deps.runMigrations(dbClient)
+  const migrated = deps.runMigrations(dbClient, { logger: log.child("db") })
   if (!migrated.ok) {
     throw new Error(`failed to migrate database: ${migrated.error.detail}`)
   }

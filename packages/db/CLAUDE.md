@@ -6,7 +6,7 @@
 
 **Depends on:** `@spectrum/utils`, `drizzle-orm` (dev: `drizzle-kit`).
 
-**Effects owned:** sqlite (via `bun:sqlite`, wrapped by Drizzle) — exposed only through the injected `DbClient`; never reached around.
+**Effects owned:** sqlite (via `bun:sqlite`, wrapped by Drizzle) — exposed only through the injected `DbClient`; never reached around. `createSqliteClient`/`runMigrations` accept an injected `Logger` (default noop); logs `error` on open/migration failure (detail only, no secrets).
 
 **Local rules:** Migrations are **forward-only** and **generated, never hand-written** — edit `src/schema.ts`, run `bun run db:generate`, commit the result. Every Drizzle call crosses the boundary through `tryDb`, returning `Result<T, DbError>` — never throw. No `any`. The schema uses plain SQLite column types; consumers (e.g. `@spectrum/sessions`) map rows to branded domain types from `@spectrum/types`.
 

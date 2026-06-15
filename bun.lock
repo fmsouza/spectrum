@@ -127,6 +127,7 @@
       "name": "@spectrum/db",
       "version": "1.1.2",
       "dependencies": {
+        "@spectrum/logger": "workspace:*",
         "@spectrum/utils": "workspace:*",
         "drizzle-orm": "catalog:",
       },
