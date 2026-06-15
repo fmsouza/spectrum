@@ -11,6 +11,7 @@ const fakeRunnerClient: RunnerClient = {
   interrupt: () => {},
   dispatch: () => {},
   onEvent: () => {},
+  onAny: () => () => {},
 } as unknown as RunnerClient
 
 const baseStubs = {

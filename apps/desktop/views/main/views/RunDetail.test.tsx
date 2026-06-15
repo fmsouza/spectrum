@@ -44,6 +44,7 @@ const makeFakeRunner = (): RunnerClient & {
     onEvent: (_sid, cb) => {
       listener = cb
     },
+    onAny: () => () => {},
     push: (event) => listener?.(event),
   }
 }

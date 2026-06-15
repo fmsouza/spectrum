@@ -29,6 +29,7 @@ const makeFakeRunner = (): RunnerClient & {
     interrupt: () => {},
     dispatch: (_m: RunnerOutbound) => {},
     onEvent: (_sid, _cb: (event: StoredEvent) => void) => {},
+    onAny: () => () => {},
   }
 }
 

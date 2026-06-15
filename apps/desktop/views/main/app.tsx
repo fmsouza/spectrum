@@ -123,6 +123,30 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
     location.writeHash(encodeView(view))
   }, [view, location])
 
+  // Toast when a BACKGROUND run finishes/errors (not the session being viewed).
+  // `onAny` accumulates listeners, so the effect MUST drop its previous one via
+  // the returned unsubscribe fn on every re-run — otherwise toasts would stack.
+  useEffect(() => {
+    const off = runnerClient.onAny((id, stored) => {
+      const ev = stored.event
+      if (ev.type !== "runner-finished") return
+      if (ev.status === "interrupted") return
+      const isViewing =
+        view.kind === "sessions" && view.selectedSessionId === id
+      if (isViewing) return
+      const action = {
+        label: "View",
+        onClick: () => navigate({ kind: "sessions", selectedSessionId: id }),
+      }
+      notifications.notify(
+        ev.status === "errored"
+          ? { tone: "error", message: "A run failed", action }
+          : { tone: "info", message: "A run finished", action },
+      )
+    })
+    return off
+  }, [runnerClient, view, notifications, navigate])
+
   const mode: AppMode = view.kind === "settings" ? "settings" : "sessions"
 
   const onModeChange = (next: AppMode): void =>

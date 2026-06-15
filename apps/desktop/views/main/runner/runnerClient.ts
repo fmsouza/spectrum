@@ -22,6 +22,12 @@ export interface RunnerClient {
   /** route an inbound RunnerOutbound frame to the registered per-session listener */
   dispatch(message: RunnerOutbound): void
   onEvent(id: SessionId, cb: (event: StoredEvent) => void): void
+  /**
+   * Firehose: receive EVERY dispatched frame (any session, with or without a
+   * per-session listener). Returns an unsubscribe fn — required so a re-running
+   * effect can drop its previous listener instead of stacking duplicates.
+   */
+  onAny(cb: (id: SessionId, event: StoredEvent) => void): () => void
 }
 
 export const createRunnerClient = (
@@ -29,6 +35,8 @@ export const createRunnerClient = (
 ): RunnerClient => {
   // One conversation owns one session, so a single listener per session suffices.
   const listeners = new Map<SessionId, (event: StoredEvent) => void>()
+  // Firehose listeners receive every frame (e.g. background-run notifications).
+  const anyListeners = new Set<(id: SessionId, event: StoredEvent) => void>()
 
   return {
     attach: (id) => {
@@ -51,9 +59,16 @@ export const createRunnerClient = (
     },
     dispatch: (message) => {
       listeners.get(message.id)?.(message.event)
+      for (const cb of anyListeners) cb(message.id, message.event)
     },
     onEvent: (id, cb) => {
       listeners.set(id, cb)
+    },
+    onAny: (cb) => {
+      anyListeners.add(cb)
+      return () => {
+        anyListeners.delete(cb)
+      }
     },
   }
 }

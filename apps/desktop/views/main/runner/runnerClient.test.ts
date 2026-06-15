@@ -85,4 +85,38 @@ describe("createRunnerClient", () => {
     client.setModel(id, "mdl_x" as never)
     expect(sent).toEqual([{ type: "run-set-model", id, modelId: "mdl_x" }])
   })
+
+  it("onAny receives every dispatched frame regardless of attach", () => {
+    const c = createRunnerClient(() => {})
+    const seen: string[] = []
+    c.onAny((sid, e) => seen.push(`${sid}:${e.event.type}`))
+    const finished: StoredEvent = {
+      seq: 1,
+      sessionId: id,
+      ts: "2026-06-08T10:00:00.000Z",
+      event: {
+        type: "runner-finished",
+        runnerId: "run_root" as never,
+        status: "completed",
+      },
+    }
+    const frame: RunnerOutbound = { type: "runner-event", id, event: finished }
+    c.dispatch(frame)
+    expect(seen).toEqual([`${id}:runner-finished`])
+  })
+
+  it("onAny returns an unsubscribe fn that stops further delivery", () => {
+    const c = createRunnerClient(() => {})
+    const seen: string[] = []
+    const off = c.onAny((sid) => seen.push(sid))
+    const frame: RunnerOutbound = {
+      type: "runner-event",
+      id,
+      event: storedEvent,
+    }
+    c.dispatch(frame)
+    off()
+    c.dispatch(frame)
+    expect(seen).toEqual([id])
+  })
 })
