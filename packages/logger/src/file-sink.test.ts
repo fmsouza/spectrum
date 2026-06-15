@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import { join } from "node:path"
 import { createInMemoryLogFileOps, createRotatingFileSink } from "./file-sink"
 import type { LogRecord } from "./types"
 
@@ -9,18 +10,25 @@ const rec = (msg: string): LogRecord => ({
   msg,
 })
 
+// Build expected paths the SAME way the sink does (node:path join), so the keys
+// match on every platform — on Windows `join` yields backslash separators, which
+// a hardcoded "/logs/spectrum.log" literal would not.
+const dir = join("/", "logs")
+const logPath = join(dir, "spectrum.log")
+const logPathN = (n: number): string => join(dir, `spectrum.log.${n}`)
+
 describe("createRotatingFileSink", () => {
   it("appends one JSON line per record to dir/spectrum.log", () => {
     const fileOps = createInMemoryLogFileOps()
     const sink = createRotatingFileSink({
       fileOps,
-      dir: "/logs",
+      dir,
       maxBytes: 10_000,
       maxFiles: 3,
     })
     sink.write(rec("a"))
     sink.write(rec("b"))
-    const text = fileOps.readForTest("/logs/spectrum.log")
+    const text = fileOps.readForTest(logPath)
     expect(text.trim().split("\n").length).toBe(2)
     expect(text).toContain('"msg":"a"')
     expect(text).toContain('"msg":"b"')
@@ -30,7 +38,7 @@ describe("createRotatingFileSink", () => {
     const fileOps = createInMemoryLogFileOps()
     const sink = createRotatingFileSink({
       fileOps,
-      dir: "/logs",
+      dir,
       maxBytes: 50,
       maxFiles: 3,
     })
@@ -39,18 +47,16 @@ describe("createRotatingFileSink", () => {
     )
     // next write sees size >= 50 and rotates before appending
     sink.write(rec("second"))
-    expect(fileOps.exists("/logs/spectrum.log.1")).toBe(true)
-    expect(fileOps.readForTest("/logs/spectrum.log")).toContain(
-      '"msg":"second"',
-    )
-    expect(fileOps.readForTest("/logs/spectrum.log.1")).toContain("first-entry")
+    expect(fileOps.exists(logPathN(1))).toBe(true)
+    expect(fileOps.readForTest(logPath)).toContain('"msg":"second"')
+    expect(fileOps.readForTest(logPathN(1))).toContain("first-entry")
   })
 
   it("prunes to maxFiles, dropping the oldest", () => {
     const fileOps = createInMemoryLogFileOps()
     const sink = createRotatingFileSink({
       fileOps,
-      dir: "/logs",
+      dir,
       maxBytes: 1,
       maxFiles: 2,
     })
@@ -58,9 +64,9 @@ describe("createRotatingFileSink", () => {
     sink.write(rec("two"))
     sink.write(rec("three"))
     // maxFiles=2 keeps spectrum.log + spectrum.log.1; .2 must not exist
-    expect(fileOps.exists("/logs/spectrum.log.2")).toBe(false)
-    expect(fileOps.exists("/logs/spectrum.log.1")).toBe(true)
-    expect(fileOps.readForTest("/logs/spectrum.log")).toContain('"msg":"three"')
+    expect(fileOps.exists(logPathN(2))).toBe(false)
+    expect(fileOps.exists(logPathN(1))).toBe(true)
+    expect(fileOps.readForTest(logPath)).toContain('"msg":"three"')
   })
 
   it("never throws when the underlying fileOps throws", () => {
@@ -75,7 +81,7 @@ describe("createRotatingFileSink", () => {
         remove: () => {},
         exists: () => false,
       },
-      dir: "/logs",
+      dir,
       maxBytes: 10,
       maxFiles: 3,
     })
