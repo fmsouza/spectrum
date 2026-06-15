@@ -402,6 +402,12 @@ const isDocumentedGap = (s: string): boolean => {
   // state mounts it, so its `__message`/`__input` selectors match nothing here by
   // design. Verified by ConfirmDialog.test.tsx.
   if (/^\.lk-confirm-dialog__(?:message|input)\b/.test(s)) return true
+  // DataPage danger zone (Settings → Data factory-reset section) — only rendered
+  // when the Settings "data" section is active. The default app mount is the
+  // sessions view, and no contract state navigates to settings/data, so its
+  // `.lk-danger-zone` selector matches nothing here by design. Verified by
+  // DataPage.test.tsx.
+  if (/^\.lk-danger-zone\b/.test(s)) return true
   return false
 }
 

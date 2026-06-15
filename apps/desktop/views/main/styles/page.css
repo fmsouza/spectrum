@@ -134,3 +134,13 @@
   font-size: var(--sp-text-sm);
   color: var(--sp-text-secondary);
 }
+
+/* Data page danger zone — a single irreversible factory-reset action. */
+.lk-danger-zone {
+  border: 1px solid var(--sp-danger);
+  border-radius: var(--sp-radius-md);
+  padding: var(--sp-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-space-3);
+}
