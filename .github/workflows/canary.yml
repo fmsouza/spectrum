@@ -128,6 +128,9 @@ jobs:
       - name: Build desktop app (dev bundle, for the verified-running smoke)
         id: smokebuild
         if: matrix.app
+        # EPHEMERAL TEST FIXTURE ONLY: this dev bundle is built AFTER staging and
+        # written to apps/desktop/build (never stage/), so it is never uploaded. It
+        # exists solely to give the smoke a directly-runnable bundle.
         # best-effort (canary) until the verified-running smoke is green on every platform.
         continue-on-error: true
         shell: bash
@@ -171,6 +174,25 @@ jobs:
       - name: Verified-running smoke (macOS/Windows)
         if: matrix.app && runner.os != 'Linux' && steps.smokebuild.outcome == 'success'
         run: bun run --filter spectrum smoke
+
+      - name: Guard — stage holds only production artifacts
+        if: matrix.app
+        shell: bash
+        run: |
+          shopt -s nullglob
+          updates=(stage/*-update.json)
+          if [ ${#updates[@]} -eq 0 ]; then
+            echo "::error::No channel update artifacts in stage/ — the production build did not emit update metadata"
+            ls -la stage/ || true
+            exit 1
+          fi
+          for f in stage/*; do
+            case "$(basename "$f")" in
+              canary-*|spectrum-*) ;;  # channel artifacts + app/cli bundles
+              *) echo "::error::Unexpected (possibly dev) artifact staged: $f"; exit 1 ;;
+            esac
+          done
+          echo "stage/ contains only production artifacts:"; ls -1 stage/
 
       - uses: actions/upload-artifact@v7
         with:
