@@ -31,12 +31,20 @@ export const createLogger = (deps: {
       if (RANK[level] < RANK[deps.minLevel]) return
       const merged = { ...baseFields, ...(fields ?? {}) }
       const hasFields = Object.keys(merged).length > 0
-      const safeFields = hasFields
-        ? (JSON.parse(redact(JSON.stringify(merged))) as Record<
+      // Serialize→redact→parse can throw on non-JSON-serializable values
+      // (bigint, circular refs). Logging must never throw, so on failure we
+      // drop the fields and still emit the (redacted) msg.
+      let safeFields: Record<string, unknown> | undefined
+      if (hasFields) {
+        try {
+          safeFields = JSON.parse(redact(JSON.stringify(merged))) as Record<
             string,
             unknown
-          >)
-        : undefined
+          >
+        } catch {
+          safeFields = undefined
+        }
+      }
       const record: LogRecord = {
         ts: deps.clock.now().toISOString(),
         level,

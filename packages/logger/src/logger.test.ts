@@ -78,6 +78,22 @@ describe("createLogger", () => {
     expect(c.records.length).toBe(1)
   })
 
+  it("never throws when a field value is not JSON-serializable (bigint)", () => {
+    const { sink, records } = capture()
+    const log = createLogger({ sinks: [sink], clock, minLevel: "debug" })
+    expect(() => log.info("x", { n: 10n })).not.toThrow()
+    expect(records[0]?.msg).toBe("x")
+  })
+
+  it("never throws when fields contain a circular reference", () => {
+    const { sink, records } = capture()
+    const log = createLogger({ sinks: [sink], clock, minLevel: "debug" })
+    const a: Record<string, unknown> = {}
+    a.self = a
+    expect(() => log.info("x", a)).not.toThrow()
+    expect(records[0]?.msg).toBe("x")
+  })
+
   it("omits fields when none are provided", () => {
     const { sink, records } = capture()
     const log = createLogger({ sinks: [sink], clock, minLevel: "debug" })
