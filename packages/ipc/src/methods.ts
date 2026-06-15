@@ -317,6 +317,19 @@ export const SetUpdateChannelParamsSchema = z
   .strict()
 export const SetUpdateChannelResultSchema = UpdateStateSchema
 
+// ── Client logging (webview → main) ─────────────────────────────────────────
+// The webview forwards error/fatal records here so they persist to the main log file.
+// Inbound-only; redacted main-side. `level` is restricted to the two forwarded severities.
+export const LogClientErrorParamsSchema = z
+  .object({
+    scope: z.string().min(1),
+    level: z.enum(["error", "fatal"]),
+    msg: z.string(),
+    fields: z.record(z.string(), z.unknown()).optional(),
+  })
+  .strict()
+export const LogClientErrorResultSchema = VoidSchema
+
 // ── The method → {params, result} schema map ──────────────────────────────────
 
 /** Maps each contract method to its on-the-wire param + result zod schemas. */
@@ -445,6 +458,10 @@ export const IpcMethodSchemas = {
   setUpdateChannel: {
     params: SetUpdateChannelParamsSchema,
     result: SetUpdateChannelResultSchema,
+  },
+  logClientError: {
+    params: LogClientErrorParamsSchema,
+    result: LogClientErrorResultSchema,
   },
 } as const
 

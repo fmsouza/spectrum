@@ -478,5 +478,13 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       if (!isOk(result)) return fail("could not list provider models")
       return { models: [...result.value] }
     },
+
+    // ── Client logging ──────────────────────────────────────────────────────
+    logClientError: async ({ scope, level, msg, fields }) => {
+      const child = ctx.log.child(`webview.${scope}`)
+      if (level === "fatal") child.fatal(msg, fields)
+      else child.error(msg, fields)
+      return null
+    },
   }
 }
