@@ -12,17 +12,6 @@
  * and Electrobun updater seams).
  */
 
-/** Effects `defaultRelaunch` needs, injected so the runner is testable without native FFI. */
-export interface RelaunchDeps {
-  readonly platform: NodeJS.Platform
-  readonly execPath: string
-  readonly pid: number
-  /** Run `sh -c <cmd>` detached, fully disconnected from this process's stdio. */
-  readonly spawnDetached: (cmd: string) => void
-  /** Electrobun `Utils.quit()` — a graceful native shutdown. */
-  readonly quit: () => void
-}
-
 /**
  * Build the detached shell command that re-launches the app once THIS process exits, or
  * `undefined` when the platform has no supported auto-relaunch (the caller then just quits).
