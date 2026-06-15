@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, mock } from "bun:test"
 import type { Session } from "@spectrum/types"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { ProjectGroup } from "./ProjectGroup"
@@ -85,6 +85,44 @@ describe("ProjectGroup", () => {
     )
     fireEvent.click(screen.getByText("Show 10 more"))
     expect(more).toBe(true)
+    cleanup()
+  })
+
+  it("calls onContextMenu when the project header is right-clicked", () => {
+    const onContextMenu = mock((_e: { clientX: number; clientY: number }) => {})
+    render(
+      <ProjectGroup
+        name="spectrum"
+        sessionCount={0}
+        sessions={[]}
+        collapsed
+        labelFor={() => ({ harnessName: "h", model: "m" })}
+        onToggle={() => {}}
+        onSelect={() => {}}
+        onMore={() => {}}
+        onContextMenu={onContextMenu}
+      />,
+    )
+    fireEvent.contextMenu(screen.getByRole("button", { name: /spectrum/ }))
+    expect(onContextMenu).toHaveBeenCalledTimes(1)
+    cleanup()
+  })
+
+  it("calls onSessionContextMenu with the session id when a row is right-clicked", () => {
+    const onSessionContextMenu = mock(
+      (_id: string, _e: { clientX: number; clientY: number }) => {},
+    )
+    render(
+      <ProjectGroup
+        {...baseProps}
+        collapsed={false}
+        sessions={[session("s1")]}
+        onSessionContextMenu={onSessionContextMenu}
+      />,
+    )
+    fireEvent.contextMenu(screen.getByText("s1"))
+    expect(onSessionContextMenu).toHaveBeenCalledTimes(1)
+    expect(onSessionContextMenu.mock.calls[0]?.[0]).toBe("s1")
     cleanup()
   })
 
