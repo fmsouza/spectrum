@@ -195,20 +195,55 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
             setLaunchError(undefined)
             setModalOpen(true)
           },
-          onDeleteProject: (projectId) =>
+          onDeleteProject: (projectId) => {
             // If the selected session belonged to this project it simply
             // vanishes from the refetched lists; SessionsDetail already renders
             // the empty state when the session isn't found, so no extra
             // selection handling is needed here.
-            projectsView.deleteProject(projectId as ProjectId),
+            void (async () => {
+              const r = await projectsView.deleteProject(projectId as ProjectId)
+              if (r.ok)
+                notifications.notify({
+                  tone: "success",
+                  message: "Project deleted",
+                })
+              else
+                notifications.notify({
+                  tone: "error",
+                  message: "Couldn't delete the project",
+                  action: {
+                    label: "Retry",
+                    onClick: () =>
+                      void projectsView.deleteProject(projectId as ProjectId),
+                  },
+                })
+            })()
+          },
           onDeleteSession: (sessionId) => {
-            projectsView.deleteSession(sessionId)
-            // If the open detail pane was showing this session, drop the selection.
-            if (
-              view.kind === "sessions" &&
-              view.selectedSessionId === sessionId
-            )
-              navigate({ kind: "sessions" })
+            void (async () => {
+              const r = await projectsView.deleteSession(sessionId)
+              if (r.ok) {
+                notifications.notify({
+                  tone: "success",
+                  message: "Session deleted",
+                })
+                // If the open detail pane was showing this session, drop the selection.
+                if (
+                  view.kind === "sessions" &&
+                  view.selectedSessionId === sessionId
+                )
+                  navigate({ kind: "sessions" })
+              } else {
+                notifications.notify({
+                  tone: "error",
+                  message: "Couldn't delete the session",
+                  action: {
+                    label: "Retry",
+                    onClick: () => void projectsView.deleteSession(sessionId),
+                  },
+                })
+              }
+            })()
           },
           runnerClient,
           models: models.data ?? [],
