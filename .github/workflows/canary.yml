@@ -74,11 +74,11 @@ jobs:
       - name: Build desktop app (canary channel, for distribution + update artifacts)
         id: app
         if: matrix.app
-        continue-on-error: true
-        # Built on a clean checkout (the dev/smoke build runs LAST), so build/ + artifacts/
-        # here hold only the channel outputs the staging steps publish — and no smoked-app
-        # file lock can break a `rm`. build:canary runs `electrobun build --env=canary`
-        # → artifacts prefixed `canary-<os>-<arch>-…`.
+        # Hard gate: a canary build must ship a buildable channel bundle, same as
+        # release.yml. Built on a clean checkout (the dev/smoke build runs LAST), so
+        # build/ + artifacts/ here hold only the channel outputs the staging steps
+        # publish. build:canary runs `electrobun build --env=canary` → artifacts
+        # prefixed `canary-<os>-<arch>-…`.
         run: bun run --filter spectrum build:canary
 
       - name: Stage artifacts (unix)
