@@ -15,5 +15,9 @@
     "@spectrum/types": "workspace:*",
     "@spectrum/utils": "workspace:*",
     "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@spectrum/run-store": "workspace:*",
+    "@spectrum/sessions": "workspace:*"
   }
 }
