@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import {
   createSqliteClient,
+  projects,
   runEvents,
   runMigrations,
   sessions,
@@ -52,6 +53,26 @@ const sessionExists = (
   db.handle.select().from(sessions).where(eq(sessions.id, sid)).get() !==
   undefined
 
+const projectExists = (
+  db: ReturnType<typeof make>["db"],
+  pid: string,
+): boolean =>
+  db.handle.select().from(projects).where(eq(projects.id, pid)).get() !==
+  undefined
+
+/** Insert a project row directly (find-or-create needs a real path; here we control the id). */
+const seedProject = (db: ReturnType<typeof make>["db"], id: string): void => {
+  db.handle
+    .insert(projects)
+    .values({
+      id,
+      name: id,
+      path: `/${id}`,
+      createdAt: "2026-06-08T10:00:00.000Z",
+    })
+    .run()
+}
+
 describe("createDataAdmin.deleteSession", () => {
   it("removes the session and all its run events when given a session id", () => {
     const { db, sessionStore, runStore, admin } = make()
@@ -87,5 +108,48 @@ describe("createDataAdmin.deleteSession", () => {
     const result = admin.deleteSession("s_missing" as SessionId)
     expect(isOk(result)).toBe(true)
     expect(sessionExists(db, "s_missing" as SessionId)).toBe(false)
+  })
+})
+
+describe("createDataAdmin.deleteProject", () => {
+  it("removes the project, its sessions, and all their run events", () => {
+    const { db, sessionStore, runStore, admin } = make()
+    seedProject(db, "prj_a")
+    const s1 = seedSession(sessionStore, "prj_a")
+    const s2 = seedSession(sessionStore, "prj_a")
+    runStore.append(s1, { type: "runner-started", runnerId: "r" as never })
+    runStore.append(s2, { type: "runner-started", runnerId: "r" as never })
+
+    const result = admin.deleteProject("prj_a" as ProjectId)
+
+    expect(isOk(result)).toBe(true)
+    expect(projectExists(db, "prj_a")).toBe(false)
+    expect(sessionExists(db, s1)).toBe(false)
+    expect(sessionExists(db, s2)).toBe(false)
+    expect(eventCount(db, s1)).toBe(0)
+    expect(eventCount(db, s2)).toBe(0)
+  })
+
+  it("leaves a sibling project and its sessions untouched", () => {
+    const { db, sessionStore, runStore, admin } = make()
+    seedProject(db, "prj_a")
+    seedProject(db, "prj_b")
+    const a = seedSession(sessionStore, "prj_a")
+    const b = seedSession(sessionStore, "prj_b")
+    runStore.append(b, { type: "runner-started", runnerId: "r" as never })
+
+    admin.deleteProject("prj_a" as ProjectId)
+
+    expect(projectExists(db, "prj_b")).toBe(true)
+    expect(sessionExists(db, b)).toBe(true)
+    expect(sessionExists(db, a)).toBe(false)
+    expect(eventCount(db, b)).toBe(1)
+  })
+
+  it("returns ok with no change when the project id does not exist", () => {
+    const { db, admin } = make()
+    const result = admin.deleteProject("prj_missing" as ProjectId)
+    expect(isOk(result)).toBe(true)
+    expect(projectExists(db, "prj_missing")).toBe(false)
   })
 })
