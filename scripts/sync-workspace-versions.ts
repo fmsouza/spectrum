@@ -36,6 +36,7 @@ async function discoverWorkspaceManifestPaths(): Promise<string[]> {
 }
 
 async function main(): Promise<void> {
+  const check = process.argv.includes("--check")
   const root = (await Bun.file("package.json").json()) as { version?: unknown }
   if (typeof root.version !== "string" || root.version.length === 0) {
     console.error(
@@ -52,6 +53,20 @@ async function main(): Promise<void> {
     })),
   )
   const updates = computeVersionUpdates(rootVersion, manifests)
+  if (check) {
+    if (updates.length > 0) {
+      console.error(
+        `sync-workspace-versions: ${updates.length} package.json file(s) out of sync with root ${rootVersion}:`,
+      )
+      for (const update of updates) console.error(`  - ${update.path}`)
+      console.error(
+        "Run `bun scripts/sync-workspace-versions.ts` and commit the result.",
+      )
+      process.exit(1)
+    }
+    console.log(`All workspace versions in sync with ${rootVersion}`)
+    return
+  }
   for (const update of updates) {
     const json = (await Bun.file(update.path).json()) as Record<string, unknown>
     json.version = update.nextVersion
