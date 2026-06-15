@@ -645,6 +645,7 @@ export const createAppContext = (
     removeDir: deps.removeDir,
     relaunch: deps.relaunch,
     dataDir: paths.dataDir,
+    logger: log.child("reset"),
   })
 
   // proxy settings resolved from the default config shape (loopback only, security.md)
