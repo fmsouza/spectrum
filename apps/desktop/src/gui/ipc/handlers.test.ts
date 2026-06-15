@@ -15,6 +15,7 @@ import type {
 } from "@spectrum/types"
 import { type Result, err, ok } from "@spectrum/utils"
 import type { AppContext } from "../../composition"
+import type { ResetError } from "../reset-app"
 import { createFakeUpdater } from "../updater/fake-updater"
 import type { UpdaterAdapter } from "../updater/updater-adapter"
 import { createIpcHandlers } from "./handlers"
@@ -85,7 +86,7 @@ const makeCtx = (
       void,
       { readonly kind: "db-failed"; readonly detail: string }
     >
-    resetAppResult?: Result<void, { readonly kind: string }>
+    resetAppResult?: Result<void, ResetError>
   } = {},
 ): {
   ctx: AppContext

@@ -358,6 +358,7 @@ describe("IpcMethodSchemas", () => {
   it("exposes a params and result schema for every contract method", () => {
     const expected = [
       "getProviders",
+      "getProviderCatalog",
       "addProvider",
       "updateProvider",
       "deleteProvider",
@@ -370,14 +371,17 @@ describe("IpcMethodSchemas", () => {
       "getHarnesses",
       "launchHarness",
       "getSessions",
+      "deleteSession",
       "getProxyStatus",
+      "getRunnerSocketUrl",
+      "getRunEvents",
       "pickFolder",
       "listProviderModels",
       "getSettings",
       "getProjects",
       "setCollapsedProjects",
-      "getRunnerSocketUrl",
-      "getRunEvents",
+      "deleteProject",
+      "resetApp",
       "updateHarnessPrefs",
       "getUpdateState",
       "checkForUpdate",
@@ -391,6 +395,9 @@ describe("IpcMethodSchemas", () => {
       expect(IpcMethodSchemas[name].params).toBeDefined()
       expect(IpcMethodSchemas[name].result).toBeDefined()
     }
+    // Bidirectional roster guard: the map and the documented roster must match
+    // exactly, so adding a method to either without the other fails this test.
+    expect(new Set(Object.keys(IpcMethodSchemas))).toEqual(new Set(expected))
   })
 })
 
