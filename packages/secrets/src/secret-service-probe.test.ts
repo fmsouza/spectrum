@@ -77,6 +77,7 @@ describe("isSecretServiceAvailable", () => {
       "lookup",
       "service",
       "spectrum-dev",
+      "account",
       "__spectrum_probe__",
     ])
   })
