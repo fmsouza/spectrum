@@ -211,6 +211,13 @@
         "zod": "catalog:",
       },
     },
+    "packages/logger": {
+      "name": "@spectrum/logger",
+      "version": "1.1.2",
+      "dependencies": {
+        "@spectrum/utils": "workspace:*",
+      },
+    },
     "packages/platform": {
       "name": "@spectrum/platform",
       "version": "1.1.2",
@@ -561,6 +568,8 @@
     "@spectrum/harnesses": ["@spectrum/harnesses@workspace:packages/harnesses"],
 
     "@spectrum/ipc": ["@spectrum/ipc@workspace:packages/ipc"],
+
+    "@spectrum/logger": ["@spectrum/logger@workspace:packages/logger"],
 
     "@spectrum/platform": ["@spectrum/platform@workspace:packages/platform"],
 

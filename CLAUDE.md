@@ -20,6 +20,7 @@ Spectrum is a Bun + Electrobun desktop app (CLI + GUI) that proxies coding-agent
 Test-first (RED observed) → implemented (GREEN) → refactored → `bun run typecheck && bun run lint && bun test` all green → committed with a Conventional-Commits message. If you can't check every box, it's not done.
 
 ## Package inventory (partial)
+- `@spectrum/logger` — structured injectable logging (Logger + console/rotating-file sinks; depends on utils)
 - `@spectrum/sessions` — session history (depends on db, types, utils)
 - `@spectrum/projects` — project find-or-create + listing (depends on db, types, utils)
 - `@spectrum/platform` — pure OS detection + idiomatic per-OS path resolution + small platform helpers (depends on nothing)
