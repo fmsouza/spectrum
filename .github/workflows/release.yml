@@ -184,7 +184,7 @@ jobs:
           fi
           for f in stage/*; do
             case "$(basename "$f")" in
-              stable-*|spectrum-*) ;;  # channel artifacts + app/cli bundles
+              stable-*|spectrum-*|Spectrum-*|Spectrum.*|*.dmg|*.deb) ;;  # channel artifacts, app/cli bundles, installers
               *) echo "::error::Unexpected (possibly dev) artifact staged: $f"; exit 1 ;;
             esac
           done
