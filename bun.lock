@@ -92,6 +92,7 @@
         "@spectrum/config": "workspace:*",
         "@spectrum/db": "workspace:*",
         "@spectrum/harnesses": "workspace:*",
+        "@spectrum/logger": "workspace:*",
         "@spectrum/projects": "workspace:*",
         "@spectrum/proxy": "workspace:*",
         "@spectrum/secrets": "workspace:*",

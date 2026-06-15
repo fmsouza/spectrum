@@ -1,3 +1,4 @@
+import { createNoopLogger } from "@spectrum/logger"
 import { type Result, err } from "@spectrum/utils"
 import type { CliDeps } from "./deps"
 import type { CliError } from "./errors"
@@ -21,23 +22,40 @@ const usage = (): Result<void, CliError> =>
 export const runCli =
   (deps: CliDeps) =>
   async (argv: readonly string[]): Promise<Result<void, CliError>> => {
+    const logger = deps.logger ?? createNoopLogger()
     const { command, rest, flags } = parseArgs(argv)
 
-    if (command === "") return usage()
+    const result = await dispatch(deps, command, rest, flags)
 
-    switch (command) {
-      case "launch":
-        return runLaunch(deps, rest, flags)
-      case "list":
-        return runList(deps, rest)
-      case "add":
-        return runAdd(deps, rest, flags)
-      case "remove":
-        return runRemove(deps, rest)
-      default:
-        return err({ kind: "unknown-command", command })
-    }
+    // Observation only: log on failure (kind only — never argv, which may carry a
+    // secret value on `add`). The Result and the user-facing stderr line are unchanged.
+    if (!result.ok)
+      logger.error("cli command failed", { kind: result.error.kind })
+
+    return result
   }
+
+const dispatch = (
+  deps: CliDeps,
+  command: string,
+  rest: readonly string[],
+  flags: Readonly<Record<string, string | boolean>>,
+): Promise<Result<void, CliError>> => {
+  if (command === "") return Promise.resolve(usage())
+
+  switch (command) {
+    case "launch":
+      return runLaunch(deps, rest, flags)
+    case "list":
+      return runList(deps, rest)
+    case "add":
+      return runAdd(deps, rest, flags)
+    case "remove":
+      return runRemove(deps, rest)
+    default:
+      return Promise.resolve(err({ kind: "unknown-command", command }))
+  }
+}
 
 // --- command dispatch helpers --------------------------------------------------------
 // Thin wrappers that forward to each command's implementation; nothing throws (Result-typed).
