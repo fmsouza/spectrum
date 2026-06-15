@@ -1,4 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
+import { createNoopLogger } from "@spectrum/logger"
 import type { RunAppDeps } from "./app"
 import type { createAppContext } from "./composition"
 import { buildRealDeps, main } from "./main"
@@ -42,6 +43,7 @@ const fakeFactory = (() =>
     proxyBaseUrl: "http://127.0.0.1:4000",
     genProxyKey: () => "k",
     paths: { configFile: "", dbFile: "", harnessDir: "" },
+    log: createNoopLogger(),
   }) as never) as typeof createAppContext
 
 describe("module side effects", () => {
@@ -118,6 +120,7 @@ describe("buildRealDeps", () => {
         proxyBaseUrl: "http://127.0.0.1:4000",
         genProxyKey: () => "k",
         paths: { configFile: "", dbFile: "", harnessDir: "" },
+        log: createNoopLogger(),
       }) as never) as typeof createAppContext
 
     const deps = buildRealDeps(factoryWithSpy)
@@ -126,6 +129,90 @@ describe("buildRealDeps", () => {
     // The async config.load() is deferred; flush the microtask queue
     await Promise.resolve()
     expect(reconcileOrphaned).toHaveBeenCalledTimes(1)
+  })
+
+  it("logs a redacted warn on the 'startup' scope when reconcileOrphaned fails during startProxy", async () => {
+    const warns: Array<{
+      scope: string
+      msg: string
+      fields?: Record<string, unknown>
+    }> = []
+    const makeCapturingLog = () => {
+      const child = (scope: string) => ({
+        debug: () => {},
+        info: () => {},
+        error: () => {},
+        fatal: () => {},
+        warn: (msg: string, fields?: Record<string, unknown>) =>
+          warns.push({ scope, msg, fields }),
+        child: () => child(scope),
+      })
+      return {
+        debug: () => {},
+        info: () => {},
+        warn: () => {},
+        error: () => {},
+        fatal: () => {},
+        child,
+      }
+    }
+    const factoryWithFailingReconcile = (() =>
+      ({
+        config: {
+          load: async () => ({
+            ok: true,
+            value: {
+              version: 2,
+              providers: [],
+              models: [],
+              settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+            },
+          }),
+        },
+        secrets: {},
+        sessions: {
+          create: () => ({ ok: true, value: {} }),
+          query: () => ({ ok: true, value: [] }),
+          init: () => ({ ok: true, value: undefined }),
+          reconcileOrphaned: () => ({
+            ok: false as const,
+            error: { kind: "db-failed" as const, detail: "boom" },
+          }),
+        },
+        registry: { list: async () => ({ ok: true, value: [] }) },
+        launch: () => ({
+          ok: true,
+          value: { pid: 1, exited: Promise.resolve(0) },
+        }),
+        proxy: {
+          isRunning: async () => false,
+          start: () => ({ hostname: "127.0.0.1", port: 4000, stop: () => {} }),
+        },
+        factory: {},
+        gateway: {},
+        runtime: {
+          readProxyKey: async () => null,
+          writeProxyKey: async () => ({ ok: true, value: undefined }),
+          clear: async () => {},
+        },
+        testProvider: async () => ({
+          ok: true,
+          value: { ok: true, latencyMs: 0 },
+        }),
+        proxyPort: 4000,
+        proxyBaseUrl: "http://127.0.0.1:4000",
+        genProxyKey: () => "k",
+        paths: { configFile: "", dbFile: "", harnessDir: "" },
+        log: makeCapturingLog(),
+      }) as never) as typeof createAppContext
+
+    const deps = buildRealDeps(factoryWithFailingReconcile)
+    deps.startProxy(undefined)
+    await Promise.resolve()
+    expect(warns).toHaveLength(1)
+    expect(warns[0]?.scope).toBe("startup")
+    expect(warns[0]?.msg).toContain("reconcile")
+    expect(warns[0]?.fields).toEqual({ kind: "db-failed", detail: "boom" })
   })
 
   it("does NOT call reconcileOrphaned() when only runCli is invoked (CLI path)", async () => {
@@ -174,6 +261,7 @@ describe("buildRealDeps", () => {
         proxyBaseUrl: "http://127.0.0.1:4000",
         genProxyKey: () => "k",
         paths: { configFile: "", dbFile: "", harnessDir: "" },
+        log: createNoopLogger(),
       }) as never) as typeof createAppContext
 
     const deps = buildRealDeps(factoryWithSpy)
