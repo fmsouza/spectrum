@@ -43,6 +43,34 @@ describe("projectsStore", () => {
     expect(store.getState().sessionsByProject.prj_a?.items).toHaveLength(10)
   })
 
+  it("deleteSession calls the client then invalidates", async () => {
+    const calls: string[] = []
+    const store = createProjectsStore({
+      client: okClient({
+        deleteSession: async ({ sessionId }: { sessionId: string }) => {
+          calls.push(`s:${sessionId}`)
+          return { ok: true, value: null }
+        },
+      }),
+    })
+    await store.getState().deleteSession("s_1" as never)
+    expect(calls).toContain("s:s_1")
+  })
+
+  it("deleteProject calls the client then invalidates", async () => {
+    const calls: string[] = []
+    const store = createProjectsStore({
+      client: okClient({
+        deleteProject: async ({ projectId }: { projectId: string }) => {
+          calls.push(`p:${projectId}`)
+          return { ok: true, value: null }
+        },
+      }),
+    })
+    await store.getState().deleteProject("prj_1" as never)
+    expect(calls).toContain("p:prj_1")
+  })
+
   it("toggleCollapse flips membership and persists the new set", async () => {
     let persisted: string[] | undefined
     const store = createProjectsStore({

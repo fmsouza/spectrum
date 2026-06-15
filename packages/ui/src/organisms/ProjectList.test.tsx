@@ -1,6 +1,12 @@
-import { describe, expect, it } from "bun:test"
-import type { Session } from "@spectrum/types"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { describe, expect, it, mock } from "bun:test"
+import type { Session, SessionId } from "@spectrum/types"
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react"
 import { ProjectList } from "./ProjectList"
 
 const baseProps = {
@@ -73,6 +79,74 @@ describe("ProjectList", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: /api/ }))
     expect(toggled).toBe("prj_a")
+    cleanup()
+  })
+
+  it("opens a context menu and emits onDeleteProject after confirming", () => {
+    const onDeleteProject = mock((_id: string) => {})
+    render(
+      <ProjectList
+        {...baseProps}
+        onDeleteProject={onDeleteProject}
+        onDeleteSession={() => {}}
+      />,
+    )
+    fireEvent.contextMenu(screen.getByRole("button", { name: /api/ }))
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete project" }))
+    const dialog = screen.getByRole("dialog")
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Delete project" }),
+    )
+    expect(onDeleteProject).toHaveBeenCalledWith("prj_a")
+    cleanup()
+  })
+
+  it("opens a session context menu and emits onDeleteSession after confirming", () => {
+    const onDeleteSession = mock((_id: SessionId) => {})
+    render(
+      <ProjectList
+        {...baseProps}
+        onDeleteProject={() => {}}
+        onDeleteSession={onDeleteSession}
+      />,
+    )
+    fireEvent.contextMenu(screen.getByText("s1"))
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete session" }))
+    const dialog = screen.getByRole("dialog")
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Delete session" }),
+    )
+    expect(onDeleteSession).toHaveBeenCalledWith("s1")
+    cleanup()
+  })
+
+  it("does not call onDelete and closes the dialog when cancelling", () => {
+    const onDeleteProject = mock((_id: string) => {})
+    render(
+      <ProjectList
+        {...baseProps}
+        onDeleteProject={onDeleteProject}
+        onDeleteSession={() => {}}
+      />,
+    )
+    fireEvent.contextMenu(screen.getByRole("button", { name: /api/ }))
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete project" }))
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
+    expect(onDeleteProject).not.toHaveBeenCalled()
+    expect(screen.queryByRole("dialog")).toBeNull()
+    cleanup()
+  })
+
+  it("does not open a context menu when onDelete props are omitted", () => {
+    render(<ProjectList {...baseProps} />)
+    fireEvent.contextMenu(screen.getByRole("button", { name: /api/ }))
+    expect(
+      screen.queryByRole("menuitem", { name: "Delete project" }),
+    ).toBeNull()
+    fireEvent.contextMenu(screen.getByText("s1"))
+    expect(
+      screen.queryByRole("menuitem", { name: "Delete session" }),
+    ).toBeNull()
     cleanup()
   })
 })

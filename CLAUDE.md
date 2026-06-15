@@ -27,6 +27,7 @@ Test-first (RED observed) → implemented (GREEN) → refactored → `bun run ty
 - `@spectrum/brand` — brand identity source of truth: pure `SpectrumMark` + canonical tokens/fonts/raster assets (depends on react only)
 - `@spectrum/agent-events` — canonical event schemas + pure reducer (depends on types, utils; zero IO)
 - `@spectrum/run-store` — append-only run-event persistence (depends on db, agent-events, types, utils)
+- `@spectrum/data-admin` — transactional cascade deletes (session→events; project→sessions→events) (depends on db, types, utils)
 - `@spectrum/agent-driver` — driver seam + run manager + socket protocol + FakeDriver (depends on agent-events, types, utils)
 - `@spectrum/driver-runtime` — reusable driver core: createDriver(adapter) → AgentDriver (depends on agent-driver, agent-events, utils; no harness SDK)
 - `@spectrum/driver-claude` — Claude Code driver: createClaudeDriver + pure mapClaudeMessage (depends on driver-runtime, agent-events, agent-driver, utils, @anthropic-ai/claude-agent-sdk)

@@ -358,6 +358,7 @@ describe("IpcMethodSchemas", () => {
   it("exposes a params and result schema for every contract method", () => {
     const expected = [
       "getProviders",
+      "getProviderCatalog",
       "addProvider",
       "updateProvider",
       "deleteProvider",
@@ -370,14 +371,17 @@ describe("IpcMethodSchemas", () => {
       "getHarnesses",
       "launchHarness",
       "getSessions",
+      "deleteSession",
       "getProxyStatus",
+      "getRunnerSocketUrl",
+      "getRunEvents",
       "pickFolder",
       "listProviderModels",
       "getSettings",
       "getProjects",
       "setCollapsedProjects",
-      "getRunnerSocketUrl",
-      "getRunEvents",
+      "deleteProject",
+      "resetApp",
       "updateHarnessPrefs",
       "getUpdateState",
       "checkForUpdate",
@@ -391,6 +395,9 @@ describe("IpcMethodSchemas", () => {
       expect(IpcMethodSchemas[name].params).toBeDefined()
       expect(IpcMethodSchemas[name].result).toBeDefined()
     }
+    // Bidirectional roster guard: the map and the documented roster must match
+    // exactly, so adding a method to either without the other fails this test.
+    expect(new Set(Object.keys(IpcMethodSchemas))).toEqual(new Set(expected))
   })
 })
 
@@ -433,6 +440,40 @@ describe("UpdateHarnessPrefsParamsSchema", () => {
         modelId: 42,
       }).success,
     ).toBe(false)
+  })
+})
+
+describe("delete + reset IPC schemas", () => {
+  it("accepts a valid deleteSession param", () => {
+    expect(
+      IpcMethodSchemas.deleteSession.params.safeParse({ sessionId: "s_1" })
+        .success,
+    ).toBe(true)
+  })
+  it("rejects a deleteSession param missing sessionId", () => {
+    expect(IpcMethodSchemas.deleteSession.params.safeParse({}).success).toBe(
+      false,
+    )
+  })
+  it("accepts a valid deleteProject param", () => {
+    expect(
+      IpcMethodSchemas.deleteProject.params.safeParse({ projectId: "prj_1" })
+        .success,
+    ).toBe(true)
+  })
+  it("treats resetApp params as undefined (no args)", () => {
+    expect(IpcMethodSchemas.resetApp.params.safeParse(undefined).success).toBe(
+      true,
+    )
+  })
+  it("encodes deleteSession/deleteProject/resetApp results as null (void)", () => {
+    expect(IpcMethodSchemas.deleteSession.result.safeParse(null).success).toBe(
+      true,
+    )
+    expect(IpcMethodSchemas.deleteProject.result.safeParse(null).success).toBe(
+      true,
+    )
+    expect(IpcMethodSchemas.resetApp.result.safeParse(null).success).toBe(true)
   })
 })
 

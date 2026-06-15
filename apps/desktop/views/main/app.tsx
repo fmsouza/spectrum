@@ -1,4 +1,5 @@
 import type { IpcClient, IpcError } from "@spectrum/ipc"
+import type { ProjectId } from "@spectrum/types"
 import { type AppMode, AppShell, NewSessionModal } from "@spectrum/ui"
 import type { NewSessionValues } from "@spectrum/ui"
 import { type ReactElement, StrictMode, useEffect, useState } from "react"
@@ -184,6 +185,21 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
             providers.refetch()
             setLaunchError(undefined)
             setModalOpen(true)
+          },
+          onDeleteProject: (projectId) =>
+            // If the selected session belonged to this project it simply
+            // vanishes from the refetched lists; SessionsDetail already renders
+            // the empty state when the session isn't found, so no extra
+            // selection handling is needed here.
+            projectsView.deleteProject(projectId as ProjectId),
+          onDeleteSession: (sessionId) => {
+            projectsView.deleteSession(sessionId)
+            // If the open detail pane was showing this session, drop the selection.
+            if (
+              view.kind === "sessions" &&
+              view.selectedSessionId === sessionId
+            )
+              navigate({ kind: "sessions" })
           },
           runnerClient,
           models: models.data ?? [],
