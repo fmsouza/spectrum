@@ -12,7 +12,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "version": "biome check --write package.json && git add package.json"
+    "version": "bun scripts/sync-workspace-versions.ts && biome check --write . && git add -u"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",

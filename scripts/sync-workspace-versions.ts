@@ -57,9 +57,7 @@ async function main(): Promise<void> {
     json.version = update.nextVersion
     await Bun.write(update.path, `${JSON.stringify(json, null, 2)}\n`)
   }
-  console.log(
-    `Synced ${updates.length} package.json file(s) to ${rootVersion}`,
-  )
+  console.log(`Synced ${updates.length} package.json file(s) to ${rootVersion}`)
 }
 
 if (import.meta.main) {
