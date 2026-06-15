@@ -1,6 +1,10 @@
 {
   "name": "@spectrum/tsconfig",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
-  "files": ["base.json", "lib.json", "react.json"]
+  "files": [
+    "base.json",
+    "lib.json",
+    "react.json"
+  ]
 }
