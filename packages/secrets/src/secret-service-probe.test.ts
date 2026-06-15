@@ -59,4 +59,26 @@ describe("isSecretServiceAvailable", () => {
     const available = await isSecretServiceAvailable({ runner: throwingRunner })
     expect(typeof available).toBe("boolean")
   })
+
+  it("probes under the provided service name", async () => {
+    const calls: { args: readonly string[] }[] = []
+    const runner = {
+      run: async (_cmd: string, args: readonly string[]) => {
+        calls.push({ args })
+        return ok({ stdout: "" })
+      },
+    }
+    await isSecretServiceAvailable({
+      runner,
+      commandExists: () => true,
+      service: "spectrum-dev",
+    })
+    expect(calls[0]?.args).toEqual([
+      "lookup",
+      "service",
+      "spectrum-dev",
+      "account",
+      "__spectrum_probe__",
+    ])
+  })
 })

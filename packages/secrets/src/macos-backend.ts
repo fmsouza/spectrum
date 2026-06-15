@@ -2,8 +2,6 @@ import { err, isOk, ok, redactSecrets } from "@spectrum/utils"
 import type { KeychainBackend, SecretError } from "./backend"
 import type { ProcessRunner } from "./process-runner"
 
-const SERVICE = "spectrum"
-
 /** Scrub the live secret out of any backend-failed detail before it propagates. */
 const redactError = (
   error: SecretError,
@@ -30,8 +28,11 @@ const classifyError = (
 
 export const createMacosSecurityBackend = (deps: {
   readonly runner: ProcessRunner
+  /** Keychain service namespace. Defaults to "spectrum"; dev wiring passes "spectrum-dev". */
+  readonly service?: string
 }): KeychainBackend => {
   const { runner } = deps
+  const service = deps.service ?? "spectrum"
   return {
     add: async (account, secret) => {
       const result = await runner.run("security", [
@@ -39,7 +40,7 @@ export const createMacosSecurityBackend = (deps: {
         "-a",
         account,
         "-s",
-        SERVICE,
+        service,
         "-w",
         secret,
         "-U",
@@ -54,7 +55,7 @@ export const createMacosSecurityBackend = (deps: {
         "-a",
         account,
         "-s",
-        SERVICE,
+        service,
         "-w",
       ])
       if (!isOk(result)) return err(classifyError(result.error, []))
@@ -66,7 +67,7 @@ export const createMacosSecurityBackend = (deps: {
         "-a",
         account,
         "-s",
-        SERVICE,
+        service,
       ])
       return isOk(result) ? ok(undefined) : err(classifyError(result.error, []))
     },

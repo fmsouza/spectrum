@@ -52,6 +52,7 @@ import {
 } from "@spectrum/harnesses"
 import {
   type Platform,
+  detectAppEnv,
   detectPlatform,
   resolveAppPaths,
 } from "@spectrum/platform"
@@ -382,20 +383,26 @@ const createListProviderModels = (
 export const createAppContext = (
   deps: CreateAppContextDeps = realDeps,
 ): AppContext => {
-  deps.migrateLegacyMacosConfig({
-    platform: deps.platform,
-    homeDir: deps.homeDir(),
-    env: deps.env,
-  })
-  deps.migrateLaunchkitToSpectrum({
-    platform: deps.platform,
-    homeDir: deps.homeDir(),
-    env: deps.env,
-  })
+  const appEnv = detectAppEnv(deps.env)
+
+  // Legacy data lived only under the production dirs; never migrate it into a dev sandbox.
+  if (appEnv === "production") {
+    deps.migrateLegacyMacosConfig({
+      platform: deps.platform,
+      homeDir: deps.homeDir(),
+      env: deps.env,
+    })
+    deps.migrateLaunchkitToSpectrum({
+      platform: deps.platform,
+      homeDir: deps.homeDir(),
+      env: deps.env,
+    })
+  }
   const paths = deps.resolveAppPaths({
     platform: deps.platform,
     homeDir: deps.homeDir(),
     env: deps.env,
+    appEnv,
   })
   const configFile = paths.configFile
   const dbFile = paths.dbFile
@@ -431,6 +438,7 @@ export const createAppContext = (
   }
 
   // secrets: store( per-OS keychain backend (security / secret-tool / DPAPI-file) over a Bun runner )
+  const keychainService = appEnv === "development" ? "spectrum-dev" : "spectrum"
   const secrets = deps.createSecretStore({
     backend: deps.createPlatformKeychainBackend({
       platform: deps.platform,
@@ -438,6 +446,7 @@ export const createAppContext = (
       fileOps: deps.createSecretFileOps(),
       secretsDir: paths.secretsDir,
       secretPassphrase: deps.secretPassphrase,
+      keychainService,
     }),
     idGen: deps.createCryptoIdGen(),
   })
