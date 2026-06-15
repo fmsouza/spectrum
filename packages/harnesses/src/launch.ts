@@ -1,3 +1,4 @@
+import { type Logger, createNoopLogger } from "@spectrum/logger"
 import type { HarnessDefinition, ModelId } from "@spectrum/types"
 import { type Result, err, isErr, ok, renderTemplate } from "@spectrum/utils"
 import type { CommandResolver } from "./command-resolver"
@@ -88,10 +89,28 @@ export const launchHarness =
   (deps: {
     readonly resolver: CommandResolver
     readonly spawner: ProcessSpawner
+    readonly logger?: Logger
   }) =>
   (params: LaunchParams): Result<SpawnedProcess, HarnessError> => {
+    const logger = deps.logger ?? createNoopLogger()
+    // Observe a failure WITHOUT changing control flow. The error's `kind`/`detail` are safe to
+    // log (command paths, template token names, OS spawn messages) — the rendered proxy env and
+    // the per-run proxy key NEVER appear in a HarnessError, so they are never logged here.
+    const observe = (
+      result: Result<SpawnedProcess, HarnessError>,
+    ): Result<SpawnedProcess, HarnessError> => {
+      if (isErr(result)) {
+        const { kind } = result.error
+        logger.error("harness launch failed", {
+          kind,
+          ...("detail" in result.error ? { detail: result.error.detail } : {}),
+        })
+      }
+      return result
+    }
+
     const resolved = resolveHarnessLaunch({ resolver: deps.resolver })(params)
-    if (isErr(resolved)) return resolved
+    if (isErr(resolved)) return observe(resolved)
     const { command, args, env } = resolved.value
-    return deps.spawner.spawn(command, [...args], env, params.cwd)
+    return observe(deps.spawner.spawn(command, [...args], env, params.cwd))
   }

@@ -577,6 +577,7 @@ export const createAppContext = (
   const launch = deps.launchHarness({
     resolver,
     spawner: deps.createBunProcessSpawner(),
+    logger: log.child("harness"),
   })
   const resolveLaunch = resolveHarnessLaunch({ resolver })
 

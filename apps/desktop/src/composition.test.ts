@@ -299,10 +299,17 @@ describe("createAppContext wiring", () => {
     const { deps, calls } = makeFakeDeps()
     createAppContext(deps)
 
-    expect(calls.launchHarness?.[0]).toEqual({
-      resolver: { __stub: "createPathCommandResolver" },
-      spawner: { __stub: "createBunProcessSpawner" },
+    const launchArg = calls.launchHarness?.[0] as {
+      resolver: unknown
+      spawner: unknown
+      logger: { child: unknown }
+    }
+    expect(launchArg.resolver).toEqual({
+      __stub: "createPathCommandResolver",
     })
+    expect(launchArg.spawner).toEqual({ __stub: "createBunProcessSpawner" })
+    // ... and an injected (scoped) logger
+    expect(typeof launchArg.logger.child).toBe("function")
   })
 
   it("builds the provider factory with the secret store + loadSdk seam", () => {
