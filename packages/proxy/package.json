@@ -1,10 +1,15 @@
 {
   "name": "@spectrum/proxy",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "typecheck": "tsc --noEmit", "test": "bun test" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^4",
     "@ai-sdk/anthropic": "^3",
@@ -26,7 +31,7 @@
     "@spectrum/utils": "workspace:*",
     "ai": "^6",
     "ollama-ai-provider-v2": "^3",
-    "zod": "^3.25.76"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "msw": "^2.7.0"
