@@ -6,3 +6,5 @@ export {
   createInMemoryLogFileOps,
 } from "./file-sink"
 export type { LogFileOps } from "./file-sink"
+export { createFsLogFileOps } from "./fs-file-ops"
+export { resolveMinLevel } from "./resolve-min-level"
