@@ -1,3 +1,4 @@
+import { type Logger, createNoopLogger } from "@spectrum/logger"
 import { isErr } from "@spectrum/utils"
 import { parseAnthropicRequest } from "./adapters/anthropic-request"
 import { serializeAnthropicStream } from "./adapters/anthropic-stream"
@@ -17,6 +18,8 @@ export interface HandlerDeps {
   factory: ProviderFactory
   gateway: LanguageModelGateway
   listModels: () => readonly string[]
+  /** Optional observer (default noop). Logs `error` with only `{ kind }` on every error Result. */
+  logger?: Logger
 }
 
 // A provider rate limit (429) passes through so the harness sees the true
@@ -111,6 +114,15 @@ const errorOrStream = async (
 export const createHandler = (
   deps: HandlerDeps,
 ): { fetch(req: Request): Promise<Response> } => {
+  const logger = deps.logger ?? createNoopLogger()
+  // Observe every error Result at the response boundary. SECURITY: only the
+  // non-sensitive `kind` enum is logged — never the proxyKey, apiKeys, request/
+  // response bodies, or the error `detail` (which can echo upstream output).
+  // Logging is observation only; the returned `Response` is the sole control-flow signal.
+  const fail = (e: ProxyError): Response => {
+    logger.error("proxy request failed", { kind: e.kind })
+    return errorResponse(e)
+  }
   const handleChat = async (
     req: Request,
     parse: (b: unknown) => ReturnType<typeof parseAnthropicRequest>,
@@ -120,26 +132,26 @@ export const createHandler = (
     ) => ReadableStream<Uint8Array>,
   ): Promise<Response> => {
     const auth = checkAuth(req.headers, deps.proxyKey)
-    if (isErr(auth)) return errorResponse(auth.error)
+    if (isErr(auth)) return fail(auth.error)
     let body: unknown
     try {
       body = await req.json()
     } catch {
-      return errorResponse({ kind: "bad-request", detail: "invalid JSON" })
+      return fail({ kind: "bad-request", detail: "invalid JSON" })
     }
     const parsed = parse(body)
-    if (isErr(parsed)) return errorResponse(parsed.error)
+    if (isErr(parsed)) return fail(parsed.error)
     const route = deps.router.resolve(parsed.value.model)
-    if (isErr(route)) return errorResponse(route.error)
+    if (isErr(route)) return fail(route.error)
     const model = await deps.factory.getModel(
       route.value.provider,
       route.value.providerModel,
     )
-    if (isErr(model)) return errorResponse(model.error)
+    if (isErr(model)) return fail(model.error)
     const events = deps.gateway.stream(model.value, parsed.value)
     const checked = await errorOrStream(events)
     if (checked.kind === "error")
-      return errorResponse({
+      return fail({
         kind: "provider-failed",
         detail: checked.detail,
         ...(checked.statusCode !== undefined
@@ -164,7 +176,7 @@ export const createHandler = (
         })
       if (url.pathname === "/v1/models") {
         if (isErr(checkAuth(req.headers, deps.proxyKey)))
-          return errorResponse({ kind: "unauthorized" })
+          return fail({ kind: "unauthorized" })
         const data = deps.listModels().map((id) => ({ id, object: "model" }))
         return new Response(JSON.stringify({ object: "list", data }), {
           headers: { "content-type": "application/json" },

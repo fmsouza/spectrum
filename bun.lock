@@ -263,6 +263,7 @@
         "@ai-sdk/perplexity": "^3",
         "@ai-sdk/xai": "^3",
         "@spectrum/config": "workspace:*",
+        "@spectrum/logger": "workspace:*",
         "@spectrum/providers": "workspace:*",
         "@spectrum/secrets": "workspace:*",
         "@spectrum/types": "workspace:*",

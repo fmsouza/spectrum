@@ -685,6 +685,7 @@ export const createAppContext = (
       factory,
       gateway,
       listModels: () => getConfig().models.map((m) => String(m.id)),
+      logger: log.child("proxy"),
     })
   }
 
