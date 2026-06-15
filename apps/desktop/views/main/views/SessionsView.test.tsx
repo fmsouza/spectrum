@@ -1,8 +1,14 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, mock } from "bun:test"
 import type { RunnerOutbound } from "@spectrum/agent-driver"
 import type { StoredEvent } from "@spectrum/agent-events"
 import type { Session, SessionId } from "@spectrum/types"
-import { cleanup, render, screen } from "@testing-library/react"
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react"
 import type React from "react"
 import { IpcClientProvider } from "../IpcClientContext"
 import type { RunnerClient } from "../runner/runnerClient"
@@ -49,6 +55,8 @@ describe("SessionsView", () => {
       onMore: () => {},
       onSelect: () => {},
       onNew: () => {},
+      onDeleteProject: () => {},
+      onDeleteSession: () => {},
       runnerClient: makeFakeRunner(),
     })
     render(
@@ -72,6 +80,8 @@ describe("SessionsView", () => {
       onMore: () => {},
       onSelect: () => {},
       onNew: () => {},
+      onDeleteProject: () => {},
+      onDeleteSession: () => {},
       runnerClient: makeFakeRunner(),
     })
     render(
@@ -83,6 +93,39 @@ describe("SessionsView", () => {
     expect(screen.getByText(/claude · m_1/)).toBeInTheDocument()
     expect(client.calls.getSessions.length).toBe(0)
     expect(client.calls.getProjects.length).toBe(0)
+  })
+
+  it("threads onDeleteSession through the master into ProjectList", () => {
+    const client = createFakeIpcClient({})
+    const onDeleteSession = mock((_id: SessionId) => {})
+    const { master } = SessionsView({
+      selectedSessionId: undefined,
+      openSessionIds: [],
+      projects: [project],
+      sessionsByProject: { prj_1: [running] },
+      collapsed: new Set(),
+      allSessions: [running],
+      onToggle: () => {},
+      onMore: () => {},
+      onSelect: () => {},
+      onNew: () => {},
+      onDeleteProject: () => {},
+      onDeleteSession,
+      runnerClient: makeFakeRunner(),
+    })
+    render(
+      <IpcClientProvider client={client}>
+        <div>{master}</div>
+      </IpcClientProvider>,
+    )
+    fireEvent.contextMenu(screen.getByText(/claude · m_1/))
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete session" }))
+    const dialog = screen.getByRole("dialog")
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Delete session" }),
+    )
+    expect(onDeleteSession).toHaveBeenCalledWith(running.id)
+    cleanup()
   })
 
   it("renders the native RunDetail (live) for an open session, attaching the runner socket", () => {
@@ -98,6 +141,8 @@ describe("SessionsView", () => {
       onMore: () => {},
       onSelect: () => {},
       onNew: () => {},
+      onDeleteProject: () => {},
+      onDeleteSession: () => {},
       runnerClient: runner,
     })
     renderWithProviders(detail as React.ReactElement, createFakeIpcClient({}))
@@ -131,6 +176,8 @@ describe("SessionsView", () => {
       onMore: () => {},
       onSelect: () => {},
       onNew: () => {},
+      onDeleteProject: () => {},
+      onDeleteSession: () => {},
       runnerClient: runner,
     })
     renderWithProviders(detail as React.ReactElement, client)

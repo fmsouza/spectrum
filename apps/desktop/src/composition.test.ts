@@ -90,6 +90,12 @@ const makeFakeDeps = (): {
     createFakeDriver: (() => ({ start: () => ok({}) })) as never,
     createCodexDriver: (() => ({ start: () => ok({}) })) as never,
     createOpencodeDriver: (() => ({ start: () => ok({}) })) as never,
+    createDataAdmin: (() => ({
+      deleteSession: () => ok(undefined),
+      deleteProject: () => ok(undefined),
+    })) as never,
+    removeDir: () => {},
+    relaunch: () => {},
     demoHarnessEnabled: false,
   }
   return { deps, calls }

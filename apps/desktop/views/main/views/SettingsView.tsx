@@ -1,14 +1,32 @@
 import { SettingsNav } from "@spectrum/ui"
-import type { ReactNode } from "react"
+import type { ReactElement, ReactNode } from "react"
 import { ErrorBoundary } from "../ErrorBoundary"
-import { GeneralPage, HarnessesPage, ModelsPage, ProvidersPage } from "../pages"
+import { useIpcClient } from "../IpcClientContext"
+import {
+  DataPage,
+  GeneralPage,
+  HarnessesPage,
+  ModelsPage,
+  ProvidersPage,
+} from "../pages"
 
 const SECTIONS = [
   { key: "general", label: "General" },
   { key: "providers", label: "Providers" },
   { key: "models", label: "Models" },
   { key: "harnesses", label: "Harnesses" },
+  { key: "data", label: "Data" },
 ] as const
+
+/**
+ * Connects `DataPage` to the IPC client so the factory-reset action calls the
+ * `resetApp` method. A real component (not the `detailFor` factory) so it can
+ * call the `useIpcClient` hook.
+ */
+const DataPageConnected = (): ReactElement => {
+  const client = useIpcClient()
+  return <DataPage onReset={() => void client.resetApp(undefined)} />
+}
 
 const detailFor = (section: string): ReactNode => {
   switch (section) {
@@ -18,6 +36,8 @@ const detailFor = (section: string): ReactNode => {
       return <ModelsPage />
     case "harnesses":
       return <HarnessesPage />
+    case "data":
+      return <DataPageConnected />
     default:
       return <GeneralPage />
   }

@@ -17,6 +17,13 @@ export type ProjectGroupProps = {
   readonly onToggle: () => void
   readonly onSelect: (id: SessionId) => void
   readonly onMore: () => void
+  /** Right-click on the project header. Optional. */
+  readonly onContextMenu?: (e: { clientX: number; clientY: number }) => void
+  /** Right-click on a session row within this group. Optional. */
+  readonly onSessionContextMenu?: (
+    id: SessionId,
+    e: { clientX: number; clientY: number },
+  ) => void
 }
 
 export const ProjectGroup = ({
@@ -29,6 +36,8 @@ export const ProjectGroup = ({
   onToggle,
   onSelect,
   onMore,
+  onContextMenu,
+  onSessionContextMenu,
 }: ProjectGroupProps): ReactElement => {
   const hasMore = sessions.length < sessionCount
   return (
@@ -38,6 +47,14 @@ export const ProjectGroup = ({
         className="lk-project-group__header"
         aria-expanded={!collapsed}
         onClick={() => onToggle()}
+        onContextMenu={
+          onContextMenu === undefined
+            ? undefined
+            : (e) => {
+                e.preventDefault()
+                onContextMenu({ clientX: e.clientX, clientY: e.clientY })
+              }
+        }
       >
         <span
           className="lk-project-group__toggle"
@@ -61,6 +78,9 @@ export const ProjectGroup = ({
                 model={label.model}
                 selected={s.id === selectedId}
                 onSelect={() => onSelect(s.id)}
+                {...(onSessionContextMenu === undefined
+                  ? {}
+                  : { onContextMenu: (e) => onSessionContextMenu(s.id, e) })}
               />
             )
           })}

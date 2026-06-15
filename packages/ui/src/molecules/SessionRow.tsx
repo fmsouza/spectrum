@@ -10,6 +10,8 @@ export type SessionRowProps = {
   readonly model: string
   readonly selected: boolean
   readonly onSelect: () => void
+  /** Right-click handler (e.g. open a context menu). Optional. */
+  readonly onContextMenu?: (e: { clientX: number; clientY: number }) => void
 }
 
 export const SessionRow = ({
@@ -18,6 +20,7 @@ export const SessionRow = ({
   model,
   selected,
   onSelect,
+  onContextMenu,
 }: SessionRowProps): ReactElement => {
   const isRunning = session.endedAt === undefined
   return (
@@ -27,6 +30,14 @@ export const SessionRow = ({
       aria-pressed={selected}
       data-selected={selected}
       onClick={() => onSelect()}
+      onContextMenu={
+        onContextMenu === undefined
+          ? undefined
+          : (e) => {
+              e.preventDefault()
+              onContextMenu({ clientX: e.clientX, clientY: e.clientY })
+            }
+      }
     >
       <span className="lk-session-row__line">
         <Truncate className="lk-session-row__name">

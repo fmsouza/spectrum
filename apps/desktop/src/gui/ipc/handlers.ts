@@ -327,6 +327,12 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return [...queried.value]
     },
 
+    deleteSession: async ({ sessionId }) => {
+      const deleted = ctx.dataAdmin.deleteSession(sessionId)
+      if (!isOk(deleted)) return fail("could not delete session")
+      return null
+    },
+
     getProxyStatus: async () => {
       const running = await ctx.proxy.isRunning(ctx.proxyBaseUrl)
       return { running, port: ctx.proxyPort }
@@ -369,6 +375,19 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         settings: { ...config.settings, collapsedProjects: ids },
       })
       if (!isOk(saved)) return fail("could not save collapsed projects")
+      return null
+    },
+
+    deleteProject: async ({ projectId }) => {
+      const deleted = ctx.dataAdmin.deleteProject(projectId)
+      if (!isOk(deleted)) return fail("could not delete project")
+      return null
+    },
+
+    // ── Data (factory reset) ────────────────────────────────────────────────
+    resetApp: async () => {
+      const reset = await ctx.resetApp()
+      if (!isOk(reset)) return fail("could not reset app")
       return null
     },
 
