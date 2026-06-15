@@ -392,6 +392,11 @@ const isDocumentedGap = (s: string): boolean => {
   // state renders a TaskRail with an in-progress task. Verified by TaskRow.test.tsx
   // and StatusDot.test.tsx.
   if (s === 'span[role="img"][data-color="amber"]') return true
+  // ContextMenu (right-click delete menu) — pure presentational molecule that is
+  // only mounted on demand when the user right-clicks a row (wired in a later task).
+  // No current app state renders it, so its selectors match nothing here by design.
+  // Verified by ContextMenu.test.tsx.
+  if (/^\.lk-context-menu(?:__item)?\b/.test(s)) return true
   return false
 }
 
