@@ -105,4 +105,34 @@ describe("createMacosSecurityBackend", () => {
 
     expect(result).toEqual({ ok: false, error: { kind: "not-found" } })
   })
+
+  it("uses the provided service name (spectrum-dev) in the add arg array", async () => {
+    const { runner, calls } = recordingRunner([ok({ stdout: "" })])
+    const backend = createMacosSecurityBackend({
+      runner,
+      service: "spectrum-dev",
+    })
+
+    await backend.add("kc_1", "sk-secret")
+
+    expect(calls[0]?.args).toEqual([
+      "add-generic-password",
+      "-a",
+      "kc_1",
+      "-s",
+      "spectrum-dev",
+      "-w",
+      "sk-secret",
+      "-U",
+    ])
+  })
+
+  it("defaults the service name to spectrum when none is provided", async () => {
+    const { runner, calls } = recordingRunner([ok({ stdout: "" })])
+    const backend = createMacosSecurityBackend({ runner })
+
+    await backend.find("kc_1")
+
+    expect(calls[0]?.args).toContain("spectrum")
+  })
 })

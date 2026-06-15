@@ -1,4 +1,5 @@
 import path from "node:path"
+import type { SpectrumEnv } from "./app-env"
 import type { Platform } from "./platform"
 
 export interface AppPaths {
@@ -14,35 +15,45 @@ export interface ResolveAppPathsInput {
   readonly platform: Platform
   readonly homeDir: string
   readonly env: Readonly<Record<string, string | undefined>>
+  /** Selects the app dir name. Omitted ⇒ production (the safe default). */
+  readonly appEnv?: SpectrumEnv
 }
 
-const APP_DIR_NAME = "Spectrum" // macOS + Windows
-const XDG_DIR_NAME = "spectrum" // Linux / unknown
+const APP_DIR_NAME: Record<SpectrumEnv, string> = {
+  production: "Spectrum", // macOS + Windows
+  development: "Spectrum (Dev)",
+}
+const XDG_DIR_NAME: Record<SpectrumEnv, string> = {
+  production: "spectrum", // Linux / unknown
+  development: "spectrum-dev",
+}
 
 export const nonEmpty = (v: string | undefined): v is string =>
   v !== undefined && v.length > 0
 
 /** Resolve the single per-OS application directory and the files within it. Pure. */
 export const resolveAppPaths = (input: ResolveAppPathsInput): AppPaths => {
-  const { platform, homeDir, env } = input
+  const { platform, homeDir, env, appEnv = "production" } = input
   const p = platform === "windows" ? path.win32 : path.posix
+  const appDirName = APP_DIR_NAME[appEnv]
+  const xdgDirName = XDG_DIR_NAME[appEnv]
 
   const dataDir = ((): string => {
     if (nonEmpty(env.SPECTRUM_DATA_DIR)) return env.SPECTRUM_DATA_DIR
     switch (platform) {
       case "macos":
-        return p.join(homeDir, "Library", "Application Support", APP_DIR_NAME)
+        return p.join(homeDir, "Library", "Application Support", appDirName)
       case "windows": {
         const base = nonEmpty(env.APPDATA)
           ? env.APPDATA
           : path.win32.join(homeDir, "AppData", "Roaming")
-        return path.win32.join(base, APP_DIR_NAME)
+        return path.win32.join(base, appDirName)
       }
       default: {
         const base = nonEmpty(env.XDG_CONFIG_HOME)
           ? env.XDG_CONFIG_HOME
           : p.join(homeDir, ".config")
-        return p.join(base, XDG_DIR_NAME)
+        return p.join(base, xdgDirName)
       }
     }
   })()

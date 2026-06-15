@@ -77,4 +77,61 @@ describe("resolveAppPaths", () => {
     expect(p.dataDir).toBe("/custom/dir")
     expect(p.dbFile).toBe("/custom/dir/spectrum.db")
   })
+
+  it("uses 'Spectrum (Dev)' on macOS when appEnv is development", () => {
+    const p = resolveAppPaths({
+      platform: "macos",
+      homeDir: "/Users/me",
+      env: env(),
+      appEnv: "development",
+    })
+    expect(p.dataDir).toBe(
+      "/Users/me/Library/Application Support/Spectrum (Dev)",
+    )
+    expect(p.dbFile).toBe(
+      "/Users/me/Library/Application Support/Spectrum (Dev)/spectrum.db",
+    )
+    expect(p.secretsDir).toBe(
+      "/Users/me/Library/Application Support/Spectrum (Dev)/secrets",
+    )
+  })
+
+  it("uses 'spectrum-dev' on Linux when appEnv is development", () => {
+    const p = resolveAppPaths({
+      platform: "linux",
+      homeDir: "/home/me",
+      env: env(),
+      appEnv: "development",
+    })
+    expect(p.dataDir).toBe("/home/me/.config/spectrum-dev")
+  })
+
+  it("uses 'Spectrum (Dev)' on Windows when appEnv is development", () => {
+    const p = resolveAppPaths({
+      platform: "windows",
+      homeDir: "C:\\Users\\me",
+      env: env({ APPDATA: "C:\\Users\\me\\AppData\\Roaming" }),
+      appEnv: "development",
+    })
+    expect(p.dataDir).toBe("C:\\Users\\me\\AppData\\Roaming\\Spectrum (Dev)")
+  })
+
+  it("defaults to the production dir when appEnv is omitted", () => {
+    const p = resolveAppPaths({
+      platform: "macos",
+      homeDir: "/Users/me",
+      env: env(),
+    })
+    expect(p.dataDir).toBe("/Users/me/Library/Application Support/Spectrum")
+  })
+
+  it("lets SPECTRUM_DATA_DIR override even in development", () => {
+    const p = resolveAppPaths({
+      platform: "linux",
+      homeDir: "/home/me",
+      env: env({ SPECTRUM_DATA_DIR: "/custom/dir" }),
+      appEnv: "development",
+    })
+    expect(p.dataDir).toBe("/custom/dir")
+  })
 })

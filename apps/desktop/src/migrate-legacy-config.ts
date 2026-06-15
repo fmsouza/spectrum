@@ -49,6 +49,8 @@ export const migrateLegacyMacosConfig = (
   input: MigrateLegacyMacosConfigInput,
   fs: MigrationFs = realMigrationFs,
 ): void => {
+  // No `appEnv` ⇒ the production data dir. Legacy data only ever lived in production
+  // locations; the composition root also runs this only when appEnv === "production".
   const newDataDir = resolveAppPaths(input).dataDir
   const legacyDir = legacyMacosConfigDir(input.homeDir)
   const plan = planLegacyMacosMigration({
@@ -76,6 +78,7 @@ export const migrateLaunchkitToSpectrum = (
   input: MigrateLegacyMacosConfigInput,
   fs: MigrationFs = realMigrationFs,
 ): void => {
+  // No `appEnv` ⇒ the production data dir (see migrateLegacyMacosConfig); production-only by gate.
   const newDataDir = resolveAppPaths(input).dataDir
   const oldDir = legacyLaunchkitDataDir(input)
   const plan = planLaunchkitToSpectrumMigration({
