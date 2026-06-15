@@ -1,6 +1,11 @@
 import type { IpcClient, IpcError } from "@spectrum/ipc"
 import type { ProjectId } from "@spectrum/types"
-import { type AppMode, AppShell, NewSessionModal } from "@spectrum/ui"
+import {
+  type AppMode,
+  AppShell,
+  NewSessionModal,
+  ToastContainer,
+} from "@spectrum/ui"
 import type { NewSessionValues } from "@spectrum/ui"
 import { type ReactElement, StrictMode, useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
@@ -11,6 +16,7 @@ import { createRealClients } from "./clients"
 import { UpdateBanner } from "./components/UpdateBanner"
 import { useHarnesses } from "./hooks/useHarnesses"
 import { useModels } from "./hooks/useModels"
+import { useNotifications } from "./hooks/useNotifications"
 import { useProjects } from "./hooks/useProjects"
 import { useProviders } from "./hooks/useProviders"
 import { useProxyStatus } from "./hooks/useProxyStatus"
@@ -80,6 +86,7 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   const [initialHarnessId, setInitialHarnessId] = useState<string>("")
   const proxy = useProxyStatus()
   const update = useUpdate()
+  const notifications = useNotifications()
 
   // Prefill the New Session modal with the last launched folder/harness
   // (persisted by a successful launch). Page-level fetch — the modal stays dumb
@@ -215,6 +222,10 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
         onDownload={update.download}
         onRestart={update.apply}
         onDismiss={update.dismiss}
+      />
+      <ToastContainer
+        notifications={notifications.notifications}
+        onDismiss={notifications.dismiss}
       />
       <AppShell
         mode={mode}

@@ -27,6 +27,18 @@ const baseStubs = {
 }
 
 describe("App view model", () => {
+  it("mounts the toast stack in the app shell", async () => {
+    const client = createFakeIpcClient(baseStubs)
+    const { container } = render(
+      <App client={client} runnerClient={fakeRunnerClient} />,
+    )
+    // The notifications engine's ToastContainer is mounted in the shell; its
+    // (initially empty) stack container is always present.
+    await waitFor(() =>
+      expect(container.querySelector(".lk-toast-stack")).not.toBeNull(),
+    )
+  })
+
   it("defaults to the sessions view and writes #sessions to the hash", async () => {
     window.location.hash = ""
     const client = createFakeIpcClient(baseStubs)
