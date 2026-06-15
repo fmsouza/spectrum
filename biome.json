@@ -13,5 +13,11 @@
       "packages/driver-codex/src/bindings/**",
       "apps/desktop/views/main/xterm.css"
     ]
-  }
+  },
+  "overrides": [
+    {
+      "include": ["**/package.json"],
+      "formatter": { "enabled": false }
+    }
+  ]
 }
