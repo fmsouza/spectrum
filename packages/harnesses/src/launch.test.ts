@@ -1,13 +1,50 @@
 import { describe, expect, it } from "bun:test"
+import type { Logger } from "@spectrum/logger"
 import {
   type HarnessDefinition,
   HarnessIdSchema,
   ModelIdSchema,
 } from "@spectrum/types"
-import { isOk } from "@spectrum/utils"
-import { createFakeCommandResolver } from "./command-resolver"
+import { type Result, err, isOk } from "@spectrum/utils"
+import {
+  type CommandResolver,
+  createFakeCommandResolver,
+} from "./command-resolver"
+import type { HarnessError } from "./errors"
 import { launchHarness, resolveHarnessLaunch } from "./launch"
+import type { ProcessSpawner, SpawnedProcess } from "./process-spawner"
 import { createRecordingProcessSpawner } from "./process-spawner"
+
+/** Records every call so a test can assert which level + fields a failure logged. */
+interface FakeLogger extends Logger {
+  readonly records: ReadonlyArray<{
+    readonly level: "warn" | "error"
+    readonly msg: string
+    readonly fields?: Record<string, unknown>
+  }>
+}
+
+const createFakeLogger = (): FakeLogger => {
+  const records: {
+    level: "warn" | "error"
+    msg: string
+    fields?: Record<string, unknown>
+  }[] = []
+  const self: FakeLogger = {
+    records,
+    debug: () => {},
+    info: () => {},
+    warn: (msg, fields) => {
+      records.push({ level: "warn", msg, ...(fields ? { fields } : {}) })
+    },
+    error: (msg, fields) => {
+      records.push({ level: "error", msg, ...(fields ? { fields } : {}) })
+    },
+    fatal: () => {},
+    child: () => self,
+  }
+  return self
+}
 
 const claude: HarnessDefinition = {
   id: HarnessIdSchema.parse("claude"),
@@ -247,5 +284,91 @@ describe("launchHarness", () => {
     const spawner = createRecordingProcessSpawner(5)
     launchHarness({ resolver, spawner })({ ...params, env: { EXTRA: "yes" } })
     expect(spawner.calls[0]?.env.EXTRA).toBe("yes")
+  })
+
+  it("logs an error with { kind, detail } when the spawner reports spawn-failed", () => {
+    const resolver = createFakeCommandResolver({
+      claude: "/usr/local/bin/claude",
+    })
+    const failingSpawner: ProcessSpawner = {
+      spawn: (): Result<SpawnedProcess, HarnessError> =>
+        err({ kind: "spawn-failed", detail: "ENOENT" }),
+    }
+    const logger = createFakeLogger()
+
+    const r = launchHarness({ resolver, spawner: failingSpawner, logger })(
+      params,
+    )
+
+    // Result is unchanged — logging is observation, not control flow.
+    expect(r).toEqual({
+      ok: false,
+      error: { kind: "spawn-failed", detail: "ENOENT" },
+    })
+    expect(logger.records).toEqual([
+      {
+        level: "error",
+        msg: "harness launch failed",
+        fields: { kind: "spawn-failed", detail: "ENOENT" },
+      },
+    ])
+  })
+
+  it("logs an error with { kind, detail } when command resolution fails (read/resolve path)", () => {
+    const failingResolver: CommandResolver = {
+      resolve: (): Result<string, HarnessError> =>
+        err({ kind: "invalid-command", detail: "command not found: claude" }),
+    }
+    const spawner = createRecordingProcessSpawner(1)
+    const logger = createFakeLogger()
+
+    const r = launchHarness({ resolver: failingResolver, spawner, logger })(
+      params,
+    )
+
+    expect(r).toEqual({
+      ok: false,
+      error: { kind: "invalid-command", detail: "command not found: claude" },
+    })
+    expect(logger.records).toEqual([
+      {
+        level: "error",
+        msg: "harness launch failed",
+        fields: {
+          kind: "invalid-command",
+          detail: "command not found: claude",
+        },
+      },
+    ])
+  })
+
+  it("never logs the rendered proxy env or per-run key on failure", () => {
+    const resolver = createFakeCommandResolver({
+      claude: "/usr/local/bin/claude",
+    })
+    const failingSpawner: ProcessSpawner = {
+      spawn: (): Result<SpawnedProcess, HarnessError> =>
+        err({ kind: "spawn-failed", detail: "boom" }),
+    }
+    const logger = createFakeLogger()
+
+    launchHarness({ resolver, spawner: failingSpawner, logger })(params)
+
+    const serialized = JSON.stringify(logger.records)
+    expect(serialized).not.toContain(proxiedRoute.proxyKey)
+    expect(serialized).not.toContain(proxiedRoute.proxyUrl)
+  })
+
+  it("does not log on the success path", () => {
+    const resolver = createFakeCommandResolver({
+      claude: "/usr/local/bin/claude",
+    })
+    const spawner = createRecordingProcessSpawner(7)
+    const logger = createFakeLogger()
+
+    const r = launchHarness({ resolver, spawner, logger })(params)
+
+    expect(r.ok).toBe(true)
+    expect(logger.records).toEqual([])
   })
 })

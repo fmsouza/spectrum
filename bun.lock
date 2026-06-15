@@ -38,6 +38,7 @@
         "@spectrum/driver-opencode": "workspace:*",
         "@spectrum/harnesses": "workspace:*",
         "@spectrum/ipc": "workspace:*",
+        "@spectrum/logger": "workspace:*",
         "@spectrum/platform": "workspace:*",
         "@spectrum/projects": "workspace:*",
         "@spectrum/providers": "workspace:*",
@@ -62,6 +63,7 @@
       "version": "1.1.2",
       "dependencies": {
         "@spectrum/agent-events": "workspace:*",
+        "@spectrum/logger": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
         "zod": "catalog:",
@@ -90,6 +92,7 @@
         "@spectrum/config": "workspace:*",
         "@spectrum/db": "workspace:*",
         "@spectrum/harnesses": "workspace:*",
+        "@spectrum/logger": "workspace:*",
         "@spectrum/projects": "workspace:*",
         "@spectrum/proxy": "workspace:*",
         "@spectrum/secrets": "workspace:*",
@@ -102,6 +105,7 @@
       "name": "@spectrum/config",
       "version": "1.1.2",
       "dependencies": {
+        "@spectrum/logger": "workspace:*",
         "@spectrum/platform": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
@@ -126,6 +130,7 @@
       "name": "@spectrum/db",
       "version": "1.1.2",
       "dependencies": {
+        "@spectrum/logger": "workspace:*",
         "@spectrum/utils": "workspace:*",
         "drizzle-orm": "catalog:",
       },
@@ -194,6 +199,7 @@
       "name": "@spectrum/harnesses",
       "version": "1.1.2",
       "dependencies": {
+        "@spectrum/logger": "workspace:*",
         "@spectrum/platform": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
@@ -209,6 +215,13 @@
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
         "zod": "catalog:",
+      },
+    },
+    "packages/logger": {
+      "name": "@spectrum/logger",
+      "version": "1.1.2",
+      "dependencies": {
+        "@spectrum/utils": "workspace:*",
       },
     },
     "packages/platform": {
@@ -252,6 +265,7 @@
         "@ai-sdk/perplexity": "^3",
         "@ai-sdk/xai": "^3",
         "@spectrum/config": "workspace:*",
+        "@spectrum/logger": "workspace:*",
         "@spectrum/providers": "workspace:*",
         "@spectrum/secrets": "workspace:*",
         "@spectrum/types": "workspace:*",
@@ -282,6 +296,7 @@
       "name": "@spectrum/secrets",
       "version": "1.1.2",
       "dependencies": {
+        "@spectrum/logger": "workspace:*",
         "@spectrum/platform": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
@@ -561,6 +576,8 @@
     "@spectrum/harnesses": ["@spectrum/harnesses@workspace:packages/harnesses"],
 
     "@spectrum/ipc": ["@spectrum/ipc@workspace:packages/ipc"],
+
+    "@spectrum/logger": ["@spectrum/logger@workspace:packages/logger"],
 
     "@spectrum/platform": ["@spectrum/platform@workspace:packages/platform"],
 

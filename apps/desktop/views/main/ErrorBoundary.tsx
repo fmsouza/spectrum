@@ -1,4 +1,10 @@
-import { Component, type ErrorInfo, type ReactNode } from "react"
+import {
+  Component,
+  type ContextType,
+  type ErrorInfo,
+  type ReactNode,
+} from "react"
+import { LoggerContext } from "./LoggerContext"
 
 type ErrorBoundaryProps = {
   readonly children: ReactNode
@@ -19,13 +25,21 @@ export class ErrorBoundary extends Component<
 > {
   override state: ErrorBoundaryState = { error: null }
 
+  static override contextType = LoggerContext
+  declare context: ContextType<typeof LoggerContext>
+
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error }
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    // Surface to the (devtools) console too; the on-screen panel is the primary signal.
-    console.error("[Spectrum] page error:", error, info.componentStack)
+    // Forward to the webview logger; it persists error/fatal to the main-process
+    // log file. The on-screen panel below remains the primary visible signal.
+    this.context.error("page error", {
+      name: error.name,
+      message: error.message,
+      stack: info.componentStack ?? error.stack ?? undefined,
+    })
   }
 
   override render(): ReactNode {

@@ -4,6 +4,7 @@
   "files": {
     "ignore": [
       "**/.claude/**",
+      "**/.worktrees/**",
       "**/dist/**",
       "**/build/**",
       "**/artifacts/**",

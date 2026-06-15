@@ -19,6 +19,7 @@
     "@spectrum/proxy": "workspace:*",
     "@spectrum/harnesses": "workspace:*",
     "@spectrum/sessions": "workspace:*",
-    "@spectrum/projects": "workspace:*"
+    "@spectrum/projects": "workspace:*",
+    "@spectrum/logger": "workspace:*"
   }
 }

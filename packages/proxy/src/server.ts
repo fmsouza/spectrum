@@ -1,3 +1,4 @@
+import { createNoopLogger } from "@spectrum/logger"
 import { type HandlerDeps, createHandler } from "./handler"
 
 export interface StartProxyOptions extends HandlerDeps {
@@ -11,6 +12,8 @@ export interface RunningProxy {
 }
 
 export const startProxy = (opts: StartProxyOptions): RunningProxy => {
+  // Lifecycle observer (default noop). SECURITY: only host/port are ever logged — NEVER the proxyKey.
+  const logger = opts.logger ?? createNoopLogger()
   const handler = createHandler(opts)
   const server = Bun.serve({
     hostname: opts.host,
@@ -23,10 +26,16 @@ export const startProxy = (opts: StartProxyOptions): RunningProxy => {
     idleTimeout: 0,
     fetch: handler.fetch,
   })
+  const hostname = server.hostname ?? opts.host
+  const port = server.port ?? opts.port
+  logger.info("proxy started", { host: hostname, port })
   return {
-    hostname: server.hostname ?? opts.host,
-    port: server.port ?? opts.port,
-    stop: () => server.stop(true),
+    hostname,
+    port,
+    stop: () => {
+      server.stop(true)
+      logger.info("proxy stopped")
+    },
   }
 }
 

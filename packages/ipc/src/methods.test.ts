@@ -389,6 +389,7 @@ describe("IpcMethodSchemas", () => {
       "applyUpdate",
       "dismissUpdate",
       "setUpdateChannel",
+      "logClientError",
     ] as const
     for (const name of expected) {
       expect(IpcMethodSchemas[name]).toBeDefined()
@@ -398,6 +399,33 @@ describe("IpcMethodSchemas", () => {
     // Bidirectional roster guard: the map and the documented roster must match
     // exactly, so adding a method to either without the other fails this test.
     expect(new Set(Object.keys(IpcMethodSchemas))).toEqual(new Set(expected))
+  })
+})
+
+describe("logClientError IPC schema", () => {
+  it("accepts a valid client error", () => {
+    expect(
+      IpcMethodSchemas.logClientError.params.safeParse({
+        scope: "webview.ErrorBoundary",
+        level: "error",
+        msg: "render crash",
+        fields: { component: "RunView" },
+      }).success,
+    ).toBe(true)
+  })
+  it("rejects an invalid level", () => {
+    expect(
+      IpcMethodSchemas.logClientError.params.safeParse({
+        scope: "x",
+        level: "loud",
+        msg: "y",
+      }).success,
+    ).toBe(false)
+  })
+  it("encodes the result as null", () => {
+    expect(IpcMethodSchemas.logClientError.result.safeParse(null).success).toBe(
+      true,
+    )
   })
 })
 

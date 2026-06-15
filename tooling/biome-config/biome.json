@@ -5,7 +5,7 @@
     "enabled": true,
     "rules": {
       "recommended": true,
-      "suspicious": { "noExplicitAny": "error" },
+      "suspicious": { "noExplicitAny": "error", "noConsole": "error" },
       "style": { "useImportType": "error" },
       "correctness": {
         "noUnusedVariables": "error",
@@ -13,6 +13,17 @@
       }
     }
   },
+  "overrides": [
+    {
+      "include": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "scripts/**",
+        "**/scripts/**"
+      ],
+      "linter": { "rules": { "suspicious": { "noConsole": "off" } } }
+    }
+  ],
   "formatter": {
     "enabled": true,
     "indentStyle": "space",

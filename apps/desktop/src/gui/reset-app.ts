@@ -1,4 +1,5 @@
 import type { ConfigStore } from "@spectrum/config"
+import type { Logger } from "@spectrum/logger"
 import type { SecretStore } from "@spectrum/secrets"
 import { type Result, ok } from "@spectrum/utils"
 
@@ -19,6 +20,8 @@ export interface ResetAppDeps {
   readonly relaunch: () => void
   /** The app data dir to wipe (db + config + secrets/ + runtime + harnesses). */
   readonly dataDir: string
+  /** Scoped logger; receives a redacted warn when a secret delete fails. */
+  readonly logger: Logger
 }
 
 /**
@@ -37,7 +40,12 @@ export const createResetApp = (
     if (loaded.ok) {
       for (const provider of loaded.value.providers) {
         for (const ref of Object.values(provider.secrets)) {
-          await deps.secrets.delete(ref)
+          const deleted = await deps.secrets.delete(ref)
+          // Non-fatal: log a redacted warning (never the ref) and keep wiping.
+          if (!deleted.ok)
+            deps.logger.warn("secret delete failed during reset", {
+              kind: deleted.error.kind,
+            })
         }
       }
     }
