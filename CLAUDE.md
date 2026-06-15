@@ -14,10 +14,11 @@ Spectrum is a Bun + Electrobun desktop app (CLI + GUI) that proxies coding-agent
 - **Atomic design for the React UI only**; functional layering for backend packages. Dumb components never fetch — data enters at the page level.
 - **Security is optimal.** Secrets in the OS keychain (config stores only a reference); proxy on loopback + per-run key; zod-validate all external input; spawn with arg arrays; parameterized SQL; redact secrets in logs.
 - **Performance is optimal.** Stream the proxy (never buffer); cache provider instances; lazy-load `@ai-sdk/*`; fast CLI cold-start.
+- **Observability.** Log at effect boundaries, lifecycle transitions, and handler errors via the injected `Logger` (`@spectrum/logger`); never `console.*` in `src`; redact secrets before logging (never log raw secret values/refs); pure logic stays log-free. See `docs/01-conventions/logging.md`.
 - **Respect package boundaries.** Import via `@spectrum/<pkg>` only; no deep imports; no cycles.
 
 ## Definition of Done (every task)
-Test-first (RED observed) → implemented (GREEN) → refactored → `bun run typecheck && bun run lint && bun test` all green → committed with a Conventional-Commits message. If you can't check every box, it's not done.
+Test-first (RED observed) → implemented (GREEN) → refactored → `bun run typecheck && bun run lint && bun test` all green → committed with a Conventional-Commits message (and observability: boundaries/lifecycle/handler-errors log via the injected `Logger`, no `console.*` in `src`). If you can't check every box, it's not done.
 
 ## Package inventory (partial)
 - `@spectrum/logger` — structured injectable logging (Logger + console/rotating-file sinks; depends on utils)
