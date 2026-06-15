@@ -1,14 +1,19 @@
 {
   "name": "@spectrum/agent-driver",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "typecheck": "tsc --noEmit", "test": "bun test" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
   "dependencies": {
     "@spectrum/agent-events": "workspace:*",
     "@spectrum/types": "workspace:*",
     "@spectrum/utils": "workspace:*",
-    "zod": "^3.24.0"
+    "zod": "catalog:"
   }
 }

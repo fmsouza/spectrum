@@ -1,14 +1,19 @@
 {
   "name": "@spectrum/projects",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "typecheck": "tsc --noEmit", "test": "bun test" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
   "dependencies": {
     "@spectrum/db": "workspace:*",
     "@spectrum/types": "workspace:*",
     "@spectrum/utils": "workspace:*",
-    "drizzle-orm": "^0.45.2"
+    "drizzle-orm": "catalog:"
   }
 }
