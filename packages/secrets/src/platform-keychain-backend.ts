@@ -14,6 +14,8 @@ export interface PlatformKeychainDeps {
   readonly runner: ProcessRunner
   readonly fileOps: SecretFileOps
   readonly secretsDir: string
+  /** Keychain/Secret-Service namespace. "spectrum" in production, "spectrum-dev" in dev. */
+  readonly keychainService: string
   /**
    * Linux only — passphrase source for the encrypted-file fallback when no
    * Secret Service answers. Unused on macOS/Windows. May return `null`, in
@@ -39,11 +41,18 @@ const createLinuxKeychainBackend = (
     pending = (async () => {
       const available = await isSecretServiceAvailable(
         deps.commandExists === undefined
-          ? { runner: deps.runner }
-          : { runner: deps.runner, commandExists: deps.commandExists },
+          ? { runner: deps.runner, service: deps.keychainService }
+          : {
+              runner: deps.runner,
+              commandExists: deps.commandExists,
+              service: deps.keychainService,
+            },
       )
       const next: KeychainBackend = available
-        ? createSecretToolBackend({ runner: deps.runner })
+        ? createSecretToolBackend({
+            runner: deps.runner,
+            service: deps.keychainService,
+          })
         : createEncryptedFileBackend({
             fileOps: deps.fileOps,
             secretsDir: deps.secretsDir,
@@ -69,7 +78,10 @@ export const createPlatformKeychainBackend = (
 ): KeychainBackend => {
   switch (deps.platform) {
     case "macos":
-      return createMacosSecurityBackend({ runner: deps.runner })
+      return createMacosSecurityBackend({
+        runner: deps.runner,
+        service: deps.keychainService,
+      })
     case "linux":
       return createLinuxKeychainBackend(deps)
     case "windows":
