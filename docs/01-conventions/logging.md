@@ -96,8 +96,22 @@ Never pass a raw secret as a field or a message: not an `apiKey`, not the per-ru
 `createLogger` is **defense-in-depth**, not a license to log secrets — call sites must already be
 clean.
 
-Log non-sensitive identifiers and kinds only: a `sessionId`, a `harnessId`, an `op` label, an error
-`kind` enum. The keychain store is the canonical example — it logs `{ op, kind }` and nothing else:
+That hook is wired, not a placeholder. The composition root builds a process-lifetime *secret
+registry* (`apps/desktop/src/secret-registry.ts`) and sets `redact = (text) => redactSecrets(text,
+registry.snapshot())`, evaluated lazily on every emitted record. The registry is fed at the real
+chokepoints so any value that transits the process is scrubbed even if a call site slips:
+
+- the `SecretStore` is wrapped (`withSecretRegistration`) so every resolved/written `apiKey`
+  (per-request, provider test, model list) is registered;
+- the `RuntimeState` is wrapped (`withRuntimeKeyRegistration`) and `genProxyKey` is wrapped so the
+  per-run proxy key is registered whether freshly minted or restored from persisted state;
+- only values ≥ 8 chars are registered (the proxy key is ~43 chars, apiKeys are long), which avoids
+  over-redacting short/common substrings.
+
+This backstops the one place untrusted input reaches the log — the webview-forwarded `logClientError`
+records — but it is the safety net, not the rule. Log non-sensitive identifiers and kinds only: a
+`sessionId`, a `harnessId`, an `op` label, an error `kind` enum. The keychain store is the canonical
+example — it logs `{ op, kind }` and nothing else:
 
 ```ts
 // @spectrum/secrets — observe a backend failure with the op label + kind enum ONLY
