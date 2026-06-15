@@ -397,6 +397,11 @@ const isDocumentedGap = (s: string): boolean => {
   // No current app state renders it, so its selectors match nothing here by design.
   // Verified by ContextMenu.test.tsx.
   if (/^\.lk-context-menu(?:__item)?\b/.test(s)) return true
+  // ConfirmDialog (destructive-action confirmation) — pure presentational
+  // molecule consumed by ProjectList and DataPage in later tasks. No current app
+  // state mounts it, so its `__message`/`__input` selectors match nothing here by
+  // design. Verified by ConfirmDialog.test.tsx.
+  if (/^\.lk-confirm-dialog__(?:message|input)\b/.test(s)) return true
   return false
 }
 
