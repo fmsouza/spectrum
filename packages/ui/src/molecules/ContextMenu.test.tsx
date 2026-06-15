@@ -44,6 +44,32 @@ describe("ContextMenu", () => {
     fireEvent.keyDown(document, { key: "Escape" })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+  it("calls onClose when a mousedown lands outside the menu", () => {
+    const onClose = mock(() => {})
+    render(
+      <ContextMenu
+        x={0}
+        y={0}
+        items={[{ label: "X", onSelect: () => {} }]}
+        onClose={onClose}
+      />,
+    )
+    fireEvent.mouseDown(document.body)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+  it("does not call onClose when a mousedown lands inside the menu", () => {
+    const onClose = mock(() => {})
+    render(
+      <ContextMenu
+        x={0}
+        y={0}
+        items={[{ label: "X", onSelect: () => {} }]}
+        onClose={onClose}
+      />,
+    )
+    fireEvent.mouseDown(screen.getByRole("menuitem", { name: "X" }))
+    expect(onClose).not.toHaveBeenCalled()
+  })
   it("marks danger items with a data attribute", () => {
     render(
       <ContextMenu
