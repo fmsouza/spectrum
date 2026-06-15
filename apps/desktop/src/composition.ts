@@ -24,6 +24,7 @@ import { join } from "node:path"
 import type {
   AgentDriver,
   RunManager,
+  RunnerOutbound,
   SessionSink,
 } from "@spectrum/agent-driver"
 import {
@@ -95,12 +96,18 @@ import {
   type DriverRegistry,
   createDriverRegistry,
 } from "./gui/driver-registry"
+import { createNotificationService } from "./gui/notification-service"
 import { defaultRelaunch } from "./gui/relaunch"
 import { createResetApp } from "./gui/reset-app"
 import type { ResetError } from "./gui/reset-app"
+import {
+  type SessionInfoResolver,
+  mapRunFinished,
+} from "./gui/run-finished-mapping"
 import { startRunnerSocket } from "./gui/runner-socket"
 import { createElectrobunUpdater } from "./gui/updater/electrobun-updater"
 import type { UpdaterAdapter } from "./gui/updater/updater-adapter"
+import { isWindowFocused } from "./gui/window"
 import {
   migrateLaunchkitToSpectrum,
   migrateLegacyMacosConfig,
@@ -657,14 +664,67 @@ export const createAppContext = (
     },
   }
 
-  const runner = deps.createRunManager({
+  // Native run-finished notifications (focus-aware). The notifier only fires when the window is
+  // unfocused; `showNotification` lazy-imports Electrobun so `bun test` never loads native FFI, and
+  // `isWindowFocused` reads the window focus seam (window.ts). The send sink below taps each
+  // `runner-finished:(completed|errored)` frame and hands it to the notifier.
+  const notifyLog = log.child("notify")
+  const notifier = createNotificationService({
+    showNotification: (n) => {
+      void import("electrobun/bun").then(({ Utils }) =>
+        Utils.showNotification(n),
+      )
+    },
+    isWindowFocused,
+  })
+  // Resolve a finished session's harness + cwd for the notification body (the frame carries only the
+  // sessionId). SessionStore has no by-id read, so query and find — this runs once per finished run.
+  const resolveSessionInfo: SessionInfoResolver = (sessionId) => {
+    const queried = sessions.query()
+    if (!queried.ok) return undefined
+    const found = queried.value.find((s) => String(s.id) === sessionId)
+    if (found === undefined) return undefined
+    return {
+      harnessId: String(found.harnessId),
+      ...(found.cwd !== undefined ? { cwd: found.cwd } : {}),
+    }
+  }
+  // The run-event send sink: the runner socket rebinds this to the live websocket on connect, but the
+  // initial sink taps run-finished frames for native notifications. We wrap so notifications fire
+  // regardless of which socket is bound — the manager's `send` is the canonical fan-out point.
+  const notifyOnRunFinished = (message: RunnerOutbound): void => {
+    const finished = mapRunFinished(message, resolveSessionInfo)
+    if (finished === null) return
+    notifyLog.info("run-finished native notification dispatched", {
+      sessionId: finished.sessionId,
+      harnessId: finished.harnessId,
+      status: finished.status,
+    })
+    notifier.onRunFinished(finished)
+  }
+
+  const baseRunner = deps.createRunManager({
     driver: routingDriver,
     sessions: sessionSink,
     events: runStore,
     clock: deps.createSystemClock(),
     logger: log.child("runner"),
-    send: () => {},
+    // Before the webview socket connects, the manager's sink is this notifier tap.
+    send: notifyOnRunFinished,
   })
+  // The runner socket calls `bindSend` on connect, REPLACING the manager's sink with one that pushes
+  // to the live websocket. Wrap `bindSend` so the notifier tap is composed INTO that socket sink —
+  // otherwise native notifications would stop the moment the webview connects. Only one sink is ever
+  // active, so a frame is never double-notified.
+  const runner: RunManager = {
+    ...baseRunner,
+    bindSend: (socketSink) => {
+      baseRunner.bindSend((message) => {
+        socketSink(message)
+        notifyOnRunFinished(message)
+      })
+    },
+  }
   // The dedicated loopback WebSocket for the run-event stream binds `runner`'s send sink on connect.
   const runnerSocketUrl = deps.startRunnerSocket(runner).url
 

@@ -32,6 +32,8 @@ export interface WindowOptions {
 
 export class BrowserWindow {
   constructor(options?: WindowOptions)
+  /** Subscribe to a window event (e.g. `"focus"`, `"blur"`). */
+  on(name: string, handler: (event: unknown) => void): void
 }
 
 /** Subset of the `defineElectrobunRPC` config (bun side). */
@@ -109,10 +111,24 @@ export interface OpenFileDialogOptions {
   startingFolder?: string
 }
 
+/** Native desktop notification options (`exactOptionalPropertyTypes`-safe). */
+export interface NotificationOptions {
+  /** The title of the notification (required). */
+  title: string
+  /** The main body text. */
+  body?: string
+  /** A subtitle (macOS shows this between title and body). */
+  subtitle?: string
+  /** If true, the notification plays no sound. */
+  silent?: boolean
+}
+
 /** Subset of the Electrobun bun-side `Utils` namespace we consume. */
 export const Utils: {
   /** Native open panel; resolves the selected paths (empty array if cancelled). */
   openFileDialog(options?: OpenFileDialogOptions): Promise<string[]>
+  /** Show a native desktop notification. */
+  showNotification(options: NotificationOptions): void
   /** Graceful native shutdown (stops the event loop and force-exits). */
   quit(): void
 }
