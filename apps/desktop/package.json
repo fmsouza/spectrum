@@ -29,6 +29,7 @@
     "@spectrum/cli": "workspace:*",
     "@spectrum/projects": "workspace:*",
     "@spectrum/config": "workspace:*",
+    "@spectrum/data-admin": "workspace:*",
     "@spectrum/db": "workspace:*",
     "@spectrum/harnesses": "workspace:*",
     "@spectrum/ipc": "workspace:*",

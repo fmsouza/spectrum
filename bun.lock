@@ -30,6 +30,7 @@
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/cli": "workspace:*",
         "@spectrum/config": "workspace:*",
+        "@spectrum/data-admin": "workspace:*",
         "@spectrum/db": "workspace:*",
         "@spectrum/driver-claude": "workspace:*",
         "@spectrum/driver-codex": "workspace:*",

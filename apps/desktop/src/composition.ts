@@ -18,7 +18,7 @@ import type { SessionStore } from "@spectrum/sessions"
 import type { SessionId } from "@spectrum/types"
 import type { Result } from "@spectrum/utils"
 
-import { mkdirSync } from "node:fs"
+import { mkdirSync, rmSync } from "node:fs"
 import { homedir } from "node:os"
 import type {
   AgentDriver,
@@ -37,6 +37,8 @@ import {
   createFsConfigFile,
   defaultConfig,
 } from "@spectrum/config"
+import { createDataAdmin } from "@spectrum/data-admin"
+import type { DataAdmin } from "@spectrum/data-admin"
 import { createSqliteClient, runMigrations } from "@spectrum/db"
 import { createClaudeDriver } from "@spectrum/driver-claude"
 import { createCodexDriver } from "@spectrum/driver-codex"
@@ -84,6 +86,8 @@ import {
   type DriverRegistry,
   createDriverRegistry,
 } from "./gui/driver-registry"
+import { createResetApp } from "./gui/reset-app"
+import type { ResetError } from "./gui/reset-app"
 import { startRunnerSocket } from "./gui/runner-socket"
 import { createElectrobunUpdater } from "./gui/updater/electrobun-updater"
 import type { UpdaterAdapter } from "./gui/updater/updater-adapter"
@@ -177,6 +181,13 @@ export interface AppContext {
       { readonly kind: "db-failed"; readonly detail: string }
     >
   }
+  /** Transactional cascade deletes for sessions and projects. */
+  readonly dataAdmin: DataAdmin
+  /**
+   * Factory reset: delete all keychain secrets, wipe the data dir, and relaunch to a
+   * first-launch state. Returns after issuing the relaunch (which may end the process).
+   */
+  readonly resetApp: () => Promise<Result<void, ResetError>>
   /** Which harnesses have a registered native driver (every launchable harness does). */
   readonly driverRegistry: DriverRegistry
   /** Resolved settings paths (config + db + harness dir), surfaced for diagnostics/tests. */
@@ -243,6 +254,11 @@ export interface CreateAppContextDeps {
   readonly createFakeDriver: typeof createFakeDriver
   readonly createCodexDriver: typeof createCodexDriver
   readonly createOpencodeDriver: typeof createOpencodeDriver
+  readonly createDataAdmin: typeof createDataAdmin
+  /** Recursively remove a directory (factory reset). */
+  readonly removeDir: (dir: string) => void
+  /** Relaunch the app process (Electrobun). Defaulted to a lazy native call. */
+  readonly relaunch: () => void
   /** Set in dev to register the demo FakeDriver harness; production leaves it unset. */
   readonly demoHarnessEnabled: boolean
   readonly genProxyKey: () => string
@@ -258,6 +274,53 @@ const defaultGenProxyKey = (): string => {
 /** Headless passphrase source for the encrypted-file fallback (GUI prompt is a future addition). */
 const defaultSecretPassphrase = async (): Promise<string | null> =>
   process.env.SPECTRUM_SECRET_PASSPHRASE ?? null
+
+/**
+ * Relaunch the running app, mirroring Electrobun's own post-update relaunch
+ * (electrobun `dist/api/bun/core/Updater.ts`, the macOS/Linux launch block at the
+ * end of `applyUpdate`): derive the running app-bundle path from `process.execPath`
+ * (the executable sits at `Contents/MacOS/<binary>` inside the `.app`), spawn a
+ * DETACHED shell that waits for this process to exit and then re-opens the bundle,
+ * then call `Utils.quit()` for a graceful native shutdown. Electrobun exposes no
+ * public `relaunch`, so we reproduce its mechanism rather than inventing an API.
+ *
+ * Behind a LAZY dynamic import so `bun test` never loads native FFI — exactly like
+ * the `pickFolder` seam and the Electrobun updater. Fire-and-forget: it ends the
+ * process, so it returns `void` and the spawn promise is intentionally not awaited.
+ */
+const defaultRelaunch = (): void => {
+  void (async (): Promise<void> => {
+    const { dirname, resolve, join } = await import("node:path")
+    const { Utils } = await import("electrobun/bun")
+    const pid = process.pid
+    if (process.platform === "darwin") {
+      // macOS: open re-activates a still-running instance instead of launching a
+      // new one, so the detached shell must wait for this process to fully exit.
+      const bundlePath = resolve(dirname(process.execPath), "..", "..")
+      Bun.spawn(
+        [
+          "sh",
+          "-c",
+          `while kill -0 ${pid} 2>/dev/null; do sleep 0.5; done; sleep 1; open "${bundlePath}"`,
+        ],
+        { detached: true, stdio: ["ignore", "ignore", "ignore"] },
+      )
+    } else {
+      // Linux: re-launch the bundle's launcher binary (bin/launcher), as Electrobun does.
+      const bundlePath = resolve(dirname(process.execPath), "..")
+      const launcherPath = join(bundlePath, "bin", "launcher")
+      Bun.spawn(
+        [
+          "sh",
+          "-c",
+          `while kill -0 ${pid} 2>/dev/null; do sleep 0.5; done; sleep 1; "${launcherPath}" &`,
+        ],
+        { detached: true, stdio: ["ignore", "ignore", "ignore"] },
+      )
+    }
+    Utils.quit()
+  })()
+}
 
 /** The real constructors, used when `createAppContext()` is called with no argument. */
 const realDeps: CreateAppContextDeps = {
@@ -298,6 +361,11 @@ const realDeps: CreateAppContextDeps = {
   createFakeDriver,
   createCodexDriver,
   createOpencodeDriver,
+  createDataAdmin,
+  removeDir: (dir: string): void => {
+    rmSync(dir, { recursive: true, force: true })
+  },
+  relaunch: defaultRelaunch,
   demoHarnessEnabled: process.env.SPECTRUM_DEMO_HARNESS === "1",
   genProxyKey: defaultGenProxyKey,
 }
@@ -580,6 +648,18 @@ export const createAppContext = (
   // The dedicated loopback WebSocket for the run-event stream binds `runner`'s send sink on connect.
   const runnerSocketUrl = deps.startRunnerSocket(runner).url
 
+  // Destructive maintenance + factory reset over the already-wired db/config/secrets. The cascade and
+  // reset LOGIC live in @spectrum/data-admin and createResetApp; here we only construct + inject.
+  const dataAdmin = deps.createDataAdmin({ db: dbClient })
+  const resetApp = createResetApp({
+    config,
+    secrets,
+    closeDb: () => dbClient.connection.close(),
+    removeDir: deps.removeDir,
+    relaunch: deps.relaunch,
+    dataDir: paths.dataDir,
+  })
+
   // proxy settings resolved from the default config shape (loopback only, security.md)
   const settings = defaultConfig().settings
   const proxyPort = settings.proxyPort
@@ -657,6 +737,8 @@ export const createAppContext = (
     runner,
     runnerSocketUrl,
     runEvents: { read: runStore.read },
+    dataAdmin,
+    resetApp,
     driverRegistry,
     pickFolder,
     updater,
