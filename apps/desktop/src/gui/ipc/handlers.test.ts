@@ -1419,6 +1419,39 @@ describe("createIpcHandlers.resetApp", () => {
   })
 })
 
+describe("createIpcHandlers fail() central logging", () => {
+  it("logs an error on the ipc child scope before throwing when a handler hits fail()", async () => {
+    const calls: Array<{ scope: string; msg: string }> = []
+    const child = (scope: string): Logger => ({
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: (msg: string) => calls.push({ scope, msg }),
+      fatal: (msg: string) => calls.push({ scope, msg }),
+      child: () => child(scope),
+    })
+    const fakeLog: Logger = {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      fatal: () => {},
+      child,
+    }
+    // Force loadConfig() to fail so getProviders() reaches fail("could not load config").
+    const { ctx } = makeCtx({ log: fakeLog })
+    ;(ctx.config as { load: unknown }).load = async () => err({ kind: "io" })
+    const handlers = createIpcHandlers(ctx)
+
+    // The thrown-error → handler-failed behavior is preserved (still throws) ...
+    await expect(handlers.getProviders(undefined)).rejects.toThrow(
+      "could not load config",
+    )
+    // ... AND the failure left a persisted trace: one error on the "ipc" scope.
+    expect(calls).toEqual([{ scope: "ipc", msg: "could not load config" }])
+  })
+})
+
 describe("createIpcHandlers.logClientError", () => {
   it("logClientError forwards a webview error to ctx.log", async () => {
     const calls: Array<{ scope: string; msg: string }> = []
