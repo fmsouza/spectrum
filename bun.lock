@@ -182,6 +182,7 @@
         "@spectrum/platform": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
+        "zod": "catalog:",
       },
     },
     "packages/ipc": {

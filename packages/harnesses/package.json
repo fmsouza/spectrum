@@ -13,6 +13,7 @@
   "dependencies": {
     "@spectrum/types": "workspace:*",
     "@spectrum/utils": "workspace:*",
-    "@spectrum/platform": "workspace:*"
+    "@spectrum/platform": "workspace:*",
+    "zod": "catalog:"
   }
 }
