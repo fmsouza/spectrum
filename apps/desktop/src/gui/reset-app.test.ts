@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { Config } from "@spectrum/config"
 import { defaultConfig } from "@spectrum/config"
+import { createNoopLogger } from "@spectrum/logger"
 import type { SecretRef } from "@spectrum/types"
 import { isOk, ok } from "@spectrum/utils"
 import { createResetApp } from "./reset-app"
@@ -45,6 +46,7 @@ const makeDeps = (config: Config) => {
       removeDir: (dir: string) => calls.push(`removeDir:${dir}`),
       relaunch: () => calls.push("relaunch"),
       dataDir: "/data/Spectrum",
+      logger: createNoopLogger(),
     },
   }
 }
@@ -92,5 +94,31 @@ describe("createResetApp", () => {
 
     expect(isOk(r)).toBe(true)
     expect(calls).toEqual(["closeDb", "removeDir:/data/Spectrum", "relaunch"])
+  })
+
+  it("logs a warning when a secret delete fails, and still completes the reset", async () => {
+    const warns: Array<{ msg: string; fields?: Record<string, unknown> }> = []
+    const logger = {
+      ...createNoopLogger(),
+      warn: (msg: string, fields?: Record<string, unknown>) =>
+        warns.push({ msg, fields }),
+    }
+    const base = makeDeps(configWithSecrets(["kc_1"]))
+    const reset = createResetApp({
+      ...base.deps,
+      secrets: {
+        ...base.deps.secrets,
+        delete: async () =>
+          ({
+            ok: false,
+            error: { kind: "backend-failed", detail: "x" },
+          }) as never,
+      },
+      logger,
+    })
+    const r = await reset()
+    expect(isOk(r)).toBe(true)
+    expect(warns.length).toBe(1)
+    expect(warns[0]?.msg).toContain("secret")
   })
 })

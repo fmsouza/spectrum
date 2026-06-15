@@ -6,6 +6,7 @@ import { type ReactElement, StrictMode, useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
 import { useStore } from "zustand"
 import { IpcClientProvider, useIpcClient } from "./IpcClientContext"
+import { LoggerProvider } from "./LoggerContext"
 import { createRealClients } from "./clients"
 import { UpdateBanner } from "./components/UpdateBanner"
 import { useHarnesses } from "./hooks/useHarnesses"
@@ -14,6 +15,7 @@ import { useProjects } from "./hooks/useProjects"
 import { useProviders } from "./hooks/useProviders"
 import { useProxyStatus } from "./hooks/useProxyStatus"
 import { useUpdate } from "./hooks/useUpdate"
+import { createWebviewLogger } from "./logger"
 import type { RunnerClient } from "./runner/runnerClient"
 import { StoreProvider, useStores } from "./stores/createStores"
 import { type LocationAdapter, windowLocationAdapter } from "./stores/location"
@@ -244,13 +246,18 @@ export const App = ({
   initialView = "sessions",
   runnerClient,
   location = windowLocationAdapter,
-}: AppProps): ReactElement => (
-  <IpcClientProvider client={client}>
-    <StoreProvider client={client} initialView={initialView}>
-      <AppInner runnerClient={runnerClient} location={location} />
-    </StoreProvider>
-  </IpcClientProvider>
-)
+}: AppProps): ReactElement => {
+  const log = createWebviewLogger({ forward: (p) => client.logClientError(p) })
+  return (
+    <IpcClientProvider client={client}>
+      <LoggerProvider logger={log}>
+        <StoreProvider client={client} initialView={initialView}>
+          <AppInner runnerClient={runnerClient} location={location} />
+        </StoreProvider>
+      </LoggerProvider>
+    </IpcClientProvider>
+  )
+}
 
 /** Production entry: build the Electrobun-backed client and mount into #root. */
 export const mount = async (): Promise<void> => {

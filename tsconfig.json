@@ -4,6 +4,7 @@
     { "path": "apps/desktop" },
     { "path": "packages/types" },
     { "path": "packages/utils" },
+    { "path": "packages/logger" },
     { "path": "packages/ui" },
     { "path": "packages/harnesses" },
     { "path": "packages/sessions" },

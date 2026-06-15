@@ -14,5 +14,6 @@ Checklist for creating a new `@spectrum/<name>` package:
 5. Create a co-located smoke test.
 6. Add the package to the dependency DAG (update root `CLAUDE.md` and any per-package `CLAUDE.md` that needs to depend on the new package).
 7. Create a short `CLAUDE.md` modeled on the existing per-package templates (e.g. `packages/pty/CLAUDE.md` — canonical short form).
-8. Add the package reference to root `tsconfig.json`.
-9. Verify `bun run typecheck`, `bun run lint`, `bun test` all pass.
+8. If the package owns effects or handles errors, accept an injected `Logger` (default `createNoopLogger()`) and log at its boundaries (effect failures, lifecycle, handler errors); never `console.*`; reference `docs/01-conventions/logging.md`.
+9. Add the package reference to root `tsconfig.json`.
+10. Verify `bun run typecheck`, `bun run lint`, `bun test` all pass.

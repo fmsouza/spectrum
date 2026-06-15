@@ -21,6 +21,7 @@ export const cliDepsFrom = (ctx: AppContext): CliDeps => ({
       }),
   },
   genProxyKey: ctx.genProxyKey,
+  logger: ctx.log.child("cli"),
   out: {
     write: (line: string): void => {
       process.stdout.write(`${line}\n`)

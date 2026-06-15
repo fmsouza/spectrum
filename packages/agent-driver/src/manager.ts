@@ -3,6 +3,7 @@ import type {
   PermissionMode,
   StoredEvent,
 } from "@spectrum/agent-events"
+import { type Logger, createNoopLogger } from "@spectrum/logger"
 import type { HarnessId, ModelId, SessionId } from "@spectrum/types"
 import { type Clock, type Result, isErr, isOk, ok } from "@spectrum/utils"
 import type { AgentDriver, AgentSession, DriverError } from "./driver"
@@ -29,6 +30,8 @@ export interface RunManagerDeps {
   readonly sessions: SessionSink
   readonly events: RunEventSink
   readonly clock: Clock
+  /** Optional structured logger (default noop). Logs lifecycle ids/kinds only — never message content. */
+  readonly logger?: Logger
   send(message: RunnerOutbound): void
 }
 
@@ -43,6 +46,7 @@ export interface RunManager {
 
 export const createRunManager = (deps: RunManagerDeps): RunManager => {
   const live = new Map<SessionId, AgentSession>()
+  const logger = deps.logger ?? createNoopLogger()
   let sink: (message: RunnerOutbound) => void = deps.send
   const send = (message: RunnerOutbound): void => sink(message)
 
@@ -55,7 +59,13 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
       ...(input.name !== undefined ? { name: input.name } : {}),
       cwd: input.cwd,
     })
-    if (isErr(session))
+    if (isErr(session)) {
+      // Observe the failure WITHOUT changing control flow. The error detail is a session-store
+      // failure kind/detail (no secrets); the harnessId is a safe lifecycle id.
+      logger.error("session start failed", {
+        kind: "start-failed",
+        harnessId: input.harnessId,
+      })
       return {
         ok: false,
         error: {
@@ -63,6 +73,7 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
           detail: session.error.detail ?? session.error.kind,
         },
       }
+    }
     const id = session.value.id
 
     const started = deps.driver.start({
@@ -80,11 +91,21 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
       ...(input.args !== undefined ? { args: input.args } : {}),
     })
     if (isErr(started)) {
+      // Driver start boundary failure. `kind` is a DriverError kind (e.g. "start-failed"); the
+      // harnessId is a safe lifecycle id. No prompt/env/secret is logged.
+      logger.error("driver start failed", {
+        kind: started.error.kind,
+        harnessId: input.harnessId,
+      })
       deps.sessions.close(id, 1)
       return started
     }
     const agent = started.value
     live.set(id, agent)
+    logger.info("session launched", {
+      sessionId: id,
+      harnessId: input.harnessId,
+    })
 
     // Persist-then-forward fan-out (mirrors TerminalManager's onData → scrollback.append + send).
     agent.onEvent((event: CanonicalEvent) => {
@@ -105,6 +126,7 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
         event.runnerId === agent.rootRunnerId
       ) {
         deps.sessions.close(id, 0)
+        logger.info("session closed", { sessionId: id })
       }
     })
     return ok({ sessionId: id })

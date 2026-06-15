@@ -31,7 +31,13 @@ export const buildRealDeps = (
         const reconciled = ctx.sessions.reconcileOrphaned()
         if (!reconciled.ok) {
           // Non-fatal: log and continue rather than crashing GUI startup.
-          console.warn("[spectrum] reconcileOrphaned failed:", reconciled.error)
+          // Redact to the SessionError discriminant (+ detail when present); never log secrets.
+          ctx.log.child("startup").warn("reconcileOrphaned failed", {
+            kind: reconciled.error.kind,
+            ...("detail" in reconciled.error
+              ? { detail: reconciled.error.detail }
+              : {}),
+          })
         }
 
         // Load the live config so the GUI proxy's router knows the real providers + models.
@@ -53,6 +59,7 @@ export const buildRealDeps = (
         })
         return {
           stop: () => {
+            ctx.log.child("startup").info("gui shutting down")
             stop()
             void ctx.runtime.clear()
           },
@@ -65,6 +72,7 @@ export const buildRealDeps = (
         // reach the webview — without it Cmd+C/V do nothing in the conversation + composer.
         mountAppMenu()
         openWindow(ctx)
+        ctx.log.child("startup").info("gui ready")
         void mountTray(ctx, {
           openWindow: () => openWindow(ctx),
           quit: () => process.exit(0),

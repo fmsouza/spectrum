@@ -1,5 +1,6 @@
 import type { Config, ConfigStore } from "@spectrum/config"
 import type { LaunchParams } from "@spectrum/harnesses"
+import type { Logger } from "@spectrum/logger"
 import type { ProjectStore } from "@spectrum/projects"
 import type { RunningProxy, RuntimeState } from "@spectrum/proxy"
 import type { SecretStore } from "@spectrum/secrets"
@@ -53,4 +54,9 @@ export type CliDeps = {
   readonly runtime: RuntimeState
   readonly out: Writer
   readonly genProxyKey: () => string
+  /**
+   * Optional structured logger; commands log `error` on failure (kind only).
+   * Defaults to no-op.
+   */
+  readonly logger?: Logger
 }

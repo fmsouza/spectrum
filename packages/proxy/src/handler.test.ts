@@ -1,9 +1,41 @@
 import { describe, expect, it } from "bun:test"
 import type { Config } from "@spectrum/config"
+import type { Logger } from "@spectrum/logger"
 import { createScriptedGateway } from "./gateway"
 import { createHandler } from "./handler"
 import { createRouter } from "./router"
 import { collectStream } from "./test-helpers"
+
+type Captured = {
+  level: "warn" | "error"
+  msg: string
+  fields: Record<string, unknown> | undefined
+}
+
+const makeFakeLogger = (): {
+  logger: Logger
+  records: Captured[]
+  errorsOf: () => Captured[]
+} => {
+  const records: Captured[] = []
+  const logger: Logger = {
+    debug: () => {},
+    info: () => {},
+    warn: (msg, fields) => {
+      records.push({ level: "warn", msg, fields })
+    },
+    error: (msg, fields) => {
+      records.push({ level: "error", msg, fields })
+    },
+    fatal: () => {},
+    child: () => logger,
+  }
+  return {
+    logger,
+    records,
+    errorsOf: () => records.filter((r) => r.level === "error"),
+  }
+}
 
 const config = {
   version: 2,
@@ -156,6 +188,48 @@ describe("createHandler", () => {
       kind: "provider-failed",
       detail: "you have reached your session usage limit",
     })
+  })
+  it("logs error with the kind and no secret when the gateway fails", async () => {
+    const { logger, errorsOf } = makeFakeLogger()
+    await createHandler({
+      ...deps("super-secret-proxy-key"),
+      logger,
+      gateway: createScriptedGateway([
+        { type: "error", detail: "stream failed" },
+      ]),
+    }).fetch(
+      post(
+        "/v1/messages",
+        {
+          model: "mdl_default",
+          max_tokens: 1,
+          messages: [{ role: "user", content: "hi" }],
+        },
+        { "x-api-key": "super-secret-proxy-key" },
+      ),
+    )
+    const errors = errorsOf()
+    expect(errors).toHaveLength(1)
+    expect(errors[0]?.fields).toMatchObject({ kind: "provider-failed" })
+    const serialized = JSON.stringify(errors)
+    expect(serialized).not.toContain("super-secret-proxy-key")
+  })
+  it("logs an unauthorized client error at warn (not error)", async () => {
+    const { logger, records } = makeFakeLogger()
+    await createHandler({ ...deps("k"), logger }).fetch(
+      post(
+        "/v1/messages",
+        {
+          model: "mdl_default",
+          max_tokens: 1,
+          messages: [{ role: "user", content: "hi" }],
+        },
+        {},
+      ),
+    )
+    expect(records).toHaveLength(1)
+    expect(records[0]?.level).toBe("warn")
+    expect(records[0]?.fields).toMatchObject({ kind: "unauthorized" })
   })
   it("lists the configured models for GET /v1/models", async () => {
     const res = await handler().fetch(

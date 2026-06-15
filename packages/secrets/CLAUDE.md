@@ -4,7 +4,9 @@
 
 **Public API (barrel `src/index.ts`):** `SecretStore` + `createSecretStore({ backend, idGen })`; `KeychainBackend` + `createInMemoryKeychainBackend()` (test fake) + `createMacosSecurityBackend({ runner })` + `createSecretToolBackend({ runner })` + `createEncryptedFileBackend({ fileOps, secretsDir, cipher })`; `SecretCipher` + `createPassphraseAeadCipher({ getPassphrase })` + `createDpapiCipher({ runner })`; `SecretFileOps` + `createFsSecretFileOps(platform?)` + `createInMemorySecretFileOps()` (test fake); `ProcessRunner` + `createBunProcessRunner()`; `createPlatformKeychainBackend({ platform, runner, fileOps, secretsDir, secretPassphrase, keychainService, commandExists? })`; `isSecretServiceAvailable({ runner, commandExists? })`; `SecretError`.
 
-**Depends on:** `@spectrum/types` (`SecretRef`), `@spectrum/utils` (`Result`, `redactSecrets`, `IdGen`), `@spectrum/platform` (`Platform`).
+**Depends on:** `@spectrum/types` (`SecretRef`), `@spectrum/utils` (`Result`, `redactSecrets`, `IdGen`), `@spectrum/platform` (`Platform`), `@spectrum/logger` (`Logger`).
+
+`createSecretStore` accepts an injected `Logger` (default noop); logs `warn` on backend op failure with `{ op, kind }` ONLY — never the secret value/ref (redaction enforced).
 
 **Effects owned:** keychain (via the `KeychainBackend` interface) + process spawn (via the `ProcessRunner` interface) + filesystem (via the `SecretFileOps` interface) — exposed to consumers as injected interfaces; never reached around.
 
