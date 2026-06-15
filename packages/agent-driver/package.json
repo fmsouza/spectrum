@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@spectrum/agent-events": "workspace:*",
+    "@spectrum/logger": "workspace:*",
     "@spectrum/types": "workspace:*",
     "@spectrum/utils": "workspace:*",
     "zod": "catalog:"

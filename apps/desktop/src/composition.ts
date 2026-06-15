@@ -635,6 +635,7 @@ export const createAppContext = (
     sessions: sessionSink,
     events: runStore,
     clock: deps.createSystemClock(),
+    logger: log.child("runner"),
     send: () => {},
   })
   // The dedicated loopback WebSocket for the run-event stream binds `runner`'s send sink on connect.
