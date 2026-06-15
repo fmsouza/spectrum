@@ -86,6 +86,7 @@ import {
   type DriverRegistry,
   createDriverRegistry,
 } from "./gui/driver-registry"
+import { defaultRelaunch } from "./gui/relaunch"
 import { createResetApp } from "./gui/reset-app"
 import type { ResetError } from "./gui/reset-app"
 import { startRunnerSocket } from "./gui/runner-socket"
@@ -274,53 +275,6 @@ const defaultGenProxyKey = (): string => {
 /** Headless passphrase source for the encrypted-file fallback (GUI prompt is a future addition). */
 const defaultSecretPassphrase = async (): Promise<string | null> =>
   process.env.SPECTRUM_SECRET_PASSPHRASE ?? null
-
-/**
- * Relaunch the running app, mirroring Electrobun's own post-update relaunch
- * (electrobun `dist/api/bun/core/Updater.ts`, the macOS/Linux launch block at the
- * end of `applyUpdate`): derive the running app-bundle path from `process.execPath`
- * (the executable sits at `Contents/MacOS/<binary>` inside the `.app`), spawn a
- * DETACHED shell that waits for this process to exit and then re-opens the bundle,
- * then call `Utils.quit()` for a graceful native shutdown. Electrobun exposes no
- * public `relaunch`, so we reproduce its mechanism rather than inventing an API.
- *
- * Behind a LAZY dynamic import so `bun test` never loads native FFI — exactly like
- * the `pickFolder` seam and the Electrobun updater. Fire-and-forget: it ends the
- * process, so it returns `void` and the spawn promise is intentionally not awaited.
- */
-const defaultRelaunch = (): void => {
-  void (async (): Promise<void> => {
-    const { dirname, resolve, join } = await import("node:path")
-    const { Utils } = await import("electrobun/bun")
-    const pid = process.pid
-    if (process.platform === "darwin") {
-      // macOS: open re-activates a still-running instance instead of launching a
-      // new one, so the detached shell must wait for this process to fully exit.
-      const bundlePath = resolve(dirname(process.execPath), "..", "..")
-      Bun.spawn(
-        [
-          "sh",
-          "-c",
-          `while kill -0 ${pid} 2>/dev/null; do sleep 0.5; done; sleep 1; open "${bundlePath}"`,
-        ],
-        { detached: true, stdio: ["ignore", "ignore", "ignore"] },
-      )
-    } else {
-      // Linux: re-launch the bundle's launcher binary (bin/launcher), as Electrobun does.
-      const bundlePath = resolve(dirname(process.execPath), "..")
-      const launcherPath = join(bundlePath, "bin", "launcher")
-      Bun.spawn(
-        [
-          "sh",
-          "-c",
-          `while kill -0 ${pid} 2>/dev/null; do sleep 0.5; done; sleep 1; "${launcherPath}" &`,
-        ],
-        { detached: true, stdio: ["ignore", "ignore", "ignore"] },
-      )
-    }
-    Utils.quit()
-  })()
-}
 
 /** The real constructors, used when `createAppContext()` is called with no argument. */
 const realDeps: CreateAppContextDeps = {
