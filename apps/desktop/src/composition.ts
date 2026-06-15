@@ -88,7 +88,7 @@ import {
 } from "@spectrum/secrets"
 import { createSessionStore } from "@spectrum/sessions"
 import { createCryptoIdGen, createSystemClock } from "@spectrum/utils"
-import { err } from "@spectrum/utils"
+import { err, redactSecrets } from "@spectrum/utils"
 import { withDemoHarness } from "./gui/demo-harness"
 import {
   DEMO_HARNESS_ID,
@@ -105,6 +105,7 @@ import {
   migrateLaunchkitToSpectrum,
   migrateLegacyMacosConfig,
 } from "./migrate-legacy-config"
+import { createSecretRegistry, withSecretRegistration } from "./secret-registry"
 
 /** Result of testing one provider's live connectivity (mirrors ipc TestProviderResult). */
 export type ProviderTestResult = {
@@ -449,6 +450,19 @@ export const createAppContext = (
   // needs the dir to pre-exist.
   deps.ensureDir(paths.dataDir)
 
+  // Defense-in-depth secret registry (spec §6): fed at the secret chokepoints (resolved/written
+  // apiKeys via the wrapped secrets store; the minted per-run proxy key below) and read lazily by
+  // the logger's `redact` so no record can persist a known secret value.
+  const secretRegistry = createSecretRegistry()
+
+  // Wrap the minted per-run proxy key so each value is registered for redaction (it does NOT flow
+  // through the secret store, so it must be registered here).
+  const genProxyKey = (): string => {
+    const key = deps.genProxyKey()
+    secretRegistry.register(key)
+    return key
+  }
+
   const log = createLogger({
     sinks: [
       createConsoleSink({
@@ -466,9 +480,10 @@ export const createAppContext = (
     ],
     clock: deps.createSystemClock(),
     minLevel: resolveMinLevel(appEnv, deps.env),
-    // Defense-in-depth: redaction is identity for now; call sites must never pass raw secrets as
-    // fields. A richer redact (scrubbing the live proxy key / resolved apiKeys) can be layered later.
-    redact: (text) => text,
+    // Defense-in-depth (spec §6): scrub any in-process secret (the per-run proxy key,
+    // resolved apiKeys) from every record at log time. Call sites must still never pass
+    // raw secrets as fields — this is the backstop, especially for webview-forwarded records.
+    redact: (text) => redactSecrets(text, secretRegistry.snapshot()),
   })
 
   // config: cached( file( fs(configFile) ) ). Wrapped to keep a synchronous snapshot of the latest
@@ -497,18 +512,21 @@ export const createAppContext = (
 
   // secrets: store( per-OS keychain backend (security / secret-tool / DPAPI-file) over a Bun runner )
   const keychainService = appEnv === "development" ? "spectrum-dev" : "spectrum"
-  const secrets = deps.createSecretStore({
-    backend: deps.createPlatformKeychainBackend({
-      platform: deps.platform,
-      runner: deps.createBunProcessRunner(),
-      fileOps: deps.createSecretFileOps(),
-      secretsDir: paths.secretsDir,
-      secretPassphrase: deps.secretPassphrase,
-      keychainService,
+  const secrets = withSecretRegistration(
+    deps.createSecretStore({
+      backend: deps.createPlatformKeychainBackend({
+        platform: deps.platform,
+        runner: deps.createBunProcessRunner(),
+        fileOps: deps.createSecretFileOps(),
+        secretsDir: paths.secretsDir,
+        secretPassphrase: deps.secretPassphrase,
+        keychainService,
+      }),
+      idGen: deps.createCryptoIdGen(),
+      logger: log.child("secrets"),
     }),
-    idGen: deps.createCryptoIdGen(),
-    logger: log.child("secrets"),
-  })
+    secretRegistry,
+  )
 
   // sessions: open sqlite at dbFile, apply migrations, then build the store.
   const dbOpen = deps.createSqliteClient(dbFile, { logger: log.child("db") })
@@ -728,7 +746,7 @@ export const createAppContext = (
     listProviderModels: createListProviderModels(config, secrets),
     proxyPort,
     proxyBaseUrl,
-    genProxyKey: deps.genProxyKey,
+    genProxyKey,
     runner,
     runnerSocketUrl,
     runEvents: { read: runStore.read },

@@ -317,10 +317,20 @@ describe("createAppContext wiring", () => {
     createAppContext(deps)
 
     const factoryArgs = calls.createProviderFactory?.[0] as {
-      secretStore: unknown
+      secretStore: {
+        get: unknown
+        set: unknown
+        delete: unknown
+        has: unknown
+      }
       loadSdk: unknown
     }
-    expect(factoryArgs.secretStore).toEqual({ __stub: "createSecretStore" })
+    // The secret store is wrapped by withSecretRegistration (for log redaction) before being
+    // handed to the factory, so it is the decorator (delegating to the stub), not the raw stub.
+    expect(typeof factoryArgs.secretStore.get).toBe("function")
+    expect(typeof factoryArgs.secretStore.set).toBe("function")
+    expect(typeof factoryArgs.secretStore.delete).toBe("function")
+    expect(typeof factoryArgs.secretStore.has).toBe("function")
     expect(typeof factoryArgs.loadSdk).toBe("function")
   })
 
