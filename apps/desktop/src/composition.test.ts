@@ -368,6 +368,53 @@ describe("createAppContext wiring", () => {
   })
 })
 
+describe("createAppContext dev/prod data isolation", () => {
+  it("forwards appEnv=development and skips legacy migrations under SPECTRUM_ENV=development", () => {
+    const { deps, calls } = makeFakeDeps()
+    ;(deps as { env: unknown }).env = { SPECTRUM_ENV: "development" }
+    ;(deps as { resolveAppPaths: unknown }).resolveAppPaths = (
+      input: Parameters<typeof resolveAppPaths>[0],
+    ) => {
+      calls.resolveAppPaths = [input]
+      return resolveAppPaths(input)
+    }
+
+    createAppContext(deps)
+
+    expect((calls.resolveAppPaths?.[0] as { appEnv?: string }).appEnv).toBe(
+      "development",
+    )
+    expect(
+      (calls.createPlatformKeychainBackend?.[0] as { keychainService?: string })
+        .keychainService,
+    ).toBe("spectrum-dev")
+    expect(calls.migrateLegacyMacosConfig).toBeUndefined()
+    expect(calls.migrateLaunchkitToSpectrum).toBeUndefined()
+  })
+
+  it("forwards appEnv=production and runs legacy migrations when SPECTRUM_ENV is unset", () => {
+    const { deps, calls } = makeFakeDeps()
+    ;(deps as { resolveAppPaths: unknown }).resolveAppPaths = (
+      input: Parameters<typeof resolveAppPaths>[0],
+    ) => {
+      calls.resolveAppPaths = [input]
+      return resolveAppPaths(input)
+    }
+
+    createAppContext(deps)
+
+    expect((calls.resolveAppPaths?.[0] as { appEnv?: string }).appEnv).toBe(
+      "production",
+    )
+    expect(
+      (calls.createPlatformKeychainBackend?.[0] as { keychainService?: string })
+        .keychainService,
+    ).toBe("spectrum")
+    expect(calls.migrateLegacyMacosConfig).toBeDefined()
+    expect(calls.migrateLaunchkitToSpectrum).toBeDefined()
+  })
+})
+
 describe("createAppContext native run path wiring", () => {
   it("exposes a runner manager with launch/handleInbound/bindSend", () => {
     const { deps } = makeFakeDeps()

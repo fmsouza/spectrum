@@ -1,7 +1,6 @@
 import { isOk } from "@spectrum/utils"
 import type { ProcessRunner } from "./process-runner"
 
-const SERVICE = "spectrum"
 const PROBE_ACCOUNT = "__spectrum_probe__"
 
 // Substrings indicating the Secret Service / D-Bus session is unreachable (vs. a plain cache miss).
@@ -23,14 +22,21 @@ const UNAVAILABLE_SIGNATURES = [
 export const isSecretServiceAvailable = async (deps: {
   readonly runner: ProcessRunner
   readonly commandExists?: (cmd: string) => boolean
+  /** Service namespace to probe. Defaults to "spectrum". */
+  readonly service?: string
 }): Promise<boolean> => {
   const commandExists =
     deps.commandExists ?? ((c: string) => Bun.which(c) !== null)
   if (!commandExists("secret-tool")) return false
+  const service = deps.service ?? "spectrum"
+  // `secret-tool lookup` takes attribute key/value pairs, so the probe account needs its
+  // "account" key — matching the real lookup in secret-tool-backend. Without it the lookup is
+  // malformed (a dangling attribute name) and never actually exercises the Secret Service.
   const probe = await deps.runner.run("secret-tool", [
     "lookup",
     "service",
-    SERVICE,
+    service,
+    "account",
     PROBE_ACCOUNT,
   ])
   if (isOk(probe)) return true

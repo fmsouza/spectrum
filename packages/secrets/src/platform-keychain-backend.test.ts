@@ -24,6 +24,7 @@ const baseDeps = () => ({
   fileOps: createInMemorySecretFileOps(),
   secretsDir: "/data/secrets",
   secretPassphrase: async () => "pw",
+  keychainService: "spectrum",
 })
 
 describe("createPlatformKeychainBackend", () => {
@@ -64,6 +65,7 @@ describe("createPlatformKeychainBackend", () => {
       fileOps,
       secretsDir: "/data/secrets",
       secretPassphrase: async () => "pw",
+      keychainService: "spectrum",
       commandExists: () => false, // secret-tool not installed
     })
     expect((await backend.add("kc_1", "s")).ok).toBe(true)
@@ -81,6 +83,7 @@ describe("createPlatformKeychainBackend", () => {
       fileOps,
       secretsDir: "/data/secrets",
       secretPassphrase: async () => null,
+      keychainService: "spectrum",
     })
     expect((await backend.add("kc_1", "s")).ok).toBe(true)
     expect(calls[0]?.command).toBe("powershell")
@@ -95,5 +98,27 @@ describe("createPlatformKeychainBackend", () => {
     })
     await backend.add("kc_1", "s")
     expect(await backend.find("kc_1")).toEqual({ ok: true, value: "s" })
+  })
+
+  it("passes keychainService to the macOS backend so dev writes under spectrum-dev", async () => {
+    const calls: { args: readonly string[] }[] = []
+    const runner: ProcessRunner = {
+      run: async (_cmd: string, args: readonly string[]) => {
+        calls.push({ args })
+        return ok({ stdout: "" })
+      },
+    }
+    const backend = createPlatformKeychainBackend({
+      platform: "macos",
+      runner,
+      fileOps: createInMemorySecretFileOps(),
+      secretsDir: "/tmp/secrets",
+      secretPassphrase: async () => null,
+      keychainService: "spectrum-dev",
+    })
+
+    await backend.add("kc_1", "sk")
+
+    expect(calls[0]?.args).toContain("spectrum-dev")
   })
 })

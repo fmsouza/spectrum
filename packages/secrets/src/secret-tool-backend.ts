@@ -2,8 +2,6 @@ import { err, isOk, ok, redactSecrets } from "@spectrum/utils"
 import type { KeychainBackend, SecretError } from "./backend"
 import type { ProcessRunner } from "./process-runner"
 
-const SERVICE = "spectrum"
-
 const redactError = (
   error: SecretError,
   secrets: readonly string[],
@@ -14,12 +12,15 @@ const redactError = (
 
 /**
  * Linux keychain backend over libsecret's `secret-tool` (Secret Service / D-Bus). The secret is fed
- * on stdin (never argv). The service name is always `"spectrum"`, matching every other backend.
+ * on stdin (never argv). The service name defaults to `"spectrum"`; dev wiring passes `"spectrum-dev"`.
  */
 export const createSecretToolBackend = (deps: {
   readonly runner: ProcessRunner
+  /** Secret Service namespace. Defaults to "spectrum"; dev wiring passes "spectrum-dev". */
+  readonly service?: string
 }): KeychainBackend => {
   const { runner } = deps
+  const service = deps.service ?? "spectrum"
   return {
     add: async (account, secret) => {
       const result = await runner.run(
@@ -28,7 +29,7 @@ export const createSecretToolBackend = (deps: {
           "store",
           `--label=Spectrum: ${account}`,
           "service",
-          SERVICE,
+          service,
           "account",
           account,
         ],
@@ -42,7 +43,7 @@ export const createSecretToolBackend = (deps: {
       const result = await runner.run("secret-tool", [
         "lookup",
         "service",
-        SERVICE,
+        service,
         "account",
         account,
       ])
@@ -54,7 +55,7 @@ export const createSecretToolBackend = (deps: {
       const result = await runner.run("secret-tool", [
         "clear",
         "service",
-        SERVICE,
+        service,
         "account",
         account,
       ])

@@ -84,4 +84,19 @@ describe("createSecretToolBackend", () => {
     expect(r.error.detail).not.toContain("sk-secret")
     expect(r.error.detail).toContain("[REDACTED]")
   })
+
+  it("uses the provided service name (spectrum-dev) in the lookup arg array", async () => {
+    const { runner, calls } = recordingRunner([ok({ stdout: "sk\n" })])
+    const backend = createSecretToolBackend({ runner, service: "spectrum-dev" })
+
+    await backend.find("kc_1")
+
+    expect(calls[0]?.args).toEqual([
+      "lookup",
+      "service",
+      "spectrum-dev",
+      "account",
+      "kc_1",
+    ])
+  })
 })
