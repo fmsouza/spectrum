@@ -20,6 +20,7 @@ import type { Result } from "@spectrum/utils"
 
 import { mkdirSync, rmSync } from "node:fs"
 import { homedir } from "node:os"
+import { join } from "node:path"
 import type {
   AgentDriver,
   RunManager,
@@ -52,6 +53,14 @@ import {
   launchHarness,
   resolveHarnessLaunch,
 } from "@spectrum/harnesses"
+import {
+  type Logger,
+  createConsoleSink,
+  createFsLogFileOps,
+  createLogger,
+  createRotatingFileSink,
+  resolveMinLevel,
+} from "@spectrum/logger"
 import {
   type Platform,
   detectAppEnv,
@@ -191,6 +200,8 @@ export interface AppContext {
   readonly resetApp: () => Promise<Result<void, ResetError>>
   /** Which harnesses have a registered native driver (every launchable harness does). */
   readonly driverRegistry: DriverRegistry
+  /** Structured application logger (console + rotating file). Inject child scopes into subsystems. */
+  readonly log: Logger
   /** Resolved settings paths (config + db + harness dir), surfaced for diagnostics/tests. */
   readonly paths: {
     readonly configFile: string
@@ -437,6 +448,28 @@ export const createAppContext = (
   // their first write, which is too late for the db opened here). This is the only startup step that
   // needs the dir to pre-exist.
   deps.ensureDir(paths.dataDir)
+
+  const log = createLogger({
+    sinks: [
+      createConsoleSink({
+        write: (line) => {
+          process.stderr.write(line)
+        },
+        pretty: appEnv === "development",
+      }),
+      createRotatingFileSink({
+        fileOps: createFsLogFileOps(),
+        dir: join(paths.dataDir, "logs"),
+        maxBytes: 5 * 1024 * 1024,
+        maxFiles: 3,
+      }),
+    ],
+    clock: deps.createSystemClock(),
+    minLevel: resolveMinLevel(appEnv, deps.env),
+    // Defense-in-depth: redaction is identity for now; call sites must never pass raw secrets as
+    // fields. A richer redact (scrubbing the live proxy key / resolved apiKeys) can be layered later.
+    redact: (text) => text,
+  })
 
   // config: cached( file( fs(configFile) ) ). Wrapped to keep a synchronous snapshot of the latest
   // config (`liveConfig`) updated on every load/save, so the long-running GUI proxy can resolve
@@ -696,6 +729,7 @@ export const createAppContext = (
     driverRegistry,
     pickFolder,
     updater,
+    log,
     paths: { configFile, dbFile, harnessDir },
   }
 }

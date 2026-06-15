@@ -38,6 +38,7 @@
         "@spectrum/driver-opencode": "workspace:*",
         "@spectrum/harnesses": "workspace:*",
         "@spectrum/ipc": "workspace:*",
+        "@spectrum/logger": "workspace:*",
         "@spectrum/platform": "workspace:*",
         "@spectrum/projects": "workspace:*",
         "@spectrum/providers": "workspace:*",

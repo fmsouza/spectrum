@@ -327,6 +327,17 @@ describe("createAppContext wiring", () => {
     expect(typeof ctx.projects.list).toBe("function")
   })
 
+  it("exposes a structured logger with all severity methods and child scoping", () => {
+    const ctx = createAppContext(makeFakeDeps().deps)
+    expect(typeof ctx.log.info).toBe("function")
+    expect(typeof ctx.log.debug).toBe("function")
+    expect(typeof ctx.log.warn).toBe("function")
+    expect(typeof ctx.log.error).toBe("function")
+    expect(typeof ctx.log.fatal).toBe("function")
+    // child returns a Logger and logging never throws (clock stub is never invoked at construction)
+    expect(() => ctx.log.child("test")).not.toThrow()
+  })
+
   it("runs the legacy macOS migration with the injected platform/home/env before resolving paths", () => {
     const { deps, calls } = makeFakeDeps()
     createAppContext(deps)
