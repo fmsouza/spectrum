@@ -208,10 +208,16 @@ describe("createAppContext wiring", () => {
     expect(arg.fileOps).toEqual({ __stub: "createSecretFileOps" })
     expect(arg.secretsDir).toBe("/home/tester/.config/spectrum/secrets")
     expect(typeof arg.secretPassphrase).toBe("function")
-    expect(calls.createSecretStore?.[0]).toEqual({
-      backend: { __stub: "createPlatformKeychainBackend" },
-      idGen: { __stub: "createCryptoIdGen" },
+    const secretStoreArg = calls.createSecretStore?.[0] as {
+      backend: unknown
+      idGen: unknown
+      logger: { child: unknown }
+    }
+    expect(secretStoreArg.backend).toEqual({
+      __stub: "createPlatformKeychainBackend",
     })
+    expect(secretStoreArg.idGen).toEqual({ __stub: "createCryptoIdGen" })
+    expect(typeof secretStoreArg.logger.child).toBe("function")
   })
 
   it("builds the session store from a bun:sqlite database at the resolved db path with a system clock", () => {

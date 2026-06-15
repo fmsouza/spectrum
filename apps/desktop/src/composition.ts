@@ -504,6 +504,7 @@ export const createAppContext = (
       keychainService,
     }),
     idGen: deps.createCryptoIdGen(),
+    logger: log.child("secrets"),
   })
 
   // sessions: open sqlite at dbFile, apply migrations, then build the store.
