@@ -436,6 +436,40 @@ describe("UpdateHarnessPrefsParamsSchema", () => {
   })
 })
 
+describe("delete + reset IPC schemas", () => {
+  it("accepts a valid deleteSession param", () => {
+    expect(
+      IpcMethodSchemas.deleteSession.params.safeParse({ sessionId: "s_1" })
+        .success,
+    ).toBe(true)
+  })
+  it("rejects a deleteSession param missing sessionId", () => {
+    expect(IpcMethodSchemas.deleteSession.params.safeParse({}).success).toBe(
+      false,
+    )
+  })
+  it("accepts a valid deleteProject param", () => {
+    expect(
+      IpcMethodSchemas.deleteProject.params.safeParse({ projectId: "prj_1" })
+        .success,
+    ).toBe(true)
+  })
+  it("treats resetApp params as undefined (no args)", () => {
+    expect(IpcMethodSchemas.resetApp.params.safeParse(undefined).success).toBe(
+      true,
+    )
+  })
+  it("encodes deleteSession/deleteProject/resetApp results as null (void)", () => {
+    expect(IpcMethodSchemas.deleteSession.result.safeParse(null).success).toBe(
+      true,
+    )
+    expect(IpcMethodSchemas.deleteProject.result.safeParse(null).success).toBe(
+      true,
+    )
+    expect(IpcMethodSchemas.resetApp.result.safeParse(null).success).toBe(true)
+  })
+})
+
 describe("getProviderCatalog method", () => {
   it("is registered with a params + result schema", () => {
     expect(IpcMethodSchemas.getProviderCatalog).toBeDefined()

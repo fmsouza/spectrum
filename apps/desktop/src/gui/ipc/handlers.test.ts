@@ -77,6 +77,15 @@ const makeCtx = (
     updater?: UpdaterAdapter
     updateChannel?: "stable" | "canary"
     dismissedUpdateVersion?: string | null
+    deleteSessionResult?: Result<
+      void,
+      { readonly kind: "db-failed"; readonly detail: string }
+    >
+    deleteProjectResult?: Result<
+      void,
+      { readonly kind: "db-failed"; readonly detail: string }
+    >
+    resetAppResult?: Result<void, { readonly kind: string }>
   } = {},
 ): {
   ctx: AppContext
@@ -87,6 +96,9 @@ const makeCtx = (
   pickFolderCalls: unknown[]
   runnerLaunchInputs: unknown[]
   runEventsIds: string[]
+  deletedSessionIds: string[]
+  deletedProjectIds: string[]
+  resetCalls: number
 } => {
   const saves: Config[] = []
   const secretSets: string[] = []
@@ -95,6 +107,9 @@ const makeCtx = (
   const pickFolderCalls: unknown[] = []
   const runnerLaunchInputs: unknown[] = []
   const runEventsIds: string[] = []
+  const deletedSessionIds: string[] = []
+  const deletedProjectIds: string[] = []
+  const resetState = { count: 0 }
   let current = baseConfig(
     over.providers ?? [provider()],
     over.lastSelectedFolder ?? "",
@@ -225,6 +240,20 @@ const makeCtx = (
     updater:
       over.updater ??
       createFakeUpdater({ currentVersion: "1.0.0", latest: undefined }),
+    dataAdmin: {
+      deleteSession: (id: unknown) => {
+        deletedSessionIds.push(id as string)
+        return over.deleteSessionResult ?? ok(undefined)
+      },
+      deleteProject: (id: unknown) => {
+        deletedProjectIds.push(id as string)
+        return over.deleteProjectResult ?? ok(undefined)
+      },
+    },
+    resetApp: async () => {
+      resetState.count += 1
+      return over.resetAppResult ?? ok(undefined)
+    },
   } as unknown as AppContext
 
   return {
@@ -236,6 +265,11 @@ const makeCtx = (
     pickFolderCalls,
     runnerLaunchInputs,
     runEventsIds,
+    deletedSessionIds,
+    deletedProjectIds,
+    get resetCalls() {
+      return resetState.count
+    },
   }
 }
 
@@ -1309,5 +1343,74 @@ describe("createIpcHandlers update handlers", () => {
     await Promise.resolve()
     expect(result).toBeNull()
     expect(updater.getRaw().phase).toBe("applying")
+  })
+})
+
+// ── Delete + reset handlers ─────────────────────────────────────────────────
+
+describe("createIpcHandlers.deleteSession", () => {
+  it("delegates to ctx.dataAdmin.deleteSession and returns null on success", async () => {
+    const { ctx, deletedSessionIds } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.deleteSession({ sessionId: "s_1" as never })
+
+    expect(result).toBeNull()
+    expect(deletedSessionIds).toEqual(["s_1"])
+  })
+
+  it("throws so the server surfaces handler-failed when the cascade delete fails", async () => {
+    const { ctx } = makeCtx({
+      deleteSessionResult: err({ kind: "db-failed", detail: "boom" }),
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.deleteSession({ sessionId: "s_1" as never }),
+    ).rejects.toThrow()
+  })
+})
+
+describe("createIpcHandlers.deleteProject", () => {
+  it("delegates to ctx.dataAdmin.deleteProject and returns null on success", async () => {
+    const { ctx, deletedProjectIds } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.deleteProject({ projectId: "prj_1" as never })
+
+    expect(result).toBeNull()
+    expect(deletedProjectIds).toEqual(["prj_1"])
+  })
+
+  it("throws so the server surfaces handler-failed when the cascade delete fails", async () => {
+    const { ctx } = makeCtx({
+      deleteProjectResult: err({ kind: "db-failed", detail: "boom" }),
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.deleteProject({ projectId: "prj_1" as never }),
+    ).rejects.toThrow()
+  })
+})
+
+describe("createIpcHandlers.resetApp", () => {
+  it("calls ctx.resetApp and returns null on success", async () => {
+    const made = makeCtx()
+    const handlers = createIpcHandlers(made.ctx)
+
+    const result = await handlers.resetApp(undefined)
+
+    expect(result).toBeNull()
+    expect(made.resetCalls).toBe(1)
+  })
+
+  it("throws so the server surfaces handler-failed when the reset fails", async () => {
+    const { ctx } = makeCtx({
+      resetAppResult: err({ kind: "reset-failed" }),
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(handlers.resetApp(undefined)).rejects.toThrow()
   })
 })
