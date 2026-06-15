@@ -1,5 +1,5 @@
 import type { IpcError, IpcMethods } from "@spectrum/ipc"
-import type { Session } from "@spectrum/types"
+import type { ProjectId, Session, SessionId } from "@spectrum/types"
 import type { Result } from "@spectrum/utils"
 import { useEffect } from "react"
 import { useStore } from "zustand"
@@ -23,6 +23,8 @@ export type UseProjects = {
   readonly launch: (
     input: LaunchInput,
   ) => Promise<Result<LaunchResult, IpcError>>
+  readonly deleteSession: (id: SessionId) => void
+  readonly deleteProject: (id: ProjectId) => void
 }
 
 export const useProjects = (): UseProjects => {
@@ -38,6 +40,8 @@ export const useProjects = (): UseProjects => {
   const toggleCollapse = useStore(store, (s) => s.toggleCollapse)
   const invalidate = useStore(store, (s) => s.invalidate)
   const launch = useStore(store, (s) => s.launch)
+  const deleteSession = useStore(store, (s) => s.deleteSession)
+  const deleteProject = useStore(store, (s) => s.deleteProject)
 
   useEffect(() => {
     void fetchProjects()
@@ -66,5 +70,7 @@ export const useProjects = (): UseProjects => {
     loadMore,
     refetch: () => void invalidate(),
     launch,
+    deleteSession: (id) => void deleteSession(id),
+    deleteProject: (id) => void deleteProject(id),
   }
 }

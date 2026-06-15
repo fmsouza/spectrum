@@ -113,4 +113,6 @@ export interface OpenFileDialogOptions {
 export const Utils: {
   /** Native open panel; resolves the selected paths (empty array if cancelled). */
   openFileDialog(options?: OpenFileDialogOptions): Promise<string[]>
+  /** Graceful native shutdown (stops the event loop and force-exits). */
+  quit(): void
 }

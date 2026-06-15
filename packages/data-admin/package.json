@@ -1,0 +1,23 @@
+{
+  "name": "@spectrum/data-admin",
+  "version": "1.1.2",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@spectrum/db": "workspace:*",
+    "@spectrum/types": "workspace:*",
+    "@spectrum/utils": "workspace:*",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@spectrum/run-store": "workspace:*",
+    "@spectrum/sessions": "workspace:*"
+  }
+}

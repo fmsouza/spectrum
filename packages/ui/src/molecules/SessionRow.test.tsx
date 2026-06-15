@@ -150,6 +150,22 @@ describe("SessionRow", () => {
     expect(onSelect).toHaveBeenCalledTimes(1)
   })
 
+  it("calls onContextMenu with cursor coords when right-clicked", () => {
+    const onContextMenu = mock((_e: { clientX: number; clientY: number }) => {})
+    render(
+      <SessionRow
+        session={running}
+        harnessName="claude"
+        model="default"
+        selected={false}
+        onSelect={() => {}}
+        onContextMenu={onContextMenu}
+      />,
+    )
+    fireEvent.contextMenu(screen.getByRole("button"))
+    expect(onContextMenu).toHaveBeenCalledTimes(1)
+  })
+
   it("wraps the name (and only the name) in the truncating hook and renders no status dot", () => {
     const { container } = render(
       <SessionRow

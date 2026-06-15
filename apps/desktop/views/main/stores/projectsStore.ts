@@ -1,5 +1,5 @@
 import type { IpcError, IpcMethods } from "@spectrum/ipc"
-import type { ProjectId, Session } from "@spectrum/types"
+import type { ProjectId, Session, SessionId } from "@spectrum/types"
 import type { Result } from "@spectrum/utils"
 import { type StoreApi, createStore } from "zustand/vanilla"
 import type { StoreDeps } from "./types"
@@ -30,6 +30,8 @@ export type ProjectsStore = {
   readonly launch: (
     input: LaunchInput,
   ) => Promise<Result<LaunchResult, IpcError>>
+  readonly deleteSession: (id: SessionId) => Promise<void>
+  readonly deleteProject: (id: ProjectId) => Promise<void>
 }
 
 export const createProjectsStore = (deps: StoreDeps): StoreApi<ProjectsStore> =>
@@ -119,6 +121,16 @@ export const createProjectsStore = (deps: StoreDeps): StoreApi<ProjectsStore> =>
         const r = await deps.client.launchHarness(input)
         if (r.ok) await get().invalidate()
         return r
+      },
+
+      deleteSession: async (id) => {
+        const r = await deps.client.deleteSession({ sessionId: id })
+        if (r.ok) await get().invalidate()
+      },
+
+      deleteProject: async (id) => {
+        const r = await deps.client.deleteProject({ projectId: id })
+        if (r.ok) await get().invalidate()
       },
     }
   })

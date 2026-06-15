@@ -178,6 +178,12 @@ export const GetRunEventsResultSchema = z
   .object({ events: z.array(StoredEventSchema) })
   .strict()
 
+// Delete a single session and all its run events (cascade lives in @spectrum/data-admin).
+export const DeleteSessionParamsSchema = z
+  .object({ sessionId: SessionIdSchema })
+  .strict()
+export const DeleteSessionResultSchema = VoidSchema
+
 // ── Model discovery ───────────────────────────────────────────────────────
 
 export const ListProviderModelsParamsSchema = z
@@ -246,6 +252,19 @@ export const SetCollapsedProjectsParamsSchema = z
   .object({ ids: z.array(z.string()) })
   .strict()
 export const SetCollapsedProjectsResultSchema = VoidSchema
+
+// Delete a project and all its sessions + their run events (cascade in @spectrum/data-admin).
+export const DeleteProjectParamsSchema = z
+  .object({ projectId: ProjectIdSchema })
+  .strict()
+export const DeleteProjectResultSchema = VoidSchema
+
+// ── Data (factory reset) ────────────────────────────────────────────────────
+
+// Wipe ALL app data (db + config + keychain secrets + runtime) and relaunch to a
+// first-launch state. Inbound-only; the handler may relaunch before it returns.
+export const ResetAppParamsSchema = z.undefined()
+export const ResetAppResultSchema = VoidSchema
 
 // ── Updates ─────────────────────────────────────────────────────────────────
 
@@ -355,6 +374,10 @@ export const IpcMethodSchemas = {
     params: GetSessionsParamsSchema,
     result: GetSessionsResultSchema,
   },
+  deleteSession: {
+    params: DeleteSessionParamsSchema,
+    result: DeleteSessionResultSchema,
+  },
   getProxyStatus: {
     params: GetProxyStatusParamsSchema,
     result: GetProxyStatusResultSchema,
@@ -386,6 +409,14 @@ export const IpcMethodSchemas = {
   setCollapsedProjects: {
     params: SetCollapsedProjectsParamsSchema,
     result: SetCollapsedProjectsResultSchema,
+  },
+  deleteProject: {
+    params: DeleteProjectParamsSchema,
+    result: DeleteProjectResultSchema,
+  },
+  resetApp: {
+    params: ResetAppParamsSchema,
+    result: ResetAppResultSchema,
   },
   updateHarnessPrefs: {
     params: UpdateHarnessPrefsParamsSchema,

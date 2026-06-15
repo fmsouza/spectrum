@@ -16,6 +16,8 @@ export type SessionsViewInput = {
   readonly onMore: (projectId: string) => void
   readonly onSelect: (id: SessionId) => void
   readonly onNew: () => void
+  readonly onDeleteProject: (projectId: string) => void
+  readonly onDeleteSession: (sessionId: SessionId) => void
   readonly runnerClient: RunnerClient
   /** All model routes, threaded to `RunDetail` so the composer can render a picker. */
   readonly models?: readonly ModelRoute[]
@@ -37,6 +39,8 @@ const SessionsMaster = ({
   onSelect,
   onMore,
   onNew,
+  onDeleteProject,
+  onDeleteSession,
 }: {
   readonly selectedSessionId?: SessionId
   readonly projects: readonly ProjectSummary[]
@@ -46,6 +50,8 @@ const SessionsMaster = ({
   readonly onSelect: (id: SessionId) => void
   readonly onMore: (projectId: string) => void
   readonly onNew: () => void
+  readonly onDeleteProject: (projectId: string) => void
+  readonly onDeleteSession: (sessionId: SessionId) => void
 }): ReactElement => (
   <ProjectList
     projects={projects}
@@ -62,6 +68,8 @@ const SessionsMaster = ({
     onSelect={onSelect}
     onMore={onMore}
     onNew={onNew}
+    onDeleteProject={onDeleteProject}
+    onDeleteSession={onDeleteSession}
   />
 )
 
@@ -133,6 +141,8 @@ export const SessionsView = ({
   onMore,
   onSelect,
   onNew,
+  onDeleteProject,
+  onDeleteSession,
   runnerClient,
   models,
   providerNames,
@@ -150,6 +160,8 @@ export const SessionsView = ({
       onSelect={onSelect}
       onMore={onMore}
       onNew={onNew}
+      onDeleteProject={onDeleteProject}
+      onDeleteSession={onDeleteSession}
     />
   ),
   detail: (
