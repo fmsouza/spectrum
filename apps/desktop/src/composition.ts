@@ -476,7 +476,10 @@ export const createAppContext = (
   // against live provider/model changes without an app restart. (The cached store already refreshes
   // its own cache on save; this just exposes that latest value synchronously to the proxy router.)
   const baseConfig = deps.createCachedConfigStore(
-    deps.createFileConfigStore({ file: deps.createFsConfigFile(configFile) }),
+    deps.createFileConfigStore({
+      file: deps.createFsConfigFile(configFile),
+      logger: log.child("config"),
+    }),
   )
   let liveConfig: import("@spectrum/config").Config | undefined
   const config: ConfigStore = {

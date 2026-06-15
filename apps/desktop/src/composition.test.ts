@@ -184,9 +184,13 @@ describe("createAppContext wiring", () => {
       "/home/tester/.config/spectrum/config.json",
     )
     // the file store receives that fs file ...
-    expect(calls.createFileConfigStore?.[0]).toEqual({
-      file: { __stub: "createFsConfigFile" },
-    })
+    const fileStoreArg = calls.createFileConfigStore?.[0] as {
+      file: unknown
+      logger: { child: unknown }
+    }
+    expect(fileStoreArg.file).toEqual({ __stub: "createFsConfigFile" })
+    // ... and an injected (scoped) logger
+    expect(typeof fileStoreArg.logger.child).toBe("function")
     // ... and the cached store wraps the file store
     expect(calls.createCachedConfigStore?.[0]).toEqual({
       __stub: "createFileConfigStore",
