@@ -1,15 +1,20 @@
 {
   "name": "@spectrum/driver-openclaw",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "typecheck": "tsc --noEmit", "test": "bun test" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
   "dependencies": {
     "@spectrum/agent-driver": "workspace:*",
     "@spectrum/agent-events": "workspace:*",
     "@spectrum/driver-runtime": "workspace:*",
     "@spectrum/utils": "workspace:*",
-    "zod": "^3.24.0"
+    "zod": "catalog:"
   }
 }

@@ -13,15 +13,15 @@
         "@types/react": "^19.2.15",
         "@types/react-dom": "^19.2.3",
         "happy-dom": "^20",
-        "react": "^19.2.6",
-        "react-dom": "^19.2.6",
+        "react": "catalog:",
+        "react-dom": "catalog:",
         "turbo": "^2.9.15",
         "typescript": "5.8.3",
       },
     },
     "apps/desktop": {
       "name": "spectrum",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "bin": {
         "spectrum": "./src/cli.ts",
       },
@@ -48,8 +48,8 @@
         "@spectrum/ui": "workspace:*",
         "@spectrum/utils": "workspace:*",
         "electrobun": "^1.18.1",
-        "react": "^19",
-        "react-dom": "^19",
+        "react": "catalog:",
+        "react-dom": "catalog:",
         "zustand": "^5.0.14",
       },
       "devDependencies": {
@@ -58,33 +58,33 @@
     },
     "packages/agent-driver": {
       "name": "@spectrum/agent-driver",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/agent-events": {
       "name": "@spectrum/agent-events",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/brand": {
       "name": "@spectrum/brand",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
-        "react": "^19",
+        "react": "catalog:",
       },
     },
     "packages/cli": {
       "name": "@spectrum/cli",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/config": "workspace:*",
         "@spectrum/db": "workspace:*",
@@ -99,20 +99,20 @@
     },
     "packages/config": {
       "name": "@spectrum/config",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/platform": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.23.8",
+        "zod": "catalog:",
       },
     },
     "packages/db": {
       "name": "@spectrum/db",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/utils": "workspace:*",
-        "drizzle-orm": "^0.45.2",
+        "drizzle-orm": "catalog:",
       },
       "devDependencies": {
         "drizzle-kit": "^0.31.0",
@@ -120,19 +120,19 @@
     },
     "packages/driver-claude": {
       "name": "@spectrum/driver-claude",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "0.3.170",
         "@spectrum/agent-driver": "workspace:*",
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/driver-runtime": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/driver-codex": {
       "name": "@spectrum/driver-codex",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/agent-driver": "workspace:*",
         "@spectrum/agent-events": "workspace:*",
@@ -144,30 +144,30 @@
     },
     "packages/driver-openclaw": {
       "name": "@spectrum/driver-openclaw",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/agent-driver": "workspace:*",
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/driver-runtime": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/driver-opencode": {
       "name": "@spectrum/driver-opencode",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@opencode-ai/sdk": "^1.16.2",
         "@spectrum/agent-driver": "workspace:*",
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/driver-runtime": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/driver-runtime": {
       "name": "@spectrum/driver-runtime",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/agent-driver": "workspace:*",
         "@spectrum/agent-events": "workspace:*",
@@ -177,50 +177,51 @@
     },
     "packages/harnesses": {
       "name": "@spectrum/harnesses",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/platform": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
+        "zod": "catalog:",
       },
     },
     "packages/ipc": {
       "name": "@spectrum/ipc",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/providers": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/platform": {
       "name": "@spectrum/platform",
-      "version": "0.1.0",
+      "version": "1.1.0",
     },
     "packages/projects": {
       "name": "@spectrum/projects",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/db": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "drizzle-orm": "^0.45.2",
+        "drizzle-orm": "catalog:",
       },
     },
     "packages/providers": {
       "name": "@spectrum/providers",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.25.76",
+        "zod": "catalog:",
       },
     },
     "packages/proxy": {
       "name": "@spectrum/proxy",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@ai-sdk/amazon-bedrock": "^4",
         "@ai-sdk/anthropic": "^3",
@@ -242,7 +243,7 @@
         "@spectrum/utils": "workspace:*",
         "ai": "^6",
         "ollama-ai-provider-v2": "^3",
-        "zod": "^3.25.76",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "msw": "^2.7.0",
@@ -250,13 +251,13 @@
     },
     "packages/run-store": {
       "name": "@spectrum/run-store",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/db": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "drizzle-orm": "^0.45.2",
+        "drizzle-orm": "catalog:",
       },
       "devDependencies": {
         "@spectrum/sessions": "workspace:*",
@@ -264,7 +265,7 @@
     },
     "packages/secrets": {
       "name": "@spectrum/secrets",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/platform": "workspace:*",
         "@spectrum/types": "workspace:*",
@@ -273,53 +274,59 @@
     },
     "packages/sessions": {
       "name": "@spectrum/sessions",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/db": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "drizzle-orm": "^0.45.2",
+        "drizzle-orm": "catalog:",
       },
     },
     "packages/types": {
       "name": "@spectrum/types",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/ui": {
       "name": "@spectrum/ui",
-      "version": "0.1.0",
+      "version": "1.1.0",
       "dependencies": {
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/brand": "workspace:*",
         "@spectrum/providers": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "react": "^19",
-        "react-dom": "^19",
+        "react": "catalog:",
+        "react-dom": "catalog:",
         "react-markdown": "^9",
         "remark-gfm": "^4",
       },
     },
     "packages/utils": {
       "name": "@spectrum/utils",
-      "version": "0.1.0",
+      "version": "1.1.0",
     },
     "tooling/biome-config": {
       "name": "@spectrum/biome-config",
-      "version": "0.1.0",
+      "version": "1.1.0",
     },
     "tooling/tsconfig": {
       "name": "@spectrum/tsconfig",
-      "version": "0.1.0",
+      "version": "1.1.0",
     },
   },
   "overrides": {
     "esbuild": "^0.28.1",
     "jsondiffpatch": "^0.7.2",
     "uuid": "^11.1.1",
+  },
+  "catalog": {
+    "drizzle-orm": "^0.45.2",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "zod": "^3.25.76",
   },
   "packages": {
     "@adobe/css-tools": ["@adobe/css-tools@4.5.0", "", {}, "sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q=="],
