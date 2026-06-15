@@ -6,21 +6,35 @@ import { createHandler } from "./handler"
 import { createRouter } from "./router"
 import { collectStream } from "./test-helpers"
 
-type Captured = { msg: string; fields: Record<string, unknown> | undefined }
+type Captured = {
+  level: "warn" | "error"
+  msg: string
+  fields: Record<string, unknown> | undefined
+}
 
-const makeFakeLogger = (): { logger: Logger; errors: Captured[] } => {
-  const errors: Captured[] = []
+const makeFakeLogger = (): {
+  logger: Logger
+  records: Captured[]
+  errorsOf: () => Captured[]
+} => {
+  const records: Captured[] = []
   const logger: Logger = {
     debug: () => {},
     info: () => {},
-    warn: () => {},
+    warn: (msg, fields) => {
+      records.push({ level: "warn", msg, fields })
+    },
     error: (msg, fields) => {
-      errors.push({ msg, fields })
+      records.push({ level: "error", msg, fields })
     },
     fatal: () => {},
     child: () => logger,
   }
-  return { logger, errors }
+  return {
+    logger,
+    records,
+    errorsOf: () => records.filter((r) => r.level === "error"),
+  }
 }
 
 const config = {
@@ -176,7 +190,7 @@ describe("createHandler", () => {
     })
   })
   it("logs error with the kind and no secret when the gateway fails", async () => {
-    const { logger, errors } = makeFakeLogger()
+    const { logger, errorsOf } = makeFakeLogger()
     await createHandler({
       ...deps("super-secret-proxy-key"),
       logger,
@@ -194,10 +208,28 @@ describe("createHandler", () => {
         { "x-api-key": "super-secret-proxy-key" },
       ),
     )
+    const errors = errorsOf()
     expect(errors).toHaveLength(1)
     expect(errors[0]?.fields).toMatchObject({ kind: "provider-failed" })
     const serialized = JSON.stringify(errors)
     expect(serialized).not.toContain("super-secret-proxy-key")
+  })
+  it("logs an unauthorized client error at warn (not error)", async () => {
+    const { logger, records } = makeFakeLogger()
+    await createHandler({ ...deps("k"), logger }).fetch(
+      post(
+        "/v1/messages",
+        {
+          model: "mdl_default",
+          max_tokens: 1,
+          messages: [{ role: "user", content: "hi" }],
+        },
+        {},
+      ),
+    )
+    expect(records).toHaveLength(1)
+    expect(records[0]?.level).toBe("warn")
+    expect(records[0]?.fields).toMatchObject({ kind: "unauthorized" })
   })
   it("lists the configured models for GET /v1/models", async () => {
     const res = await handler().fetch(

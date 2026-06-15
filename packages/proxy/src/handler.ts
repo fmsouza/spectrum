@@ -18,7 +18,7 @@ export interface HandlerDeps {
   factory: ProviderFactory
   gateway: LanguageModelGateway
   listModels: () => readonly string[]
-  /** Optional observer (default noop). Logs `error` with only `{ kind }` on every error Result. */
+  /** Optional observer (default noop). Logs only `{ kind }` on every error Result: `warn` for client errors (unauthorized/bad-request), `error` for provider/outbound failures. */
   logger?: Logger
 }
 
@@ -119,8 +119,15 @@ export const createHandler = (
   // non-sensitive `kind` enum is logged — never the proxyKey, apiKeys, request/
   // response bodies, or the error `detail` (which can echo upstream output).
   // Logging is observation only; the returned `Response` is the sole control-flow signal.
+  // Severity by kind: expected client errors (unauthorized/bad-request) log
+  // `warn` — a routinely-probed loopback proxy must not spam the error log;
+  // provider/outbound/server failures log `error`.
+  const isClientError = (k: ProxyError["kind"]): boolean =>
+    k === "unauthorized" || k === "bad-request"
   const fail = (e: ProxyError): Response => {
-    logger.error("proxy request failed", { kind: e.kind })
+    logger[isClientError(e.kind) ? "warn" : "error"]("proxy request failed", {
+      kind: e.kind,
+    })
     return errorResponse(e)
   }
   const handleChat = async (

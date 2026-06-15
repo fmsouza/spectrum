@@ -11,4 +11,4 @@
 
 **Local rules:** stream, never buffer; cache provider instances; loopback-only + key-checked; streamText() is the uniform call.
 
-Accepts an injected `Logger` (default noop); logs `info` on start/stop (host/port only) and `error` on provider/outbound failures (`{ kind }`); streaming hot path is never logged above `debug`. NEVER logs proxyKey/apiKey/bodies.
+Accepts an injected `Logger` (default noop); logs `info` on start/stop (host/port only); on an error Result logs only `{ kind }` — `warn` for client errors (unauthorized/bad-request), `error` for provider/outbound failures; streaming hot path is never logged above `debug`. NEVER logs proxyKey/apiKey/bodies.
