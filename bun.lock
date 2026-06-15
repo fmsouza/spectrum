@@ -48,8 +48,8 @@
         "@spectrum/ui": "workspace:*",
         "@spectrum/utils": "workspace:*",
         "electrobun": "^1.18.1",
-        "react": "^19",
-        "react-dom": "^19",
+        "react": "catalog:",
+        "react-dom": "catalog:",
         "zustand": "^5.0.14",
       },
       "devDependencies": {
@@ -63,7 +63,7 @@
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/agent-events": {
@@ -72,14 +72,14 @@
       "dependencies": {
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/brand": {
       "name": "@spectrum/brand",
       "version": "1.1.0",
       "dependencies": {
-        "react": "^19",
+        "react": "catalog:",
       },
     },
     "packages/cli": {
@@ -104,7 +104,7 @@
         "@spectrum/platform": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.23.8",
+        "zod": "catalog:",
       },
     },
     "packages/db": {
@@ -112,7 +112,7 @@
       "version": "1.1.0",
       "dependencies": {
         "@spectrum/utils": "workspace:*",
-        "drizzle-orm": "^0.45.2",
+        "drizzle-orm": "catalog:",
       },
       "devDependencies": {
         "drizzle-kit": "^0.31.0",
@@ -127,7 +127,7 @@
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/driver-runtime": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/driver-codex": {
@@ -150,7 +150,7 @@
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/driver-runtime": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/driver-opencode": {
@@ -162,7 +162,7 @@
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/driver-runtime": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/driver-runtime": {
@@ -192,7 +192,7 @@
         "@spectrum/providers": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/platform": {
@@ -206,7 +206,7 @@
         "@spectrum/db": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "drizzle-orm": "^0.45.2",
+        "drizzle-orm": "catalog:",
       },
     },
     "packages/providers": {
@@ -215,7 +215,7 @@
       "dependencies": {
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "zod": "^3.25.76",
+        "zod": "catalog:",
       },
     },
     "packages/proxy": {
@@ -242,7 +242,7 @@
         "@spectrum/utils": "workspace:*",
         "ai": "^6",
         "ollama-ai-provider-v2": "^3",
-        "zod": "^3.25.76",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "msw": "^2.7.0",
@@ -256,7 +256,7 @@
         "@spectrum/db": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "drizzle-orm": "^0.45.2",
+        "drizzle-orm": "catalog:",
       },
       "devDependencies": {
         "@spectrum/sessions": "workspace:*",
@@ -278,14 +278,14 @@
         "@spectrum/db": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "drizzle-orm": "^0.45.2",
+        "drizzle-orm": "catalog:",
       },
     },
     "packages/types": {
       "name": "@spectrum/types",
       "version": "1.1.0",
       "dependencies": {
-        "zod": "^3.24.0",
+        "zod": "catalog:",
       },
     },
     "packages/ui": {
@@ -297,8 +297,8 @@
         "@spectrum/providers": "workspace:*",
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
-        "react": "^19",
-        "react-dom": "^19",
+        "react": "catalog:",
+        "react-dom": "catalog:",
         "react-markdown": "^9",
         "remark-gfm": "^4",
       },

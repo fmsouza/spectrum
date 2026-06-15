@@ -15,6 +15,6 @@
     "@spectrum/providers": "workspace:*",
     "@spectrum/types": "workspace:*",
     "@spectrum/utils": "workspace:*",
-    "zod": "^3.24.0"
+    "zod": "catalog:"
   }
 }

@@ -13,6 +13,6 @@
   "dependencies": {
     "@spectrum/types": "workspace:*",
     "@spectrum/utils": "workspace:*",
-    "zod": "^3.25.76"
+    "zod": "catalog:"
   }
 }

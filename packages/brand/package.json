@@ -11,6 +11,6 @@
     "test": "bun test"
   },
   "dependencies": {
-    "react": "^19"
+    "react": "catalog:"
   }
 }
