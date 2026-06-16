@@ -4,15 +4,16 @@ import {
   EmptyState,
   FormField,
   Modal,
+  ModelPicker,
   ModelTable,
   Row,
   Select,
   SettingsLayout,
   Spinner,
-  TextInput,
 } from "@spectrum/ui"
 import { type ReactElement, useState } from "react"
 import { useModels } from "../hooks/useModels"
+import { useNotifications } from "../hooks/useNotifications"
 import { useProviderModels } from "../hooks/useProviderModels"
 import { useProviders } from "../hooks/useProviders"
 
@@ -40,57 +41,30 @@ const ModelField = ({
   readonly onChange: (v: string) => void
 }): ReactElement => {
   const { data: models, loading, error } = useProviderModels(providerId)
-
-  if (loading && providerId !== "") {
-    return (
-      <FormField id="model-model" label="Model">
-        <Select
-          id="model-model"
-          value=""
-          options={[]}
-          onChange={() => {}}
-          disabled
-        />
-        <Spinner label="Loading models…" />
-      </FormField>
-    )
-  }
-
   const discovered = models ?? []
-  if (error === undefined && discovered.length > 0) {
-    // Primary path: a picker of the discovered models.
-    const options = [
-      { value: "", label: "Select a model…" },
-      ...discovered.map((m) => ({ value: m, label: m })),
-    ]
-    return (
-      <FormField id="model-model" label="Model">
-        <Select
-          id="model-model"
-          value={value}
-          options={options}
-          onChange={onChange}
-        />
-      </FormField>
-    )
-  }
-
-  // Empty list or error (incl. unsupported SDKs) → free-text fallback.
+  const showMessage =
+    providerId !== "" && !(error === undefined && discovered.length > 0)
   return (
-    <FormField id="model-model" label="Model">
-      <TextInput id="model-model" value={value} onChange={onChange} />
-      {providerId !== "" ? (
-        <span>
-          {"Couldn't list models for this provider — enter one manually."}
-        </span>
-      ) : null}
-    </FormField>
+    <ModelPicker
+      id="model-model"
+      loading={loading && providerId !== ""}
+      models={discovered}
+      value={value}
+      onChange={onChange}
+      {...(showMessage
+        ? {
+            errorMessage:
+              "Couldn't list models for this provider — enter one manually.",
+          }
+        : {})}
+    />
   )
 }
 
 export const ModelsPage = (): ReactElement => {
   const models = useModels()
   const providers = useProviders()
+  const { notify } = useNotifications()
 
   const [draft, setDraft] = useState<ModelDraft | undefined>(undefined)
 
@@ -128,10 +102,25 @@ export const ModelsPage = (): ReactElement => {
             providerModel: draft.providerModel,
           })
     if (r.ok) setDraft(undefined)
+    else
+      notify({
+        tone: "error",
+        message:
+          draft.editingOf === undefined
+            ? "Couldn't add the model"
+            : "Couldn't update the model",
+      })
   }
 
   const deleteModel = async (id: string): Promise<void> => {
-    await models.remove(id as ModelId)
+    const r = await models.remove(id as ModelId)
+    if (r.ok) notify({ tone: "success", message: "Model deleted" })
+    else
+      notify({
+        tone: "error",
+        message: "Couldn't delete the model",
+        action: { label: "Retry", onClick: () => void deleteModel(id) },
+      })
   }
 
   const update = <K extends keyof ModelDraft>(

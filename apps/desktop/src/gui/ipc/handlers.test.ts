@@ -89,6 +89,14 @@ const makeCtx = (
     >
     resetAppResult?: Result<void, ResetError>
     log?: Logger
+    draftListResult?: Result<
+      readonly string[],
+      { readonly kind: string; readonly detail?: string }
+    >
+    draftTestResult?: Result<
+      { readonly ok: boolean; readonly latencyMs: number },
+      { readonly kind: string; readonly detail?: string }
+    >
   } = {},
 ): {
   ctx: AppContext
@@ -102,6 +110,8 @@ const makeCtx = (
   deletedSessionIds: string[]
   deletedProjectIds: string[]
   resetCalls: number
+  draftTestInputs: unknown[]
+  draftListInputs: unknown[]
 } => {
   const saves: Config[] = []
   const secretSets: string[] = []
@@ -112,6 +122,8 @@ const makeCtx = (
   const runEventsIds: string[] = []
   const deletedSessionIds: string[] = []
   const deletedProjectIds: string[] = []
+  const draftTestInputs: unknown[] = []
+  const draftListInputs: unknown[] = []
   const resetState = { count: 0 }
   let current = baseConfig(
     over.providers ?? [provider()],
@@ -174,6 +186,17 @@ const makeCtx = (
     proxyPort: over.proxyPort ?? 4000,
     proxyBaseUrl: `http://127.0.0.1:${over.proxyPort ?? 4000}`,
     testProvider: async () => ok({ ok: true, latencyMs: 12 }),
+    testProviderDraft: async (input: unknown) => {
+      draftTestInputs.push(input)
+      return over.draftTestResult ?? ok({ ok: true, latencyMs: 7 })
+    },
+    listProviderModelsDraft: async (input: unknown) => {
+      draftListInputs.push(input)
+      return (
+        over.draftListResult ??
+        ok(["gpt-4o", "gpt-4o-mini"] as readonly string[])
+      )
+    },
     runtime: {
       readProxyKey: async () => over.proxyKeyStored ?? null,
       writeProxyKey: async () => ok(undefined),
@@ -274,6 +297,8 @@ const makeCtx = (
     get resetCalls() {
       return resetState.count
     },
+    draftTestInputs,
+    draftListInputs,
   }
 }
 
@@ -399,6 +424,81 @@ describe("createIpcHandlers.addProvider", () => {
     })
 
     expect(view.name).toBe("My OpenAI")
+  })
+
+  it("writes each inline secret to the keychain and persists only the SecretRef", async () => {
+    const { ctx, saves, secretSets } = makeCtx({
+      providers: [],
+      setResult: ok({ ref: "kc_minted" }),
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    const view = await handlers.addProvider({
+      sdkProvider: "ollama",
+      config: { serverUrl: "https://ollama.com/api" },
+      secretFieldNames: ["apiKey"],
+      secrets: { apiKey: "sk-live-secret" },
+      models: ["qwen2.5-coder"],
+    })
+
+    expect(secretSets).toEqual(["sk-live-secret"])
+    const saved = saves.at(-1)?.providers.at(-1)
+    expect(saved?.secrets).toEqual({ apiKey: { ref: "kc_minted" } })
+    expect(saved?.models).toEqual(["qwen2.5-coder"])
+    // The view masks secrets to presence flags — never a ref or value.
+    expect(view.secretFields).toEqual({ apiKey: { isSet: true } })
+  })
+
+  it("creates a keyless provider when secrets is omitted", async () => {
+    const { ctx, saves, secretSets } = makeCtx({ providers: [] })
+    const handlers = createIpcHandlers(ctx)
+    await handlers.addProvider({
+      sdkProvider: "openai",
+      config: {},
+      secretFieldNames: ["apiKey"],
+      models: [],
+    })
+    expect(secretSets).toEqual([])
+    expect(saves.at(-1)?.providers.at(-1)?.secrets).toEqual({})
+  })
+
+  it("throws and persists nothing when storing a secret fails", async () => {
+    const { ctx, saves, secretSets } = makeCtx({
+      providers: [],
+      setResult: err({ kind: "backend-failed" }),
+    })
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.addProvider({
+        sdkProvider: "ollama",
+        config: {},
+        secretFieldNames: ["apiKey"],
+        secrets: { apiKey: "sk-x" },
+        models: [],
+      }),
+    ).rejects.toThrow()
+    // keychain write was attempted, but no provider was saved (abort before save)
+    expect(secretSets).toEqual(["sk-x"])
+    expect(saves).toHaveLength(0)
+  })
+
+  it("ignores inline secrets for fields the provider does not declare", async () => {
+    const { ctx, secretSets, saves } = makeCtx({
+      providers: [],
+      setResult: ok({ ref: "kc_x" }),
+    })
+    const handlers = createIpcHandlers(ctx)
+    await handlers.addProvider({
+      sdkProvider: "ollama",
+      config: {},
+      secretFieldNames: ["apiKey"],
+      secrets: { apiKey: "keep", bogus: "drop" },
+      models: [],
+    })
+    expect(secretSets).toEqual(["keep"])
+    expect(saves.at(-1)?.providers.at(-1)?.secrets).toEqual({
+      apiKey: { ref: "kc_x" },
+    })
   })
 })
 
@@ -1481,5 +1581,124 @@ describe("createIpcHandlers.logClientError", () => {
     expect(r).toBeNull()
     expect(calls[0]?.msg).toBe("crash")
     expect(calls[0]?.scope).toBe("webview.ErrorBoundary")
+  })
+})
+
+describe("createIpcHandlers.testProviderDraft", () => {
+  it("validates config then delegates to ctx.testProviderDraft and returns ok+latency", async () => {
+    const { ctx, draftTestInputs } = makeCtx({ providers: [] })
+    const handlers = createIpcHandlers(ctx)
+    const r = await handlers.testProviderDraft({
+      sdkProvider: "openai",
+      config: {},
+      secrets: { apiKey: "sk-x" },
+      providerModel: "gpt-4o",
+    })
+    expect(r).toEqual({ ok: true, latencyMs: 7 })
+    expect(draftTestInputs).toEqual([
+      {
+        sdkProvider: "openai",
+        config: {},
+        secrets: { apiKey: "sk-x" },
+        providerModel: "gpt-4o",
+      },
+    ])
+  })
+
+  it("falls back to the sdkProvider name as the ping model when providerModel is empty", async () => {
+    const { ctx, draftTestInputs } = makeCtx({ providers: [] })
+    const handlers = createIpcHandlers(ctx)
+    await handlers.testProviderDraft({
+      sdkProvider: "openai",
+      config: {},
+      secrets: {},
+      providerModel: "",
+    })
+    expect(
+      (draftTestInputs[0] as { providerModel: string }).providerModel,
+    ).toBe("openai")
+  })
+
+  it("rejects (handler-failed) when the draft config is invalid", async () => {
+    const { ctx } = makeCtx({ providers: [] })
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.testProviderDraft({
+        sdkProvider: "custom",
+        config: { headers: "not-json" },
+        secrets: {},
+        providerModel: "m",
+      }),
+    ).rejects.toThrow()
+  })
+})
+
+describe("createIpcHandlers.listProviderModelsDraft", () => {
+  it("returns the discovered models for inline inputs", async () => {
+    const { ctx, draftListInputs } = makeCtx({ providers: [] })
+    const handlers = createIpcHandlers(ctx)
+    const r = await handlers.listProviderModelsDraft({
+      sdkProvider: "openai",
+      config: {},
+      secrets: { apiKey: "sk-x" },
+    })
+    expect(r).toEqual({ models: ["gpt-4o", "gpt-4o-mini"] })
+    expect(draftListInputs).toEqual([
+      { sdkProvider: "openai", config: {}, secrets: { apiKey: "sk-x" } },
+    ])
+  })
+
+  it("rejects (handler-failed) when discovery fails", async () => {
+    const { ctx } = makeCtx({
+      providers: [],
+      draftListResult: err({ kind: "provider-failed" }),
+    })
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.listProviderModelsDraft({
+        sdkProvider: "openai",
+        config: {},
+        secrets: {},
+      }),
+    ).rejects.toThrow()
+  })
+
+  it("surfaces the underlying discovery error detail (not a generic message)", async () => {
+    const { ctx } = makeCtx({
+      providers: [],
+      draftListResult: err({
+        kind: "provider-failed",
+        detail: "HTTP 404 from http://localhost:11434/models",
+      }),
+    })
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.listProviderModelsDraft({
+        sdkProvider: "custom",
+        config: { serverUrl: "http://localhost:11434" },
+        secrets: {},
+      }),
+    ).rejects.toThrow(/HTTP 404 from http:\/\/localhost:11434\/models/)
+  })
+})
+
+describe("createIpcHandlers.testProviderDraft (error detail)", () => {
+  it("surfaces the underlying draft-test error detail", async () => {
+    const { ctx } = makeCtx({
+      providers: [],
+      draftTestResult: err({
+        kind: "provider-failed",
+        detail: "boom from upstream",
+      }),
+    })
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.testProviderDraft({
+        sdkProvider: "openai",
+        config: {},
+        secrets: {},
+        providerModel: "gpt-4o",
+      }),
+    ).rejects.toThrow(/provider draft test failed: boom from upstream/)
   })
 })

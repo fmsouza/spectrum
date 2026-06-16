@@ -1,7 +1,7 @@
-import type { Provider } from "@spectrum/types"
+import type { Provider, SdkProvider } from "@spectrum/types"
 import { type Clock, type Result, isOk, ok } from "@spectrum/utils"
 import type { LanguageModelGateway } from "./gateway"
-import type { ProviderFactory } from "./providers/factory"
+import type { ModelHandle, ProviderFactory } from "./providers/factory"
 import type { NormalizedRequest, ProxyError } from "./types"
 
 /** The outcome of a connectivity probe: whether it succeeded and how long it took. */
@@ -16,6 +16,19 @@ export type ProviderTester = (
   providerModel: string,
 ) => Promise<Result<ProviderTestResult, ProxyError>>
 
+/** Inline (un-saved) probe input: resolved secret VALUES, never keychain refs. */
+export type DraftProbeInput = {
+  readonly sdkProvider: SdkProvider
+  readonly config: Readonly<Record<string, string>>
+  readonly secrets: Readonly<Record<string, string>>
+  readonly providerModel: string
+}
+
+/** A draft connectivity probe over inline values. */
+export type DraftProviderTester = (
+  input: DraftProbeInput,
+) => Promise<Result<ProviderTestResult, ProxyError>>
+
 /** The minimal probe request: a single short user turn capped at one output token (security/perf). */
 const pingRequest = (providerModel: string): NormalizedRequest => ({
   model: providerModel,
@@ -23,6 +36,30 @@ const pingRequest = (providerModel: string): NormalizedRequest => ({
   maxTokens: 1,
   stream: true,
 })
+
+/** Shared probe: given a built model Result, stream one ping and measure latency. */
+const probe = async (
+  model: Result<ModelHandle, ProxyError>,
+  providerModel: string,
+  gateway: LanguageModelGateway,
+  clock: Clock,
+  start: number,
+): Promise<Result<ProviderTestResult, ProxyError>> => {
+  if (!isOk(model)) return ok({ ok: false, latencyMs: 0 })
+  let streamErrored = false
+  try {
+    for await (const event of gateway.stream(
+      model.value,
+      pingRequest(providerModel),
+    )) {
+      if (event.type === "error") streamErrored = true
+    }
+  } catch {
+    streamErrored = true
+  }
+  const latencyMs = clock.now().getTime() - start
+  return ok({ ok: !streamErrored, latencyMs })
+}
 
 /**
  * Build a provider connectivity tester over the proxy's existing seams. `getModel` resolves the
@@ -39,26 +76,28 @@ export const createProviderTester = (deps: {
 }): ProviderTester => {
   return async (provider, providerModel) => {
     const start = deps.clock.now().getTime()
-
     const model = await deps.factory.getModel(provider, providerModel)
-    if (!isOk(model)) {
-      // Provider could not be built (bad config / missing secret) → unreachable, latency 0.
-      return ok({ ok: false, latencyMs: 0 })
-    }
+    return probe(model, providerModel, deps.gateway, deps.clock, start)
+  }
+}
 
-    let streamErrored = false
-    try {
-      for await (const event of deps.gateway.stream(
-        model.value,
-        pingRequest(providerModel),
-      )) {
-        if (event.type === "error") streamErrored = true
-      }
-    } catch {
-      streamErrored = true
-    }
-
-    const latencyMs = deps.clock.now().getTime() - start
-    return ok({ ok: !streamErrored, latencyMs })
+/**
+ * Draft connectivity tester over inline (un-saved) values. Mirrors createProviderTester
+ * but builds via getModelFromResolved (no keychain, no persistence).
+ */
+export const createDraftProviderTester = (deps: {
+  readonly factory: ProviderFactory
+  readonly gateway: LanguageModelGateway
+  readonly clock: Clock
+}): DraftProviderTester => {
+  return async ({ sdkProvider, config, secrets, providerModel }) => {
+    const start = deps.clock.now().getTime()
+    const model = await deps.factory.getModelFromResolved({
+      sdkProvider,
+      config,
+      secrets,
+      providerModel,
+    })
+    return probe(model, providerModel, deps.gateway, deps.clock, start)
   }
 }

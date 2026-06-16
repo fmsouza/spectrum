@@ -3,7 +3,10 @@ import type { Provider } from "@spectrum/types"
 import { type Result, createFixedClock, err, ok } from "@spectrum/utils"
 import { createScriptedGateway } from "./gateway"
 import type { LanguageModelGateway } from "./gateway"
-import { createProviderTester } from "./provider-tester"
+import {
+  createDraftProviderTester,
+  createProviderTester,
+} from "./provider-tester"
 import type { ModelHandle, ProviderFactory } from "./providers/factory"
 import type { NormalizedRequest, ProxyError, StreamEvent } from "./types"
 
@@ -23,6 +26,7 @@ const fakeFactory = (
   result: Result<ModelHandle, ProxyError> = ok({}),
 ): ProviderFactory => ({
   getModel: async () => result,
+  getModelFromResolved: async () => result,
 })
 
 /** A clock that advances by `stepMs` on each now() call, so elapsed time is deterministic. */
@@ -35,6 +39,26 @@ const steppingClock = (startMs: number, stepMs: number) => {
       return at
     },
   }
+}
+
+const fakeDraftFactory = (
+  result: Result<ModelHandle, ProxyError> = ok({}),
+): ProviderFactory => ({
+  // If createDraftProviderTester wrongly calls getModel, this rejects and the test fails —
+  // proving the draft path routes through getModelFromResolved.
+  getModel: async () => {
+    throw new Error(
+      "draft tester must build via getModelFromResolved, not getModel",
+    )
+  },
+  getModelFromResolved: async () => result,
+})
+
+const draftInput = {
+  sdkProvider: "openai" as const,
+  config: {},
+  secrets: { apiKey: "sk-inline" },
+  providerModel: "gpt-4o",
 }
 
 describe("createProviderTester", () => {
@@ -125,5 +149,75 @@ describe("createProviderTester", () => {
     const result = await tester(provider(), "gpt-4o")
 
     expect(result.ok && result.value).toEqual({ ok: false, latencyMs: 40 })
+  })
+})
+
+describe("createDraftProviderTester", () => {
+  it("returns ok with measured latency when the model streams a finish event", async () => {
+    const gateway = createScriptedGateway([
+      { type: "text-delta", text: "p" },
+      { type: "finish", finishReason: "stop" },
+    ])
+    const tester = createDraftProviderTester({
+      factory: fakeDraftFactory(),
+      gateway,
+      clock: steppingClock(1000, 25),
+    })
+    const result = await tester(draftInput)
+    expect(result).toEqual({ ok: true, value: { ok: true, latencyMs: 25 } })
+  })
+
+  it("returns ok:false when the stream yields an error event", async () => {
+    const gateway = createScriptedGateway([
+      { type: "error", detail: "401 from upstream" },
+    ])
+    const tester = createDraftProviderTester({
+      factory: fakeDraftFactory(),
+      gateway,
+      clock: steppingClock(500, 40),
+    })
+    const result = await tester(draftInput)
+    expect(result.ok && result.value).toEqual({ ok: false, latencyMs: 40 })
+  })
+
+  it("returns ok:false when the model could not be built", async () => {
+    const gateway = createScriptedGateway([
+      { type: "finish", finishReason: "stop" },
+    ])
+    const tester = createDraftProviderTester({
+      factory: fakeDraftFactory(
+        err({ kind: "unsupported-provider", sdkProvider: "openai" }),
+      ),
+      gateway,
+      clock: createFixedClock(new Date(0)),
+    })
+    const result = await tester(draftInput)
+    expect(result.ok && result.value).toEqual({ ok: false, latencyMs: 0 })
+  })
+
+  it("sends a minimal one-token ping request with the draft model to the gateway", async () => {
+    const captured: NormalizedRequest[] = []
+    const capturingGateway: LanguageModelGateway = {
+      async *stream(
+        _model: ModelHandle,
+        req: NormalizedRequest,
+      ): AsyncIterable<StreamEvent> {
+        captured.push(req)
+        yield { type: "finish", finishReason: "stop" }
+      },
+    }
+    const tester = createDraftProviderTester({
+      factory: fakeDraftFactory(),
+      gateway: capturingGateway,
+      clock: createFixedClock(new Date("2026-05-23T00:00:00.000Z")),
+    })
+
+    await tester(draftInput)
+
+    expect(captured).toHaveLength(1)
+    expect(captured[0]?.maxTokens).toBe(1)
+    expect(captured[0]?.messages).toEqual([{ role: "user", content: "ping" }])
+    expect(captured[0]?.stream).toBe(true)
+    expect(captured[0]?.model).toBe(draftInput.providerModel)
   })
 })

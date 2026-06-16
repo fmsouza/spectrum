@@ -56,7 +56,10 @@ const config = {
 const deps = (key: string) => ({
   proxyKey: key,
   router: createRouter(config),
-  factory: { getModel: async () => ({ ok: true as const, value: {} }) },
+  factory: {
+    getModel: async () => ({ ok: true as const, value: {} }),
+    getModelFromResolved: async () => ({ ok: true as const, value: {} }),
+  },
   gateway: createScriptedGateway([
     { type: "text-delta", text: "Hi" },
     { type: "finish", finishReason: "stop" },
@@ -188,6 +191,110 @@ describe("createHandler", () => {
       kind: "provider-failed",
       detail: "you have reached your session usage limit",
     })
+  })
+  it("passes through 404 when the provider returns model-not-found so the harness fails fast", async () => {
+    const res = await createHandler({
+      ...deps("k"),
+      gateway: createScriptedGateway([
+        { type: "error", detail: "model not found", statusCode: 404 },
+      ]),
+    }).fetch(
+      post("/v1/messages", {
+        model: "mdl_default",
+        max_tokens: 1,
+        messages: [{ role: "user", content: "hi" }],
+      }),
+    )
+    expect(res.status).toBe(404)
+    const json = (await res.json()) as {
+      error: { kind: string; detail: string }
+    }
+    expect(json.error).toMatchObject({
+      kind: "provider-failed",
+      detail: "model not found",
+    })
+  })
+  it("passes through 400 when the provider returns a bad-request error", async () => {
+    const res = await createHandler({
+      ...deps("k"),
+      gateway: createScriptedGateway([
+        { type: "error", detail: "bad request", statusCode: 400 },
+      ]),
+    }).fetch(
+      post("/v1/messages", {
+        model: "mdl_default",
+        max_tokens: 1,
+        messages: [{ role: "user", content: "hi" }],
+      }),
+    )
+    expect(res.status).toBe(400)
+    const json = (await res.json()) as {
+      error: { kind: string; detail: string }
+    }
+    expect(json.error).toMatchObject({
+      kind: "provider-failed",
+      detail: "bad request",
+    })
+  })
+  it("masks provider 401 as 502 so it does not trigger the harness auth-retry loop", async () => {
+    const res = await createHandler({
+      ...deps("k"),
+      gateway: createScriptedGateway([
+        { type: "error", detail: "invalid api key", statusCode: 401 },
+      ]),
+    }).fetch(
+      post("/v1/messages", {
+        model: "mdl_default",
+        max_tokens: 1,
+        messages: [{ role: "user", content: "hi" }],
+      }),
+    )
+    expect(res.status).toBe(502)
+    const json = (await res.json()) as {
+      error: { kind: string; detail: string }
+    }
+    expect(json.error).toMatchObject({ kind: "provider-failed" })
+    expect(json.error).not.toHaveProperty("statusCode")
+  })
+  it("masks provider 403 as 502 so it does not trigger the harness auth-retry loop", async () => {
+    const res = await createHandler({
+      ...deps("k"),
+      gateway: createScriptedGateway([
+        { type: "error", detail: "forbidden", statusCode: 403 },
+      ]),
+    }).fetch(
+      post("/v1/messages", {
+        model: "mdl_default",
+        max_tokens: 1,
+        messages: [{ role: "user", content: "hi" }],
+      }),
+    )
+    expect(res.status).toBe(502)
+    const json = (await res.json()) as {
+      error: { kind: string; detail: string }
+    }
+    expect(json.error).toMatchObject({ kind: "provider-failed" })
+    expect(json.error).not.toHaveProperty("statusCode")
+  })
+  it("returns 502 when the provider returns a 500 server error", async () => {
+    const res = await createHandler({
+      ...deps("k"),
+      gateway: createScriptedGateway([
+        { type: "error", detail: "internal server error", statusCode: 500 },
+      ]),
+    }).fetch(
+      post("/v1/messages", {
+        model: "mdl_default",
+        max_tokens: 1,
+        messages: [{ role: "user", content: "hi" }],
+      }),
+    )
+    expect(res.status).toBe(502)
+    const json = (await res.json()) as {
+      error: { kind: string; detail: string }
+    }
+    expect(json.error).toMatchObject({ kind: "provider-failed" })
+    expect(json.error).not.toHaveProperty("statusCode")
   })
   it("logs error with the kind and no secret when the gateway fails", async () => {
     const { logger, errorsOf } = makeFakeLogger()

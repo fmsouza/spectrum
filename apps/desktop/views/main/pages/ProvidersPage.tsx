@@ -8,15 +8,26 @@ import {
   ProviderForm,
   ProviderList,
   Row,
+  SecretFieldsForm,
   Select,
   SettingsLayout,
   Spinner,
+  StatusDot,
   TextInput,
 } from "@spectrum/ui"
 import type { ProviderRow } from "@spectrum/ui"
 import { type ReactElement, useState } from "react"
+import { useDraftConnectionTest } from "../hooks/useDraftConnectionTest"
+import { useDraftProviderModels } from "../hooks/useDraftProviderModels"
+import { useNotifications } from "../hooks/useNotifications"
 import { useProviderCatalog } from "../hooks/useProviderCatalog"
 import { useProviders } from "../hooks/useProviders"
+
+/** Drop empty-string config values so optional fields read as "unset" (zod `.url().optional()` rejects ""). */
+const omitEmpty = (
+  config: Readonly<Record<string, string>>,
+): Record<string, string> =>
+  Object.fromEntries(Object.entries(config).filter(([, v]) => v !== ""))
 
 const toRow = (view: ProviderView): ProviderRow => {
   const fields = Object.values(view.secretFields)
@@ -32,6 +43,7 @@ const toRow = (view: ProviderView): ProviderRow => {
 export const ProvidersPage = (): ReactElement => {
   const { data, loading, error, add, update, setSecret } = useProviders()
   const catalog = useProviderCatalog()
+  const { notify } = useNotifications()
 
   const catalogOptions =
     catalog.data?.map((c) => ({ value: c.key, label: c.label })) ?? []
@@ -42,6 +54,22 @@ export const ProvidersPage = (): ReactElement => {
   const [newName, setNewName] = useState<string>("")
   const [newSdk, setNewSdk] = useState<string>(defaultSdk)
   const [newConfig, setNewConfig] = useState<Record<string, string>>({})
+  const [newSecrets, setNewSecrets] = useState<Record<string, string>>({})
+  const discovery = useDraftProviderModels()
+  const conn = useDraftConnectionTest()
+
+  const resetDraftProbes = (): void => {
+    discovery.reset()
+    conn.reset()
+  }
+
+  const closeAddModal = (): void => {
+    setAddOpen(false)
+    setNewName("")
+    setNewConfig({})
+    setNewSecrets({})
+    resetDraftProbes()
+  }
 
   const selectedEntry = catalog.data?.find((c) => c.key === newSdk)
 
@@ -56,44 +84,53 @@ export const ProvidersPage = (): ReactElement => {
     const r = await add({
       ...(trimmed !== "" ? { name: trimmed } : {}),
       sdkProvider,
-      config: newConfig,
+      config: omitEmpty(newConfig),
       secretFieldNames,
+      ...(Object.keys(newSecrets).length > 0 ? { secrets: newSecrets } : {}),
       models: [],
     })
     if (r.ok) {
-      setAddOpen(false)
-      setNewName("")
-      setNewConfig({})
-    }
+      closeAddModal()
+    } else notify({ tone: "error", message: "Couldn't add the provider" })
   }
 
   const [secretFor, setSecretFor] = useState<ProviderView | undefined>(
     undefined,
   )
-  const [secretField, setSecretField] = useState<string>("")
-  const [secretValue, setSecretValue] = useState<string>("")
+  const [secretValues, setSecretValues] = useState<Record<string, string>>({})
+
+  const secretCatalogEntry =
+    secretFor !== undefined
+      ? catalog.data?.find((c) => c.key === secretFor.sdkProvider)
+      : undefined
 
   const [editFor, setEditFor] = useState<ProviderView | undefined>(undefined)
   const [editConfig, setEditConfig] = useState<Record<string, string>>({})
 
+  const closeSecretModal = (): void => {
+    setSecretFor(undefined)
+    setSecretValues({})
+  }
+
+  const secretSubmittable = Object.values(secretValues).some(
+    (v) => v.trim() !== "",
+  )
+
   const submitSecret = async (): Promise<void> => {
-    if (
-      secretFor === undefined ||
-      secretField.trim() === "" ||
-      secretValue.trim() === ""
+    if (secretFor === undefined) return
+    const entries = Object.entries(secretValues).filter(
+      ([, v]) => v.trim() !== "",
     )
-      return
-    const r = await setSecret({
-      providerId: secretFor.id,
-      field: secretField,
-      value: secretValue,
-    })
-    if (r.ok) {
-      // Write-only: clear the value immediately; never echo it back.
-      setSecretValue("")
-      setSecretField("")
-      setSecretFor(undefined)
+    if (entries.length === 0) return
+    for (const [field, value] of entries) {
+      const r = await setSecret({ providerId: secretFor.id, field, value })
+      if (!r.ok) {
+        notify({ tone: "error", message: "Couldn't save the secret" })
+        return
+      }
     }
+    // Write-only: clear immediately, never echo back.
+    closeSecretModal()
   }
 
   const submitEdit = async (): Promise<void> => {
@@ -107,7 +144,7 @@ export const ProvidersPage = (): ReactElement => {
     })
     if (r.ok) {
       setEditFor(undefined)
-    }
+    } else notify({ tone: "error", message: "Couldn't save the provider" })
   }
 
   const editCatalogEntry =
@@ -132,7 +169,10 @@ export const ProvidersPage = (): ReactElement => {
             providers={data.map(toRow)}
             onSetSecret={(id) => {
               const p = data.find((x) => x.id === id)
-              if (p !== undefined) setSecretFor(p)
+              if (p !== undefined) {
+                setSecretFor(p)
+                setSecretValues({})
+              }
             }}
             onEdit={(id) => {
               const p = data.find((x) => x.id === id)
@@ -145,11 +185,7 @@ export const ProvidersPage = (): ReactElement => {
         </>
       ) : null}
 
-      <Modal
-        title="Add provider"
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-      >
+      <Modal title="Add provider" open={addOpen} onClose={closeAddModal}>
         <form
           aria-label="Add provider"
           onSubmit={(e) => {
@@ -173,6 +209,8 @@ export const ProvidersPage = (): ReactElement => {
               onChange={(v) => {
                 setNewSdk(v)
                 setNewConfig({})
+                setNewSecrets({})
+                resetDraftProbes()
               }}
             />
           </FormField>
@@ -181,14 +219,78 @@ export const ProvidersPage = (): ReactElement => {
             <ProviderForm
               fields={selectedEntry.configFields}
               values={newConfig}
-              onChange={(name, value) =>
+              onChange={(name, value) => {
                 setNewConfig((c) => ({ ...c, [name]: value }))
-              }
+                resetDraftProbes()
+              }}
             />
           ) : null}
+          {selectedEntry !== undefined &&
+          selectedEntry.secretFields.length > 0 ? (
+            <SecretFieldsForm
+              fields={selectedEntry.secretFields}
+              values={newSecrets}
+              onChange={(name, value) => {
+                setNewSecrets((s) => ({ ...s, [name]: value }))
+                resetDraftProbes()
+              }}
+            />
+          ) : null}
+          <Row gap={2}>
+            <Button
+              variant="secondary"
+              disabled={discovery.loading || conn.testing}
+              onClick={() => {
+                void (async () => {
+                  const sdkProvider =
+                    selectedEntry?.key ?? (newSdk as SdkProvider)
+                  const config = omitEmpty(newConfig)
+                  // The probe needs a target model: use the first discoverable one
+                  // (the handler falls back to the provider name when none exists).
+                  const models = await discovery.discover({
+                    sdkProvider,
+                    config,
+                    secrets: newSecrets,
+                  })
+                  await conn.test({
+                    sdkProvider,
+                    config,
+                    secrets: newSecrets,
+                    providerModel: models[0] ?? "",
+                  })
+                })()
+              }}
+            >
+              Test connection
+            </Button>
+            {discovery.loading || conn.testing ? (
+              <Spinner label="Testing connection…" />
+            ) : null}
+            {conn.result !== undefined ? (
+              <StatusDot
+                status={conn.result.ok ? "on" : "error"}
+                label={
+                  conn.result.ok
+                    ? `Connected (${conn.result.latencyMs}ms)`
+                    : "Connection failed"
+                }
+              />
+            ) : null}
+            {conn.error !== undefined ? (
+              <>
+                <StatusDot status="error" label="Connection test failed" />
+                {conn.error.detail !== "" ? (
+                  <span>{conn.error.detail}</span>
+                ) : null}
+              </>
+            ) : null}
+            {discovery.error !== undefined && discovery.error.detail !== "" ? (
+              <span>{discovery.error.detail}</span>
+            ) : null}
+          </Row>
           <Row gap={2} className="lk-form-actions">
             <Button onClick={() => void submitAdd()}>Create provider</Button>
-            <Button variant="secondary" onClick={() => setAddOpen(false)}>
+            <Button variant="secondary" onClick={closeAddModal}>
               Cancel
             </Button>
           </Row>
@@ -202,7 +304,7 @@ export const ProvidersPage = (): ReactElement => {
             : `Set secret for ${secretFor.name}`
         }
         open={secretFor !== undefined}
-        onClose={() => setSecretFor(undefined)}
+        onClose={closeSecretModal}
       >
         {secretFor !== undefined ? (
           <form
@@ -212,28 +314,24 @@ export const ProvidersPage = (): ReactElement => {
               void submitSecret()
             }}
           >
-            <FormField id="secret-field" label="Secret field">
-              <TextInput
-                id="secret-field"
-                value={secretField}
-                onChange={setSecretField}
+            {secretCatalogEntry !== undefined &&
+            secretCatalogEntry.secretFields.length > 0 ? (
+              <SecretFieldsForm
+                fields={secretCatalogEntry.secretFields}
+                values={secretValues}
+                onChange={(name, value) =>
+                  setSecretValues((s) => ({ ...s, [name]: value }))
+                }
               />
-            </FormField>
-            {/* type="password" + write-only: the value is sent, then cleared, never shown. */}
-            <FormField id="secret-value" label="Secret value">
-              <TextInput
-                id="secret-value"
-                type="password"
-                value={secretValue}
-                onChange={setSecretValue}
-              />
-            </FormField>
+            ) : null}
             <Row gap={2} className="lk-form-actions">
-              <Button onClick={() => void submitSecret()}>Save secret</Button>
               <Button
-                variant="secondary"
-                onClick={() => setSecretFor(undefined)}
+                onClick={() => void submitSecret()}
+                disabled={!secretSubmittable}
               >
+                Save secret
+              </Button>
+              <Button variant="secondary" onClick={closeSecretModal}>
                 Cancel
               </Button>
             </Row>
