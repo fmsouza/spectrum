@@ -49,7 +49,7 @@ export const createProviderFactory = (deps: {
 
   // Shared build core: SDK instance from sdkProvider+config+RESOLVED secrets, then invoke for the model.
   const buildFromResolved = async (
-    sdkProvider: string,
+    sdkProvider: SdkProvider,
     config: Readonly<Record<string, string>>,
     secrets: Readonly<Record<string, string>>,
     providerModel: string,
@@ -65,11 +65,7 @@ export const createProviderFactory = (deps: {
         return err({ kind: "unsupported-provider", sdkProvider })
       }
       instance = mod.create(
-        buildSdkOptions(
-          getDescriptor(sdkProvider as SdkProvider),
-          config,
-          secrets,
-        ),
+        buildSdkOptions(getDescriptor(sdkProvider), config, secrets),
       )
       if (cacheKey !== undefined) instanceCache.set(cacheKey, instance)
     }

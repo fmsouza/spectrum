@@ -133,5 +133,9 @@ describe("createProviderFactory.getModelFromResolved", () => {
     expect(r.ok).toBe(true)
     // The inline apiKey reached the SDK options (openai maps apiKey as an option).
     expect(captured[0]?.apiKey).toBe("sk-inline")
+    // loadSdk was called with the correct sdkProvider.
+    expect(loadSdk).toHaveBeenCalledWith("openai")
+    // The returned model handle carries the requested model id.
+    expect(r.ok && (r.value as { id: string }).id).toBe("gpt-4o")
   })
 })
