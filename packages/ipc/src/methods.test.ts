@@ -39,16 +39,18 @@ describe("AddProviderParamsSchema", () => {
     }
     expect(AddProviderParamsSchema.parse(input)).toEqual(input)
   })
-  it("rejects an add-provider input that smuggles a secret value", () => {
+  it("accepts an optional inline secrets record for an atomic create", () => {
     const input = {
       name: "OpenAI",
       sdkProvider: "openai" as const,
       config: { baseUrl: "x" },
       secretFieldNames: ["apiKey"],
       models: ["gpt-4o"],
-      secrets: { apiKey: "sk-leak" },
+      secrets: { apiKey: "sk-live" },
     }
-    expect(AddProviderParamsSchema.safeParse(input).success).toBe(false)
+    const r = AddProviderParamsSchema.safeParse(input)
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.secrets).toEqual({ apiKey: "sk-live" })
   })
 })
 
@@ -377,6 +379,8 @@ describe("IpcMethodSchemas", () => {
       "getRunEvents",
       "pickFolder",
       "listProviderModels",
+      "testProviderDraft",
+      "listProviderModelsDraft",
       "getSettings",
       "getProjects",
       "setCollapsedProjects",

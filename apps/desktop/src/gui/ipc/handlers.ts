@@ -482,6 +482,13 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return { models: [...result.value] }
     },
 
+    // Draft (un-saved) probes — wired in a later task; stubs satisfy the contract.
+    testProviderDraft: async (_input) =>
+      fail("testProviderDraft not yet implemented"),
+
+    listProviderModelsDraft: async (_input) =>
+      fail("listProviderModelsDraft not yet implemented"),
+
     // ── Client logging ──────────────────────────────────────────────────────
     logClientError: async ({ scope, level, msg, fields }) => {
       const child = ctx.log.child(`webview.${scope}`)

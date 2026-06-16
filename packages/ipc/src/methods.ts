@@ -42,7 +42,10 @@ const ProviderMutationInputSchema = z
   })
   .strict()
 
-export const AddProviderParamsSchema = ProviderMutationInputSchema
+/** Add carries optional inline secret VALUES (inbound-only) for an atomic create. */
+export const AddProviderParamsSchema = ProviderMutationInputSchema.extend({
+  secrets: z.record(z.string(), z.string()).optional(),
+}).strict()
 export const AddProviderResultSchema = ProviderViewSchema
 
 export const UpdateProviderParamsSchema = z
@@ -192,6 +195,27 @@ export const ListProviderModelsParamsSchema = z
 export const ListProviderModelsResultSchema = z
   .object({ models: z.array(z.string()) })
   .strict()
+
+/**
+ * Draft (un-saved) probes carry raw secret VALUES inbound-only (like setProviderSecret).
+ * Their RESULTS never echo secrets — only {ok,latencyMs} / {models}.
+ */
+const DraftProbeInputSchema = z
+  .object({
+    sdkProvider: SdkProviderSchema,
+    config: z.record(z.string(), z.string()),
+    secrets: z.record(z.string(), z.string()),
+  })
+  .strict()
+
+export const TestProviderDraftParamsSchema = DraftProbeInputSchema.extend({
+  providerModel: z.string(),
+}).strict()
+export const TestProviderDraftResultSchema = TestProviderResultSchema
+
+export const ListProviderModelsDraftParamsSchema = DraftProbeInputSchema
+export const ListProviderModelsDraftResultSchema =
+  ListProviderModelsResultSchema
 
 // ── Dialogs ────────────────────────────────────────────────────────────────
 
@@ -410,6 +434,14 @@ export const IpcMethodSchemas = {
   listProviderModels: {
     params: ListProviderModelsParamsSchema,
     result: ListProviderModelsResultSchema,
+  },
+  testProviderDraft: {
+    params: TestProviderDraftParamsSchema,
+    result: TestProviderDraftResultSchema,
+  },
+  listProviderModelsDraft: {
+    params: ListProviderModelsDraftParamsSchema,
+    result: ListProviderModelsDraftResultSchema,
   },
   getSettings: {
     params: GetSettingsParamsSchema,
