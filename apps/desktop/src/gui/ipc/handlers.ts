@@ -52,6 +52,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         return `model discovery is not supported for "${o.sdkProvider}"`
       if (typeof o.kind === "string") return o.kind
     }
+    if (e instanceof Error && e.message !== "") return e.message
     return "unknown error"
   }
 

@@ -89,7 +89,14 @@ const makeCtx = (
     >
     resetAppResult?: Result<void, ResetError>
     log?: Logger
-    draftListResult?: Result<readonly string[], { readonly kind: string }>
+    draftListResult?: Result<
+      readonly string[],
+      { readonly kind: string; readonly detail?: string }
+    >
+    draftTestResult?: Result<
+      { readonly ok: boolean; readonly latencyMs: number },
+      { readonly kind: string; readonly detail?: string }
+    >
   } = {},
 ): {
   ctx: AppContext
@@ -181,7 +188,7 @@ const makeCtx = (
     testProvider: async () => ok({ ok: true, latencyMs: 12 }),
     testProviderDraft: async (input: unknown) => {
       draftTestInputs.push(input)
-      return ok({ ok: true, latencyMs: 7 })
+      return over.draftTestResult ?? ok({ ok: true, latencyMs: 7 })
     },
     listProviderModelsDraft: async (input: unknown) => {
       draftListInputs.push(input)
@@ -1662,7 +1669,7 @@ describe("createIpcHandlers.listProviderModelsDraft", () => {
       draftListResult: err({
         kind: "provider-failed",
         detail: "HTTP 404 from http://localhost:11434/models",
-      }) as never,
+      }),
     })
     const handlers = createIpcHandlers(ctx)
     await expect(
@@ -1672,5 +1679,26 @@ describe("createIpcHandlers.listProviderModelsDraft", () => {
         secrets: {},
       }),
     ).rejects.toThrow(/HTTP 404 from http:\/\/localhost:11434\/models/)
+  })
+})
+
+describe("createIpcHandlers.testProviderDraft (error detail)", () => {
+  it("surfaces the underlying draft-test error detail", async () => {
+    const { ctx } = makeCtx({
+      providers: [],
+      draftTestResult: err({
+        kind: "provider-failed",
+        detail: "boom from upstream",
+      }),
+    })
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.testProviderDraft({
+        sdkProvider: "openai",
+        config: {},
+        secrets: {},
+        providerModel: "gpt-4o",
+      }),
+    ).rejects.toThrow(/provider draft test failed: boom from upstream/)
   })
 })

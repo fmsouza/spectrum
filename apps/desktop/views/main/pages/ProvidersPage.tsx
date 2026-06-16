@@ -295,7 +295,12 @@ export const ProvidersPage = (): ReactElement => {
               />
             ) : null}
             {conn.error !== undefined ? (
-              <StatusDot status="error" label="Connection test failed" />
+              <>
+                <StatusDot status="error" label="Connection test failed" />
+                {conn.error.detail !== "" ? (
+                  <span>{conn.error.detail}</span>
+                ) : null}
+              </>
             ) : null}
           </Row>
           <Row gap={2} className="lk-form-actions">
