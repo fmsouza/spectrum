@@ -28,9 +28,10 @@ export const GetProviderCatalogResultSchema = z.array(
 )
 
 /**
- * Add/Update provider inputs carry only NON-secret config + the list of secret
- * field *names* the provider expects. `.strict()` rejects any smuggled `secrets`
- * key — raw values arrive only via `setProviderSecret`.
+ * BASE mutation shape: non-secret config + secret field *names* only.
+ * Used by `updateProvider`, which must never receive secret values.
+ * `AddProviderParamsSchema` extends this with an optional inline `secrets`
+ * record for an atomic create-with-secrets flow.
  */
 const ProviderMutationInputSchema = z
   .object({

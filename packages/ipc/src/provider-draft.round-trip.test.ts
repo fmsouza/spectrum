@@ -95,7 +95,7 @@ describe("draft round-trip", () => {
       providerModel: "gpt-4o",
     })
     expect(r).toEqual({ ok: true, value: { ok: true, latencyMs: 42 } })
-    expect((received as { secrets: { apiKey: string } }).secrets.apiKey).toBe(
+    expect(TestProviderDraftParamsSchema.parse(received).secrets.apiKey).toBe(
       "sk-x",
     )
   })
