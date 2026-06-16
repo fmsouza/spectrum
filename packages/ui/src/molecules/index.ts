@@ -1,3 +1,4 @@
+export * from "./ModelPicker"
 export * from "./EmptyState"
 export * from "./FolderField"
 export * from "./FormField"
