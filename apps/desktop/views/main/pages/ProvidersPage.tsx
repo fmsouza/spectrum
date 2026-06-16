@@ -100,30 +100,32 @@ export const ProvidersPage = (): ReactElement => {
   const [secretFor, setSecretFor] = useState<ProviderView | undefined>(
     undefined,
   )
-  const [secretField, setSecretField] = useState<string>("")
-  const [secretValue, setSecretValue] = useState<string>("")
+  const [secretValues, setSecretValues] = useState<Record<string, string>>({})
+
+  const secretCatalogEntry =
+    secretFor !== undefined
+      ? catalog.data?.find((c) => c.key === secretFor.sdkProvider)
+      : undefined
 
   const [editFor, setEditFor] = useState<ProviderView | undefined>(undefined)
   const [editConfig, setEditConfig] = useState<Record<string, string>>({})
 
   const submitSecret = async (): Promise<void> => {
-    if (
-      secretFor === undefined ||
-      secretField.trim() === "" ||
-      secretValue.trim() === ""
+    if (secretFor === undefined) return
+    const entries = Object.entries(secretValues).filter(
+      ([, v]) => v.trim() !== "",
     )
-      return
-    const r = await setSecret({
-      providerId: secretFor.id,
-      field: secretField,
-      value: secretValue,
-    })
-    if (r.ok) {
-      // Write-only: clear the value immediately; never echo it back.
-      setSecretValue("")
-      setSecretField("")
-      setSecretFor(undefined)
-    } else notify({ tone: "error", message: "Couldn't save the secret" })
+    if (entries.length === 0) return
+    for (const [field, value] of entries) {
+      const r = await setSecret({ providerId: secretFor.id, field, value })
+      if (!r.ok) {
+        notify({ tone: "error", message: "Couldn't save the secret" })
+        return
+      }
+    }
+    // Write-only: clear immediately, never echo back.
+    setSecretValues({})
+    setSecretFor(undefined)
   }
 
   const submitEdit = async (): Promise<void> => {
@@ -162,7 +164,10 @@ export const ProvidersPage = (): ReactElement => {
             providers={data.map(toRow)}
             onSetSecret={(id) => {
               const p = data.find((x) => x.id === id)
-              if (p !== undefined) setSecretFor(p)
+              if (p !== undefined) {
+                setSecretFor(p)
+                setSecretValues({})
+              }
             }}
             onEdit={(id) => {
               const p = data.find((x) => x.id === id)
@@ -296,7 +301,10 @@ export const ProvidersPage = (): ReactElement => {
             : `Set secret for ${secretFor.name}`
         }
         open={secretFor !== undefined}
-        onClose={() => setSecretFor(undefined)}
+        onClose={() => {
+          setSecretFor(undefined)
+          setSecretValues({})
+        }}
       >
         {secretFor !== undefined ? (
           <form
@@ -306,27 +314,24 @@ export const ProvidersPage = (): ReactElement => {
               void submitSecret()
             }}
           >
-            <FormField id="secret-field" label="Secret field">
-              <TextInput
-                id="secret-field"
-                value={secretField}
-                onChange={setSecretField}
+            {secretCatalogEntry !== undefined &&
+            secretCatalogEntry.secretFields.length > 0 ? (
+              <SecretFieldsForm
+                fields={secretCatalogEntry.secretFields}
+                values={secretValues}
+                onChange={(name, value) =>
+                  setSecretValues((s) => ({ ...s, [name]: value }))
+                }
               />
-            </FormField>
-            {/* type="password" + write-only: the value is sent, then cleared, never shown. */}
-            <FormField id="secret-value" label="Secret value">
-              <TextInput
-                id="secret-value"
-                type="password"
-                value={secretValue}
-                onChange={setSecretValue}
-              />
-            </FormField>
+            ) : null}
             <Row gap={2} className="lk-form-actions">
               <Button onClick={() => void submitSecret()}>Save secret</Button>
               <Button
                 variant="secondary"
-                onClick={() => setSecretFor(undefined)}
+                onClick={() => {
+                  setSecretFor(undefined)
+                  setSecretValues({})
+                }}
               >
                 Cancel
               </Button>

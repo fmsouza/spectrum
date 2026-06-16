@@ -172,6 +172,26 @@ describe("ProvidersPage", () => {
     expect(directButtons.length).toBe(0)
   })
 
+  it("renders the provider's declared secret fields (not a free-text field-name input)", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    const row = document.querySelector("tbody tr") as HTMLElement
+    const actionsCell = row.querySelector("td.lk-cell-actions") as HTMLElement
+    fireEvent.click(
+      within(actionsCell).getByRole("button", { name: /set secret/i }),
+    )
+    const form = document.querySelector(
+      "form[aria-label='Set secret for OpenAI']",
+    ) as HTMLElement
+    // declared catalog secret field renders as a labeled password input ...
+    const apiKey = within(form).getByLabelText("API key") as HTMLInputElement
+    expect(apiKey.type).toBe("password")
+    // ... and the old free-text "Secret field" input is gone
+    expect(within(form).queryByLabelText("Secret field")).toBeNull()
+  })
+
   it("calls setProviderSecret with the typed value when the secret form is submitted", async () => {
     const client = renderPage({
       setProviderSecret: async () => ({ ok: true, value: null }),
@@ -186,10 +206,10 @@ describe("ProvidersPage", () => {
     fireEvent.click(
       within(actionsCell).getByRole("button", { name: /set secret/i }),
     )
-    fireEvent.change(screen.getByLabelText("Secret field"), {
-      target: { value: "apiKey" },
-    })
-    fireEvent.change(screen.getByLabelText("Secret value"), {
+    const form = document.querySelector(
+      "form[aria-label='Set secret for OpenAI']",
+    ) as HTMLElement
+    fireEvent.change(within(form).getByLabelText("API key"), {
       target: { value: "sk-secret-123" },
     })
     fireEvent.click(screen.getByRole("button", { name: /save secret/i }))
@@ -215,10 +235,10 @@ describe("ProvidersPage", () => {
     fireEvent.click(
       within(actionsCell).getByRole("button", { name: /set secret/i }),
     )
-    fireEvent.change(screen.getByLabelText("Secret field"), {
-      target: { value: "apiKey" },
-    })
-    fireEvent.change(screen.getByLabelText("Secret value"), {
+    const form = document.querySelector(
+      "form[aria-label='Set secret for OpenAI']",
+    ) as HTMLElement
+    fireEvent.change(within(form).getByLabelText("API key"), {
       target: { value: "sk-secret-123" },
     })
     fireEvent.click(screen.getByRole("button", { name: /save secret/i }))
@@ -557,10 +577,10 @@ describe("ProvidersPage", () => {
     fireEvent.click(
       within(actionsCell).getByRole("button", { name: /set secret/i }),
     )
-    fireEvent.change(screen.getByLabelText("Secret field"), {
-      target: { value: "apiKey" },
-    })
-    fireEvent.change(screen.getByLabelText("Secret value"), {
+    const form = document.querySelector(
+      "form[aria-label='Set secret for OpenAI']",
+    ) as HTMLElement
+    fireEvent.change(within(form).getByLabelText("API key"), {
       target: { value: "sk-secret-123" },
     })
     fireEvent.click(screen.getByRole("button", { name: /save secret/i }))
