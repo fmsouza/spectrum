@@ -434,7 +434,11 @@ const createListProviderModels = (
   }
 }
 
-/** Draft tester: probe inline values (no config load, no keychain). */
+/**
+ * Draft tester: probe inline values (no config load, no keychain).
+ * SECURITY: secret VALUES are inline (caller-supplied, never persisted); used only to build a
+ * one-shot probe model and never logged.
+ */
 const createTestProviderDraft = (
   factory: ProviderFactory,
   gateway: LanguageModelGateway,
@@ -450,7 +454,11 @@ const createTestProviderDraft = (
   }
 }
 
-/** Draft model discovery: list models from inline values (no config load, no keychain). */
+/**
+ * Draft model discovery: list models from inline values (no config load, no keychain).
+ * SECURITY: apiKey is the inline, caller-supplied value (never from the keychain); it is passed
+ * only to the outbound discovery request and is never persisted or logged.
+ */
 const createListProviderModelsDraft =
   (): AppContext["listProviderModelsDraft"] => {
     const lister = createModelLister({ httpGet: createFetchHttpGet() })
