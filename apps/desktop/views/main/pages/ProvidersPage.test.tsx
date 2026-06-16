@@ -2,9 +2,22 @@ import { describe, expect, it } from "bun:test"
 import type { ProviderView } from "@spectrum/ipc"
 import type { ProviderCatalogEntry } from "@spectrum/providers"
 import { fireEvent, screen, waitFor, within } from "@testing-library/react"
+import type { ReactElement } from "react"
+import { useNotifications } from "../hooks/useNotifications"
 import { createFakeIpcClient } from "../test/fake-client"
 import { renderWithProviders } from "../test/renderWithProviders"
 import { ProvidersPage } from "./ProvidersPage"
+
+const Toasts = (): ReactElement => {
+  const { notifications } = useNotifications()
+  return (
+    <>
+      {notifications.map((n) => (
+        <div key={n.id}>{n.message}</div>
+      ))}
+    </>
+  )
+}
 
 const view: ProviderView = {
   id: "p_openai",
@@ -53,7 +66,10 @@ const defaultCatalog: ProviderCatalogEntry[] = [
   },
 ]
 
-const renderPage = (stubs: Parameters<typeof createFakeIpcClient>[0]) => {
+const renderPage = (
+  stubs: Parameters<typeof createFakeIpcClient>[0],
+  withToasts = false,
+) => {
   const client = createFakeIpcClient({
     getProviders: async () => ({ ok: true, value: [view] }),
     getProviderCatalog: async () => ({
@@ -62,7 +78,15 @@ const renderPage = (stubs: Parameters<typeof createFakeIpcClient>[0]) => {
     }),
     ...stubs,
   })
-  renderWithProviders(<ProvidersPage />, client)
+  const ui = withToasts ? (
+    <>
+      <ProvidersPage />
+      <Toasts />
+    </>
+  ) : (
+    <ProvidersPage />
+  )
+  renderWithProviders(ui, client)
   return client
 }
 
@@ -507,6 +531,64 @@ describe("ProvidersPage", () => {
       config: Record<string, string>
     }
     expect(sent.config).not.toHaveProperty("serverUrl")
+  })
+
+  // ── Notification tests ────────────────────────────────────────────────────
+
+  it("shows an error toast when adding a provider fails", async () => {
+    renderPage(
+      {
+        addProvider: async () => ({
+          ok: false,
+          error: { kind: "handler-failed", detail: "x" },
+        }),
+      },
+      true,
+    )
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    await screen.findByRole("dialog", { name: /add provider/i })
+
+    // Fill required secret field so the form can submit
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-x" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /create provider/i }))
+
+    await screen.findByText("Couldn't add the provider")
+  })
+
+  it("shows an error toast when saving a secret fails", async () => {
+    renderPage(
+      {
+        setProviderSecret: async () => ({
+          ok: false,
+          error: { kind: "handler-failed", detail: "x" },
+        }),
+      },
+      true,
+    )
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+
+    const row = document.querySelector("tbody tr") as HTMLElement
+    const actionsCell = row.querySelector("td.lk-cell-actions") as HTMLElement
+    fireEvent.click(
+      within(actionsCell).getByRole("button", { name: /set secret/i }),
+    )
+    fireEvent.change(screen.getByLabelText("Secret field"), {
+      target: { value: "apiKey" },
+    })
+    fireEvent.change(screen.getByLabelText("Secret value"), {
+      target: { value: "sk-secret-123" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /save secret/i }))
+
+    await screen.findByText("Couldn't save the secret")
   })
 
   it("calls updateProvider with updated config when edit form is saved", async () => {

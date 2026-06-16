@@ -20,6 +20,7 @@ import type { ProviderRow } from "@spectrum/ui"
 import { type ReactElement, useState } from "react"
 import { useDraftConnectionTest } from "../hooks/useDraftConnectionTest"
 import { useDraftProviderModels } from "../hooks/useDraftProviderModels"
+import { useNotifications } from "../hooks/useNotifications"
 import { useProviderCatalog } from "../hooks/useProviderCatalog"
 import { useProviders } from "../hooks/useProviders"
 
@@ -43,6 +44,7 @@ const toRow = (view: ProviderView): ProviderRow => {
 export const ProvidersPage = (): ReactElement => {
   const { data, loading, error, add, update, setSecret } = useProviders()
   const catalog = useProviderCatalog()
+  const { notify } = useNotifications()
 
   const catalogOptions =
     catalog.data?.map((c) => ({ value: c.key, label: c.label })) ?? []
@@ -92,7 +94,7 @@ export const ProvidersPage = (): ReactElement => {
     })
     if (r.ok) {
       closeAddModal()
-    }
+    } else notify({ tone: "error", message: "Couldn't add the provider" })
   }
 
   const [secretFor, setSecretFor] = useState<ProviderView | undefined>(
@@ -121,7 +123,7 @@ export const ProvidersPage = (): ReactElement => {
       setSecretValue("")
       setSecretField("")
       setSecretFor(undefined)
-    }
+    } else notify({ tone: "error", message: "Couldn't save the secret" })
   }
 
   const submitEdit = async (): Promise<void> => {
@@ -135,7 +137,7 @@ export const ProvidersPage = (): ReactElement => {
     })
     if (r.ok) {
       setEditFor(undefined)
-    }
+    } else notify({ tone: "error", message: "Couldn't save the provider" })
   }
 
   const editCatalogEntry =
@@ -273,6 +275,9 @@ export const ProvidersPage = (): ReactElement => {
                     : "Connection failed"
                 }
               />
+            ) : null}
+            {conn.error !== undefined ? (
+              <StatusDot status="error" label="Connection test failed" />
             ) : null}
           </Row>
           <Row gap={2} className="lk-form-actions">
