@@ -15,6 +15,7 @@ Spectrum is a Bun + Electrobun desktop app (CLI + GUI) that proxies coding-agent
 - **Security is optimal.** Secrets in the OS keychain (config stores only a reference); proxy on loopback + per-run key; zod-validate all external input; spawn with arg arrays; parameterized SQL; redact secrets in logs.
 - **Performance is optimal.** Stream the proxy (never buffer); cache provider instances; lazy-load `@ai-sdk/*`; fast CLI cold-start.
 - **Observability.** Log at effect boundaries, lifecycle transitions, and handler errors via the injected `Logger` (`@spectrum/logger`); never `console.*` in `src`; redact secrets before logging (never log raw secret values/refs); pure logic stays log-free. See `docs/01-conventions/logging.md`.
+- **User feedback.** Surface user-facing failures via the notifications engine (toast; native when backgrounded) — never swallow a failed Result silently. See `docs/01-conventions/notifications.md`.
 - **Respect package boundaries.** Import via `@spectrum/<pkg>` only; no deep imports; no cycles.
 
 ## Definition of Done (every task)

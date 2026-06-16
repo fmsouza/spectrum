@@ -131,6 +131,106 @@ dialog[aria-modal="true"] form {
   border-radius: var(--sp-radius-md);
 }
 
+/* ───────────────────────────── Toast (notification) ─────────────────────── */
+/* A single transient notification. Surface/border/radius reuse the dialog card
+   tokens; the left accent + soft background are driven by the Badge/StatusDot
+   tone token families (--sp-info / --sp-success / --sp-warning / --sp-danger and
+   their -soft variants). No Toast is rendered in the default tree, so its
+   selectors live in the selector-contract documented-gap bucket. */
+/* Fixed top-right stack the ToastContainer organism renders into. Always present
+   in the live tree once mounted in app.tsx; column flex with a small gap. The
+   z-index sits above the modal overlay (z-index: 1000) so toasts stay visible
+   over dialogs. No z-index token exists in the codebase, so a raw value is used
+   consistently with the other raw z-index values (controls/run-view/modal). */
+.lk-toast-stack {
+  position: fixed;
+  top: var(--sp-space-4);
+  right: var(--sp-space-4);
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-space-2);
+}
+
+.lk-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-3);
+  padding: var(--sp-space-3) var(--sp-space-4);
+  color: var(--sp-text);
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border-strong);
+  border-left: 3px solid var(--sp-border-strong);
+  border-radius: var(--sp-radius-md);
+  box-shadow: var(--sp-shadow-3);
+}
+
+.lk-toast[data-tone="info"] {
+  border-left-color: var(--sp-info);
+  background: var(--sp-info-soft);
+}
+
+.lk-toast[data-tone="success"] {
+  border-left-color: var(--sp-success);
+  background: var(--sp-success-soft);
+}
+
+.lk-toast[data-tone="warning"] {
+  border-left-color: var(--sp-warning);
+  background: var(--sp-warning-soft);
+}
+
+.lk-toast[data-tone="error"] {
+  border-left-color: var(--sp-danger);
+  background: var(--sp-danger-soft);
+}
+
+.lk-toast__msg {
+  flex: 1 1 auto;
+  font-size: var(--sp-text-sm);
+}
+
+.lk-toast__action {
+  flex: 0 0 auto;
+  padding: var(--sp-space-1) var(--sp-space-2);
+  border: 1px solid var(--sp-border-strong);
+  border-radius: var(--sp-radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: var(--sp-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--sp-duration) var(--sp-ease);
+}
+
+.lk-toast__action:hover {
+  background: var(--sp-bg-subtle);
+}
+
+.lk-toast__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--sp-radius-sm);
+  background: transparent;
+  color: var(--sp-text-secondary);
+  font-size: var(--sp-text-lg);
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--sp-duration) var(--sp-ease), color
+    var(--sp-duration) var(--sp-ease);
+}
+
+.lk-toast__dismiss:hover {
+  background: var(--sp-bg-subtle);
+  color: var(--sp-text);
+}
+
 /* FolderField: input + Browse button on one row, input shrinks so Browse never overflows. */
 .lk-folder-field {
   width: 100%;

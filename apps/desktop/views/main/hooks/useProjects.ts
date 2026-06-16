@@ -23,8 +23,8 @@ export type UseProjects = {
   readonly launch: (
     input: LaunchInput,
   ) => Promise<Result<LaunchResult, IpcError>>
-  readonly deleteSession: (id: SessionId) => void
-  readonly deleteProject: (id: ProjectId) => void
+  readonly deleteSession: (id: SessionId) => Promise<Result<void, IpcError>>
+  readonly deleteProject: (id: ProjectId) => Promise<Result<void, IpcError>>
 }
 
 export const useProjects = (): UseProjects => {
@@ -70,7 +70,7 @@ export const useProjects = (): UseProjects => {
     loadMore,
     refetch: () => void invalidate(),
     launch,
-    deleteSession: (id) => void deleteSession(id),
-    deleteProject: (id) => void deleteProject(id),
+    deleteSession,
+    deleteProject,
   }
 }
