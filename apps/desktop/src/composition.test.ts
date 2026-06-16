@@ -463,6 +463,15 @@ describe("createAppContext dev/prod data isolation", () => {
   })
 })
 
+describe("createAppContext draft provider methods", () => {
+  it("wires testProviderDraft and listProviderModelsDraft as functions", () => {
+    const { deps } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+    expect(typeof ctx.testProviderDraft).toBe("function")
+    expect(typeof ctx.listProviderModelsDraft).toBe("function")
+  })
+})
+
 describe("createAppContext native run path wiring", () => {
   it("exposes a runner manager with launch/handleInbound/bindSend", () => {
     const { deps } = makeFakeDeps()
