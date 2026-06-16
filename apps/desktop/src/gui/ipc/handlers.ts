@@ -482,12 +482,39 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return { models: [...result.value] }
     },
 
-    // Draft (un-saved) probes — wired in a later task; stubs satisfy the contract.
-    testProviderDraft: async (_input) =>
-      fail("testProviderDraft not yet implemented"),
+    // Draft (un-saved) probes — validate inline config then delegate to AppContext.
+    testProviderDraft: async ({
+      sdkProvider,
+      config,
+      secrets,
+      providerModel,
+    }) => {
+      const valid = validateProviderConfig(sdkProvider, config)
+      if (!valid.ok) return fail(`invalid provider config: ${valid.error.kind}`)
+      // A connectivity probe needs a model to ping; fall back to the sdkProvider name
+      // when none was chosen yet (mirrors testProvider's provider.models[0] ?? id fallback).
+      const model = providerModel.trim() !== "" ? providerModel : sdkProvider
+      const result = await ctx.testProviderDraft({
+        sdkProvider,
+        config,
+        secrets,
+        providerModel: model,
+      })
+      if (!isOk(result)) return fail("provider draft test failed")
+      return result.value
+    },
 
-    listProviderModelsDraft: async (_input) =>
-      fail("listProviderModelsDraft not yet implemented"),
+    listProviderModelsDraft: async ({ sdkProvider, config, secrets }) => {
+      const valid = validateProviderConfig(sdkProvider, config)
+      if (!valid.ok) return fail(`invalid provider config: ${valid.error.kind}`)
+      const result = await ctx.listProviderModelsDraft({
+        sdkProvider,
+        config,
+        secrets,
+      })
+      if (!isOk(result)) return fail("could not list provider models")
+      return { models: [...result.value] }
+    },
 
     // ── Client logging ──────────────────────────────────────────────────────
     logClientError: async ({ scope, level, msg, fields }) => {
