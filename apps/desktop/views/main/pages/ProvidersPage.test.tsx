@@ -432,6 +432,47 @@ describe("ProvidersPage", () => {
     expect(serverUrlInput.value).toBe("http://old:1/v1")
   })
 
+  it("omits the secrets key from addProvider params when no secret is entered", async () => {
+    const client = renderPage({
+      addProvider: async () => ({ ok: true, value: view }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    // Do NOT type into the API key field — leave secrets empty
+    fireEvent.click(screen.getByRole("button", { name: /create provider/i }))
+
+    await waitFor(() => expect(client.calls.addProvider.length).toBe(1))
+    const params = client.calls.addProvider[0]
+    expect(params).not.toHaveProperty("secrets")
+  })
+
+  it("clears entered secret values when the add modal is cancelled", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-secret" },
+    })
+
+    // Cancel via the Cancel button inside the Add provider form
+    const addForm = document.querySelector(
+      "form[aria-label='Add provider']",
+    ) as HTMLElement
+    fireEvent.click(within(addForm).getByRole("button", { name: /cancel/i }))
+
+    // Reopen the modal — the API key field must be empty
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    expect((screen.getByLabelText("API key") as HTMLInputElement).value).toBe(
+      "",
+    )
+  })
+
   it("calls updateProvider with updated config when edit form is saved", async () => {
     const customView: ProviderView = {
       id: "p_custom",

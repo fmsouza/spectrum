@@ -58,6 +58,14 @@ export const ProvidersPage = (): ReactElement => {
     setChosenModel("")
   }
 
+  const closeAddModal = (): void => {
+    setAddOpen(false)
+    setNewName("")
+    setNewConfig({})
+    setNewSecrets({})
+    resetDraftProbes()
+  }
+
   const selectedEntry = catalog.data?.find((c) => c.key === newSdk)
 
   const submitAdd = async (): Promise<void> => {
@@ -77,11 +85,7 @@ export const ProvidersPage = (): ReactElement => {
       models: chosenModel !== "" ? [chosenModel] : [],
     })
     if (r.ok) {
-      setAddOpen(false)
-      setNewName("")
-      setNewConfig({})
-      setNewSecrets({})
-      resetDraftProbes()
+      closeAddModal()
     }
   }
 
@@ -163,11 +167,7 @@ export const ProvidersPage = (): ReactElement => {
         </>
       ) : null}
 
-      <Modal
-        title="Add provider"
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-      >
+      <Modal title="Add provider" open={addOpen} onClose={closeAddModal}>
         <form
           aria-label="Add provider"
           onSubmit={(e) => {
@@ -201,9 +201,10 @@ export const ProvidersPage = (): ReactElement => {
             <ProviderForm
               fields={selectedEntry.configFields}
               values={newConfig}
-              onChange={(name, value) =>
+              onChange={(name, value) => {
                 setNewConfig((c) => ({ ...c, [name]: value }))
-              }
+                resetDraftProbes()
+              }}
             />
           ) : null}
           {selectedEntry !== undefined &&
@@ -270,7 +271,7 @@ export const ProvidersPage = (): ReactElement => {
           </Row>
           <Row gap={2} className="lk-form-actions">
             <Button onClick={() => void submitAdd()}>Create provider</Button>
-            <Button variant="secondary" onClick={() => setAddOpen(false)}>
+            <Button variant="secondary" onClick={closeAddModal}>
               Cancel
             </Button>
           </Row>
