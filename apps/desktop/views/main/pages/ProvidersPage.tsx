@@ -5,16 +5,21 @@ import {
   EmptyState,
   FormField,
   Modal,
+  ModelPicker,
   ProviderForm,
   ProviderList,
   Row,
+  SecretFieldsForm,
   Select,
   SettingsLayout,
   Spinner,
+  StatusDot,
   TextInput,
 } from "@spectrum/ui"
 import type { ProviderRow } from "@spectrum/ui"
 import { type ReactElement, useState } from "react"
+import { useDraftConnectionTest } from "../hooks/useDraftConnectionTest"
+import { useDraftProviderModels } from "../hooks/useDraftProviderModels"
 import { useProviderCatalog } from "../hooks/useProviderCatalog"
 import { useProviders } from "../hooks/useProviders"
 
@@ -42,6 +47,16 @@ export const ProvidersPage = (): ReactElement => {
   const [newName, setNewName] = useState<string>("")
   const [newSdk, setNewSdk] = useState<string>(defaultSdk)
   const [newConfig, setNewConfig] = useState<Record<string, string>>({})
+  const [newSecrets, setNewSecrets] = useState<Record<string, string>>({})
+  const [chosenModel, setChosenModel] = useState<string>("")
+  const discovery = useDraftProviderModels()
+  const conn = useDraftConnectionTest()
+
+  const resetDraftProbes = (): void => {
+    discovery.reset()
+    conn.reset()
+    setChosenModel("")
+  }
 
   const selectedEntry = catalog.data?.find((c) => c.key === newSdk)
 
@@ -58,12 +73,15 @@ export const ProvidersPage = (): ReactElement => {
       sdkProvider,
       config: newConfig,
       secretFieldNames,
-      models: [],
+      ...(Object.keys(newSecrets).length > 0 ? { secrets: newSecrets } : {}),
+      models: chosenModel !== "" ? [chosenModel] : [],
     })
     if (r.ok) {
       setAddOpen(false)
       setNewName("")
       setNewConfig({})
+      setNewSecrets({})
+      resetDraftProbes()
     }
   }
 
@@ -173,6 +191,8 @@ export const ProvidersPage = (): ReactElement => {
               onChange={(v) => {
                 setNewSdk(v)
                 setNewConfig({})
+                setNewSecrets({})
+                resetDraftProbes()
               }}
             />
           </FormField>
@@ -186,6 +206,68 @@ export const ProvidersPage = (): ReactElement => {
               }
             />
           ) : null}
+          {selectedEntry !== undefined &&
+          selectedEntry.secretFields.length > 0 ? (
+            <SecretFieldsForm
+              fields={selectedEntry.secretFields}
+              values={newSecrets}
+              onChange={(name, value) => {
+                setNewSecrets((s) => ({ ...s, [name]: value }))
+                resetDraftProbes()
+              }}
+            />
+          ) : null}
+          <Row gap={2}>
+            <Button
+              variant="secondary"
+              disabled={discovery.loading}
+              onClick={() =>
+                void discovery.discover({
+                  sdkProvider: selectedEntry?.key ?? (newSdk as SdkProvider),
+                  config: newConfig,
+                  secrets: newSecrets,
+                })
+              }
+            >
+              Discover models
+            </Button>
+          </Row>
+          <ModelPicker
+            loading={discovery.loading}
+            models={discovery.models}
+            value={chosenModel}
+            onChange={setChosenModel}
+            {...(discovery.error !== undefined
+              ? { errorMessage: "Couldn't list models — enter one manually." }
+              : {})}
+          />
+          <Row gap={2}>
+            <Button
+              variant="secondary"
+              disabled={chosenModel === "" || conn.testing}
+              onClick={() =>
+                void conn.test({
+                  sdkProvider: selectedEntry?.key ?? (newSdk as SdkProvider),
+                  config: newConfig,
+                  secrets: newSecrets,
+                  providerModel: chosenModel,
+                })
+              }
+            >
+              Test connection
+            </Button>
+            {conn.testing ? <Spinner label="Testing connection…" /> : null}
+            {conn.result !== undefined ? (
+              <StatusDot
+                status={conn.result.ok ? "on" : "error"}
+                label={
+                  conn.result.ok
+                    ? `Connected (${conn.result.latencyMs}ms)`
+                    : "Connection failed"
+                }
+              />
+            ) : null}
+          </Row>
           <Row gap={2} className="lk-form-actions">
             <Button onClick={() => void submitAdd()}>Create provider</Button>
             <Button variant="secondary" onClick={() => setAddOpen(false)}>

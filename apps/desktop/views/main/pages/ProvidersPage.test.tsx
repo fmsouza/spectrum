@@ -246,7 +246,7 @@ describe("ProvidersPage", () => {
     expect(screen.queryByRole("dialog", { name: /add provider/i })).toBeNull()
   })
 
-  it("submits the add-provider form with non-secret config and secret field names only", async () => {
+  it("submits the add-provider form with config, secret field names, and chosen model", async () => {
     const client = renderPage({
       addProvider: async () => ({ ok: true, value: view }),
     })
@@ -266,8 +266,114 @@ describe("ProvidersPage", () => {
     await waitFor(() => expect(client.calls.addProvider.length).toBe(1))
     const params = client.calls.addProvider[0]
     expect(params).toMatchObject({ name: "Groq", sdkProvider: "groq" })
-    // No raw secret ever travels with an add.
-    expect(params).not.toHaveProperty("secrets")
+  })
+
+  it("renders the selected provider's secret fields from the catalog", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    const apiKey = screen.getByLabelText("API key") as HTMLInputElement
+    expect(apiKey.type).toBe("password")
+  })
+
+  it("discovers models then shows a dropdown after Discover models", async () => {
+    const client = renderPage({
+      listProviderModelsDraft: async () => ({
+        ok: true,
+        value: { models: ["gpt-4o"] },
+      }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-x" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /discover models/i }))
+    await waitFor(() =>
+      expect(client.calls.listProviderModelsDraft.length).toBe(1),
+    )
+    expect(client.calls.listProviderModelsDraft[0]).toMatchObject({
+      sdkProvider: "openai",
+      secrets: { apiKey: "sk-x" },
+    })
+    await waitFor(() =>
+      expect(
+        screen.getByRole("option", { name: "gpt-4o" }),
+      ).toBeInTheDocument(),
+    )
+  })
+
+  it("tests the connection with the entered config + secrets + chosen model", async () => {
+    const client = renderPage({
+      listProviderModelsDraft: async () => ({
+        ok: true,
+        value: { models: ["gpt-4o"] },
+      }),
+      testProviderDraft: async () => ({
+        ok: true,
+        value: { ok: true, latencyMs: 11 },
+      }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-x" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /discover models/i }))
+    await waitFor(() =>
+      expect(
+        screen.getByRole("option", { name: "gpt-4o" }),
+      ).toBeInTheDocument(),
+    )
+    fireEvent.change(screen.getByLabelText("Model"), {
+      target: { value: "gpt-4o" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /test connection/i }))
+    await waitFor(() => expect(client.calls.testProviderDraft.length).toBe(1))
+    expect(client.calls.testProviderDraft[0]).toMatchObject({
+      sdkProvider: "openai",
+      secrets: { apiKey: "sk-x" },
+      providerModel: "gpt-4o",
+    })
+  })
+
+  it("creates the provider with inline secrets + chosen model in one submit", async () => {
+    const client = renderPage({
+      listProviderModelsDraft: async () => ({
+        ok: true,
+        value: { models: ["gpt-4o"] },
+      }),
+      addProvider: async () => ({ ok: true, value: view }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-x" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /discover models/i }))
+    await waitFor(() =>
+      expect(
+        screen.getByRole("option", { name: "gpt-4o" }),
+      ).toBeInTheDocument(),
+    )
+    fireEvent.change(screen.getByLabelText("Model"), {
+      target: { value: "gpt-4o" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /create provider/i }))
+    await waitFor(() => expect(client.calls.addProvider.length).toBe(1))
+    expect(client.calls.addProvider[0]).toMatchObject({
+      sdkProvider: "openai",
+      secrets: { apiKey: "sk-x" },
+      models: ["gpt-4o"],
+    })
   })
 
   it("renders the Server URL field when Custom is selected in the add form", async () => {
