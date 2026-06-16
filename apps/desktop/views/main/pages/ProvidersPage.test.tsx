@@ -310,36 +310,20 @@ describe("ProvidersPage", () => {
     expect(apiKey.type).toBe("password")
   })
 
-  it("discovers models then shows a dropdown after Discover models", async () => {
-    const client = renderPage({
-      listProviderModelsDraft: async () => ({
-        ok: true,
-        value: { models: ["gpt-4o"] },
-      }),
-    })
+  it("the add modal has no Discover models button and no model field", async () => {
+    renderPage({})
     await waitFor(() =>
       expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
     )
     fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
-    fireEvent.change(screen.getByLabelText("API key"), {
-      target: { value: "sk-x" },
-    })
-    fireEvent.click(screen.getByRole("button", { name: /discover models/i }))
-    await waitFor(() =>
-      expect(client.calls.listProviderModelsDraft.length).toBe(1),
-    )
-    expect(client.calls.listProviderModelsDraft[0]).toMatchObject({
-      sdkProvider: "openai",
-      secrets: { apiKey: "sk-x" },
-    })
-    await waitFor(() =>
-      expect(
-        screen.getByRole("option", { name: "gpt-4o" }),
-      ).toBeInTheDocument(),
-    )
+    await screen.findByRole("dialog", { name: /add provider/i })
+    expect(
+      screen.queryByRole("button", { name: /discover models/i }),
+    ).toBeNull()
+    expect(screen.queryByLabelText("Model")).toBeNull()
   })
 
-  it("tests the connection with the entered config + secrets + chosen model", async () => {
+  it("tests the connection with the entered config + secrets; auto-picks first discovered model", async () => {
     const client = renderPage({
       listProviderModelsDraft: async () => ({
         ok: true,
@@ -357,15 +341,6 @@ describe("ProvidersPage", () => {
     fireEvent.change(screen.getByLabelText("API key"), {
       target: { value: "sk-x" },
     })
-    fireEvent.click(screen.getByRole("button", { name: /discover models/i }))
-    await waitFor(() =>
-      expect(
-        screen.getByRole("option", { name: "gpt-4o" }),
-      ).toBeInTheDocument(),
-    )
-    fireEvent.change(screen.getByLabelText("Model"), {
-      target: { value: "gpt-4o" },
-    })
     fireEvent.click(screen.getByRole("button", { name: /test connection/i }))
     await waitFor(() => expect(client.calls.testProviderDraft.length).toBe(1))
     expect(client.calls.testProviderDraft[0]).toMatchObject({
@@ -375,12 +350,8 @@ describe("ProvidersPage", () => {
     })
   })
 
-  it("creates the provider with inline secrets + chosen model in one submit", async () => {
+  it("creates the provider with inline secrets and no preset models", async () => {
     const client = renderPage({
-      listProviderModelsDraft: async () => ({
-        ok: true,
-        value: { models: ["gpt-4o"] },
-      }),
       addProvider: async () => ({ ok: true, value: view }),
     })
     await waitFor(() =>
@@ -390,21 +361,12 @@ describe("ProvidersPage", () => {
     fireEvent.change(screen.getByLabelText("API key"), {
       target: { value: "sk-x" },
     })
-    fireEvent.click(screen.getByRole("button", { name: /discover models/i }))
-    await waitFor(() =>
-      expect(
-        screen.getByRole("option", { name: "gpt-4o" }),
-      ).toBeInTheDocument(),
-    )
-    fireEvent.change(screen.getByLabelText("Model"), {
-      target: { value: "gpt-4o" },
-    })
     fireEvent.click(screen.getByRole("button", { name: /create provider/i }))
     await waitFor(() => expect(client.calls.addProvider.length).toBe(1))
     expect(client.calls.addProvider[0]).toMatchObject({
       sdkProvider: "openai",
       secrets: { apiKey: "sk-x" },
-      models: ["gpt-4o"],
+      models: [],
     })
   })
 
@@ -503,64 +465,6 @@ describe("ProvidersPage", () => {
     expect((screen.getByLabelText("API key") as HTMLInputElement).value).toBe(
       "",
     )
-  })
-
-  it("shows the real discovery error detail inline when Discover models fails", async () => {
-    renderPage({
-      listProviderModelsDraft: async () => ({
-        ok: false,
-        error: {
-          kind: "handler-failed",
-          detail:
-            "could not list provider models: HTTP 404 from http://localhost:11434/models",
-        },
-      }),
-    })
-    await waitFor(() =>
-      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
-    )
-    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
-    fireEvent.change(screen.getByLabelText("API key"), {
-      target: { value: "sk-x" },
-    })
-    fireEvent.click(screen.getByRole("button", { name: /discover models/i }))
-    await screen.findByText(/HTTP 404 from http:\/\/localhost:11434\/models/)
-  })
-
-  it("omits empty-string config values when discovering (so optional URL fields read as unset)", async () => {
-    const client = renderPage({
-      listProviderModelsDraft: async () => ({
-        ok: true,
-        value: { models: ["m1"] },
-      }),
-    })
-    await waitFor(() =>
-      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
-    )
-    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
-    // Switch to "custom" which has a serverUrl config field
-    fireEvent.change(screen.getByLabelText("SDK provider"), {
-      target: { value: "custom" },
-    })
-    // Wait for the Server URL field to appear
-    await waitFor(() =>
-      expect(screen.getByLabelText("Server URL")).toBeInTheDocument(),
-    )
-    // Type a value then clear it — simulates the user clearing a pre-filled URL
-    fireEvent.change(screen.getByLabelText("Server URL"), {
-      target: { value: "https://x" },
-    })
-    fireEvent.change(screen.getByLabelText("Server URL"), {
-      target: { value: "" },
-    })
-    fireEvent.click(screen.getByRole("button", { name: /discover models/i }))
-    await waitFor(() =>
-      expect(client.calls.listProviderModelsDraft.length).toBeGreaterThan(0),
-    )
-    const sent = client.calls.listProviderModelsDraft.at(-1) as {
-      config: Record<string, string>
-    }
-    expect(sent.config).not.toHaveProperty("serverUrl")
   })
 
   // ── Notification tests ────────────────────────────────────────────────────

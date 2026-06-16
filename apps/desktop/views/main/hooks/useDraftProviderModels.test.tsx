@@ -9,7 +9,7 @@ type ProbeHandle = {
     sdkProvider: "openai"
     config: Record<string, string>
     secrets: Record<string, string>
-  }) => Promise<void>
+  }) => Promise<readonly string[]>
   reset: () => void
 }
 
@@ -101,6 +101,50 @@ describe("useDraftProviderModels", () => {
       expect(document.body).toHaveTextContent("handler-failed"),
     )
     expect(document.body).toHaveTextContent("empty")
+  })
+
+  it("returns the discovered models from discover() on success", async () => {
+    const client = createFakeIpcClient({
+      listProviderModelsDraft: async () => ({
+        ok: true,
+        value: { models: ["gpt-4o"] },
+      }),
+    })
+    renderProbe(client)
+    await waitFor(() => expect(handles.length).toBeGreaterThan(0))
+    const handle = handles[handles.length - 1]
+    if (handle === undefined) throw new Error("probe handle not captured")
+    let returned: readonly string[] = []
+    await act(async () => {
+      returned = await handle.discover({
+        sdkProvider: "openai",
+        config: {},
+        secrets: { apiKey: "x" },
+      })
+    })
+    expect(returned).toEqual(["gpt-4o"])
+  })
+
+  it("returns [] from discover() when listProviderModelsDraft returns an error", async () => {
+    const client = createFakeIpcClient({
+      listProviderModelsDraft: async () => ({
+        ok: false,
+        error: { kind: "handler-failed", detail: "auth error" },
+      }),
+    })
+    renderProbe(client)
+    await waitFor(() => expect(handles.length).toBeGreaterThan(0))
+    const handle = handles[handles.length - 1]
+    if (handle === undefined) throw new Error("probe handle not captured")
+    let returned: readonly string[] = ["non-empty"]
+    await act(async () => {
+      returned = await handle.discover({
+        sdkProvider: "openai",
+        config: {},
+        secrets: { apiKey: "bad" },
+      })
+    })
+    expect(returned).toEqual([])
   })
 
   it("resets state back to initial after reset()", async () => {

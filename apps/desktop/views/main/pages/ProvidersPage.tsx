@@ -5,7 +5,6 @@ import {
   EmptyState,
   FormField,
   Modal,
-  ModelPicker,
   ProviderForm,
   ProviderList,
   Row,
@@ -56,14 +55,12 @@ export const ProvidersPage = (): ReactElement => {
   const [newSdk, setNewSdk] = useState<string>(defaultSdk)
   const [newConfig, setNewConfig] = useState<Record<string, string>>({})
   const [newSecrets, setNewSecrets] = useState<Record<string, string>>({})
-  const [chosenModel, setChosenModel] = useState<string>("")
   const discovery = useDraftProviderModels()
   const conn = useDraftConnectionTest()
 
   const resetDraftProbes = (): void => {
     discovery.reset()
     conn.reset()
-    setChosenModel("")
   }
 
   const closeAddModal = (): void => {
@@ -90,7 +87,7 @@ export const ProvidersPage = (): ReactElement => {
       config: omitEmpty(newConfig),
       secretFieldNames,
       ...(Object.keys(newSecrets).length > 0 ? { secrets: newSecrets } : {}),
-      models: chosenModel !== "" ? [chosenModel] : [],
+      models: [],
     })
     if (r.ok) {
       closeAddModal()
@@ -242,48 +239,33 @@ export const ProvidersPage = (): ReactElement => {
           <Row gap={2}>
             <Button
               variant="secondary"
-              disabled={discovery.loading}
-              onClick={() =>
-                void discovery.discover({
-                  sdkProvider: selectedEntry?.key ?? (newSdk as SdkProvider),
-                  config: omitEmpty(newConfig),
-                  secrets: newSecrets,
-                })
-              }
-            >
-              Discover models
-            </Button>
-          </Row>
-          <ModelPicker
-            loading={discovery.loading}
-            models={discovery.models}
-            value={chosenModel}
-            onChange={setChosenModel}
-            {...(discovery.error !== undefined
-              ? {
-                  errorMessage:
-                    discovery.error.detail !== ""
-                      ? discovery.error.detail
-                      : "Couldn't list models — enter one manually.",
-                }
-              : {})}
-          />
-          <Row gap={2}>
-            <Button
-              variant="secondary"
-              disabled={chosenModel === "" || conn.testing}
-              onClick={() =>
-                void conn.test({
-                  sdkProvider: selectedEntry?.key ?? (newSdk as SdkProvider),
-                  config: omitEmpty(newConfig),
-                  secrets: newSecrets,
-                  providerModel: chosenModel,
-                })
-              }
+              disabled={discovery.loading || conn.testing}
+              onClick={() => {
+                void (async () => {
+                  const sdkProvider =
+                    selectedEntry?.key ?? (newSdk as SdkProvider)
+                  const config = omitEmpty(newConfig)
+                  // The probe needs a target model: use the first discoverable one
+                  // (the handler falls back to the provider name when none exists).
+                  const models = await discovery.discover({
+                    sdkProvider,
+                    config,
+                    secrets: newSecrets,
+                  })
+                  await conn.test({
+                    sdkProvider,
+                    config,
+                    secrets: newSecrets,
+                    providerModel: models[0] ?? "",
+                  })
+                })()
+              }}
             >
               Test connection
             </Button>
-            {conn.testing ? <Spinner label="Testing connection…" /> : null}
+            {discovery.loading || conn.testing ? (
+              <Spinner label="Testing connection…" />
+            ) : null}
             {conn.result !== undefined ? (
               <StatusDot
                 status={conn.result.ok ? "on" : "error"}

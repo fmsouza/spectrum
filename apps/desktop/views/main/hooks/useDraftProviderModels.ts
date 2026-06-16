@@ -13,7 +13,7 @@ export type UseDraftProviderModels = {
   readonly models: readonly string[]
   readonly loading: boolean
   readonly error: IpcError | undefined
-  readonly discover: (input: DraftDiscoverInput) => Promise<void>
+  readonly discover: (input: DraftDiscoverInput) => Promise<readonly string[]>
   readonly reset: () => void
 }
 
@@ -25,16 +25,19 @@ export const useDraftProviderModels = (): UseDraftProviderModels => {
   const [error, setError] = useState<IpcError | undefined>(undefined)
 
   const discover = useCallback(
-    async (input: DraftDiscoverInput): Promise<void> => {
+    async (input: DraftDiscoverInput): Promise<readonly string[]> => {
       setLoading(true)
       setError(undefined)
       const r = await client.listProviderModelsDraft(input)
-      if (r.ok) setModels(r.value.models)
-      else {
-        setModels([])
-        setError(r.error)
+      if (r.ok) {
+        setModels(r.value.models)
+        setLoading(false)
+        return r.value.models
       }
+      setModels([])
+      setError(r.error)
       setLoading(false)
+      return []
     },
     [client],
   )
