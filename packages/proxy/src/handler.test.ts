@@ -254,6 +254,7 @@ describe("createHandler", () => {
       error: { kind: string; detail: string }
     }
     expect(json.error).toMatchObject({ kind: "provider-failed" })
+    expect(json.error).not.toHaveProperty("statusCode")
   })
   it("masks provider 403 as 502 so it does not trigger the harness auth-retry loop", async () => {
     const res = await createHandler({
@@ -273,6 +274,7 @@ describe("createHandler", () => {
       error: { kind: string; detail: string }
     }
     expect(json.error).toMatchObject({ kind: "provider-failed" })
+    expect(json.error).not.toHaveProperty("statusCode")
   })
   it("returns 502 when the provider returns a 500 server error", async () => {
     const res = await createHandler({
@@ -292,6 +294,7 @@ describe("createHandler", () => {
       error: { kind: string; detail: string }
     }
     expect(json.error).toMatchObject({ kind: "provider-failed" })
+    expect(json.error).not.toHaveProperty("statusCode")
   })
   it("logs error with the kind and no secret when the gateway fails", async () => {
     const { logger, errorsOf } = makeFakeLogger()
