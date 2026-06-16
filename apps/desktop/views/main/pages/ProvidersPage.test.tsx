@@ -2,22 +2,10 @@ import { describe, expect, it } from "bun:test"
 import type { ProviderView } from "@spectrum/ipc"
 import type { ProviderCatalogEntry } from "@spectrum/providers"
 import { fireEvent, screen, waitFor, within } from "@testing-library/react"
-import type { ReactElement } from "react"
-import { useNotifications } from "../hooks/useNotifications"
+import { Toasts } from "../test/Toasts"
 import { createFakeIpcClient } from "../test/fake-client"
 import { renderWithProviders } from "../test/renderWithProviders"
 import { ProvidersPage } from "./ProvidersPage"
-
-const Toasts = (): ReactElement => {
-  const { notifications } = useNotifications()
-  return (
-    <>
-      {notifications.map((n) => (
-        <div key={n.id}>{n.message}</div>
-      ))}
-    </>
-  )
-}
 
 const view: ProviderView = {
   id: "p_openai",
@@ -66,10 +54,7 @@ const defaultCatalog: ProviderCatalogEntry[] = [
   },
 ]
 
-const renderPage = (
-  stubs: Parameters<typeof createFakeIpcClient>[0],
-  withToasts = false,
-) => {
+const renderPage = (stubs: Parameters<typeof createFakeIpcClient>[0]) => {
   const client = createFakeIpcClient({
     getProviders: async () => ({ ok: true, value: [view] }),
     getProviderCatalog: async () => ({
@@ -78,15 +63,13 @@ const renderPage = (
     }),
     ...stubs,
   })
-  const ui = withToasts ? (
+  renderWithProviders(
     <>
       <ProvidersPage />
       <Toasts />
-    </>
-  ) : (
-    <ProvidersPage />
+    </>,
+    client,
   )
-  renderWithProviders(ui, client)
   return client
 }
 
@@ -536,15 +519,12 @@ describe("ProvidersPage", () => {
   // ── Notification tests ────────────────────────────────────────────────────
 
   it("shows an error toast when adding a provider fails", async () => {
-    renderPage(
-      {
-        addProvider: async () => ({
-          ok: false,
-          error: { kind: "handler-failed", detail: "x" },
-        }),
-      },
-      true,
-    )
+    renderPage({
+      addProvider: async () => ({
+        ok: false,
+        error: { kind: "handler-failed", detail: "x" },
+      }),
+    })
     await waitFor(() =>
       expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
     )
@@ -562,15 +542,12 @@ describe("ProvidersPage", () => {
   })
 
   it("shows an error toast when saving a secret fails", async () => {
-    renderPage(
-      {
-        setProviderSecret: async () => ({
-          ok: false,
-          error: { kind: "handler-failed", detail: "x" },
-        }),
-      },
-      true,
-    )
+    renderPage({
+      setProviderSecret: async () => ({
+        ok: false,
+        error: { kind: "handler-failed", detail: "x" },
+      }),
+    })
     await waitFor(() =>
       expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
     )
@@ -589,6 +566,48 @@ describe("ProvidersPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /save secret/i }))
 
     await screen.findByText("Couldn't save the secret")
+  })
+
+  it("shows an error toast when saving an edited provider fails", async () => {
+    const customView: ProviderView = {
+      id: "p_custom",
+      name: "My Custom",
+      sdkProvider: "custom",
+      config: { serverUrl: "http://old:1/v1" },
+      secretFields: {},
+      models: [],
+    } as unknown as ProviderView
+
+    renderPage({
+      getProviders: async () => ({ ok: true, value: [customView] }),
+      updateProvider: async () => ({
+        ok: false,
+        error: { kind: "handler-failed", detail: "x" },
+      }),
+    })
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("cell", { name: "My Custom" }),
+      ).toBeInTheDocument(),
+    )
+
+    // Open the Edit modal for the existing provider row
+    const row = document.querySelector("tbody tr") as HTMLElement
+    const actionsCell = row.querySelector("td.lk-cell-actions") as HTMLElement
+    fireEvent.click(
+      within(actionsCell).getByRole("button", { name: /^edit$/i }),
+    )
+
+    await screen.findByRole("dialog", { name: /edit provider/i })
+
+    // Change the Server URL and submit
+    fireEvent.change(screen.getByLabelText("Server URL"), {
+      target: { value: "http://new:2/v1" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /save changes/i }))
+
+    await screen.findByText("Couldn't save the provider")
   })
 
   it("calls updateProvider with updated config when edit form is saved", async () => {

@@ -2,22 +2,10 @@ import { describe, expect, it } from "bun:test"
 import type { ProviderView } from "@spectrum/ipc"
 import type { ModelRoute } from "@spectrum/types"
 import { fireEvent, screen, waitFor } from "@testing-library/react"
-import type { ReactElement } from "react"
-import { useNotifications } from "../hooks/useNotifications"
+import { Toasts } from "../test/Toasts"
 import { createFakeIpcClient } from "../test/fake-client"
 import { renderWithProviders } from "../test/renderWithProviders"
 import { ModelsPage } from "./ModelsPage"
-
-const Toasts = (): ReactElement => {
-  const { notifications } = useNotifications()
-  return (
-    <>
-      {notifications.map((n) => (
-        <div key={n.id}>{n.message}</div>
-      ))}
-    </>
-  )
-}
 
 const model = {
   id: "m_1",
@@ -33,10 +21,7 @@ const view = {
   models: ["gpt-4o-mini"],
 } as unknown as ProviderView
 
-const renderPage = (
-  stubs: Parameters<typeof createFakeIpcClient>[0],
-  withToasts = false,
-) => {
+const renderPage = (stubs: Parameters<typeof createFakeIpcClient>[0]) => {
   const client = createFakeIpcClient({
     getModels: async () => ({ ok: true, value: [model] }),
     getProviders: async () => ({ ok: true, value: [view] }),
@@ -44,15 +29,13 @@ const renderPage = (
     listProviderModels: async () => ({ ok: true, value: { models: [] } }),
     ...stubs,
   })
-  const ui = withToasts ? (
+  renderWithProviders(
     <>
       <ModelsPage />
       <Toasts />
-    </>
-  ) : (
-    <ModelsPage />
+    </>,
+    client,
   )
-  renderWithProviders(ui, client)
   return client
 }
 
@@ -426,15 +409,12 @@ describe("ModelsPage", () => {
   // ── Notification tests ────────────────────────────────────────────────────
 
   it("shows an error toast when adding a model fails", async () => {
-    renderPage(
-      {
-        addModel: async () => ({
-          ok: false,
-          error: { kind: "handler-failed", detail: "x" },
-        }),
-      },
-      true,
-    )
+    renderPage({
+      addModel: async () => ({
+        ok: false,
+        error: { kind: "handler-failed", detail: "x" },
+      }),
+    })
     await waitFor(() =>
       expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
     )
@@ -455,12 +435,9 @@ describe("ModelsPage", () => {
   })
 
   it("shows a success toast when a model is deleted", async () => {
-    renderPage(
-      {
-        deleteModel: async () => ({ ok: true, value: null }),
-      },
-      true,
-    )
+    renderPage({
+      deleteModel: async () => ({ ok: true, value: null }),
+    })
     await waitFor(() =>
       expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
     )
@@ -471,15 +448,12 @@ describe("ModelsPage", () => {
   })
 
   it("shows an error toast when deleting a model fails", async () => {
-    renderPage(
-      {
-        deleteModel: async () => ({
-          ok: false,
-          error: { kind: "handler-failed", detail: "x" },
-        }),
-      },
-      true,
-    )
+    renderPage({
+      deleteModel: async () => ({
+        ok: false,
+        error: { kind: "handler-failed", detail: "x" },
+      }),
+    })
     await waitFor(() =>
       expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
     )
@@ -487,6 +461,32 @@ describe("ModelsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /delete/i }))
 
     await screen.findByText("Couldn't delete the model")
+  })
+
+  it("shows an error toast when updating a model fails", async () => {
+    renderPage({
+      updateModel: async () => ({
+        ok: false,
+        error: { kind: "handler-failed", detail: "x" },
+      }),
+      listProviderModels: async () => ({ ok: true, value: { models: [] } }),
+    })
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
+
+    // Open the edit form for the existing model row
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }))
+    await waitFor(() =>
+      expect(screen.getByLabelText("Model")).toHaveValue("gpt-4o-mini"),
+    )
+    // Change the model value and submit
+    fireEvent.change(screen.getByLabelText("Model"), {
+      target: { value: "gpt-4o" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /save model/i }))
+
+    await screen.findByText("Couldn't update the model")
   })
 
   it("clears providerModel when the provider changes", async () => {
