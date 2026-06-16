@@ -56,7 +56,10 @@ const config = {
 const deps = (key: string) => ({
   proxyKey: key,
   router: createRouter(config),
-  factory: { getModel: async () => ({ ok: true as const, value: {} }) },
+  factory: {
+    getModel: async () => ({ ok: true as const, value: {} }),
+    getModelFromResolved: async () => ({ ok: true as const, value: {} }),
+  },
   gateway: createScriptedGateway([
     { type: "text-delta", text: "Hi" },
     { type: "finish", finishReason: "stop" },

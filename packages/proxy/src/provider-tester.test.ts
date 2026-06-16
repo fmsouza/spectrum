@@ -23,6 +23,7 @@ const fakeFactory = (
   result: Result<ModelHandle, ProxyError> = ok({}),
 ): ProviderFactory => ({
   getModel: async () => result,
+  getModelFromResolved: async () => result,
 })
 
 /** A clock that advances by `stepMs` on each now() call, so elapsed time is deterministic. */
