@@ -44,7 +44,13 @@ const steppingClock = (startMs: number, stepMs: number) => {
 const fakeDraftFactory = (
   result: Result<ModelHandle, ProxyError> = ok({}),
 ): ProviderFactory => ({
-  getModel: async () => result,
+  // If createDraftProviderTester wrongly calls getModel, this rejects and the test fails —
+  // proving the draft path routes through getModelFromResolved.
+  getModel: async () => {
+    throw new Error(
+      "draft tester must build via getModelFromResolved, not getModel",
+    )
+  },
   getModelFromResolved: async () => result,
 })
 
@@ -183,9 +189,35 @@ describe("createDraftProviderTester", () => {
         err({ kind: "unsupported-provider", sdkProvider: "openai" }),
       ),
       gateway,
-      clock: steppingClock(0, 5),
+      clock: createFixedClock(new Date(0)),
     })
     const result = await tester(draftInput)
     expect(result.ok && result.value).toEqual({ ok: false, latencyMs: 0 })
+  })
+
+  it("sends a minimal one-token ping request with the draft model to the gateway", async () => {
+    const captured: NormalizedRequest[] = []
+    const capturingGateway: LanguageModelGateway = {
+      async *stream(
+        _model: ModelHandle,
+        req: NormalizedRequest,
+      ): AsyncIterable<StreamEvent> {
+        captured.push(req)
+        yield { type: "finish", finishReason: "stop" }
+      },
+    }
+    const tester = createDraftProviderTester({
+      factory: fakeDraftFactory(),
+      gateway: capturingGateway,
+      clock: createFixedClock(new Date("2026-05-23T00:00:00.000Z")),
+    })
+
+    await tester(draftInput)
+
+    expect(captured).toHaveLength(1)
+    expect(captured[0]?.maxTokens).toBe(1)
+    expect(captured[0]?.messages).toEqual([{ role: "user", content: "ping" }])
+    expect(captured[0]?.stream).toBe(true)
+    expect(captured[0]?.model).toBe(draftInput.providerModel)
   })
 })
