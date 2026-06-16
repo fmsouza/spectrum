@@ -27,6 +27,8 @@ export type {
   ToolCallItem,
 } from "./reduce"
 export { initialRunState, reduce } from "./reduce"
+export type { RootRunnerMap } from "./root-runner"
+export { isRootRunnerFinished, trackRootRunner } from "./root-runner"
 export type { TaskItem, TaskList, TaskStatus } from "./select-task-list"
 export { isTaskTool, selectTaskList } from "./select-task-list"
 // Re-export the canonical-model id so downstream packages (agent-driver, ui, apps/desktop)
