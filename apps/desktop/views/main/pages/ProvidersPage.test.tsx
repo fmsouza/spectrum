@@ -467,6 +467,71 @@ describe("ProvidersPage", () => {
     )
   })
 
+  it("omits empty-string config values when testing the connection", async () => {
+    const client = renderPage({
+      listProviderModelsDraft: async () => ({
+        ok: true,
+        value: { models: ["m1"] },
+      }),
+      testProviderDraft: async () => ({
+        ok: true,
+        value: { ok: true, latencyMs: 5 },
+      }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    fireEvent.change(screen.getByLabelText("SDK provider"), {
+      target: { value: "custom" },
+    })
+    // Wait for the Server URL field to appear
+    await waitFor(() =>
+      expect(screen.getByLabelText("Server URL")).toBeInTheDocument(),
+    )
+    // type then clear the Server URL config field
+    fireEvent.change(screen.getByLabelText("Server URL"), {
+      target: { value: "http://x" },
+    })
+    fireEvent.change(screen.getByLabelText("Server URL"), {
+      target: { value: "" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /test connection/i }))
+    await waitFor(() =>
+      expect(client.calls.listProviderModelsDraft.length).toBeGreaterThan(0),
+    )
+    const sent = client.calls.listProviderModelsDraft.at(-1) as {
+      config: Record<string, string>
+    }
+    expect(sent.config).not.toHaveProperty("serverUrl")
+  })
+
+  it("shows the discovery error detail inline when Test connection's discovery fails", async () => {
+    renderPage({
+      listProviderModelsDraft: async () => ({
+        ok: false,
+        error: {
+          kind: "handler-failed",
+          detail:
+            "could not list provider models: HTTP 404 from http://x/models",
+        },
+      }),
+      testProviderDraft: async () => ({
+        ok: true,
+        value: { ok: false, latencyMs: 0 },
+      }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-x" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /test connection/i }))
+    await screen.findByText(/HTTP 404 from http:\/\/x\/models/)
+  })
+
   // ── Notification tests ────────────────────────────────────────────────────
 
   it("shows an error toast when adding a provider fails", async () => {

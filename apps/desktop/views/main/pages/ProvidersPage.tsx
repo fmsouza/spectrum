@@ -284,6 +284,9 @@ export const ProvidersPage = (): ReactElement => {
                 ) : null}
               </>
             ) : null}
+            {discovery.error !== undefined && discovery.error.detail !== "" ? (
+              <span>{discovery.error.detail}</span>
+            ) : null}
           </Row>
           <Row gap={2} className="lk-form-actions">
             <Button onClick={() => void submitAdd()}>Create provider</Button>
