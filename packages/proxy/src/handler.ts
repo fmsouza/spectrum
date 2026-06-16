@@ -22,19 +22,24 @@ export interface HandlerDeps {
   logger?: Logger
 }
 
-// A provider rate limit (429) passes through so the harness sees the true
-// semantics (and the provider's own quota message). Every other provider
-// failure stays 502: leaking e.g. a provider 401 would read as a proxy-auth
-// failure to the harness (see the ANTHROPIC_AUTH_TOKEN 401-retry-loop note in
-// the claude harness definition).
-const statusFor = (e: ProxyError): number =>
-  e.kind === "unauthorized"
-    ? 401
-    : e.kind === "provider-failed"
-      ? e.statusCode === 429
-        ? 429
-        : 502
-      : 400
+// Map a ProxyError to the HTTP status the harness sees.
+// Provider CLIENT errors (4xx) pass through so the harness fails fast on a permanent
+// problem (e.g. 404 "model not found", 400 bad request, 429 rate limit) instead of
+// retrying a masked 502. EXCEPTION: a provider 401/403 must NOT reach the harness as
+// 401/403 — it would read as a PROXY-auth failure and trigger the ANTHROPIC_AUTH_TOKEN
+// retry loop (see the claude harness definition) — so those stay 502. Provider 5xx and
+// unknown statuses stay 502 (genuinely retryable/opaque server failures).
+const statusFor = (e: ProxyError): number => {
+  if (e.kind === "unauthorized") return 401
+  if (e.kind === "provider-failed") {
+    const sc = e.statusCode
+    if (sc !== undefined && sc >= 400 && sc < 500 && sc !== 401 && sc !== 403) {
+      return sc
+    }
+    return 502
+  }
+  return 400
+}
 const errorResponse = (e: ProxyError): Response =>
   new Response(JSON.stringify({ error: e }), {
     status: statusFor(e),
