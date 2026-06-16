@@ -49,7 +49,10 @@ describe("startProxy", () => {
       port: 0,
       proxyKey: "k",
       router: createRouter(config),
-      factory: { getModel: async () => ({ ok: true, value: {} }) },
+      factory: {
+        getModel: async () => ({ ok: true as const, value: {} }),
+        getModelFromResolved: async () => ({ ok: true as const, value: {} }),
+      },
       gateway: createScriptedGateway([
         { type: "finish", finishReason: "stop" },
       ]),
@@ -66,7 +69,10 @@ describe("startProxy", () => {
       port: 0,
       proxyKey: "super-secret-proxy-key",
       router: createRouter(config),
-      factory: { getModel: async () => ({ ok: true, value: {} }) },
+      factory: {
+        getModel: async () => ({ ok: true as const, value: {} }),
+        getModelFromResolved: async () => ({ ok: true as const, value: {} }),
+      },
       gateway: createScriptedGateway([
         { type: "finish", finishReason: "stop" },
       ]),
@@ -87,7 +93,10 @@ describe("startProxy", () => {
       port: 0,
       proxyKey: "k",
       router: createRouter(config),
-      factory: { getModel: async () => ({ ok: true, value: {} }) },
+      factory: {
+        getModel: async () => ({ ok: true as const, value: {} }),
+        getModelFromResolved: async () => ({ ok: true as const, value: {} }),
+      },
       gateway: createScriptedGateway([
         { type: "finish", finishReason: "stop" },
       ]),
@@ -103,7 +112,10 @@ describe("startProxy", () => {
       port: 0,
       proxyKey: "k",
       router: createRouter(config),
-      factory: { getModel: async () => ({ ok: true, value: {} }) },
+      factory: {
+        getModel: async () => ({ ok: true as const, value: {} }),
+        getModelFromResolved: async () => ({ ok: true as const, value: {} }),
+      },
       gateway: createScriptedGateway([
         { type: "text-delta", text: "Hi" },
         { type: "finish", finishReason: "stop" },

@@ -102,3 +102,40 @@ describe("createProviderFactory", () => {
     })
   })
 })
+
+describe("createProviderFactory.getModelFromResolved", () => {
+  it("builds a model from inline resolved secret values without touching the SecretStore", async () => {
+    const captured: Array<Record<string, unknown>> = []
+    const loadSdk = mock(async (_p: string) => ({
+      create: (cfg: Record<string, unknown>) => {
+        captured.push(cfg)
+        return (id: string) => ({ id })
+      },
+    }))
+    // A SecretStore whose .get throws — proves the resolved path never calls it.
+    const secretStore: import("@spectrum/secrets").SecretStore = {
+      set: async () => ({ ok: true as const, value: { ref: "r" } }),
+      get: async () => {
+        throw new Error("getModelFromResolved must not read the keychain")
+      },
+      delete: async () => ({ ok: true as const, value: undefined }),
+      has: async () => true,
+    }
+    const factory = createProviderFactory({ secretStore, loadSdk })
+
+    const r = await factory.getModelFromResolved({
+      sdkProvider: "openai",
+      config: {},
+      secrets: { apiKey: "sk-inline" },
+      providerModel: "gpt-4o",
+    })
+
+    expect(r.ok).toBe(true)
+    // The inline apiKey reached the SDK options (openai maps apiKey as an option).
+    expect(captured[0]?.apiKey).toBe("sk-inline")
+    // loadSdk was called with the correct sdkProvider.
+    expect(loadSdk).toHaveBeenCalledWith("openai")
+    // The returned model handle carries the requested model id.
+    expect(r.ok && (r.value as { id: string }).id).toBe("gpt-4o")
+  })
+})

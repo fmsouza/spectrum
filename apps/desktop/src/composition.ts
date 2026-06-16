@@ -15,7 +15,7 @@ import type {
 } from "@spectrum/proxy"
 import type { SecretStore } from "@spectrum/secrets"
 import type { SessionStore } from "@spectrum/sessions"
-import type { SessionId } from "@spectrum/types"
+import type { SdkProvider, SessionId } from "@spectrum/types"
 import type { Result } from "@spectrum/utils"
 
 import { mkdirSync, rmSync } from "node:fs"
@@ -70,6 +70,7 @@ import {
   resolveAppPaths,
 } from "@spectrum/platform"
 import {
+  createDraftProviderTester,
   createFetchHttpGet,
   createFileRuntimeState,
   createModelLister,
@@ -182,6 +183,19 @@ export interface AppContext {
   readonly listProviderModels: (
     providerId: string,
   ) => Promise<Result<readonly string[], unknown>>
+  /** Probe connectivity for an UN-SAVED provider from inline config + secret VALUES. */
+  readonly testProviderDraft: (input: {
+    sdkProvider: SdkProvider
+    config: Readonly<Record<string, string>>
+    secrets: Readonly<Record<string, string>>
+    providerModel: string
+  }) => Promise<Result<ProviderTestResult, unknown>>
+  /** Discover models for an UN-SAVED provider from inline config + secret VALUES. */
+  readonly listProviderModelsDraft: (input: {
+    sdkProvider: SdkProvider
+    config: Readonly<Record<string, string>>
+    secrets: Readonly<Record<string, string>>
+  }) => Promise<Result<readonly string[], unknown>>
   /** The configured proxy port (from `config.settings.proxyPort`), surfaced for `getProxyStatus`. */
   readonly proxyPort: number
   /** The loopback proxy base URL (`http://127.0.0.1:<port>`), used by `proxy.isRunning`. */
@@ -419,6 +433,44 @@ const createListProviderModels = (
     })
   }
 }
+
+/**
+ * Draft tester: probe inline values (no config load, no keychain).
+ * SECURITY: secret VALUES are inline (caller-supplied, never persisted); used only to build a
+ * one-shot probe model and never logged.
+ */
+const createTestProviderDraft = (
+  factory: ProviderFactory,
+  gateway: LanguageModelGateway,
+  createSystemClock: () => import("@spectrum/utils").Clock,
+): AppContext["testProviderDraft"] => {
+  return async ({ sdkProvider, config, secrets, providerModel }) => {
+    const tester = createDraftProviderTester({
+      factory,
+      gateway,
+      clock: createSystemClock(),
+    })
+    return tester({ sdkProvider, config, secrets, providerModel })
+  }
+}
+
+/**
+ * Draft model discovery: list models from inline values (no config load, no keychain).
+ * SECURITY: apiKey is the inline, caller-supplied value (never from the keychain); it is passed
+ * only to the outbound discovery request and is never persisted or logged.
+ */
+const createListProviderModelsDraft =
+  (): AppContext["listProviderModelsDraft"] => {
+    const lister = createModelLister({ httpGet: createFetchHttpGet() })
+    return async ({ sdkProvider, config, secrets }) => {
+      const apiKey = secrets.apiKey
+      return lister({
+        sdkProvider,
+        config,
+        ...(apiKey !== undefined ? { apiKey } : {}),
+      })
+    }
+  }
 
 /**
  * Construct the real adapters and inject them into the wired `AppContext`. FLAT and logic-free:
@@ -819,6 +871,10 @@ export const createAppContext = (
       deps.createSystemClock(),
     ),
     listProviderModels: createListProviderModels(config, secrets),
+    testProviderDraft: createTestProviderDraft(factory, gateway, () =>
+      deps.createSystemClock(),
+    ),
+    listProviderModelsDraft: createListProviderModelsDraft(),
     proxyPort,
     proxyBaseUrl,
     genProxyKey,

@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import type { RunnerOutbound } from "@spectrum/agent-driver"
 import type { StoredEvent } from "@spectrum/agent-events"
-import type { Session, SessionId } from "@spectrum/types"
+import type { ModelRoute, Session, SessionId } from "@spectrum/types"
 import {
   cleanup,
   fireEvent,
@@ -14,7 +14,41 @@ import { IpcClientProvider } from "../IpcClientContext"
 import type { RunnerClient } from "../runner/runnerClient"
 import { createFakeIpcClient } from "../test/fake-client"
 import { renderWithProviders } from "../test/renderWithProviders"
-import { SessionsView } from "./SessionsView"
+import { SessionsView, sessionModelLabel } from "./SessionsView"
+
+// ---------------------------------------------------------------------------
+// sessionModelLabel — pure helper unit tests
+// ---------------------------------------------------------------------------
+
+const routes: readonly ModelRoute[] = [
+  {
+    id: "mdl_1" as ModelRoute["id"],
+    providerId: "p_o" as ModelRoute["providerId"],
+    providerModel: "kimi-k2.7-code:cloud",
+  },
+]
+const providerNames = { p_o: "ollama" }
+
+describe("sessionModelLabel", () => {
+  it("resolves a model id to '<provider> / <providerModel>'", () => {
+    expect(sessionModelLabel("mdl_1", routes, providerNames)).toBe(
+      "ollama / kimi-k2.7-code:cloud",
+    )
+  })
+  it("returns 'default' when the session has no model", () => {
+    expect(sessionModelLabel(undefined, routes, providerNames)).toBe("default")
+  })
+  it("falls back to the raw id when the route is gone", () => {
+    expect(sessionModelLabel("mdl_missing", routes, providerNames)).toBe(
+      "mdl_missing",
+    )
+  })
+  it("falls back to the provider id when the provider name is unknown", () => {
+    expect(sessionModelLabel("mdl_1", routes, {})).toBe(
+      "p_o / kimi-k2.7-code:cloud",
+    )
+  })
+})
 
 // A minimal fake RunnerClient that tracks attach() calls (mirrors RunDetail.test's fake).
 const makeFakeRunner = (): RunnerClient & {
@@ -126,6 +160,44 @@ describe("SessionsView", () => {
       within(dialog).getByRole("button", { name: "Delete session" }),
     )
     expect(onDeleteSession).toHaveBeenCalledWith(running.id)
+    cleanup()
+  })
+
+  it("shows the resolved provider/model label in the master when routes + providerNames are passed", () => {
+    const client = createFakeIpcClient({})
+    const modelRoute: ModelRoute = {
+      id: "m_1" as ModelRoute["id"],
+      providerId: "p_o" as ModelRoute["providerId"],
+      providerModel: "kimi-k2.7-code:cloud",
+    }
+    const { master } = SessionsView({
+      selectedSessionId: undefined,
+      openSessionIds: [],
+      projects: [project],
+      sessionsByProject: { prj_1: [running] },
+      collapsed: new Set(),
+      allSessions: [running],
+      onToggle: () => {},
+      onMore: () => {},
+      onSelect: () => {},
+      onNew: () => {},
+      onDeleteProject: () => {},
+      onDeleteSession: () => {},
+      runnerClient: makeFakeRunner(),
+      models: [modelRoute],
+      providerNames: { p_o: "ollama" },
+    })
+    render(
+      <IpcClientProvider client={client}>
+        <div>{master}</div>
+      </IpcClientProvider>,
+    )
+    // Model id "m_1" resolves to "ollama / kimi-k2.7-code:cloud"
+    expect(
+      screen.getByText(/claude · ollama \/ kimi-k2\.7-code:cloud/),
+    ).toBeInTheDocument()
+    // Raw model id must NOT appear
+    expect(screen.queryByText(/claude · m_1/)).toBeNull()
     cleanup()
   })
 
