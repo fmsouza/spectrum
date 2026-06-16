@@ -220,6 +220,11 @@ describe("ProvidersPage", () => {
       field: "apiKey",
       value: "sk-secret-123",
     })
+    await waitFor(() =>
+      expect(
+        document.querySelector("form[aria-label='Set secret for OpenAI']"),
+      ).toBeNull(),
+    )
   })
 
   it("never re-displays the secret value after submitting it", async () => {

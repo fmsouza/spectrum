@@ -110,6 +110,15 @@ export const ProvidersPage = (): ReactElement => {
   const [editFor, setEditFor] = useState<ProviderView | undefined>(undefined)
   const [editConfig, setEditConfig] = useState<Record<string, string>>({})
 
+  const closeSecretModal = (): void => {
+    setSecretFor(undefined)
+    setSecretValues({})
+  }
+
+  const secretSubmittable = Object.values(secretValues).some(
+    (v) => v.trim() !== "",
+  )
+
   const submitSecret = async (): Promise<void> => {
     if (secretFor === undefined) return
     const entries = Object.entries(secretValues).filter(
@@ -124,8 +133,7 @@ export const ProvidersPage = (): ReactElement => {
       }
     }
     // Write-only: clear immediately, never echo back.
-    setSecretValues({})
-    setSecretFor(undefined)
+    closeSecretModal()
   }
 
   const submitEdit = async (): Promise<void> => {
@@ -301,10 +309,7 @@ export const ProvidersPage = (): ReactElement => {
             : `Set secret for ${secretFor.name}`
         }
         open={secretFor !== undefined}
-        onClose={() => {
-          setSecretFor(undefined)
-          setSecretValues({})
-        }}
+        onClose={closeSecretModal}
       >
         {secretFor !== undefined ? (
           <form
@@ -325,14 +330,13 @@ export const ProvidersPage = (): ReactElement => {
               />
             ) : null}
             <Row gap={2} className="lk-form-actions">
-              <Button onClick={() => void submitSecret()}>Save secret</Button>
               <Button
-                variant="secondary"
-                onClick={() => {
-                  setSecretFor(undefined)
-                  setSecretValues({})
-                }}
+                onClick={() => void submitSecret()}
+                disabled={!secretSubmittable}
               >
+                Save secret
+              </Button>
+              <Button variant="secondary" onClick={closeSecretModal}>
                 Cancel
               </Button>
             </Row>
