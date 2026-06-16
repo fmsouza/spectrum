@@ -83,6 +83,7 @@ const fakeRunnerClient: RunnerClient = {
   interrupt: () => {},
   dispatch: () => {},
   onEvent: () => {},
+  onAny: () => () => {},
 } as unknown as RunnerClient
 
 // ---------------------------------------------------------------------------
@@ -408,6 +409,12 @@ const isDocumentedGap = (s: string): boolean => {
   // `.lk-danger-zone` selector matches nothing here by design. Verified by
   // DataPage.test.tsx.
   if (/^\.lk-danger-zone\b/.test(s)) return true
+  // Toast (transient notification) — pure presentational atom mounted only when a
+  // notification exists (wired by the notifications engine in a later task). No
+  // current app state renders one, so its `.lk-toast` / `__msg` / `__action` /
+  // `__dismiss` selectors (and `[data-tone="…"]` tone variants) match nothing here
+  // by design. Verified by Toast.test.tsx.
+  if (/^\.lk-toast(?:__(?:msg|action|dismiss))?\b/.test(s)) return true
   return false
 }
 

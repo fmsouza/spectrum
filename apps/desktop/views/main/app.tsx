@@ -1,8 +1,24 @@
+import {
+  type RootRunnerMap,
+  isRootRunnerFinished,
+  trackRootRunner,
+} from "@spectrum/agent-events"
 import type { IpcClient, IpcError } from "@spectrum/ipc"
 import type { ProjectId } from "@spectrum/types"
-import { type AppMode, AppShell, NewSessionModal } from "@spectrum/ui"
+import {
+  type AppMode,
+  AppShell,
+  NewSessionModal,
+  ToastContainer,
+} from "@spectrum/ui"
 import type { NewSessionValues } from "@spectrum/ui"
-import { type ReactElement, StrictMode, useEffect, useState } from "react"
+import {
+  type ReactElement,
+  StrictMode,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
 import { createRoot } from "react-dom/client"
 import { useStore } from "zustand"
 import { IpcClientProvider, useIpcClient } from "./IpcClientContext"
@@ -11,6 +27,7 @@ import { createRealClients } from "./clients"
 import { UpdateBanner } from "./components/UpdateBanner"
 import { useHarnesses } from "./hooks/useHarnesses"
 import { useModels } from "./hooks/useModels"
+import { useNotifications } from "./hooks/useNotifications"
 import { useProjects } from "./hooks/useProjects"
 import { useProviders } from "./hooks/useProviders"
 import { useProxyStatus } from "./hooks/useProxyStatus"
@@ -80,6 +97,7 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   const [initialHarnessId, setInitialHarnessId] = useState<string>("")
   const proxy = useProxyStatus()
   const update = useUpdate()
+  const notifications = useNotifications()
 
   // Prefill the New Session modal with the last launched folder/harness
   // (persisted by a successful launch). Page-level fetch — the modal stays dumb
@@ -115,6 +133,45 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   useEffect(() => {
     location.writeHash(encodeView(view))
   }, [view, location])
+
+  // Track each session's ROOT runner (the first parentless `runner-started`) across the firehose.
+  // A multi-agent run emits one `runner-finished` per runner — sub-agents AND the root — so we must
+  // toast ONLY on the root finish, never mid-run on a sub-agent. A ref (not state) survives the
+  // effect re-subscription below (which re-runs on `view` change) so accumulated roots are retained.
+  const rootsRef = useRef<RootRunnerMap>(new Map())
+
+  // `notify` is a referentially STABLE zustand store action (its identity never changes), unlike the
+  // `notifications` object literal which is fresh each render. Depend on `notify` below so the effect
+  // re-subscribes only on intended changes (view/runnerClient/navigate), not on every re-render.
+  const notify = notifications.notify
+
+  // Toast when a BACKGROUND run finishes/errors (not the session being viewed).
+  // `onAny` accumulates listeners, so the effect MUST drop its previous one via
+  // the returned unsubscribe fn on every re-run — otherwise toasts would stack.
+  useEffect(() => {
+    const off = runnerClient.onAny((id, stored) => {
+      const ev = stored.event
+      // Update the root map on EVERY frame so a later runner-finished can be classified.
+      rootsRef.current = trackRootRunner(rootsRef.current, id, ev)
+      if (ev.type !== "runner-finished") return
+      if (ev.status === "interrupted") return
+      // Fail-closed: suppress unless this finish is for the session's recorded ROOT runner.
+      if (!isRootRunnerFinished(rootsRef.current, id, ev)) return
+      const isViewing =
+        view.kind === "sessions" && view.selectedSessionId === id
+      if (isViewing) return
+      const action = {
+        label: "View",
+        onClick: () => navigate({ kind: "sessions", selectedSessionId: id }),
+      }
+      notify(
+        ev.status === "errored"
+          ? { tone: "error", message: "A run failed", action }
+          : { tone: "info", message: "A run finished", action },
+      )
+    })
+    return off
+  }, [runnerClient, view, notify, navigate])
 
   const mode: AppMode = view.kind === "settings" ? "settings" : "sessions"
 
@@ -188,20 +245,55 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
             setLaunchError(undefined)
             setModalOpen(true)
           },
-          onDeleteProject: (projectId) =>
+          onDeleteProject: (projectId) => {
             // If the selected session belonged to this project it simply
             // vanishes from the refetched lists; SessionsDetail already renders
             // the empty state when the session isn't found, so no extra
             // selection handling is needed here.
-            projectsView.deleteProject(projectId as ProjectId),
+            void (async () => {
+              const r = await projectsView.deleteProject(projectId as ProjectId)
+              if (r.ok)
+                notifications.notify({
+                  tone: "success",
+                  message: "Project deleted",
+                })
+              else
+                notifications.notify({
+                  tone: "error",
+                  message: "Couldn't delete the project",
+                  action: {
+                    label: "Retry",
+                    onClick: () =>
+                      void projectsView.deleteProject(projectId as ProjectId),
+                  },
+                })
+            })()
+          },
           onDeleteSession: (sessionId) => {
-            projectsView.deleteSession(sessionId)
-            // If the open detail pane was showing this session, drop the selection.
-            if (
-              view.kind === "sessions" &&
-              view.selectedSessionId === sessionId
-            )
-              navigate({ kind: "sessions" })
+            void (async () => {
+              const r = await projectsView.deleteSession(sessionId)
+              if (r.ok) {
+                notifications.notify({
+                  tone: "success",
+                  message: "Session deleted",
+                })
+                // If the open detail pane was showing this session, drop the selection.
+                if (
+                  view.kind === "sessions" &&
+                  view.selectedSessionId === sessionId
+                )
+                  navigate({ kind: "sessions" })
+              } else {
+                notifications.notify({
+                  tone: "error",
+                  message: "Couldn't delete the session",
+                  action: {
+                    label: "Retry",
+                    onClick: () => void projectsView.deleteSession(sessionId),
+                  },
+                })
+              }
+            })()
           },
           runnerClient,
           models: models.data ?? [],
@@ -215,6 +307,10 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
         onDownload={update.download}
         onRestart={update.apply}
         onDismiss={update.dismiss}
+      />
+      <ToastContainer
+        notifications={notifications.notifications}
+        onDismiss={notifications.dismiss}
       />
       <AppShell
         mode={mode}

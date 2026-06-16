@@ -11,6 +11,32 @@ import { createIpcHandlers } from "./ipc/handlers"
 const RENDERER: "cef" | "native" =
   detectPlatform() === "linux" ? "cef" : "native"
 
+/**
+ * Window focus seam. A `let focused` flag, flipped by the Electrobun BrowserWindow `focus`/`blur`
+ * events (bound in `realOpenWindowDeps.createWindow`), read synchronously by composition through
+ * `isWindowFocused`. The notification service uses it to suppress native notifications while the
+ * window is focused (the in-app toast covers that case).
+ *
+ * Default `true` (assume focused at launch). The native window emits `focus` on activation and
+ * `blur` when it loses key status, so the flag tracks the real OS focus state once the window opens.
+ */
+let focused = true
+
+/** Synchronous read of the current window focus flag (see {@link focused}). */
+export const isWindowFocused = (): boolean => focused
+
+/** Internal: bind the Electrobun focus/blur events of a constructed BrowserWindow to the flag. */
+const bindFocusEvents = (window: {
+  on(name: string, handler: (event: unknown) => void): void
+}): void => {
+  window.on("focus", () => {
+    focused = true
+  })
+  window.on("blur", () => {
+    focused = false
+  })
+}
+
 /** The subset of BrowserWindow options this shell sets (security.md webview hardening). */
 export interface WindowOptions {
   readonly url: string
@@ -112,13 +138,15 @@ export const realOpenWindowDeps: OpenWindowDeps = {
           handlers: { requests: {}, messages: {} },
           extraRequestHandlers: requests,
         })
-        new BrowserWindow({
+        const win = new BrowserWindow({
           title: opts.title,
           url: opts.url,
           frame: { width: 1024, height: 720, x: 100, y: 100 },
           renderer: RENDERER,
           rpc,
         })
+        // Track OS focus so background runs (window unfocused) fire a native notification.
+        bindFocusEvents(win)
       },
     )
 

@@ -2,6 +2,7 @@ import { SettingsNav } from "@spectrum/ui"
 import type { ReactElement, ReactNode } from "react"
 import { ErrorBoundary } from "../ErrorBoundary"
 import { useIpcClient } from "../IpcClientContext"
+import { useNotifications } from "../hooks/useNotifications"
 import {
   DataPage,
   GeneralPage,
@@ -25,7 +26,21 @@ const SECTIONS = [
  */
 const DataPageConnected = (): ReactElement => {
   const client = useIpcClient()
-  return <DataPage onReset={() => void client.resetApp(undefined)} />
+  const { notify } = useNotifications()
+  return (
+    <DataPage
+      onReset={() => {
+        // On success the app relaunches, so only the failure path needs a toast.
+        void client.resetApp(undefined).then((r) => {
+          if (!r.ok)
+            notify({
+              tone: "error",
+              message: "Reset failed. Please try again.",
+            })
+        })
+      }}
+    />
+  )
 }
 
 const detailFor = (section: string): ReactNode => {

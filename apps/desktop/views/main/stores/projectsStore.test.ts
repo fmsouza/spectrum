@@ -57,6 +57,37 @@ describe("projectsStore", () => {
     expect(calls).toContain("s:s_1")
   })
 
+  it("deleteSession returns the client Result (ok) and invalidates", async () => {
+    const store = createProjectsStore({
+      client: okClient({
+        deleteSession: async () => ({ ok: true, value: null }),
+      }),
+    })
+    const r = await store.getState().deleteSession("s_1" as never)
+    expect(r.ok).toBe(true)
+  })
+
+  it("deleteSession returns the error Result on failure (no invalidate)", async () => {
+    let invalidated = false
+    const store = createProjectsStore({
+      client: okClient({
+        getProjects: async () => {
+          invalidated = true
+          return { ok: true, value: [] }
+        },
+        deleteSession: async () => ({
+          ok: false,
+          error: { kind: "handler-failed", detail: "x" },
+        }),
+      }),
+    })
+    await store.getState().fetchProjects()
+    invalidated = false
+    const r = await store.getState().deleteSession("s_1" as never)
+    expect(r.ok).toBe(false)
+    expect(invalidated).toBe(false)
+  })
+
   it("deleteProject calls the client then invalidates", async () => {
     const calls: string[] = []
     const store = createProjectsStore({
@@ -69,6 +100,37 @@ describe("projectsStore", () => {
     })
     await store.getState().deleteProject("prj_1" as never)
     expect(calls).toContain("p:prj_1")
+  })
+
+  it("deleteProject returns the client Result (ok) and invalidates", async () => {
+    const store = createProjectsStore({
+      client: okClient({
+        deleteProject: async () => ({ ok: true, value: null }),
+      }),
+    })
+    const r = await store.getState().deleteProject("prj_1" as never)
+    expect(r.ok).toBe(true)
+  })
+
+  it("deleteProject returns the error Result on failure (no invalidate)", async () => {
+    let invalidated = false
+    const store = createProjectsStore({
+      client: okClient({
+        getProjects: async () => {
+          invalidated = true
+          return { ok: true, value: [] }
+        },
+        deleteProject: async () => ({
+          ok: false,
+          error: { kind: "handler-failed", detail: "x" },
+        }),
+      }),
+    })
+    await store.getState().fetchProjects()
+    invalidated = false
+    const r = await store.getState().deleteProject("prj_1" as never)
+    expect(r.ok).toBe(false)
+    expect(invalidated).toBe(false)
   })
 
   it("toggleCollapse flips membership and persists the new set", async () => {
