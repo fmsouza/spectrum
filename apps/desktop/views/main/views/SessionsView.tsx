@@ -5,6 +5,24 @@ import type { ReactElement, ReactNode } from "react"
 import type { RunnerClient } from "../runner/runnerClient"
 import { RunDetail } from "./RunDetail"
 
+/**
+ * Human-readable model label for a session row: resolves the route id to
+ * "<provider name> / <providerModel>". Falls back to the raw id if the route
+ * was deleted, and "default" when the session has no model (proxy-less route).
+ */
+export const sessionModelLabel = (
+  modelId: string | undefined,
+  models: readonly ModelRoute[],
+  providerNames: Readonly<Record<string, string>>,
+): string => {
+  if (modelId === undefined) return "default"
+  const route = models.find((m) => String(m.id) === modelId)
+  if (route === undefined) return modelId
+  const provider =
+    providerNames[String(route.providerId)] ?? String(route.providerId)
+  return `${provider} / ${route.providerModel}`
+}
+
 export type SessionsViewInput = {
   readonly selectedSessionId?: SessionId
   readonly openSessionIds: readonly SessionId[]
@@ -41,6 +59,8 @@ const SessionsMaster = ({
   onNew,
   onDeleteProject,
   onDeleteSession,
+  models,
+  providerNames,
 }: {
   readonly selectedSessionId?: SessionId
   readonly projects: readonly ProjectSummary[]
@@ -52,6 +72,8 @@ const SessionsMaster = ({
   readonly onNew: () => void
   readonly onDeleteProject: (projectId: string) => void
   readonly onDeleteSession: (sessionId: SessionId) => void
+  readonly models?: readonly ModelRoute[]
+  readonly providerNames?: Readonly<Record<string, string>>
 }): ReactElement => (
   <ProjectList
     projects={projects}
@@ -62,7 +84,11 @@ const SessionsMaster = ({
       : { selectedId: selectedSessionId })}
     labelFor={(s: Session) => ({
       harnessName: String(s.harnessId),
-      model: s.modelId !== undefined ? String(s.modelId) : "default",
+      model: sessionModelLabel(
+        s.modelId !== undefined ? String(s.modelId) : undefined,
+        models ?? [],
+        providerNames ?? {},
+      ),
     })}
     onToggle={onToggle}
     onSelect={onSelect}
@@ -162,6 +188,8 @@ export const SessionsView = ({
       onNew={onNew}
       onDeleteProject={onDeleteProject}
       onDeleteSession={onDeleteSession}
+      {...(models === undefined ? {} : { models })}
+      {...(providerNames === undefined ? {} : { providerNames })}
     />
   ),
   detail: (

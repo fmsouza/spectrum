@@ -40,6 +40,22 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
     throw new Error(message)
   }
 
+  /** Best-effort human detail for an erased ProxyError (no secrets ever appear in these). */
+  const describeError = (e: unknown): string => {
+    if (typeof e === "object" && e !== null) {
+      const o = e as { kind?: unknown; detail?: unknown; sdkProvider?: unknown }
+      if (typeof o.detail === "string" && o.detail !== "") return o.detail
+      if (
+        o.kind === "unsupported-model-discovery" &&
+        typeof o.sdkProvider === "string"
+      )
+        return `model discovery is not supported for "${o.sdkProvider}"`
+      if (typeof o.kind === "string") return o.kind
+    }
+    if (e instanceof Error && e.message !== "") return e.message
+    return "unknown error"
+  }
+
   /** Load config or throw a message-safe handler error. */
   const loadConfig = async () => {
     const loaded = await ctx.config.load()
@@ -87,14 +103,22 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         input.name !== undefined && input.name.trim() !== ""
           ? input.name.trim()
           : input.sdkProvider
-      // Build a Provider from the NON-secret input. secrets start empty — a value can only be set
-      // later via setProviderSecret, never through this path (security.md).
+      // Atomic create: write each inline secret VALUE to the keychain, keep only the ref.
+      const secrets: Record<string, SecretRef> = {}
+      for (const [field, value] of Object.entries(input.secrets ?? {})) {
+        // Defense-in-depth: only persist secrets for fields the provider actually declares.
+        if (!input.secretFieldNames.includes(field)) continue
+        if (value === "") continue
+        const set = await ctx.secrets.set(value)
+        if (!isOk(set)) return fail("could not store secret")
+        secrets[field] = set.value
+      }
       const provider: Provider = {
         id: `p_${crypto.randomUUID()}` as Provider["id"],
         name,
         sdkProvider: input.sdkProvider,
         config: input.config,
-        secrets: {},
+        secrets,
         models: input.models,
       }
       const saved = await ctx.config.save({
@@ -478,7 +502,50 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
     // ── Model discovery ────────────────────────────────────────────────────────
     listProviderModels: async ({ providerId }) => {
       const result = await ctx.listProviderModels(String(providerId))
-      if (!isOk(result)) return fail("could not list provider models")
+      if (!isOk(result))
+        return fail(
+          `could not list provider models: ${describeError(result.error)}`,
+        )
+      return { models: [...result.value] }
+    },
+
+    // Draft (un-saved) probes — validate inline config then delegate to AppContext.
+    testProviderDraft: async ({
+      sdkProvider,
+      config,
+      secrets,
+      providerModel,
+    }) => {
+      const valid = validateProviderConfig(sdkProvider, config)
+      if (!valid.ok) return fail(`invalid provider config: ${valid.error.kind}`)
+      // A connectivity probe needs a model to ping; fall back to the sdkProvider name
+      // when none was chosen yet (mirrors testProvider's provider.models[0] ?? id fallback).
+      const model = providerModel.trim() !== "" ? providerModel : sdkProvider
+      const result = await ctx.testProviderDraft({
+        sdkProvider,
+        config,
+        secrets,
+        providerModel: model,
+      })
+      if (!isOk(result))
+        return fail(
+          `provider draft test failed: ${describeError(result.error)}`,
+        )
+      return result.value
+    },
+
+    listProviderModelsDraft: async ({ sdkProvider, config, secrets }) => {
+      const valid = validateProviderConfig(sdkProvider, config)
+      if (!valid.ok) return fail(`invalid provider config: ${valid.error.kind}`)
+      const result = await ctx.listProviderModelsDraft({
+        sdkProvider,
+        config,
+        secrets,
+      })
+      if (!isOk(result))
+        return fail(
+          `could not list provider models: ${describeError(result.error)}`,
+        )
       return { models: [...result.value] }
     },
 

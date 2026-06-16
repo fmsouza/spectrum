@@ -20,6 +20,8 @@ const DEFAULT_METHOD_TIMEOUT_MS: Readonly<Record<string, number>> = {
   pickFolder: Number.POSITIVE_INFINITY, // interactive native dialog — never time out
   listProviderModels: 30_000, // network to the provider
   testProvider: 30_000, // network to the provider
+  listProviderModelsDraft: 30_000, // network to the provider (draft)
+  testProviderDraft: 30_000, // network to the provider (draft)
 }
 
 const DEFAULT_TIMEOUT_MS = 5_000

@@ -22,8 +22,16 @@ export { serializeAnthropicStream } from "./adapters/anthropic-stream"
 export { serializeOpenAIStream } from "./adapters/openai-stream"
 export { serializeResponsesStream } from "./adapters/responses-stream"
 export { validateProviderConfig } from "@spectrum/providers"
-export { createProviderTester } from "./provider-tester"
-export type { ProviderTester, ProviderTestResult } from "./provider-tester"
+export {
+  createProviderTester,
+  createDraftProviderTester,
+} from "./provider-tester"
+export type {
+  ProviderTester,
+  ProviderTestResult,
+  DraftProviderTester,
+  DraftProbeInput,
+} from "./provider-tester"
 export { createModelLister, createFetchHttpGet } from "./model-lister"
 export type { ModelLister, ModelListerInput, HttpGet } from "./model-lister"
 export {

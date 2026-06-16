@@ -44,6 +44,8 @@ const METHOD_NAMES = [
   "applyUpdate",
   "dismissUpdate",
   "setUpdateChannel",
+  "testProviderDraft",
+  "listProviderModelsDraft",
 ] as const satisfies ReadonlyArray<keyof IpcClient>
 
 /**

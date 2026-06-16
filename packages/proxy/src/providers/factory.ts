@@ -1,6 +1,6 @@
 import { getDescriptor } from "@spectrum/providers"
 import type { SecretStore } from "@spectrum/secrets"
-import type { Provider } from "@spectrum/types"
+import type { Provider, SdkProvider } from "@spectrum/types"
 import { type Result, err, ok } from "@spectrum/utils"
 import type { ProxyError } from "../types"
 import { buildSdkOptions } from "./build-sdk-options"
@@ -17,6 +17,12 @@ export interface ProviderFactory {
     provider: Provider,
     providerModel: string,
   ): Promise<Result<ModelHandle, ProxyError>>
+  getModelFromResolved(input: {
+    sdkProvider: SdkProvider
+    config: Readonly<Record<string, string>>
+    secrets: Readonly<Record<string, string>>
+    providerModel: string
+  }): Promise<Result<ModelHandle, ProxyError>>
 }
 
 export const createProviderFactory = (deps: {
@@ -41,6 +47,32 @@ export const createProviderFactory = (deps: {
     return ok(out)
   }
 
+  // Shared build core: SDK instance from sdkProvider+config+RESOLVED secrets, then invoke for the model.
+  const buildFromResolved = async (
+    sdkProvider: SdkProvider,
+    config: Readonly<Record<string, string>>,
+    secrets: Readonly<Record<string, string>>,
+    providerModel: string,
+    cacheKey: string | undefined,
+  ): Promise<Result<ModelHandle, ProxyError>> => {
+    let instance =
+      cacheKey !== undefined ? instanceCache.get(cacheKey) : undefined
+    if (instance === undefined) {
+      let mod: SdkModule
+      try {
+        mod = await deps.loadSdk(sdkProvider)
+      } catch {
+        return err({ kind: "unsupported-provider", sdkProvider })
+      }
+      instance = mod.create(
+        buildSdkOptions(getDescriptor(sdkProvider), config, secrets),
+      )
+      if (cacheKey !== undefined) instanceCache.set(cacheKey, instance)
+    }
+    const inst = instance as (id: string) => unknown
+    return ok(typeof inst === "function" ? inst(providerModel) : instance)
+  }
+
   return {
     getModel: async (provider, providerModel) => {
       const secrets = await resolveSecrets(provider)
@@ -50,28 +82,22 @@ export const createProviderFactory = (deps: {
         c: provider.config,
         r: provider.secrets,
       })
-      let instance = instanceCache.get(cacheKey)
-      if (instance === undefined) {
-        let mod: SdkModule
-        try {
-          mod = await deps.loadSdk(provider.sdkProvider)
-        } catch {
-          return err({
-            kind: "unsupported-provider",
-            sdkProvider: provider.sdkProvider,
-          })
-        }
-        instance = mod.create(
-          buildSdkOptions(
-            getDescriptor(provider.sdkProvider),
-            provider.config,
-            secrets.value,
-          ),
-        )
-        instanceCache.set(cacheKey, instance)
-      }
-      const inst = instance as (id: string) => unknown
-      return ok(typeof inst === "function" ? inst(providerModel) : instance)
+      return buildFromResolved(
+        provider.sdkProvider,
+        provider.config,
+        secrets.value,
+        providerModel,
+        cacheKey,
+      )
     },
+    // Draft path: secrets already resolved (never persisted). One-shot → bypass the cache
+    // so no secret VALUE is ever used as a cache key.
+    getModelFromResolved: async ({
+      sdkProvider,
+      config,
+      secrets,
+      providerModel,
+    }) =>
+      buildFromResolved(sdkProvider, config, secrets, providerModel, undefined),
   }
 }

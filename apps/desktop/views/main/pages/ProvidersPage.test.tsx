@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 import type { ProviderView } from "@spectrum/ipc"
 import type { ProviderCatalogEntry } from "@spectrum/providers"
 import { fireEvent, screen, waitFor, within } from "@testing-library/react"
+import { Toasts } from "../test/Toasts"
 import { createFakeIpcClient } from "../test/fake-client"
 import { renderWithProviders } from "../test/renderWithProviders"
 import { ProvidersPage } from "./ProvidersPage"
@@ -62,7 +63,13 @@ const renderPage = (stubs: Parameters<typeof createFakeIpcClient>[0]) => {
     }),
     ...stubs,
   })
-  renderWithProviders(<ProvidersPage />, client)
+  renderWithProviders(
+    <>
+      <ProvidersPage />
+      <Toasts />
+    </>,
+    client,
+  )
   return client
 }
 
@@ -165,6 +172,26 @@ describe("ProvidersPage", () => {
     expect(directButtons.length).toBe(0)
   })
 
+  it("renders the provider's declared secret fields (not a free-text field-name input)", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    const row = document.querySelector("tbody tr") as HTMLElement
+    const actionsCell = row.querySelector("td.lk-cell-actions") as HTMLElement
+    fireEvent.click(
+      within(actionsCell).getByRole("button", { name: /set secret/i }),
+    )
+    const form = document.querySelector(
+      "form[aria-label='Set secret for OpenAI']",
+    ) as HTMLElement
+    // declared catalog secret field renders as a labeled password input ...
+    const apiKey = within(form).getByLabelText("API key") as HTMLInputElement
+    expect(apiKey.type).toBe("password")
+    // ... and the old free-text "Secret field" input is gone
+    expect(within(form).queryByLabelText("Secret field")).toBeNull()
+  })
+
   it("calls setProviderSecret with the typed value when the secret form is submitted", async () => {
     const client = renderPage({
       setProviderSecret: async () => ({ ok: true, value: null }),
@@ -179,10 +206,10 @@ describe("ProvidersPage", () => {
     fireEvent.click(
       within(actionsCell).getByRole("button", { name: /set secret/i }),
     )
-    fireEvent.change(screen.getByLabelText("Secret field"), {
-      target: { value: "apiKey" },
-    })
-    fireEvent.change(screen.getByLabelText("Secret value"), {
+    const form = document.querySelector(
+      "form[aria-label='Set secret for OpenAI']",
+    ) as HTMLElement
+    fireEvent.change(within(form).getByLabelText("API key"), {
       target: { value: "sk-secret-123" },
     })
     fireEvent.click(screen.getByRole("button", { name: /save secret/i }))
@@ -193,6 +220,11 @@ describe("ProvidersPage", () => {
       field: "apiKey",
       value: "sk-secret-123",
     })
+    await waitFor(() =>
+      expect(
+        document.querySelector("form[aria-label='Set secret for OpenAI']"),
+      ).toBeNull(),
+    )
   })
 
   it("never re-displays the secret value after submitting it", async () => {
@@ -208,10 +240,10 @@ describe("ProvidersPage", () => {
     fireEvent.click(
       within(actionsCell).getByRole("button", { name: /set secret/i }),
     )
-    fireEvent.change(screen.getByLabelText("Secret field"), {
-      target: { value: "apiKey" },
-    })
-    fireEvent.change(screen.getByLabelText("Secret value"), {
+    const form = document.querySelector(
+      "form[aria-label='Set secret for OpenAI']",
+    ) as HTMLElement
+    fireEvent.change(within(form).getByLabelText("API key"), {
       target: { value: "sk-secret-123" },
     })
     fireEvent.click(screen.getByRole("button", { name: /save secret/i }))
@@ -246,7 +278,7 @@ describe("ProvidersPage", () => {
     expect(screen.queryByRole("dialog", { name: /add provider/i })).toBeNull()
   })
 
-  it("submits the add-provider form with non-secret config and secret field names only", async () => {
+  it("submits the add-provider form with config, secret field names, and chosen model", async () => {
     const client = renderPage({
       addProvider: async () => ({ ok: true, value: view }),
     })
@@ -266,8 +298,76 @@ describe("ProvidersPage", () => {
     await waitFor(() => expect(client.calls.addProvider.length).toBe(1))
     const params = client.calls.addProvider[0]
     expect(params).toMatchObject({ name: "Groq", sdkProvider: "groq" })
-    // No raw secret ever travels with an add.
-    expect(params).not.toHaveProperty("secrets")
+  })
+
+  it("renders the selected provider's secret fields from the catalog", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    const apiKey = screen.getByLabelText("API key") as HTMLInputElement
+    expect(apiKey.type).toBe("password")
+  })
+
+  it("the add modal has no Discover models button and no model field", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    await screen.findByRole("dialog", { name: /add provider/i })
+    expect(
+      screen.queryByRole("button", { name: /discover models/i }),
+    ).toBeNull()
+    expect(screen.queryByLabelText("Model")).toBeNull()
+  })
+
+  it("tests the connection with the entered config + secrets; auto-picks first discovered model", async () => {
+    const client = renderPage({
+      listProviderModelsDraft: async () => ({
+        ok: true,
+        value: { models: ["gpt-4o"] },
+      }),
+      testProviderDraft: async () => ({
+        ok: true,
+        value: { ok: true, latencyMs: 11 },
+      }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-x" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /test connection/i }))
+    await waitFor(() => expect(client.calls.testProviderDraft.length).toBe(1))
+    expect(client.calls.testProviderDraft[0]).toMatchObject({
+      sdkProvider: "openai",
+      secrets: { apiKey: "sk-x" },
+      providerModel: "gpt-4o",
+    })
+  })
+
+  it("creates the provider with inline secrets and no preset models", async () => {
+    const client = renderPage({
+      addProvider: async () => ({ ok: true, value: view }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-x" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /create provider/i }))
+    await waitFor(() => expect(client.calls.addProvider.length).toBe(1))
+    expect(client.calls.addProvider[0]).toMatchObject({
+      sdkProvider: "openai",
+      secrets: { apiKey: "sk-x" },
+      models: [],
+    })
   })
 
   it("renders the Server URL field when Custom is selected in the add form", async () => {
@@ -324,6 +424,206 @@ describe("ProvidersPage", () => {
       "Server URL",
     ) as HTMLInputElement
     expect(serverUrlInput.value).toBe("http://old:1/v1")
+  })
+
+  it("omits the secrets key from addProvider params when no secret is entered", async () => {
+    const client = renderPage({
+      addProvider: async () => ({ ok: true, value: view }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    // Do NOT type into the API key field — leave secrets empty
+    fireEvent.click(screen.getByRole("button", { name: /create provider/i }))
+
+    await waitFor(() => expect(client.calls.addProvider.length).toBe(1))
+    const params = client.calls.addProvider[0]
+    expect(params).not.toHaveProperty("secrets")
+  })
+
+  it("clears entered secret values when the add modal is cancelled", async () => {
+    renderPage({})
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-secret" },
+    })
+
+    // Cancel via the Cancel button inside the Add provider form
+    const addForm = document.querySelector(
+      "form[aria-label='Add provider']",
+    ) as HTMLElement
+    fireEvent.click(within(addForm).getByRole("button", { name: /cancel/i }))
+
+    // Reopen the modal — the API key field must be empty
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    expect((screen.getByLabelText("API key") as HTMLInputElement).value).toBe(
+      "",
+    )
+  })
+
+  it("omits empty-string config values when testing the connection", async () => {
+    const client = renderPage({
+      listProviderModelsDraft: async () => ({
+        ok: true,
+        value: { models: ["m1"] },
+      }),
+      testProviderDraft: async () => ({
+        ok: true,
+        value: { ok: true, latencyMs: 5 },
+      }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    fireEvent.change(screen.getByLabelText("SDK provider"), {
+      target: { value: "custom" },
+    })
+    // Wait for the Server URL field to appear
+    await waitFor(() =>
+      expect(screen.getByLabelText("Server URL")).toBeInTheDocument(),
+    )
+    // type then clear the Server URL config field
+    fireEvent.change(screen.getByLabelText("Server URL"), {
+      target: { value: "http://x" },
+    })
+    fireEvent.change(screen.getByLabelText("Server URL"), {
+      target: { value: "" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /test connection/i }))
+    await waitFor(() =>
+      expect(client.calls.listProviderModelsDraft.length).toBeGreaterThan(0),
+    )
+    const sent = client.calls.listProviderModelsDraft.at(-1) as {
+      config: Record<string, string>
+    }
+    expect(sent.config).not.toHaveProperty("serverUrl")
+  })
+
+  it("shows the discovery error detail inline when Test connection's discovery fails", async () => {
+    renderPage({
+      listProviderModelsDraft: async () => ({
+        ok: false,
+        error: {
+          kind: "handler-failed",
+          detail:
+            "could not list provider models: HTTP 404 from http://x/models",
+        },
+      }),
+      testProviderDraft: async () => ({
+        ok: true,
+        value: { ok: false, latencyMs: 0 },
+      }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-x" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /test connection/i }))
+    await screen.findByText(/HTTP 404 from http:\/\/x\/models/)
+  })
+
+  // ── Notification tests ────────────────────────────────────────────────────
+
+  it("shows an error toast when adding a provider fails", async () => {
+    renderPage({
+      addProvider: async () => ({
+        ok: false,
+        error: { kind: "handler-failed", detail: "x" },
+      }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    await screen.findByRole("dialog", { name: /add provider/i })
+
+    // Fill required secret field so the form can submit
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-x" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /create provider/i }))
+
+    await screen.findByText("Couldn't add the provider")
+  })
+
+  it("shows an error toast when saving a secret fails", async () => {
+    renderPage({
+      setProviderSecret: async () => ({
+        ok: false,
+        error: { kind: "handler-failed", detail: "x" },
+      }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+
+    const row = document.querySelector("tbody tr") as HTMLElement
+    const actionsCell = row.querySelector("td.lk-cell-actions") as HTMLElement
+    fireEvent.click(
+      within(actionsCell).getByRole("button", { name: /set secret/i }),
+    )
+    const form = document.querySelector(
+      "form[aria-label='Set secret for OpenAI']",
+    ) as HTMLElement
+    fireEvent.change(within(form).getByLabelText("API key"), {
+      target: { value: "sk-secret-123" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /save secret/i }))
+
+    await screen.findByText("Couldn't save the secret")
+  })
+
+  it("shows an error toast when saving an edited provider fails", async () => {
+    const customView: ProviderView = {
+      id: "p_custom",
+      name: "My Custom",
+      sdkProvider: "custom",
+      config: { serverUrl: "http://old:1/v1" },
+      secretFields: {},
+      models: [],
+    } as unknown as ProviderView
+
+    renderPage({
+      getProviders: async () => ({ ok: true, value: [customView] }),
+      updateProvider: async () => ({
+        ok: false,
+        error: { kind: "handler-failed", detail: "x" },
+      }),
+    })
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("cell", { name: "My Custom" }),
+      ).toBeInTheDocument(),
+    )
+
+    // Open the Edit modal for the existing provider row
+    const row = document.querySelector("tbody tr") as HTMLElement
+    const actionsCell = row.querySelector("td.lk-cell-actions") as HTMLElement
+    fireEvent.click(
+      within(actionsCell).getByRole("button", { name: /^edit$/i }),
+    )
+
+    await screen.findByRole("dialog", { name: /edit provider/i })
+
+    // Change the Server URL and submit
+    fireEvent.change(screen.getByLabelText("Server URL"), {
+      target: { value: "http://new:2/v1" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /save changes/i }))
+
+    await screen.findByText("Couldn't save the provider")
   })
 
   it("calls updateProvider with updated config when edit form is saved", async () => {
