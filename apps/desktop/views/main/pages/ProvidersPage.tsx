@@ -260,7 +260,12 @@ export const ProvidersPage = (): ReactElement => {
             value={chosenModel}
             onChange={setChosenModel}
             {...(discovery.error !== undefined
-              ? { errorMessage: "Couldn't list models — enter one manually." }
+              ? {
+                  errorMessage:
+                    discovery.error.detail !== ""
+                      ? discovery.error.detail
+                      : "Couldn't list models — enter one manually.",
+                }
               : {})}
           />
           <Row gap={2}>

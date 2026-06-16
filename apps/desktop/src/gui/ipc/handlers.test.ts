@@ -1655,4 +1655,22 @@ describe("createIpcHandlers.listProviderModelsDraft", () => {
       }),
     ).rejects.toThrow()
   })
+
+  it("surfaces the underlying discovery error detail (not a generic message)", async () => {
+    const { ctx } = makeCtx({
+      providers: [],
+      draftListResult: err({
+        kind: "provider-failed",
+        detail: "HTTP 404 from http://localhost:11434/models",
+      }) as never,
+    })
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.listProviderModelsDraft({
+        sdkProvider: "custom",
+        config: { serverUrl: "http://localhost:11434" },
+        secrets: {},
+      }),
+    ).rejects.toThrow(/HTTP 404 from http:\/\/localhost:11434\/models/)
+  })
 })

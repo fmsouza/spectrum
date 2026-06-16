@@ -505,6 +505,28 @@ describe("ProvidersPage", () => {
     )
   })
 
+  it("shows the real discovery error detail inline when Discover models fails", async () => {
+    renderPage({
+      listProviderModelsDraft: async () => ({
+        ok: false,
+        error: {
+          kind: "handler-failed",
+          detail:
+            "could not list provider models: HTTP 404 from http://localhost:11434/models",
+        },
+      }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-x" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /discover models/i }))
+    await screen.findByText(/HTTP 404 from http:\/\/localhost:11434\/models/)
+  })
+
   it("omits empty-string config values when discovering (so optional URL fields read as unset)", async () => {
     const client = renderPage({
       listProviderModelsDraft: async () => ({

@@ -40,6 +40,21 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
     throw new Error(message)
   }
 
+  /** Best-effort human detail for an erased ProxyError (no secrets ever appear in these). */
+  const describeError = (e: unknown): string => {
+    if (typeof e === "object" && e !== null) {
+      const o = e as { kind?: unknown; detail?: unknown; sdkProvider?: unknown }
+      if (typeof o.detail === "string" && o.detail !== "") return o.detail
+      if (
+        o.kind === "unsupported-model-discovery" &&
+        typeof o.sdkProvider === "string"
+      )
+        return `model discovery is not supported for "${o.sdkProvider}"`
+      if (typeof o.kind === "string") return o.kind
+    }
+    return "unknown error"
+  }
+
   /** Load config or throw a message-safe handler error. */
   const loadConfig = async () => {
     const loaded = await ctx.config.load()
@@ -486,7 +501,10 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
     // ── Model discovery ────────────────────────────────────────────────────────
     listProviderModels: async ({ providerId }) => {
       const result = await ctx.listProviderModels(String(providerId))
-      if (!isOk(result)) return fail("could not list provider models")
+      if (!isOk(result))
+        return fail(
+          `could not list provider models: ${describeError(result.error)}`,
+        )
       return { models: [...result.value] }
     },
 
@@ -508,7 +526,10 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         secrets,
         providerModel: model,
       })
-      if (!isOk(result)) return fail("provider draft test failed")
+      if (!isOk(result))
+        return fail(
+          `provider draft test failed: ${describeError(result.error)}`,
+        )
       return result.value
     },
 
@@ -520,7 +541,10 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         config,
         secrets,
       })
-      if (!isOk(result)) return fail("could not list provider models")
+      if (!isOk(result))
+        return fail(
+          `could not list provider models: ${describeError(result.error)}`,
+        )
       return { models: [...result.value] }
     },
 
