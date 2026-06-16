@@ -473,6 +473,42 @@ describe("ProvidersPage", () => {
     )
   })
 
+  it("omits empty-string config values when discovering (so optional URL fields read as unset)", async () => {
+    const client = renderPage({
+      listProviderModelsDraft: async () => ({
+        ok: true,
+        value: { models: ["m1"] },
+      }),
+    })
+    await waitFor(() =>
+      expect(screen.getByRole("cell", { name: "OpenAI" })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /add provider/i }))
+    // Switch to "custom" which has a serverUrl config field
+    fireEvent.change(screen.getByLabelText("SDK provider"), {
+      target: { value: "custom" },
+    })
+    // Wait for the Server URL field to appear
+    await waitFor(() =>
+      expect(screen.getByLabelText("Server URL")).toBeInTheDocument(),
+    )
+    // Type a value then clear it — simulates the user clearing a pre-filled URL
+    fireEvent.change(screen.getByLabelText("Server URL"), {
+      target: { value: "https://x" },
+    })
+    fireEvent.change(screen.getByLabelText("Server URL"), {
+      target: { value: "" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /discover models/i }))
+    await waitFor(() =>
+      expect(client.calls.listProviderModelsDraft.length).toBeGreaterThan(0),
+    )
+    const sent = client.calls.listProviderModelsDraft.at(-1) as {
+      config: Record<string, string>
+    }
+    expect(sent.config).not.toHaveProperty("serverUrl")
+  })
+
   it("calls updateProvider with updated config when edit form is saved", async () => {
     const customView: ProviderView = {
       id: "p_custom",

@@ -23,6 +23,12 @@ import { useDraftProviderModels } from "../hooks/useDraftProviderModels"
 import { useProviderCatalog } from "../hooks/useProviderCatalog"
 import { useProviders } from "../hooks/useProviders"
 
+/** Drop empty-string config values so optional fields read as "unset" (zod `.url().optional()` rejects ""). */
+const omitEmpty = (
+  config: Readonly<Record<string, string>>,
+): Record<string, string> =>
+  Object.fromEntries(Object.entries(config).filter(([, v]) => v !== ""))
+
 const toRow = (view: ProviderView): ProviderRow => {
   const fields = Object.values(view.secretFields)
   const secretSet = fields.length > 0 && fields.every((s) => s.isSet)
@@ -79,7 +85,7 @@ export const ProvidersPage = (): ReactElement => {
     const r = await add({
       ...(trimmed !== "" ? { name: trimmed } : {}),
       sdkProvider,
-      config: newConfig,
+      config: omitEmpty(newConfig),
       secretFieldNames,
       ...(Object.keys(newSecrets).length > 0 ? { secrets: newSecrets } : {}),
       models: chosenModel !== "" ? [chosenModel] : [],
@@ -225,7 +231,7 @@ export const ProvidersPage = (): ReactElement => {
               onClick={() =>
                 void discovery.discover({
                   sdkProvider: selectedEntry?.key ?? (newSdk as SdkProvider),
-                  config: newConfig,
+                  config: omitEmpty(newConfig),
                   secrets: newSecrets,
                 })
               }
@@ -249,7 +255,7 @@ export const ProvidersPage = (): ReactElement => {
               onClick={() =>
                 void conn.test({
                   sdkProvider: selectedEntry?.key ?? (newSdk as SdkProvider),
-                  config: newConfig,
+                  config: omitEmpty(newConfig),
                   secrets: newSecrets,
                   providerModel: chosenModel,
                 })
