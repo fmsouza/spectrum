@@ -105,6 +105,7 @@ import {
   type SessionInfoResolver,
   mapRunFinished,
 } from "./gui/run-finished-mapping"
+import { withNotifierTap } from "./gui/runner-sink"
 import { startRunnerSocket } from "./gui/runner-socket"
 import { createElectrobunUpdater } from "./gui/updater/electrobun-updater"
 import type { UpdaterAdapter } from "./gui/updater/updater-adapter"
@@ -726,18 +727,10 @@ export const createAppContext = (
     send: notifyOnRunFinished,
   })
   // The runner socket calls `bindSend` on connect, REPLACING the manager's sink with one that pushes
-  // to the live websocket. Wrap `bindSend` so the notifier tap is composed INTO that socket sink —
+  // to the live websocket. `withNotifierTap` composes the notifier tap INTO that socket sink —
   // otherwise native notifications would stop the moment the webview connects. Only one sink is ever
   // active, so a frame is never double-notified.
-  const runner: RunManager = {
-    ...baseRunner,
-    bindSend: (socketSink) => {
-      baseRunner.bindSend((message) => {
-        socketSink(message)
-        notifyOnRunFinished(message)
-      })
-    },
-  }
+  const runner: RunManager = withNotifierTap(baseRunner, notifyOnRunFinished)
   // The dedicated loopback WebSocket for the run-event stream binds `runner`'s send sink on connect.
   const runnerSocketUrl = deps.startRunnerSocket(runner).url
 

@@ -140,6 +140,11 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   // effect re-subscription below (which re-runs on `view` change) so accumulated roots are retained.
   const rootsRef = useRef<RootRunnerMap>(new Map())
 
+  // `notify` is a referentially STABLE zustand store action (its identity never changes), unlike the
+  // `notifications` object literal which is fresh each render. Depend on `notify` below so the effect
+  // re-subscribes only on intended changes (view/runnerClient/navigate), not on every re-render.
+  const notify = notifications.notify
+
   // Toast when a BACKGROUND run finishes/errors (not the session being viewed).
   // `onAny` accumulates listeners, so the effect MUST drop its previous one via
   // the returned unsubscribe fn on every re-run — otherwise toasts would stack.
@@ -159,14 +164,14 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
         label: "View",
         onClick: () => navigate({ kind: "sessions", selectedSessionId: id }),
       }
-      notifications.notify(
+      notify(
         ev.status === "errored"
           ? { tone: "error", message: "A run failed", action }
           : { tone: "info", message: "A run finished", action },
       )
     })
     return off
-  }, [runnerClient, view, notifications, navigate])
+  }, [runnerClient, view, notify, navigate])
 
   const mode: AppMode = view.kind === "settings" ? "settings" : "sessions"
 
