@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test"
 import type { RunnerOutbound } from "@spectrum/agent-driver"
+import {
+  type RootRunnerMap,
+  isRootRunnerFinished,
+  trackRootRunner,
+} from "@spectrum/agent-events"
 import type { SessionId } from "@spectrum/types"
 import {
   type SessionInfoResolver,
@@ -93,5 +98,58 @@ describe("mapRunFinished", () => {
       harnessId: "",
       status: "completed",
     })
+  })
+})
+
+describe("native run-finished tap gating (root-aware)", () => {
+  // Mirrors the composition tap: maintain a RootRunnerMap across forwarded frames via
+  // `trackRootRunner`, and only notify when `isRootRunnerFinished` AND `mapRunFinished` agree.
+  const startFrame = (
+    runnerId: string,
+    parentRunnerId?: string,
+  ): RunnerOutbound =>
+    frame({
+      type: "runner-started",
+      runnerId: runnerId as never,
+      ...(parentRunnerId !== undefined
+        ? { parentRunnerId: parentRunnerId as never }
+        : {}),
+    })
+
+  const finishFrame = (runnerId: string): RunnerOutbound =>
+    frame({
+      type: "runner-finished",
+      runnerId: runnerId as never,
+      status: "completed",
+    })
+
+  const tap = (frames: readonly RunnerOutbound[]): (string | null)[] => {
+    let roots: RootRunnerMap = new Map()
+    const notified: (string | null)[] = []
+    for (const f of frames) {
+      if (f.type !== "runner-event") continue
+      roots = trackRootRunner(roots, f.id as SessionId, f.event.event)
+      if (!isRootRunnerFinished(roots, f.id as SessionId, f.event.event))
+        continue
+      const mapped = mapRunFinished(f, resolver)
+      notified.push(mapped === null ? null : mapped.status)
+    }
+    return notified
+  }
+
+  it("fires for the ROOT finish and NOT for a sub-runner finish", () => {
+    const notified = tap([
+      startFrame("root"),
+      startFrame("sub", "root"),
+      finishFrame("sub"),
+      finishFrame("root"),
+    ])
+    // Only the root finish produced a RunFinished.
+    expect(notified).toEqual(["completed"])
+  })
+
+  it("fails closed: no notification when no root-started was observed", () => {
+    const notified = tap([finishFrame("root")])
+    expect(notified).toEqual([])
   })
 })

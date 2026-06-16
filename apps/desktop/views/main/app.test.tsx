@@ -8,21 +8,74 @@ import { type RunnerClient, createRunnerClient } from "./runner/runnerClient"
 import { createFakeIpcClient } from "./test/fake-client"
 
 /**
- * Build a real `runner-finished` frame for session `id`. Using the REAL
- * `createRunnerClient` (below) means `dispatch(frame)` flows through `onAny` into
- * the App's toast effect — exercising the actual feature path end-to-end.
+ * Build a real `runner-started` frame for session `id`. A PARENTLESS start records the session's
+ * ROOT runner; a start WITH `parentRunnerId` is a sub-agent and does not. The toast effect tracks
+ * roots from these frames so it can tell a root finish from a sub-agent finish.
  */
-const finishedFrame = (
+const startedFrame = (
   id: SessionId,
-  status: "completed" | "errored" | "interrupted",
+  runnerId: string,
+  parentRunnerId?: string,
 ): RunnerOutbound => {
   const event: StoredEvent = {
     seq: 1,
     sessionId: id,
     ts: "2026-06-16T10:00:00.000Z",
     event: {
+      type: "runner-started",
+      runnerId: runnerId as never,
+      ...(parentRunnerId !== undefined
+        ? { parentRunnerId: parentRunnerId as never }
+        : {}),
+    },
+  }
+  return { type: "runner-event", id, event }
+}
+
+/** The root runnerId every `finishedFrame` reports finishing — matches `rootStart` below. */
+const ROOT_RUNNER = "run_root"
+
+/** A parentless `runner-started` whose runnerId == the one `finishedFrame` finishes. */
+const rootStart = (id: SessionId): RunnerOutbound =>
+  startedFrame(id, ROOT_RUNNER)
+
+/**
+ * Build a real `runner-finished` frame for session `id` (for the ROOT runner). Using the REAL
+ * `createRunnerClient` (below) means `dispatch(frame)` flows through `onAny` into the App's toast
+ * effect — exercising the actual feature path end-to-end. The finishing runnerId matches the root
+ * established by `rootStart(id)`, which tests must dispatch first (fail-closed gating).
+ */
+const finishedFrame = (
+  id: SessionId,
+  status: "completed" | "errored" | "interrupted",
+): RunnerOutbound => {
+  const event: StoredEvent = {
+    seq: 2,
+    sessionId: id,
+    ts: "2026-06-16T10:00:00.000Z",
+    event: {
       type: "runner-finished",
-      runnerId: "run_root" as never,
+      runnerId: ROOT_RUNNER as never,
+      status,
+      ...(status === "errored" ? { error: "boom" } : {}),
+    },
+  }
+  return { type: "runner-event", id, event }
+}
+
+/** A `runner-finished` for an ARBITRARY runnerId (e.g. a sub-agent), used to drive sub-vs-root cases. */
+const finishedFrame2 = (
+  id: SessionId,
+  runnerId: string,
+  status: "completed" | "errored" | "interrupted",
+): RunnerOutbound => {
+  const event: StoredEvent = {
+    seq: 3,
+    sessionId: id,
+    ts: "2026-06-16T10:00:00.000Z",
+    event: {
+      type: "runner-finished",
+      runnerId: runnerId as never,
       status,
       ...(status === "errored" ? { error: "boom" } : {}),
     },
@@ -679,6 +732,8 @@ describe("App view model", () => {
     // No session is currently viewed (#sessions), so a finished one is "background".
     await waitFor(() => expect(window.location.hash).toBe("#sessions"))
     act(() => {
+      // Establish the session's root runner first, then finish it.
+      runnerClient.dispatch(rootStart("s_bg" as SessionId))
       runnerClient.dispatch(finishedFrame("s_bg" as SessionId, "completed"))
     })
     expect(await screen.findByText("A run finished")).toBeInTheDocument()
@@ -698,6 +753,7 @@ describe("App view model", () => {
     )
     await waitFor(() => expect(window.location.hash).toBe("#sessions"))
     act(() => {
+      runnerClient.dispatch(rootStart("s_bg" as SessionId))
       runnerClient.dispatch(finishedFrame("s_bg" as SessionId, "errored"))
     })
     expect(await screen.findByText("A run failed")).toBeInTheDocument()
@@ -717,6 +773,7 @@ describe("App view model", () => {
     )
     await waitFor(() => expect(window.location.hash).toBe("#sessions/s_open"))
     act(() => {
+      runnerClient.dispatch(rootStart("s_open" as SessionId))
       runnerClient.dispatch(finishedFrame("s_open" as SessionId, "completed"))
     })
     // Let any async toast appearance settle, then assert it never showed.
@@ -737,10 +794,42 @@ describe("App view model", () => {
     )
     await waitFor(() => expect(window.location.hash).toBe("#sessions"))
     act(() => {
+      runnerClient.dispatch(rootStart("s_bg" as SessionId))
       runnerClient.dispatch(finishedFrame("s_bg" as SessionId, "interrupted"))
     })
     await waitFor(() => expect(window.location.hash).toBe("#sessions"))
     expect(screen.queryByText("A run finished")).toBeNull()
     expect(screen.queryByText("A run failed")).toBeNull()
+  })
+
+  it("does NOT toast on a SUB-runner finish, but DOES on the subsequent ROOT finish", async () => {
+    const runnerClient = createRunnerClient(() => {})
+    const client = createFakeIpcClient(baseStubs)
+    render(
+      <App
+        client={client}
+        runnerClient={runnerClient}
+        initialView="sessions"
+      />,
+    )
+    await waitFor(() => expect(window.location.hash).toBe("#sessions"))
+    act(() => {
+      // Root start establishes the session's root; a sub-agent starts + finishes mid-run.
+      runnerClient.dispatch(rootStart("s_bg" as SessionId))
+      runnerClient.dispatch(
+        startedFrame("s_bg" as SessionId, "run_sub", ROOT_RUNNER),
+      )
+      runnerClient.dispatch(
+        finishedFrame2("s_bg" as SessionId, "run_sub", "completed"),
+      )
+    })
+    // The sub-agent finish must NOT toast.
+    await waitFor(() => expect(window.location.hash).toBe("#sessions"))
+    expect(screen.queryByText("A run finished")).toBeNull()
+    // The ROOT finish DOES toast.
+    act(() => {
+      runnerClient.dispatch(finishedFrame("s_bg" as SessionId, "completed"))
+    })
+    expect(await screen.findByText("A run finished")).toBeInTheDocument()
   })
 })

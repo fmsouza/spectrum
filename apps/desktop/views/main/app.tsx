@@ -1,3 +1,8 @@
+import {
+  type RootRunnerMap,
+  isRootRunnerFinished,
+  trackRootRunner,
+} from "@spectrum/agent-events"
 import type { IpcClient, IpcError } from "@spectrum/ipc"
 import type { ProjectId } from "@spectrum/types"
 import {
@@ -7,7 +12,13 @@ import {
   ToastContainer,
 } from "@spectrum/ui"
 import type { NewSessionValues } from "@spectrum/ui"
-import { type ReactElement, StrictMode, useEffect, useState } from "react"
+import {
+  type ReactElement,
+  StrictMode,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
 import { createRoot } from "react-dom/client"
 import { useStore } from "zustand"
 import { IpcClientProvider, useIpcClient } from "./IpcClientContext"
@@ -123,14 +134,24 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
     location.writeHash(encodeView(view))
   }, [view, location])
 
+  // Track each session's ROOT runner (the first parentless `runner-started`) across the firehose.
+  // A multi-agent run emits one `runner-finished` per runner — sub-agents AND the root — so we must
+  // toast ONLY on the root finish, never mid-run on a sub-agent. A ref (not state) survives the
+  // effect re-subscription below (which re-runs on `view` change) so accumulated roots are retained.
+  const rootsRef = useRef<RootRunnerMap>(new Map())
+
   // Toast when a BACKGROUND run finishes/errors (not the session being viewed).
   // `onAny` accumulates listeners, so the effect MUST drop its previous one via
   // the returned unsubscribe fn on every re-run — otherwise toasts would stack.
   useEffect(() => {
     const off = runnerClient.onAny((id, stored) => {
       const ev = stored.event
+      // Update the root map on EVERY frame so a later runner-finished can be classified.
+      rootsRef.current = trackRootRunner(rootsRef.current, id, ev)
       if (ev.type !== "runner-finished") return
       if (ev.status === "interrupted") return
+      // Fail-closed: suppress unless this finish is for the session's recorded ROOT runner.
+      if (!isRootRunnerFinished(rootsRef.current, id, ev)) return
       const isViewing =
         view.kind === "sessions" && view.selectedSessionId === id
       if (isViewing) return

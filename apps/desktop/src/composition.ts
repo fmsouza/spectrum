@@ -32,7 +32,8 @@ import {
   createRunManager,
   demoScript,
 } from "@spectrum/agent-driver"
-import type { StoredEvent } from "@spectrum/agent-events"
+import type { RootRunnerMap, StoredEvent } from "@spectrum/agent-events"
+import { isRootRunnerFinished, trackRootRunner } from "@spectrum/agent-events"
 import {
   createCachedConfigStore,
   createFileConfigStore,
@@ -692,7 +693,19 @@ export const createAppContext = (
   // The run-event send sink: the runner socket rebinds this to the live websocket on connect, but the
   // initial sink taps run-finished frames for native notifications. We wrap so notifications fire
   // regardless of which socket is bound — the manager's `send` is the canonical fan-out point.
+  //
+  // ROOT-GATING: a multi-agent run emits one `runner-finished` PER runner (each sub-agent AND the
+  // root). Only the ROOT finish is a session-end, so we track each session's root runner (the first
+  // parentless `runner-started`) and notify ONLY when the finishing runner IS that root. Fail-closed:
+  // an unknown root suppresses the notification. The map is updated on EVERY forwarded frame.
+  let roots: RootRunnerMap = new Map()
   const notifyOnRunFinished = (message: RunnerOutbound): void => {
+    if (message.type === "runner-event") {
+      const sessionId = message.id
+      const inner = message.event.event
+      roots = trackRootRunner(roots, sessionId, inner)
+      if (!isRootRunnerFinished(roots, sessionId, inner)) return
+    }
     const finished = mapRunFinished(message, resolveSessionInfo)
     if (finished === null) return
     notifyLog.info("run-finished native notification dispatched", {
