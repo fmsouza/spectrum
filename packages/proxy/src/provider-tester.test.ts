@@ -3,7 +3,10 @@ import type { Provider } from "@spectrum/types"
 import { type Result, createFixedClock, err, ok } from "@spectrum/utils"
 import { createScriptedGateway } from "./gateway"
 import type { LanguageModelGateway } from "./gateway"
-import { createProviderTester } from "./provider-tester"
+import {
+  createDraftProviderTester,
+  createProviderTester,
+} from "./provider-tester"
 import type { ModelHandle, ProviderFactory } from "./providers/factory"
 import type { NormalizedRequest, ProxyError, StreamEvent } from "./types"
 
@@ -36,6 +39,20 @@ const steppingClock = (startMs: number, stepMs: number) => {
       return at
     },
   }
+}
+
+const fakeDraftFactory = (
+  result: Result<ModelHandle, ProxyError> = ok({}),
+): ProviderFactory => ({
+  getModel: async () => result,
+  getModelFromResolved: async () => result,
+})
+
+const draftInput = {
+  sdkProvider: "openai" as const,
+  config: {},
+  secrets: { apiKey: "sk-inline" },
+  providerModel: "gpt-4o",
 }
 
 describe("createProviderTester", () => {
@@ -126,5 +143,49 @@ describe("createProviderTester", () => {
     const result = await tester(provider(), "gpt-4o")
 
     expect(result.ok && result.value).toEqual({ ok: false, latencyMs: 40 })
+  })
+})
+
+describe("createDraftProviderTester", () => {
+  it("returns ok with measured latency when the model streams a finish event", async () => {
+    const gateway = createScriptedGateway([
+      { type: "text-delta", text: "p" },
+      { type: "finish", finishReason: "stop" },
+    ])
+    const tester = createDraftProviderTester({
+      factory: fakeDraftFactory(),
+      gateway,
+      clock: steppingClock(1000, 25),
+    })
+    const result = await tester(draftInput)
+    expect(result).toEqual({ ok: true, value: { ok: true, latencyMs: 25 } })
+  })
+
+  it("returns ok:false when the stream yields an error event", async () => {
+    const gateway = createScriptedGateway([
+      { type: "error", detail: "401 from upstream" },
+    ])
+    const tester = createDraftProviderTester({
+      factory: fakeDraftFactory(),
+      gateway,
+      clock: steppingClock(500, 40),
+    })
+    const result = await tester(draftInput)
+    expect(result.ok && result.value).toEqual({ ok: false, latencyMs: 40 })
+  })
+
+  it("returns ok:false when the model could not be built", async () => {
+    const gateway = createScriptedGateway([
+      { type: "finish", finishReason: "stop" },
+    ])
+    const tester = createDraftProviderTester({
+      factory: fakeDraftFactory(
+        err({ kind: "unsupported-provider", sdkProvider: "openai" }),
+      ),
+      gateway,
+      clock: steppingClock(0, 5),
+    })
+    const result = await tester(draftInput)
+    expect(result.ok && result.value).toEqual({ ok: false, latencyMs: 0 })
   })
 })
