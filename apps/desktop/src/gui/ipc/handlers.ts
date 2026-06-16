@@ -90,6 +90,8 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       // Atomic create: write each inline secret VALUE to the keychain, keep only the ref.
       const secrets: Record<string, SecretRef> = {}
       for (const [field, value] of Object.entries(input.secrets ?? {})) {
+        // Defense-in-depth: only persist secrets for fields the provider actually declares.
+        if (!input.secretFieldNames.includes(field)) continue
         if (value === "") continue
         const set = await ctx.secrets.set(value)
         if (!isOk(set)) return fail("could not store secret")

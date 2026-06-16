@@ -454,6 +454,45 @@ describe("createIpcHandlers.addProvider", () => {
     expect(secretSets).toEqual([])
     expect(saves.at(-1)?.providers.at(-1)?.secrets).toEqual({})
   })
+
+  it("throws and persists nothing when storing a secret fails", async () => {
+    const { ctx, saves, secretSets } = makeCtx({
+      providers: [],
+      setResult: err({ kind: "backend-failed" }),
+    })
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.addProvider({
+        sdkProvider: "ollama",
+        config: {},
+        secretFieldNames: ["apiKey"],
+        secrets: { apiKey: "sk-x" },
+        models: [],
+      }),
+    ).rejects.toThrow()
+    // keychain write was attempted, but no provider was saved (abort before save)
+    expect(secretSets).toEqual(["sk-x"])
+    expect(saves).toHaveLength(0)
+  })
+
+  it("ignores inline secrets for fields the provider does not declare", async () => {
+    const { ctx, secretSets, saves } = makeCtx({
+      providers: [],
+      setResult: ok({ ref: "kc_x" }),
+    })
+    const handlers = createIpcHandlers(ctx)
+    await handlers.addProvider({
+      sdkProvider: "ollama",
+      config: {},
+      secretFieldNames: ["apiKey"],
+      secrets: { apiKey: "keep", bogus: "drop" },
+      models: [],
+    })
+    expect(secretSets).toEqual(["keep"])
+    expect(saves.at(-1)?.providers.at(-1)?.secrets).toEqual({
+      apiKey: { ref: "kc_x" },
+    })
+  })
 })
 
 describe("createIpcHandlers.updateProvider", () => {
