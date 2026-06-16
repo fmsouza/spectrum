@@ -418,6 +418,42 @@ describe("createIpcHandlers.addProvider", () => {
 
     expect(view.name).toBe("My OpenAI")
   })
+
+  it("writes each inline secret to the keychain and persists only the SecretRef", async () => {
+    const { ctx, saves, secretSets } = makeCtx({
+      providers: [],
+      setResult: ok({ ref: "kc_minted" }),
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    const view = await handlers.addProvider({
+      sdkProvider: "ollama",
+      config: { serverUrl: "https://ollama.com/api" },
+      secretFieldNames: ["apiKey"],
+      secrets: { apiKey: "sk-live-secret" },
+      models: ["qwen2.5-coder"],
+    })
+
+    expect(secretSets).toEqual(["sk-live-secret"])
+    const saved = saves.at(-1)?.providers.at(-1)
+    expect(saved?.secrets).toEqual({ apiKey: { ref: "kc_minted" } })
+    expect(saved?.models).toEqual(["qwen2.5-coder"])
+    // The view masks secrets to presence flags — never a ref or value.
+    expect(view.secretFields).toEqual({ apiKey: { isSet: true } })
+  })
+
+  it("creates a keyless provider when secrets is omitted", async () => {
+    const { ctx, saves, secretSets } = makeCtx({ providers: [] })
+    const handlers = createIpcHandlers(ctx)
+    await handlers.addProvider({
+      sdkProvider: "openai",
+      config: {},
+      secretFieldNames: ["apiKey"],
+      models: [],
+    })
+    expect(secretSets).toEqual([])
+    expect(saves.at(-1)?.providers.at(-1)?.secrets).toEqual({})
+  })
 })
 
 describe("createIpcHandlers.updateProvider", () => {

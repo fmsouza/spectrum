@@ -87,14 +87,20 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         input.name !== undefined && input.name.trim() !== ""
           ? input.name.trim()
           : input.sdkProvider
-      // Build a Provider from the NON-secret input. secrets start empty — a value can only be set
-      // later via setProviderSecret, never through this path (security.md).
+      // Atomic create: write each inline secret VALUE to the keychain, keep only the ref.
+      const secrets: Record<string, SecretRef> = {}
+      for (const [field, value] of Object.entries(input.secrets ?? {})) {
+        if (value === "") continue
+        const set = await ctx.secrets.set(value)
+        if (!isOk(set)) return fail("could not store secret")
+        secrets[field] = set.value
+      }
       const provider: Provider = {
         id: `p_${crypto.randomUUID()}` as Provider["id"],
         name,
         sdkProvider: input.sdkProvider,
         config: input.config,
-        secrets: {},
+        secrets,
         models: input.models,
       }
       const saved = await ctx.config.save({
