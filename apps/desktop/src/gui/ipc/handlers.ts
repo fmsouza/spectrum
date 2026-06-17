@@ -299,7 +299,10 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
 
       // Resolve the command (+ render the proxy env for a proxied route) WITHOUT spawning.
       const resolved = ctx.resolveLaunch({ harness, route })
-      if (!isOk(resolved)) return fail("failed to resolve harness launch")
+      if (!isOk(resolved))
+        return fail(
+          `failed to resolve harness launch: ${describeError(resolved.error)}`,
+        )
 
       // Defense in depth: coerce empty/blank name & cwd to undefined so no path
       // ever creates a session with name:"" (which fails SessionSchema's min(1)
