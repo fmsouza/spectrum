@@ -15,7 +15,10 @@ export interface UpdaterEngine {
   checkForUpdate(): Promise<{
     version: string
     hash: string
-    updateAvailable: boolean
+    // Electrobun omits this on the up-to-date (hash-matches) path — it returns the raw
+    // parsed update.json, which has no `updateAvailable`. Model it as possibly-absent so
+    // callers must coerce rather than trust an undefined as a boolean.
+    updateAvailable?: boolean
   }>
   downloadUpdate(): Promise<void>
   applyUpdate(): Promise<void>
@@ -113,12 +116,17 @@ export const createElectrobunUpdater = (
         subscribe(eng)
         const current = await eng.localInfo.version()
         const info = await eng.checkForUpdate()
+        // Electrobun's checkForUpdate returns the raw parsed update.json on the
+        // hash-matches path, which has NO `updateAvailable` field (undefined). Coerce
+        // to a strict boolean so the IPC result-validation (UpdateStateSchema requires
+        // `available: boolean`) never rejects an up-to-date check.
+        const available = info.updateAvailable === true
         raw = {
           ...raw,
-          phase: info.updateAvailable ? "available" : "up-to-date",
+          phase: available ? "available" : "up-to-date",
           currentVersion: current,
-          available: info.updateAvailable,
-          latestVersion: info.updateAvailable ? info.version : null,
+          available,
+          latestVersion: available ? info.version : null,
           error: null,
         }
         return ok(undefined)
