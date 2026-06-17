@@ -28,6 +28,24 @@ describe("GeneralPage updates section", () => {
     await waitFor(() => expect(screen.getByText(/1\.0\.0/)).toBeTruthy())
   })
 
+  it("shows the build channel next to the current version", async () => {
+    const canaryState = {
+      ...upToDate,
+      currentVersion: "1.2.3",
+      channel: "canary" as const,
+    }
+    renderWithProviders(
+      <GeneralPage />,
+      createFakeIpcClient({
+        checkForUpdate: async () => ok(canaryState),
+        getUpdateState: async () => ok(canaryState),
+      }),
+    )
+    await waitFor(() =>
+      expect(screen.getByText(/1\.2\.3 · canary/)).toBeTruthy(),
+    )
+  })
+
   it("switches channel when the canary toggle is chosen", async () => {
     let chosen: string | null = null
     renderWithProviders(

@@ -32,7 +32,7 @@ export const GeneralPage = (): ReactElement => {
         <div className="settings-updates__row">
           <span className="settings-updates__row-label">Current version</span>
           <span className="settings-updates__row-value">
-            {s?.currentVersion ?? "…"}
+            {s === undefined ? "…" : `${s.currentVersion} · ${s.channel}`}
           </span>
         </div>
 
