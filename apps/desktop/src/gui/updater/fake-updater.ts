@@ -15,6 +15,8 @@ export interface FakeUpdaterOptions {
   readonly failCheck?: UpdaterErrorKind
   /** Make `apply` fail with this error kind. */
   readonly failApply?: UpdaterErrorKind
+  /** The channel the installed bundle reports (version.json). Omit for "unknown". */
+  readonly buildChannel?: Channel
 }
 
 /** A test double exposing the recorded channel for assertions. */
@@ -71,6 +73,10 @@ export const createFakeUpdater = (opts: FakeUpdaterOptions): FakeUpdater => {
       updater.lastChannel = channel
       return ok(undefined)
     },
+    // Mirrors the real adapter: a switch (lastChannel) wins over the build-time
+    // channel, matching how setChannel rewrites version.json.
+    getBuildChannel: async (): Promise<Channel | undefined> =>
+      updater.lastChannel ?? opts.buildChannel,
   }
   return updater
 }

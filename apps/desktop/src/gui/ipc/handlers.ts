@@ -65,20 +65,25 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
 
   /**
    * Build the full UpdateState by combining the raw adapter snapshot with the
-   * config-owned channel and dismissal fields. Pure helper — no side effects.
+   * displayed channel and config-owned dismissal field. Pure-ish helper.
    *
-   * Never lets a config-load failure blank the whole Updates box: falls back to
-   * the schema default channel ("stable") so the adapter's live status still
-   * renders. Only the READ path is resilient; mutating handlers (setUpdateChannel,
-   * checkForUpdate) still call loadConfig() and fail loudly.
+   * The displayed channel is the bundle's ACTUAL channel (version.json, what
+   * Electrobun follows), so a canary build reports "canary" even on a fresh
+   * install whose config still holds the "stable" default. The config-stored
+   * preference is only the fallback when the build channel is unknown (dev build
+   * or read-only/missing bundle); a final "stable" fallback covers a config-load
+   * failure so a failure never blanks the whole Updates box. Only the READ path
+   * is resilient; mutating handlers (setUpdateChannel, checkForUpdate) still call
+   * loadConfig() and fail loudly.
    */
   const buildUpdateState = async (): Promise<
     import("@spectrum/ipc").IpcMethods["getUpdateState"]["result"]
   > => {
     const loaded = await ctx.config.load()
-    const channel: Channel = isOk(loaded)
-      ? loaded.value.settings.updateChannel
-      : "stable"
+    const buildChannel = await ctx.updater.getBuildChannel()
+    const channel: Channel =
+      buildChannel ??
+      (isOk(loaded) ? loaded.value.settings.updateChannel : "stable")
     const dismissed = isOk(loaded)
       ? loaded.value.settings.dismissedUpdateVersion
       : null

@@ -182,6 +182,21 @@ export const createElectrobunUpdater = (
       }
       return ok(undefined)
     },
+
+    getBuildChannel: async (): Promise<Channel | undefined> => {
+      // Read the live version.json — the same file Electrobun follows. Only a
+      // valid Channel is returned; "dev"/missing/malformed yields undefined so
+      // the caller falls back to the config-stored preference.
+      const vf = deps.versionFile ?? realVersionFile
+      try {
+        const parsed = JSON.parse(await vf.read()) as { channel?: unknown }
+        return parsed.channel === "stable" || parsed.channel === "canary"
+          ? parsed.channel
+          : undefined
+      } catch {
+        return undefined
+      }
+    },
   }
 }
 
