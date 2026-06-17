@@ -45,6 +45,31 @@ describe("createPathCommandResolver (real)", () => {
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.error.kind).toBe("invalid-command")
   })
+
+  // POSIX-only: writes a real executable into a temp dir and mutates PATH so
+  // only that temp dir is on PATH — verifying the resolver searches the LIVE
+  // process.env.PATH (which GUI startup enrichment rebuilds) rather than
+  // Bun's startup PATH snapshot (which is minimal in a packaged Finder-launched app).
+  it.skipIf(process.platform === "win32")(
+    "resolves a command found only on the LIVE process.env.PATH, not the startup PATH snapshot",
+    () => {
+      const dir = makeTempDir()
+      const bin = "spectrum-which-probe-bin"
+      writeFileSync(join(dir, bin), "#!/bin/sh\nexit 0\n", { mode: 0o755 })
+
+      const savedPath = process.env.PATH
+      try {
+        process.env.PATH = dir
+        const r = createPathCommandResolver().resolve(bin)
+        expect(r.ok).toBe(true)
+        if (r.ok) {
+          expect(realpathSync(r.value)).toBe(realpathSync(join(dir, bin)))
+        }
+      } finally {
+        process.env.PATH = savedPath
+      }
+    },
+  )
 })
 
 describe("createBunProcessSpawner (real)", () => {
