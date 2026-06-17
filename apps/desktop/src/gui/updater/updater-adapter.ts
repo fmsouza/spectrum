@@ -51,4 +51,13 @@ export interface UpdaterAdapter {
   apply(): Promise<Result<void, UpdaterError>>
   /** Switch the followed channel (rewrites the bundle's version.json — see spike). */
   setChannel(channel: Channel): Promise<Result<void, UpdaterError>>
+  /**
+   * The channel this installed bundle actually IS, read live from the bundle's
+   * version.json — the same file Electrobun derives the active update feed from.
+   * This is the source of truth for the displayed channel: a canary build reports
+   * "canary" here even on a fresh install whose config still holds the "stable"
+   * default. `undefined` when the channel is unknown (dev build, read-only/missing
+   * bundle, or a non-Channel value), in which case callers fall back to config.
+   */
+  getBuildChannel(): Promise<Channel | undefined>
 }
