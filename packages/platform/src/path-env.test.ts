@@ -76,22 +76,27 @@ describe("loginShellPathProbe", () => {
 })
 
 describe("loginShellPathProbe round-trips through a real POSIX shell", () => {
-  it("recovers the live $PATH the shell was given", () => {
-    // The script must expand $PATH correctly even though a sentinel immediately
-    // follows it — a naive `$PATH__SENTINEL__` is parsed as one variable name and
-    // expands to empty, swallowing the closing sentinel. Run the actual script
-    // through /bin/sh with a known PATH to prove the value is recovered.
-    const probe = loginShellPathProbe("/bin/sh")
-    const script = probe.args[1] ?? ""
-    const wanted = "/tmp/aaa:/tmp/bbb"
-    const r = Bun.spawnSync(["/bin/sh", "-c", script], {
-      env: { PATH: wanted },
-      stdout: "pipe",
-      stderr: "pipe",
-    })
-    expect(r.success).toBe(true)
-    expect(parseLoginShellPath(r.stdout.toString())).toBe(wanted)
-  })
+  // The login-shell probe is POSIX-only (the GUI PATH fix targets macOS/Linux;
+  // `commonBinDirs` returns [] on Windows and there is no `/bin/sh`). Skip on win32.
+  it.skipIf(process.platform === "win32")(
+    "recovers the live $PATH the shell was given",
+    () => {
+      // The script must expand $PATH correctly even though a sentinel immediately
+      // follows it — a naive `$PATH__SENTINEL__` is parsed as one variable name and
+      // expands to empty, swallowing the closing sentinel. Run the actual script
+      // through /bin/sh with a known PATH to prove the value is recovered.
+      const probe = loginShellPathProbe("/bin/sh")
+      const script = probe.args[1] ?? ""
+      const wanted = "/tmp/aaa:/tmp/bbb"
+      const r = Bun.spawnSync(["/bin/sh", "-c", script], {
+        env: { PATH: wanted },
+        stdout: "pipe",
+        stderr: "pipe",
+      })
+      expect(r.success).toBe(true)
+      expect(parseLoginShellPath(r.stdout.toString())).toBe(wanted)
+    },
+  )
 })
 
 describe("parseLoginShellPath", () => {
