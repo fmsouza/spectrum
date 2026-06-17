@@ -2,9 +2,45 @@ import { describe, expect, it } from "bun:test"
 import type { AgentStartInput } from "@spectrum/agent-driver"
 import type { CanonicalEvent, RunnerId } from "@spectrum/agent-events"
 import type { AdapterCtx } from "@spectrum/driver-runtime"
+import type { Logger } from "@spectrum/logger"
 import { createClaudeAdapter } from "./sdk-glue"
 import type { ClaudeQuery, ClaudeSdk, SdkOptions } from "./sdk-glue"
 import type { SdkMessageLike } from "./sdk-types"
+
+// --- recording fake Logger ---------------------------------------------------------------
+interface LogEntry {
+  readonly level: "debug" | "info" | "warn" | "error" | "fatal"
+  readonly msg: string
+  readonly fields: Record<string, unknown> | undefined
+}
+
+const makeRecordingLogger = (): {
+  logger: Logger
+  entries: LogEntry[]
+} => {
+  const entries: LogEntry[] = []
+  const record = (
+    level: LogEntry["level"],
+    msg: string,
+    fields?: Record<string, unknown>,
+  ): void => {
+    entries.push({ level, msg, fields })
+  }
+  const logger: Logger = {
+    debug: (msg: string, fields?: Record<string, unknown>) =>
+      record("debug", msg, fields),
+    info: (msg: string, fields?: Record<string, unknown>) =>
+      record("info", msg, fields),
+    warn: (msg: string, fields?: Record<string, unknown>) =>
+      record("warn", msg, fields),
+    error: (msg: string, fields?: Record<string, unknown>) =>
+      record("error", msg, fields),
+    fatal: (msg: string, fields?: Record<string, unknown>) =>
+      record("fatal", msg, fields),
+    child: (_scope: string, _fields?: Record<string, unknown>) => logger,
+  }
+  return { logger, entries }
+}
 
 // --- a controllable fake query ----------------------------------------------------------
 type Deferred<T> = { promise: Promise<T>; resolve: (v: T) => void }
@@ -575,6 +611,169 @@ describe("createClaudeAdapter", () => {
     expect(queries).toHaveLength(2)
     expect(queries[1]?.options?.model).toBe("mdl_newer")
     expect(queries[1]?.options?.resume).toBe("sess_mdl_throw")
+  })
+
+  // --- observability: logger + stderr + watchdog ------------------------------------------
+
+  it("wires stderr to the logger as a warn log with truncated chunk", async () => {
+    const { logger, entries } = makeRecordingLogger()
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({
+      loadSdk: async () => fake.sdk,
+      logger,
+    })
+    await adapter.start(input, makeCtx([], []))
+    const stderrHandler = fake.capturedOptions().stderr
+    if (stderrHandler === undefined) throw new Error("stderr not wired")
+    stderrHandler("boom from claude")
+    const warnEntry = entries.find(
+      (e) => e.level === "warn" && e.msg === "claude stderr",
+    )
+    expect(warnEntry).toBeDefined()
+    expect(warnEntry?.fields?.chunk).toContain("boom from claude")
+  })
+
+  it("logs lifecycle events: adapter starting and sdk loaded", async () => {
+    const { logger, entries } = makeRecordingLogger()
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({
+      loadSdk: async () => fake.sdk,
+      logger,
+    })
+    await adapter.start(input, makeCtx([], []))
+    const startingEntry = entries.find(
+      (e) => e.level === "info" && e.msg === "claude adapter starting",
+    )
+    const loadedEntry = entries.find(
+      (e) => e.level === "info" && e.msg === "claude sdk loaded",
+    )
+    expect(startingEntry).toBeDefined()
+    expect(loadedEntry).toBeDefined()
+  })
+
+  it("logs claude turn -> sdk input with the text length when send is called", async () => {
+    const { logger, entries } = makeRecordingLogger()
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({
+      loadSdk: async () => fake.sdk,
+      logger,
+    })
+    const handle = await adapter.start(input, makeCtx([], []))
+    handle.send("hello")
+    const turnEntry = entries.find(
+      (e) => e.level === "info" && e.msg === "claude turn -> sdk input",
+    )
+    expect(turnEntry).toBeDefined()
+    expect(turnEntry?.fields?.length).toBe(5)
+  })
+
+  it("logs the first sdk message exactly once even when multiple messages arrive", async () => {
+    const { logger, entries } = makeRecordingLogger()
+    const fake = makeFakeSdk([
+      { type: "system", subtype: "init", model: "claude-x" },
+      {
+        type: "assistant",
+        parent_tool_use_id: null,
+        message: { content: [{ type: "text", text: "hi" }] },
+      },
+    ])
+    const adapter = createClaudeAdapter({
+      loadSdk: async () => fake.sdk,
+      logger,
+    })
+    await adapter.start(input, makeCtx([], []))
+    // Allow the background pump to drain the scripted messages
+    await new Promise((r) => setTimeout(r, 20))
+    const firstMsgEntries = entries.filter(
+      (e) => e.level === "info" && e.msg === "claude first sdk message",
+    )
+    expect(firstMsgEntries).toHaveLength(1)
+    expect(firstMsgEntries[0]?.fields?.type).toBe("system")
+  })
+
+  it("fires the no-response watchdog warn when the timer fires before any sdk message", async () => {
+    const { logger, entries } = makeRecordingLogger()
+    // A scripted SDK that never yields anything (blocked on a deferred)
+    const block = defer<void>()
+    const emptySdk: ClaudeSdk = {
+      query: (args) => {
+        void (async () => {
+          for await (const _ of args.prompt) {
+            // drain
+          }
+        })()
+        const iterator = (async function* (): AsyncGenerator<SdkMessageLike> {
+          await block.promise
+          // never reached — generator is intentionally empty; yield satisfies lint rule
+          if (false as boolean) yield {} as SdkMessageLike
+        })()
+        return Object.assign(iterator, {
+          interrupt: async () => {},
+          close: () => {
+            block.resolve()
+          },
+        })
+      },
+    }
+
+    let capturedCallback: (() => void) | undefined
+    const setTimer = (fn: () => void, _ms: number): (() => void) => {
+      capturedCallback = fn
+      return () => {
+        capturedCallback = undefined
+      }
+    }
+
+    const adapter = createClaudeAdapter({
+      loadSdk: async () => emptySdk,
+      logger,
+      setTimer,
+      responseTimeoutMs: 30000,
+    })
+    const handle = await adapter.start(input, makeCtx([], []))
+    handle.send("x")
+    // Fire the watchdog manually (no real timer)
+    capturedCallback?.()
+    const warnEntry = entries.find(
+      (e) =>
+        e.level === "warn" &&
+        e.msg === "claude: no sdk response within timeout",
+    )
+    expect(warnEntry).toBeDefined()
+    handle.close()
+  })
+
+  it("does NOT fire the watchdog warn when an sdk message arrives before the timer fires", async () => {
+    const { logger, entries } = makeRecordingLogger()
+    const { sdk, queries } = makeMultiQueryFakeSdk("resolve")
+
+    let capturedCallback: (() => void) | undefined
+    const setTimer = (fn: () => void, _ms: number): (() => void) => {
+      capturedCallback = fn
+      return () => {
+        capturedCallback = undefined
+      }
+    }
+
+    const adapter = createClaudeAdapter({
+      loadSdk: async () => sdk,
+      logger,
+      setTimer,
+    })
+    const handle = await adapter.start(input, makeCtx([], []))
+    handle.send("x")
+    // Push a message so the pump sees it (arms disarm)
+    queries[0]?.pushMsg({ type: "system", subtype: "init", model: "m" })
+    await new Promise((r) => setTimeout(r, 10))
+    // Now fire the timer callback — watchdog should have been cancelled
+    capturedCallback?.()
+    const warnEntry = entries.find(
+      (e) =>
+        e.level === "warn" &&
+        e.msg === "claude: no sdk response within timeout",
+    )
+    expect(warnEntry).toBeUndefined()
+    handle.close()
   })
 
   // --- Finding 3: rapid double setMode → stale rejection ---------------------------------
