@@ -721,7 +721,7 @@ export const createAppContext = (
   const idGen = deps.createCryptoIdGen()
   const driverIdGen = deps.createCryptoIdGen()
   const driverRegistry: DriverRegistry = createDriverRegistry({
-    claude: createClaudeDriver({ idGen }),
+    claude: createClaudeDriver({ idGen, logger: log.child("driver.claude") }),
     codex: deps.createCodexDriver({ idGen: driverIdGen }),
     opencode: deps.createOpencodeDriver({ idGen: driverIdGen }),
     // Plan 4 (UNVERIFIED): OpenClaw gateway driver. No installed binary / published @openclaw/sdk; the
