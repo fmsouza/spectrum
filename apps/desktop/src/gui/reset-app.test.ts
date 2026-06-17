@@ -46,6 +46,7 @@ const makeDeps = (config: Config) => {
       removeDir: (dir: string) => calls.push(`removeDir:${dir}`),
       relaunch: () => calls.push("relaunch"),
       dataDir: "/data/Spectrum",
+      legacyDirs: [],
       logger: createNoopLogger(),
     },
   }
@@ -94,6 +95,26 @@ describe("createResetApp", () => {
 
     expect(isOk(r)).toBe(true)
     expect(calls).toEqual(["closeDb", "removeDir:/data/Spectrum", "relaunch"])
+  })
+
+  it("wipes each legacy dir after the data dir and before relaunching", async () => {
+    const { calls, deps } = makeDeps(defaultConfig())
+    const depsWithLegacy = {
+      ...deps,
+      legacyDirs: ["/legacy/.config/launchkit", "/legacy/LaunchKit"],
+    }
+    const reset = createResetApp(depsWithLegacy)
+
+    const r = await reset()
+
+    expect(isOk(r)).toBe(true)
+    expect(calls).toEqual([
+      "closeDb",
+      "removeDir:/data/Spectrum",
+      "removeDir:/legacy/.config/launchkit",
+      "removeDir:/legacy/LaunchKit",
+      "relaunch",
+    ])
   })
 
   it("logs a warning when a secret delete fails, and still completes the reset", async () => {

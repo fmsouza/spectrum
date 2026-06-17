@@ -18,7 +18,7 @@ import type { SessionStore } from "@spectrum/sessions"
 import type { SdkProvider, SessionId } from "@spectrum/types"
 import type { Result } from "@spectrum/utils"
 
-import { mkdirSync, rmSync } from "node:fs"
+import { mkdirSync, readFileSync, rmSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import type {
@@ -65,8 +65,10 @@ import {
 } from "@spectrum/logger"
 import {
   type Platform,
-  detectAppEnv,
   detectPlatform,
+  legacyLaunchkitDataDir,
+  legacyMacosConfigDir,
+  resolveAppEnv,
   resolveAppPaths,
 } from "@spectrum/platform"
 import {
@@ -302,6 +304,12 @@ export interface CreateAppContextDeps {
   /** Set in dev to register the demo FakeDriver harness; production leaves it unset. */
   readonly demoHarnessEnabled: boolean
   readonly genProxyKey: () => string
+  /**
+   * Read the bundled `version.json` channel ("dev" | "stable" | "canary") that pins the
+   * app environment. Returns undefined when no bundle is present (CLI binary, tests), in
+   * which case the ambient SPECTRUM_ENV is used. Effect: reads a file relative to cwd.
+   */
+  readonly readBuildChannel: () => string | undefined
 }
 
 /** >=32-byte base64url per-run proxy key (security.md). The default for production wiring. */
@@ -361,6 +369,19 @@ const realDeps: CreateAppContextDeps = {
   relaunch: defaultRelaunch,
   demoHarnessEnabled: process.env.SPECTRUM_DEMO_HARNESS === "1",
   genProxyKey: defaultGenProxyKey,
+  // Electrobun runs the Bun process with cwd = <bundle>/Contents/MacOS, so the app's
+  // version.json sits at ../Resources/version.json (same path electrobun-updater uses).
+  // Any failure (no bundle, unreadable, malformed) yields undefined → ambient-env fallback.
+  readBuildChannel: (): string | undefined => {
+    try {
+      const parsed = JSON.parse(
+        readFileSync("../Resources/version.json", "utf8"),
+      ) as { channel?: unknown }
+      return typeof parsed.channel === "string" ? parsed.channel : undefined
+    } catch {
+      return undefined
+    }
+  },
 }
 
 /**
@@ -482,7 +503,8 @@ const createListProviderModelsDraft =
 export const createAppContext = (
   deps: CreateAppContextDeps = realDeps,
 ): AppContext => {
-  const appEnv = detectAppEnv(deps.env)
+  const buildChannel = deps.readBuildChannel()
+  const appEnv = resolveAppEnv({ buildChannel, env: deps.env })
 
   // Legacy data lived only under the production dirs; never migrate it into a dev sandbox.
   if (appEnv === "production") {
@@ -549,6 +571,11 @@ export const createAppContext = (
     // resolved apiKeys) from every record at log time. Call sites must still never pass
     // raw secrets as fields — this is the backstop, especially for webview-forwarded records.
     redact: (text) => redactSecrets(text, secretRegistry.snapshot()),
+  })
+
+  log.info("resolved app environment", {
+    appEnv,
+    buildChannel: buildChannel ?? "none",
   })
 
   // config: cached( file( fs(configFile) ) ). Wrapped to keep a synchronous snapshot of the latest
@@ -796,6 +823,14 @@ export const createAppContext = (
     removeDir: deps.removeDir,
     relaunch: deps.relaunch,
     dataDir: paths.dataDir,
+    legacyDirs: [
+      legacyMacosConfigDir(deps.homeDir()),
+      legacyLaunchkitDataDir({
+        platform: deps.platform,
+        homeDir: deps.homeDir(),
+        env: deps.env,
+      }),
+    ],
     logger: log.child("reset"),
   })
 

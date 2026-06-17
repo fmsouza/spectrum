@@ -66,13 +66,22 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
   /**
    * Build the full UpdateState by combining the raw adapter snapshot with the
    * config-owned channel and dismissal fields. Pure helper — no side effects.
+   *
+   * Never lets a config-load failure blank the whole Updates box: falls back to
+   * the schema default channel ("stable") so the adapter's live status still
+   * renders. Only the READ path is resilient; mutating handlers (setUpdateChannel,
+   * checkForUpdate) still call loadConfig() and fail loudly.
    */
   const buildUpdateState = async (): Promise<
     import("@spectrum/ipc").IpcMethods["getUpdateState"]["result"]
   > => {
-    const config = await loadConfig()
-    const channel = config.settings.updateChannel as Channel
-    const dismissed = config.settings.dismissedUpdateVersion
+    const loaded = await ctx.config.load()
+    const channel: Channel = isOk(loaded)
+      ? loaded.value.settings.updateChannel
+      : "stable"
+    const dismissed = isOk(loaded)
+      ? loaded.value.settings.dismissedUpdateVersion
+      : null
     const raw = ctx.updater.getRaw()
     const showBanner =
       decideBanner({
