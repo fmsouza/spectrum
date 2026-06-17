@@ -45,16 +45,22 @@ export const createStores = ({
   initialView,
 }: CreateStoresOptions): Stores => {
   const deps: StoreDeps = { client }
+  const notifications = createNotificationsStore()
+  const notify = (
+    input: import("./notifications-model").NotificationInput,
+  ): void => {
+    notifications.getState().notify(input)
+  }
   return {
     proxy: createProxyStore(deps),
     providers: createProvidersStore(deps),
     models: createModelsStore(deps),
-    notifications: createNotificationsStore(),
+    notifications,
     harnesses: createHarnessesStore(deps),
     projects: createProjectsStore(deps),
     ui: createUiStore(initialView),
     runView: createRunViewStore(deps),
-    update: createUpdateStore(deps),
+    update: createUpdateStore({ ...deps, notify }),
   }
 }
 
