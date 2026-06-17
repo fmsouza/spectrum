@@ -20,6 +20,8 @@ export interface ResetAppDeps {
   readonly relaunch: () => void
   /** The app data dir to wipe (db + config + secrets/ + runtime + harnesses). */
   readonly dataDir: string
+  /** Legacy source dirs to also wipe so a factory reset is a clean slate that re-migration cannot restore. */
+  readonly legacyDirs: readonly string[]
   /** Scoped logger; receives a redacted warn when a secret delete fails. */
   readonly logger: Logger
 }
@@ -53,6 +55,8 @@ export const createResetApp = (
     // 2. Close the db so the file handle is released, then wipe the whole data dir.
     deps.closeDb()
     deps.removeDir(deps.dataDir)
+    // Also wipe legacy source dirs so re-migration cannot restore wiped data on next launch.
+    for (const dir of deps.legacyDirs) deps.removeDir(dir)
 
     // 3. Relaunch to a first-launch state (the new process recreates an empty db + config).
     deps.relaunch()

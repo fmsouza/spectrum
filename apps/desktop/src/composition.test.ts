@@ -48,7 +48,10 @@ const makeFakeDeps = (): {
       record("runMigrations")(client)
       return { ok: true, value: undefined }
     }) as never,
-    createSystemClock: record("createSystemClock") as never,
+    createSystemClock: ((..._a: unknown[]) => {
+      calls.createSystemClock = _a
+      return { now: () => new Date(0) }
+    }) as never,
     createSessionStore: ((..._a: unknown[]) => {
       calls.createSessionStore = _a
       return {
@@ -97,6 +100,7 @@ const makeFakeDeps = (): {
     removeDir: () => {},
     relaunch: () => {},
     demoHarnessEnabled: false,
+    readBuildChannel: () => undefined,
   }
   return { deps, calls }
 }
@@ -237,7 +241,7 @@ describe("createAppContext wiring", () => {
       idGen: unknown
     }
     expect(sessionArgs.db).toEqual({ __stub: "dbClient" })
-    expect(sessionArgs.clock).toEqual({ __stub: "createSystemClock" })
+    expect(typeof (sessionArgs.clock as { now?: unknown }).now).toBe("function")
   })
 
   it("creates the data directory before opening the database (fresh install)", () => {
@@ -460,6 +464,50 @@ describe("createAppContext dev/prod data isolation", () => {
     ).toBe("spectrum")
     expect(calls.migrateLegacyMacosConfig).toBeDefined()
     expect(calls.migrateLaunchkitToSpectrum).toBeDefined()
+  })
+
+  it("resolves production appEnv when buildChannel is stable even if SPECTRUM_ENV=development", () => {
+    const { deps, calls } = makeFakeDeps()
+    ;(deps as { env: unknown }).env = { SPECTRUM_ENV: "development" }
+    ;(deps as { readBuildChannel: unknown }).readBuildChannel = () => "stable"
+    ;(deps as { resolveAppPaths: unknown }).resolveAppPaths = (
+      input: Parameters<typeof resolveAppPaths>[0],
+    ) => {
+      calls.resolveAppPaths = [input]
+      return resolveAppPaths(input)
+    }
+
+    createAppContext(deps)
+
+    expect((calls.resolveAppPaths?.[0] as { appEnv?: string }).appEnv).toBe(
+      "production",
+    )
+    expect(
+      (calls.createPlatformKeychainBackend?.[0] as { keychainService?: string })
+        .keychainService,
+    ).toBe("spectrum")
+  })
+
+  it("resolves development appEnv when buildChannel is dev", () => {
+    const { deps, calls } = makeFakeDeps()
+    ;(deps as { env: unknown }).env = {}
+    ;(deps as { readBuildChannel: unknown }).readBuildChannel = () => "dev"
+    ;(deps as { resolveAppPaths: unknown }).resolveAppPaths = (
+      input: Parameters<typeof resolveAppPaths>[0],
+    ) => {
+      calls.resolveAppPaths = [input]
+      return resolveAppPaths(input)
+    }
+
+    createAppContext(deps)
+
+    expect((calls.resolveAppPaths?.[0] as { appEnv?: string }).appEnv).toBe(
+      "development",
+    )
+    expect(
+      (calls.createPlatformKeychainBackend?.[0] as { keychainService?: string })
+        .keychainService,
+    ).toBe("spectrum-dev")
   })
 })
 

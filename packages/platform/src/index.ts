@@ -1,5 +1,5 @@
 export { type Platform, detectPlatform } from "./platform"
-export { type SpectrumEnv, detectAppEnv } from "./app-env"
+export { type SpectrumEnv, detectAppEnv, resolveAppEnv } from "./app-env"
 export {
   type AppPaths,
   type ResolveAppPathsInput,

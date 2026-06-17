@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { detectAppEnv } from "./app-env"
+import { detectAppEnv, resolveAppEnv } from "./app-env"
 
 describe("detectAppEnv", () => {
   it("returns development when SPECTRUM_ENV is exactly development", () => {
@@ -18,5 +18,44 @@ describe("detectAppEnv", () => {
     expect(detectAppEnv({ SPECTRUM_ENV: "dev" })).toBe("production")
     expect(detectAppEnv({ SPECTRUM_ENV: "DEVELOPMENT" })).toBe("production")
     expect(detectAppEnv({ SPECTRUM_ENV: "" })).toBe("production")
+  })
+})
+
+describe("resolveAppEnv", () => {
+  it("returns development when the bundled channel is dev", () => {
+    expect(resolveAppEnv({ buildChannel: "dev", env: {} })).toBe("development")
+  })
+
+  it("returns production when the bundled channel is stable", () => {
+    expect(resolveAppEnv({ buildChannel: "stable", env: {} })).toBe(
+      "production",
+    )
+  })
+
+  it("returns production when the bundled channel is canary", () => {
+    expect(resolveAppEnv({ buildChannel: "canary", env: {} })).toBe(
+      "production",
+    )
+  })
+
+  it("lets the bundled stable channel override an ambient SPECTRUM_ENV=development", () => {
+    expect(
+      resolveAppEnv({
+        buildChannel: "stable",
+        env: { SPECTRUM_ENV: "development" },
+      }),
+    ).toBe("production")
+  })
+
+  it("falls back to SPECTRUM_ENV when no bundle channel is present", () => {
+    expect(
+      resolveAppEnv({
+        buildChannel: undefined,
+        env: { SPECTRUM_ENV: "development" },
+      }),
+    ).toBe("development")
+    expect(resolveAppEnv({ buildChannel: undefined, env: {} })).toBe(
+      "production",
+    )
   })
 })

@@ -51,8 +51,10 @@ export const migrateLegacyMacosConfig = (
 ): void => {
   // No `appEnv` ⇒ the production data dir. Legacy data only ever lived in production
   // locations; the composition root also runs this only when appEnv === "production".
-  const newDataDir = resolveAppPaths(input).dataDir
   const legacyDir = legacyMacosConfigDir(input.homeDir)
+  // Guard: if the source is already marked, this migration has run before — never re-import.
+  if (fs.exists(join(legacyDir, MARKER))) return
+  const newDataDir = resolveAppPaths(input).dataDir
   const plan = planLegacyMacosMigration({
     ...input,
     newDataDirExists: fs.exists(newDataDir),
@@ -79,8 +81,11 @@ export const migrateLaunchkitToSpectrum = (
   fs: MigrationFs = realMigrationFs,
 ): void => {
   // No `appEnv` ⇒ the production data dir (see migrateLegacyMacosConfig); production-only by gate.
-  const newDataDir = resolveAppPaths(input).dataDir
   const oldDir = legacyLaunchkitDataDir(input)
+  const p = input.platform === "windows" ? path.win32 : path.posix
+  // Guard: if the source is already marked, this migration has run before — never re-import.
+  if (fs.exists(p.join(oldDir, SPECTRUM_MARKER))) return
+  const newDataDir = resolveAppPaths(input).dataDir
   const plan = planLaunchkitToSpectrumMigration({
     ...input,
     newDirExists: fs.exists(newDataDir),
@@ -89,7 +94,6 @@ export const migrateLaunchkitToSpectrum = (
   if (plan.kind !== "move" || plan.from === undefined || plan.to === undefined)
     return
   fs.copyDir(plan.from, plan.to)
-  const p = input.platform === "windows" ? path.win32 : path.posix
   const oldDb = p.join(plan.to, "launchkit.db")
   const newDb = p.join(plan.to, "spectrum.db")
   if (fs.exists(oldDb)) fs.renameFile(oldDb, newDb)
