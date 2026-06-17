@@ -20,7 +20,15 @@ export const createPathCommandResolver = (
     const guarded = guardCommand(command, platform)
     if (!guarded.ok) return guarded
     if (isAbsolutePath(command, platform)) return ok(command)
-    const found = Bun.which(command)
+    // Pass the LIVE process.env.PATH explicitly: Bun.which() resolves against a
+    // snapshot of PATH taken at process startup and ignores runtime mutations.
+    // In a packaged Finder/Dock-launched app the startup PATH is minimal
+    // (/usr/bin:/bin:/usr/sbin:/sbin), so enrichGuiPath()'s runtime enrichment
+    // would otherwise be invisible to Bun.which and harness commands never resolve.
+    // Using ?? "" (not a fallback to the startup snapshot) is intentional: if PATH
+    // is somehow unset, searching nothing is correct — never silently fall back to
+    // the stale minimal snapshot we're trying to escape.
+    const found = Bun.which(command, { PATH: process.env.PATH ?? "" })
     if (found === null) {
       return err({
         kind: "invalid-command",
