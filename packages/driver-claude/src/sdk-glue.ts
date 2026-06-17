@@ -5,12 +5,19 @@ import type {
   AdapterHandle,
   DriverAdapter,
 } from "@spectrum/driver-runtime"
+import type { Logger } from "@spectrum/logger"
 import { initialClaudeMapState, mapClaudeMessage } from "./map-claude-message"
 import {
   CLAUDE_SUPPORTED_MODES,
   toClaudePermissionMode,
 } from "./permission-mode"
 import type { SdkMessageLike } from "./sdk-types"
+
+/** Default timer implementation backed by global setTimeout/clearTimeout. */
+const defaultSetTimer = (fn: () => void, ms: number): (() => void) => {
+  const id = setTimeout(fn, ms)
+  return () => clearTimeout(id)
+}
 
 /** A user message in the SDK's streaming-input format. */
 export interface SdkUserInput {
@@ -147,17 +154,39 @@ export const createClaudeAdapter = (deps: {
   loadSdk: () => Promise<ClaudeSdk>
   pathToClaudeExecutable?: string
   baseEnv?: () => Record<string, string | undefined>
+  logger?: Logger
+  setTimer?: (fn: () => void, ms: number) => () => void
+  responseTimeoutMs?: number
 }): DriverAdapter => ({
   supportedModes: CLAUDE_SUPPORTED_MODES,
   start: async (
     input: AgentStartInput,
     ctx: AdapterCtx,
   ): Promise<AdapterHandle> => {
+    const log = deps.logger
+    const setTimer = deps.setTimer ?? defaultSetTimer
+    const responseTimeoutMs = deps.responseTimeoutMs ?? 30000
+
+    // Mutable current config: `currentMode` is the SDK permission string; `currentModel` is
+    // the route id string (or undefined for the default/direct route). launch() / restart()
+    // use whatever is current — setMode and setModel mutate these before relaunching.
+    let currentMode = toClaudePermissionMode(input.permissionMode ?? "manual")
+    let currentModel =
+      input.modelId !== undefined ? String(input.modelId) : undefined
+
+    log?.info("claude adapter starting", {
+      cwd: input.cwd,
+      hasModel: currentModel !== undefined,
+      mode: currentMode,
+    })
+
     const sdk = await deps.loadSdk()
-    const state = initialClaudeMapState(ctx.rootRunnerId)
-    state.newRunnerId = ctx.newRunnerId
 
     const executable = input.command ?? deps.pathToClaudeExecutable
+    log?.info("claude sdk loaded", { hasExecutable: executable !== undefined })
+
+    const state = initialClaudeMapState(ctx.rootRunnerId)
+    state.newRunnerId = ctx.newRunnerId
 
     /** Mutable refs shared across launch closures. */
     let claudeSessionId: string | undefined
@@ -168,13 +197,6 @@ export const createClaudeAdapter = (deps: {
      */
     let pendingRestartMode: string | undefined
 
-    // Mutable current config: `currentMode` is the SDK permission string; `currentModel` is
-    // the route id string (or undefined for the default/direct route). launch() / restart()
-    // use whatever is current — setMode and setModel mutate these before relaunching.
-    let currentMode = toClaudePermissionMode(input.permissionMode ?? "manual")
-    let currentModel =
-      input.modelId !== undefined ? String(input.modelId) : undefined
-
     /** The active query quadruple (replaced on restart). */
     let current: {
       query: ClaudeQuery
@@ -182,6 +204,19 @@ export const createClaudeAdapter = (deps: {
       abort: AbortController
       /** Mark this launch stale so its pump's catch does not emit runner-finished errored. */
       markStale: () => void
+    }
+
+    // Watchdog state: armed at most once (on the first user turn).
+    let watchdogArmed = false
+    let cancelWatchdog: (() => void) | undefined
+    // True once the pump has observed the first SDK message (disarms watchdog).
+    let firstSdkMessageSeen = false
+
+    const disarmWatchdog = (): void => {
+      if (cancelWatchdog !== undefined) {
+        cancelWatchdog()
+        cancelWatchdog = undefined
+      }
     }
 
     /**
@@ -198,6 +233,9 @@ export const createClaudeAdapter = (deps: {
       const markStale = (): void => {
         stale = true
       }
+
+      // Per-launch first-message tracking for the "log once" behaviour.
+      let firstMsgLogged = false
 
       const query = sdk.query({
         prompt: inputStream.stream,
@@ -221,6 +259,8 @@ export const createClaudeAdapter = (deps: {
               toolInput as Record<string, unknown>,
             )
           },
+          stderr: (data) =>
+            log?.warn("claude stderr", { chunk: data.slice(0, 1000) }),
         },
       })
 
@@ -228,6 +268,16 @@ export const createClaudeAdapter = (deps: {
       void (async () => {
         try {
           for await (const msg of query) {
+            // Log the first message seen per launch (not every message — noise).
+            if (!firstMsgLogged) {
+              firstMsgLogged = true
+              log?.info("claude first sdk message", { type: msg.type })
+            }
+            // Disarm the no-response watchdog on first message.
+            if (!firstSdkMessageSeen) {
+              firstSdkMessageSeen = true
+              disarmWatchdog()
+            }
             // Capture the claude session id from the init message so we can resume later.
             if (
               msg.type === "system" &&
@@ -248,6 +298,7 @@ export const createClaudeAdapter = (deps: {
             for (const event of mapClaudeMessage(msg, state)) ctx.emit(event)
           }
         } catch (err) {
+          log?.error("claude pump errored", { detail: String(err) })
           // Swallow errors that are caused by tearing down the current query during a
           // restart or close — they must NOT emit runner-finished errored.
           if (closed || stale) return
@@ -286,7 +337,21 @@ export const createClaudeAdapter = (deps: {
       current.inputStream.push(input.initialPrompt)
 
     return {
-      send: (text) => current.inputStream.push(text),
+      send: (text) => {
+        log?.info("claude turn -> sdk input", { length: text.length })
+        current.inputStream.push(text)
+        // Arm the no-response watchdog on the first user turn (exactly once).
+        if (!watchdogArmed) {
+          watchdogArmed = true
+          cancelWatchdog = setTimer(() => {
+            if (!firstSdkMessageSeen) {
+              log?.warn("claude: no sdk response within timeout", {
+                ms: responseTimeoutMs,
+              })
+            }
+          }, responseTimeoutMs)
+        }
+      },
       setMode: (mode) => {
         const native = toClaudePermissionMode(mode)
         currentMode = native
@@ -333,6 +398,7 @@ export const createClaudeAdapter = (deps: {
       close: () => {
         if (closed) return
         closed = true
+        disarmWatchdog()
         current.inputStream.end()
         current.abort.abort()
         current.query.close()
