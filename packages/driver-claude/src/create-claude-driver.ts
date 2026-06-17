@@ -1,5 +1,6 @@
 import type { AgentDriver } from "@spectrum/agent-driver"
 import { createDriver } from "@spectrum/driver-runtime"
+import type { Logger } from "@spectrum/logger"
 import type { IdGen } from "@spectrum/utils"
 import { createClaudeAdapter } from "./sdk-glue"
 import type { ClaudeSdk } from "./sdk-glue"
@@ -22,6 +23,7 @@ export const createClaudeDriver = (deps: {
   readonly pathToClaudeExecutable?: string
   readonly baseEnv?: () => Record<string, string | undefined>
   readonly scheduler?: (fn: () => void) => void
+  readonly logger?: Logger
 }): AgentDriver =>
   createDriver({
     adapter: createClaudeAdapter({
@@ -30,6 +32,7 @@ export const createClaudeDriver = (deps: {
       ...(deps.pathToClaudeExecutable !== undefined
         ? { pathToClaudeExecutable: deps.pathToClaudeExecutable }
         : {}),
+      ...(deps.logger !== undefined ? { logger: deps.logger } : {}),
     }),
     idGen: deps.idGen,
     ...(deps.scheduler !== undefined ? { scheduler: deps.scheduler } : {}),
