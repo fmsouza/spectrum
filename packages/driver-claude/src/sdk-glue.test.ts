@@ -776,6 +776,149 @@ describe("createClaudeAdapter", () => {
     handle.close()
   })
 
+  // --- per-turn watchdog re-arm + completion logging (new in observability-turns) ----------
+
+  it("re-arms the watchdog on the second turn when the first response arrived", async () => {
+    // With OLD one-shot logic this would NOT fire the warn on the second turn — that's RED.
+    const { logger, entries } = makeRecordingLogger()
+    const { sdk, queries } = makeMultiQueryFakeSdk("resolve")
+
+    const timerCallbacks: Array<() => void> = []
+    const cancelFns: Array<() => void> = []
+    const setTimer = (fn: () => void, _ms: number): (() => void) => {
+      timerCallbacks.push(fn)
+      const cancel = (): void => {
+        // Remove from timerCallbacks so it can't be fired after disarm
+        const idx = timerCallbacks.indexOf(fn)
+        if (idx !== -1) timerCallbacks.splice(idx, 1)
+        cancelFns.push(cancel)
+      }
+      return cancel
+    }
+
+    const adapter = createClaudeAdapter({
+      loadSdk: async () => sdk,
+      logger,
+      setTimer,
+    })
+    const handle = await adapter.start(input, makeCtx([], []))
+
+    // Turn 1: send and have the SDK respond — disarms the turn-1 watchdog
+    handle.send("turn 1")
+    queries[0]?.pushMsg({ type: "system", subtype: "init", model: "m" })
+    await new Promise((r) => setTimeout(r, 10))
+
+    // Turn 2: send with NO further messages scripted
+    handle.send("turn 2")
+    // Fire the timer that was armed for turn 2
+    const turn2Timer = timerCallbacks[timerCallbacks.length - 1]
+    turn2Timer?.()
+
+    const warnEntry = entries.find(
+      (e) =>
+        e.level === "warn" &&
+        e.msg === "claude: no sdk response within timeout",
+    )
+    expect(warnEntry).toBeDefined()
+    handle.close()
+  })
+
+  it("does NOT fire the watchdog warn when response arrives before the timer fires (disarm on any message)", async () => {
+    const { logger, entries } = makeRecordingLogger()
+    const { sdk, queries } = makeMultiQueryFakeSdk("resolve")
+
+    let capturedCallback: (() => void) | undefined
+    const setTimer = (fn: () => void, _ms: number): (() => void) => {
+      capturedCallback = fn
+      return () => {
+        capturedCallback = undefined
+      }
+    }
+
+    const adapter = createClaudeAdapter({
+      loadSdk: async () => sdk,
+      logger,
+      setTimer,
+    })
+    const handle = await adapter.start(input, makeCtx([], []))
+    handle.send("hello")
+    // Push a message so the pump disarms the watchdog
+    queries[0]?.pushMsg({ type: "system", subtype: "init", model: "m" })
+    await new Promise((r) => setTimeout(r, 10))
+    // Fire the timer — should NOT warn (already disarmed)
+    capturedCallback?.()
+    const warnEntry = entries.find(
+      (e) =>
+        e.level === "warn" &&
+        e.msg === "claude: no sdk response within timeout",
+    )
+    expect(warnEntry).toBeUndefined()
+    handle.close()
+  })
+
+  it("logs claude turn finished with isError false on a success result message", async () => {
+    const { logger, entries } = makeRecordingLogger()
+    const resultMsg: SdkMessageLike = {
+      type: "result",
+      subtype: "success",
+      is_error: false,
+    }
+    const fake = makeFakeSdk([resultMsg])
+    const adapter = createClaudeAdapter({
+      loadSdk: async () => fake.sdk,
+      logger,
+    })
+    await adapter.start(input, makeCtx([], []))
+    await new Promise((r) => setTimeout(r, 20))
+    const finishedEntry = entries.find(
+      (e) => e.level === "info" && e.msg === "claude turn finished",
+    )
+    expect(finishedEntry).toBeDefined()
+    expect(finishedEntry?.fields?.isError).toBe(false)
+    expect(finishedEntry?.fields?.subtype).toBe("success")
+  })
+
+  it("logs claude turn finished with isError true on an error result message", async () => {
+    const { logger, entries } = makeRecordingLogger()
+    const resultMsg: SdkMessageLike = {
+      type: "result",
+      subtype: "error_during_execution",
+      is_error: true,
+    }
+    const fake = makeFakeSdk([resultMsg])
+    const adapter = createClaudeAdapter({
+      loadSdk: async () => fake.sdk,
+      logger,
+    })
+    await adapter.start(input, makeCtx([], []))
+    await new Promise((r) => setTimeout(r, 20))
+    const finishedEntry = entries.find(
+      (e) => e.level === "info" && e.msg === "claude turn finished",
+    )
+    expect(finishedEntry).toBeDefined()
+    expect(finishedEntry?.fields?.isError).toBe(true)
+    expect(finishedEntry?.fields?.subtype).toBe("error_during_execution")
+  })
+
+  it("logs claude sdk stream ended when the sdk generator completes normally", async () => {
+    const { logger, entries } = makeRecordingLogger()
+    // A scripted SDK whose generator finishes after yielding one message
+    const fake = makeFakeSdk([{ type: "system", subtype: "init", model: "m" }])
+    const adapter = createClaudeAdapter({
+      loadSdk: async () => fake.sdk,
+      logger,
+    })
+    const handle = await adapter.start(input, makeCtx([], []))
+    // Drain messages then close so the for-await completes
+    await new Promise((r) => setTimeout(r, 10))
+    handle.close()
+    await new Promise((r) => setTimeout(r, 10))
+    const streamEndedEntry = entries.find(
+      (e) => e.level === "info" && e.msg === "claude sdk stream ended",
+    )
+    expect(streamEndedEntry).toBeDefined()
+  })
+
   // --- Finding 3: rapid double setMode → stale rejection ---------------------------------
 
   it("ignores a stale rejection after a newer restart already happened", async () => {

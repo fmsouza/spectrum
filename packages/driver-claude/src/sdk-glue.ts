@@ -11,7 +11,7 @@ import {
   CLAUDE_SUPPORTED_MODES,
   toClaudePermissionMode,
 } from "./permission-mode"
-import type { SdkMessageLike } from "./sdk-types"
+import type { SdkMessageLike, SdkResultMessage } from "./sdk-types"
 
 /** Default timer implementation backed by global setTimeout/clearTimeout. */
 const defaultSetTimer = (fn: () => void, ms: number): (() => void) => {
@@ -206,11 +206,10 @@ export const createClaudeAdapter = (deps: {
       markStale: () => void
     }
 
-    // Watchdog state: armed at most once (on the first user turn).
-    let watchdogArmed = false
+    // Per-turn watchdog state: armed on each send, disarmed when any message arrives for that turn.
+    // Between turns (idle) no timer is armed.
+    let awaitingResponse = false
     let cancelWatchdog: (() => void) | undefined
-    // True once the pump has observed the first SDK message (disarms watchdog).
-    let firstSdkMessageSeen = false
 
     const disarmWatchdog = (): void => {
       if (cancelWatchdog !== undefined) {
@@ -273,9 +272,9 @@ export const createClaudeAdapter = (deps: {
               firstMsgLogged = true
               log?.info("claude first sdk message", { type: msg.type })
             }
-            // Disarm the no-response watchdog on first message.
-            if (!firstSdkMessageSeen) {
-              firstSdkMessageSeen = true
+            // Disarm the per-turn no-response watchdog on any message arrival.
+            if (awaitingResponse) {
+              awaitingResponse = false
               disarmWatchdog()
             }
             // Capture the claude session id from the init message so we can resume later.
@@ -295,8 +294,17 @@ export const createClaudeAdapter = (deps: {
                 restart()
               }
             }
+            // Log turn completion when a result message arrives.
+            if (msg.type === "result") {
+              const resultMsg = msg as SdkResultMessage
+              log?.info("claude turn finished", {
+                isError: resultMsg.is_error === true,
+                subtype: resultMsg.subtype,
+              })
+            }
             for (const event of mapClaudeMessage(msg, state)) ctx.emit(event)
           }
+          log?.info("claude sdk stream ended")
         } catch (err) {
           log?.error("claude pump errored", { detail: String(err) })
           // Swallow errors that are caused by tearing down the current query during a
@@ -340,17 +348,17 @@ export const createClaudeAdapter = (deps: {
       send: (text) => {
         log?.info("claude turn -> sdk input", { length: text.length })
         current.inputStream.push(text)
-        // Arm the no-response watchdog on the first user turn (exactly once).
-        if (!watchdogArmed) {
-          watchdogArmed = true
-          cancelWatchdog = setTimer(() => {
-            if (!firstSdkMessageSeen) {
-              log?.warn("claude: no sdk response within timeout", {
-                ms: responseTimeoutMs,
-              })
-            }
-          }, responseTimeoutMs)
-        }
+        // Re-arm the no-response watchdog on every user turn.
+        // Cancel any still-pending timer from a prior turn first.
+        disarmWatchdog()
+        awaitingResponse = true
+        cancelWatchdog = setTimer(() => {
+          if (awaitingResponse) {
+            log?.warn("claude: no sdk response within timeout", {
+              ms: responseTimeoutMs,
+            })
+          }
+        }, responseTimeoutMs)
       },
       setMode: (mode) => {
         const native = toClaudePermissionMode(mode)
@@ -399,6 +407,7 @@ export const createClaudeAdapter = (deps: {
         if (closed) return
         closed = true
         disarmWatchdog()
+        awaitingResponse = false
         current.inputStream.end()
         current.abort.abort()
         current.query.close()
