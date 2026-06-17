@@ -136,4 +136,33 @@ describe("createUpdateStore", () => {
     await store.getState().download()
     expect(messages).toContain("Couldn't start the update download.")
   })
+
+  it("notifies an error when dismiss fails", async () => {
+    const messages: string[] = []
+    const store = createUpdateStore({
+      client: fakeClient({
+        dismissUpdate: async () => err({ kind: "handler-failed", detail: "x" }),
+      }),
+      notify: (input) => {
+        messages.push(input.message)
+      },
+    })
+    await store.getState().check()
+    await store.getState().dismiss()
+    expect(messages).toContain("Couldn't dismiss the update.")
+  })
+
+  it("notifies an error when applying the update fails", async () => {
+    const messages: string[] = []
+    const store = createUpdateStore({
+      client: fakeClient({
+        applyUpdate: async () => err({ kind: "handler-failed", detail: "x" }),
+      }),
+      notify: (input) => {
+        messages.push(input.message)
+      },
+    })
+    await store.getState().apply()
+    expect(messages).toContain("Couldn't apply the update.")
+  })
 })

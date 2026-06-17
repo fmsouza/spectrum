@@ -62,7 +62,11 @@ export const createUpdateStore = (
     dismiss: async () => {
       const version = get().state?.latestVersion
       if (version === undefined || version === null) return
-      await deps.client.dismissUpdate({ version })
+      const r = await deps.client.dismissUpdate({ version })
+      if (!r.ok) {
+        deps.notify({ tone: "error", message: "Couldn't dismiss the update." })
+        return
+      }
       await get().refresh()
     },
     setChannel: async (channel) => {

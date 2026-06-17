@@ -9,6 +9,7 @@ import {
 import type { StoreApi } from "zustand/vanilla"
 import { type HarnessesStore, createHarnessesStore } from "./harnessesStore"
 import { type ModelsStore, createModelsStore } from "./modelsStore"
+import type { NotificationInput } from "./notifications-model"
 import {
   type NotificationsStore,
   createNotificationsStore,
@@ -46,9 +47,7 @@ export const createStores = ({
 }: CreateStoresOptions): Stores => {
   const deps: StoreDeps = { client }
   const notifications = createNotificationsStore()
-  const notify = (
-    input: import("./notifications-model").NotificationInput,
-  ): void => {
+  const notify = (input: NotificationInput): void => {
     notifications.getState().notify(input)
   }
   return {
