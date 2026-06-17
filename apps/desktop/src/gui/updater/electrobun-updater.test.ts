@@ -34,6 +34,24 @@ describe("createElectrobunUpdater", () => {
     expect(u.getRaw().currentVersion).toBe("1.0.0")
   })
 
+  it("coerces a missing updateAvailable to a boolean false (up-to-date path)", async () => {
+    // Electrobun's real Updater.checkForUpdate returns the raw parsed update.json on
+    // the hash-matches path — which has NO `updateAvailable` field (undefined). The
+    // strict UpdateStateSchema requires `available: boolean`, so an undefined here makes
+    // the IPC result-validation throw and the check toast "Couldn't check for updates."
+    const u = createElectrobunUpdater({
+      loadEngine: async () =>
+        baseEngine({
+          checkForUpdate: async () => ({ version: "1.0.0", hash: "h" }),
+        }),
+    })
+    const r = await u.check("stable")
+    expect(r.ok).toBe(true)
+    expect(u.getRaw().phase).toBe("up-to-date")
+    expect(u.getRaw().available).toBe(false)
+    expect(u.getRaw().latestVersion).toBeNull()
+  })
+
   it("maps a failed check fetch to an offline error", async () => {
     const u = createElectrobunUpdater({
       loadEngine: async () =>
