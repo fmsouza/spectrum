@@ -172,6 +172,42 @@ describe("createElectrobunUpdater", () => {
     expect(parsed.baseUrl).toBe("u")
   })
 
+  it("getBuildChannel reads the channel field from version.json", async () => {
+    const u = createElectrobunUpdater({
+      loadEngine: async () => baseEngine(),
+      versionFile: {
+        read: async () =>
+          JSON.stringify({ channel: "canary", version: "1.2.3", hash: "h" }),
+        write: async () => {},
+      },
+    })
+    expect(await u.getBuildChannel()).toBe("canary")
+  })
+
+  it("getBuildChannel returns undefined when version.json is unreadable", async () => {
+    const u = createElectrobunUpdater({
+      loadEngine: async () => baseEngine(),
+      versionFile: {
+        read: async () => {
+          throw new Error("no bundle")
+        },
+        write: async () => {},
+      },
+    })
+    expect(await u.getBuildChannel()).toBeUndefined()
+  })
+
+  it("getBuildChannel returns undefined for a non-Channel value (e.g. dev)", async () => {
+    const u = createElectrobunUpdater({
+      loadEngine: async () => baseEngine(),
+      versionFile: {
+        read: async () => JSON.stringify({ channel: "dev", version: "1.2.3" }),
+        write: async () => {},
+      },
+    })
+    expect(await u.getBuildChannel()).toBeUndefined()
+  })
+
   it("setChannel resolves ok even when the version file write fails", async () => {
     const u = createElectrobunUpdater({
       loadEngine: async () => baseEngine(),

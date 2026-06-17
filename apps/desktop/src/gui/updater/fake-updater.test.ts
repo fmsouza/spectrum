@@ -58,4 +58,26 @@ describe("createFakeUpdater", () => {
     expect(r.ok).toBe(true)
     expect(u.lastChannel).toBe("canary")
   })
+
+  it("getBuildChannel returns the configured build channel", async () => {
+    const u = createFakeUpdater({
+      currentVersion: "1.0.0",
+      buildChannel: "canary",
+    })
+    expect(await u.getBuildChannel()).toBe("canary")
+  })
+
+  it("getBuildChannel returns undefined when no build channel is configured", async () => {
+    const u = createFakeUpdater({ currentVersion: "1.0.0" })
+    expect(await u.getBuildChannel()).toBeUndefined()
+  })
+
+  it("getBuildChannel reflects a setChannel switch", async () => {
+    const u = createFakeUpdater({
+      currentVersion: "1.0.0",
+      buildChannel: "stable",
+    })
+    await u.setChannel("canary")
+    expect(await u.getBuildChannel()).toBe("canary")
+  })
 })

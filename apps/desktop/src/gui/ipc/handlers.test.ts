@@ -1510,6 +1510,26 @@ describe("createIpcHandlers update handlers", () => {
     expect(result).toBeNull()
     expect(updater.getRaw().phase).toBe("applying")
   })
+
+  it("getUpdateState shows the bundle's build channel even when config defaults to stable (canary build)", async () => {
+    // The reported bug: a freshly-installed canary build showed the "stable"
+    // channel because the displayed channel came only from the config default.
+    // version.json (what Electrobun actually follows) is the source of truth.
+    const fakeUpdater = createFakeUpdater({
+      currentVersion: "1.2.3",
+      buildChannel: "canary",
+    })
+    const { ctx } = makeCtx({
+      updater: fakeUpdater,
+      updateChannel: "stable",
+      dismissedUpdateVersion: null,
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.getUpdateState(undefined)
+
+    expect(result.channel).toBe("canary")
+  })
 })
 
 // ── getUpdateState config-load resilience ─────────────────────────────────────
