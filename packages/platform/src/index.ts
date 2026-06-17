@@ -6,6 +6,15 @@ export {
   resolveAppPaths,
 } from "./paths"
 export { isAbsolutePath } from "./abs-path"
+export {
+  PATH_SENTINEL_END,
+  PATH_SENTINEL_START,
+  commonBinDirs,
+  loginShellPathProbe,
+  mergePathEntries,
+  parseLoginShellPath,
+  pathDelimiter,
+} from "./path-env"
 export { defaultTerminationSignal } from "./signal"
 export {
   type LegacyMacosMigration,

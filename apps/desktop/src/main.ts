@@ -4,6 +4,7 @@ import { cliDepsFrom } from "./cli-deps"
 import type { createAppContext } from "./composition"
 import { detectMode } from "./detect-mode"
 import { mountAppMenu } from "./gui/app-menu"
+import { enrichGuiPath } from "./gui/resolve-path"
 import { mountTray } from "./gui/tray"
 import { openWindow } from "./gui/window"
 
@@ -25,9 +26,20 @@ export const buildRealDeps = (
     startProxy:
       overrides.startProxy ??
       ((): ProxyHandle => {
-        // GUI startup path only — mark any sessions that were still "running" when the app was
-        // previously killed as ended. The CLI must NOT call this: a live GUI proxy's sessions
-        // are genuinely running, and a CLI invocation running alongside the GUI must not close them.
+        // GUI startup path only. A Finder/Dock-launched app inherits a minimal PATH that omits
+        // the user's CLI install dirs (~/.local/bin, /opt/homebrew/bin, nvm/asdf shims), so
+        // `Bun.which("claude")` returns null and every launch fails with "failed to resolve
+        // harness launch". Reconstruct the real PATH (login-shell probe + static fallback) BEFORE
+        // anything resolves a harness command. Synchronous so it is in place before the window
+        // opens; CLI runs already inherit the full terminal PATH so this never runs there.
+        const resolvedPath = enrichGuiPath()
+        ctx.log.child("startup").info("resolved gui PATH", {
+          entries: resolvedPath.split(":").length,
+        })
+
+        // Mark any sessions that were still "running" when the app was previously killed as ended.
+        // The CLI must NOT call this: a live GUI proxy's sessions are genuinely running, and a CLI
+        // invocation running alongside the GUI must not close them.
         const reconciled = ctx.sessions.reconcileOrphaned()
         if (!reconciled.ok) {
           // Non-fatal: log and continue rather than crashing GUI startup.
