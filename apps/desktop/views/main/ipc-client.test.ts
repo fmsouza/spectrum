@@ -85,6 +85,29 @@ describe("createElectrobunTransport", () => {
     expect(result).toEqual(settled)
   }, 1000)
 
+  it("does NOT time out checkForUpdate under the 5s default (cold native engine import + network check needs longer)", async () => {
+    const { promise, resolve } = deferred<unknown>()
+    const rpc = {
+      request: {
+        checkForUpdate: (_: unknown) => promise,
+      },
+    }
+    // No `timeouts` override → the transport falls back to its built-in
+    // DEFAULT_METHOD_TIMEOUT_MS table. A tiny default would expire a method
+    // NOT in that table; checkForUpdate must be exempted with a generous budget.
+    const transport = createElectrobunTransport(rpc, {
+      defaultTimeoutMs: 20,
+    })
+    const settled = { ok: true, value: { phase: "up-to-date" } }
+    setTimeout(() => resolve(settled), 60)
+    const result = await withTimeout(
+      transport.send("checkForUpdate", undefined),
+      400,
+      "test guard",
+    )
+    expect(result).toEqual(settled)
+  }, 1000)
+
   it("clears the timer on resolve so the call does not reject late after settling", async () => {
     const { promise, resolve } = deferred<unknown>()
     const rpc = {

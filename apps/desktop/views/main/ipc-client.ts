@@ -22,6 +22,12 @@ const DEFAULT_METHOD_TIMEOUT_MS: Readonly<Record<string, number>> = {
   testProvider: 30_000, // network to the provider
   listProviderModelsDraft: 30_000, // network to the provider (draft)
   testProviderDraft: 30_000, // network to the provider (draft)
+  // The on-open update check lazily imports Electrobun's native updater engine AND
+  // performs a network fetch in a single call. On a cold first launch that easily
+  // exceeds the 5s default, which would surface as a transport timeout — the store
+  // then leaves its state `undefined` and the Updates box shows "…" until a warm
+  // re-check succeeds. Give it the same network-grade budget as the provider calls.
+  checkForUpdate: 30_000, // cold native engine import + network update.json fetch
 }
 
 const DEFAULT_TIMEOUT_MS = 5_000
