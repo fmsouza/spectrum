@@ -66,6 +66,8 @@ import {
 import {
   type Platform,
   detectPlatform,
+  legacyLaunchkitDataDir,
+  legacyMacosConfigDir,
   resolveAppEnv,
   resolveAppPaths,
 } from "@spectrum/platform"
@@ -821,6 +823,14 @@ export const createAppContext = (
     removeDir: deps.removeDir,
     relaunch: deps.relaunch,
     dataDir: paths.dataDir,
+    legacyDirs: [
+      legacyMacosConfigDir(deps.homeDir()),
+      legacyLaunchkitDataDir({
+        platform: deps.platform,
+        homeDir: deps.homeDir(),
+        env: deps.env,
+      }),
+    ],
     logger: log.child("reset"),
   })
 

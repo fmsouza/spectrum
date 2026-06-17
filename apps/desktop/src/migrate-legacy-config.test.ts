@@ -59,6 +59,20 @@ describe("migrateLegacyMacosConfig", () => {
     )
     expect(copied).toEqual([])
   })
+
+  it("does nothing when the legacy source is already marked migrated", () => {
+    const { fs, copied } = fakeFs(
+      new Set([
+        "/Users/me/.config/launchkit",
+        "/Users/me/.config/launchkit/.migrated-to-app-support",
+      ]),
+    )
+    migrateLegacyMacosConfig(
+      { platform: "macos", homeDir: "/Users/me", env: {} },
+      fs,
+    )
+    expect(copied).toEqual([])
+  })
 })
 
 describe("migrateLaunchkitToSpectrum", () => {
@@ -107,6 +121,18 @@ describe("migrateLaunchkitToSpectrum", () => {
       fs,
     )
     expect(copied).toBe(false)
+  })
+
+  it("does nothing when the LaunchKit source dir is already marked migrated", () => {
+    const oldDir = "/Users/me/Library/Application Support/LaunchKit"
+    const { fs, copied } = fakeFs(
+      new Set([oldDir, `${oldDir}/.migrated-to-spectrum`]),
+    )
+    migrateLaunchkitToSpectrum(
+      { platform: "macos", homeDir: "/Users/me", env: {} },
+      fs,
+    )
+    expect(copied).toEqual([])
   })
 
   it("skips the db rename when no launchkit.db exists in the copy", () => {
