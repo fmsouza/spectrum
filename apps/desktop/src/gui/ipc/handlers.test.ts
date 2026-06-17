@@ -89,6 +89,7 @@ const makeCtx = (
     >
     resetAppResult?: Result<void, ResetError>
     log?: Logger
+    resolverPathTable?: Record<string, string>
     draftListResult?: Result<
       readonly string[],
       { readonly kind: string; readonly detail?: string }
@@ -137,8 +138,11 @@ const makeCtx = (
 
   // The handler resolves the harness command+env via ctx.resolveLaunch — use the REAL renderer
   // over a fake resolver so the rendered proxy vars (ANTHROPIC_*) are asserted faithfully.
+  // `over.resolverPathTable` lets a test inject an empty/invalid table to drive resolve failure.
   const resolveLaunch = resolveHarnessLaunch({
-    resolver: createFakeCommandResolver({ claude: "/usr/local/bin/claude" }),
+    resolver: createFakeCommandResolver(
+      over.resolverPathTable ?? { claude: "/usr/local/bin/claude" },
+    ),
   })
 
   const ctx = {
@@ -888,6 +892,64 @@ describe("createIpcHandlers.launchHarness", () => {
     ).rejects.toThrow()
 
     expect(saves).toHaveLength(0)
+  })
+
+  it("throws with the resolve-failure cause in the message when harness command is not found", async () => {
+    const { ctx } = makeCtx({ resolverPathTable: {} })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.launchHarness({ id: "claude" as HarnessId }),
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining(
+          "failed to resolve harness launch",
+        ) as string,
+      }),
+    )
+    await expect(
+      handlers.launchHarness({ id: "claude" as HarnessId }),
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining(
+          "command not found on PATH: claude",
+        ) as string,
+      }),
+    )
+  })
+
+  it("logs the resolve-failure cause to the ipc-scoped error log when harness command is not found", async () => {
+    const ipcErrors: string[] = []
+    const recordingChild: Logger = {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: (msg: string) => {
+        ipcErrors.push(msg)
+      },
+      fatal: () => {},
+      child: () => recordingChild,
+    }
+    const recordingLog: Logger = {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      fatal: () => {},
+      child: (scope: string) =>
+        scope === "ipc" ? recordingChild : recordingLog,
+    }
+
+    const { ctx } = makeCtx({ resolverPathTable: {}, log: recordingLog })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.launchHarness({ id: "claude" as HarnessId }),
+    ).rejects.toThrow()
+
+    expect(
+      ipcErrors.some((m) => m.includes("command not found on PATH: claude")),
+    ).toBe(true)
   })
 })
 
