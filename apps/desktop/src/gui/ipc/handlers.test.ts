@@ -1450,6 +1450,26 @@ describe("createIpcHandlers update handlers", () => {
   })
 })
 
+// ── getUpdateState config-load resilience ─────────────────────────────────────
+
+describe("createIpcHandlers.getUpdateState (config-load resilience)", () => {
+  it("returns a stable-channel state when config cannot load", async () => {
+    const fakeUpdater = createFakeUpdater({
+      currentVersion: "1.2.0",
+      latest: undefined,
+    })
+    const { ctx } = makeCtx({ updater: fakeUpdater })
+    ;(ctx.config as { load: unknown }).load = async () =>
+      err({ kind: "io", detail: "boom" })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.getUpdateState(undefined)
+
+    expect(result.channel).toBe("stable")
+    expect(result.currentVersion).toBe("1.2.0")
+  })
+})
+
 // ── Delete + reset handlers ─────────────────────────────────────────────────
 
 describe("createIpcHandlers.deleteSession", () => {

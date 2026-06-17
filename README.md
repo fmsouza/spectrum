@@ -12,7 +12,7 @@ terminal.
 
 ## Download & install
 
-Grab a prebuilt binary from the [**latest release**](https://github.com/fmsouza/launchkit/releases/latest)
+Grab a prebuilt binary from the [**latest release**](https://github.com/fmsouza/spectrum/releases/latest)
 — no toolchain required. The download links below always resolve to the newest stable
 release.
 
@@ -20,11 +20,11 @@ release.
 
 | Platform | GUI app | CLI binary | Download |
 |---|:---:|:---:|---|
-| **macOS** — Apple Silicon (`arm64`) | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-darwin-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-darwin-arm64-cli.tar.gz) |
-| **macOS** — Intel (`x64`) | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-darwin-x64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-darwin-x64-cli.tar.gz) |
-| **Linux** — `x64` | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-linux-x64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-linux-x64-cli.tar.gz) |
-| **Linux** — `arm64` | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-linux-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-linux-arm64-cli.tar.gz) |
-| **Windows** — `x64` | ✅ | ✅ | [app](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-windows-x64-app.zip) · [cli](https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-windows-x64-cli.zip) |
+| **macOS** — Apple Silicon (`arm64`) | ✅ | ✅ | [app](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-darwin-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-darwin-arm64-cli.tar.gz) |
+| **macOS** — Intel (`x64`) | ✅ | ✅ | [app](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-darwin-x64-app.tar.gz) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-darwin-x64-cli.tar.gz) |
+| **Linux** — `x64` | ✅ | ✅ | [app](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-linux-x64-app.tar.gz) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-linux-x64-cli.tar.gz) |
+| **Linux** — `arm64` | ✅ | ✅ | [app](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-linux-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-linux-arm64-cli.tar.gz) |
+| **Windows** — `x64` | ✅ | ✅ | [app](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-windows-x64-app.zip) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-windows-x64-cli.zip) |
 
 Spectrum runs GUI + CLI on macOS, Linux, and Windows. Provider API keys are stored in the
 platform's secret store — macOS Keychain, Linux Secret Service (libsecret), or Windows DPAPI —
@@ -40,7 +40,7 @@ Apple Silicon (`arm64`); for an Intel Mac swap `darwin-arm64` → `darwin-x64` a
 
 ```sh
 curl -L -o spectrum-app.tar.gz \
-  https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-darwin-arm64-app.tar.gz
+  https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-darwin-arm64-app.tar.gz
 tar xzf spectrum-app.tar.gz
 
 # the build is unsigned — clear the Gatekeeper quarantine flag, then install
@@ -59,7 +59,7 @@ Pick the archive for your platform (`darwin-arm64`, `darwin-x64`, `linux-x64`, o
 
 ```sh
 PLATFORM=darwin-arm64   # darwin-x64 | linux-x64 | linux-arm64
-curl -L "https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-${PLATFORM}-cli.tar.gz" | tar xz
+curl -L "https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-${PLATFORM}-cli.tar.gz" | tar xz
 chmod +x "spectrum-${PLATFORM}-cli"
 sudo mv "spectrum-${PLATFORM}-cli" /usr/local/bin/spectrum   # put it on your PATH
 
@@ -74,7 +74,7 @@ spectrum list harnesses
 ```sh
 PLATFORM=linux-x64   # or linux-arm64
 curl -L -o spectrum-app.tar.gz \
-  "https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-${PLATFORM}-app.tar.gz"
+  "https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-${PLATFORM}-app.tar.gz"
 tar xzf spectrum-app.tar.gz
 ./dev-${PLATFORM}/Spectrum-dev/bin/launcher
 ```
@@ -83,7 +83,7 @@ tar xzf spectrum-app.tar.gz
 
 ```powershell
 Invoke-WebRequest -OutFile spectrum-cli.zip `
-  https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-windows-x64-cli.zip
+  https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-windows-x64-cli.zip
 Expand-Archive spectrum-cli.zip
 # move to a directory on your PATH
 Move-Item spectrum-windows-x64-cli\spectrum.exe C:\Windows\System32\spectrum.exe
@@ -97,7 +97,7 @@ The build is unsigned — Windows SmartScreen may prompt on first launch. Click
 
 ```powershell
 Invoke-WebRequest -OutFile spectrum-app.zip `
-  https://github.com/fmsouza/launchkit/releases/latest/download/spectrum-windows-x64-app.zip
+  https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-windows-x64-app.zip
 Expand-Archive spectrum-app.zip
 .\dev-windows-x64\Spectrum-dev\bin\launcher.exe
 ```
@@ -108,12 +108,12 @@ Every release ships a `checksums-sha256.txt`. After downloading one or more asse
 the current directory:
 
 ```sh
-curl -LO https://github.com/fmsouza/launchkit/releases/latest/download/checksums-sha256.txt
+curl -LO https://github.com/fmsouza/spectrum/releases/latest/download/checksums-sha256.txt
 shasum -a 256 -c checksums-sha256.txt --ignore-missing
 ```
 
 Prefer the bleeding edge? Every push to `main` publishes a
-[pre-release canary](https://github.com/fmsouza/launchkit/releases) (`vX.Y.Z-canary.N`)
+[pre-release canary](https://github.com/fmsouza/spectrum/releases) (`vX.Y.Z-canary.N`)
 with the same set of assets — unstable, but current.
 
 ## Build from source
