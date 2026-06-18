@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test"
 import type { AgentStartInput } from "@spectrum/agent-driver"
-import type { CanonicalEvent, RunnerId } from "@spectrum/agent-events"
+import type {
+  CanonicalEvent,
+  QuestionAnswer,
+  RunnerId,
+} from "@spectrum/agent-events"
 import type { AdapterCtx } from "@spectrum/driver-runtime"
 import type { Logger } from "@spectrum/logger"
 import { createClaudeAdapter } from "./sdk-glue"
@@ -241,13 +245,28 @@ const makeCtx = (
     runnerId: RunnerId
     resolve: (d: "allow" | "deny") => void
   }>,
+  questions?: Array<{
+    runnerId: RunnerId
+    requestId: string
+    resolve: (a: QuestionAnswer) => void
+  }>,
 ): AdapterCtx => ({
   rootRunnerId: ROOT,
   emit: (e) => emitted.push(e),
   newRunnerId: () => "rnr_child" as RunnerId,
   requestApproval: (runnerId) =>
     new Promise((resolve) => approvals.push({ runnerId, resolve })),
-  requestQuestion: () => Promise.resolve({ selections: [] }),
+  requestQuestion: (runnerId, prompt) =>
+    new Promise((resolve) => {
+      const requestId = `qreq_${questions?.length ?? 0}`
+      emitted.push({
+        type: "question-requested",
+        runnerId,
+        requestId,
+        prompt,
+      } as CanonicalEvent)
+      questions?.push({ runnerId, requestId, resolve })
+    }),
 })
 
 const input: AgentStartInput = {
@@ -369,6 +388,91 @@ describe("createClaudeAdapter", () => {
     )
     approvals[1]?.resolve("deny")
     await expect(denyP).resolves.toMatchObject({ behavior: "deny" })
+  })
+
+  it("routes onUserDialog through ctx.requestQuestion and returns completed result", async () => {
+    const fake = makeFakeSdk([])
+    const emitted: CanonicalEvent[] = []
+    const questions: Array<{
+      runnerId: RunnerId
+      requestId: string
+      resolve: (a: QuestionAnswer) => void
+    }> = []
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    await adapter.start(input, makeCtx(emitted, [], questions))
+
+    const opts = fake.capturedOptions()
+    expect(opts.supportedDialogKinds).toContain("ask_user_question")
+
+    const payload = {
+      questions: [
+        {
+          question: "Which library?",
+          header: "Library",
+          options: [{ label: "date-fns", description: "lightweight" }],
+          multiSelect: false,
+        },
+      ],
+    }
+
+    if (opts.onUserDialog === undefined) throw new Error("onUserDialog not set")
+    const resultP = opts.onUserDialog(
+      { dialogKind: "ask_user_question", payload },
+      { signal: new AbortController().signal },
+    )
+    // Allow requestQuestion to be called and emit the question-requested event
+    await Promise.resolve()
+
+    const req = emitted.find((e) => e.type === "question-requested")
+    expect(req).toBeDefined()
+
+    // Resolve the pending question
+    questions[0]?.resolve({
+      selections: [{ questionIndex: 0, labels: ["date-fns"] }],
+    })
+
+    const result = await resultP
+    expect(result).toEqual({ behavior: "completed", result: expect.anything() })
+  })
+
+  it("returns cancelled from onUserDialog when the payload is malformed", async () => {
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    await adapter.start(input, makeCtx([], []))
+
+    const opts = fake.capturedOptions()
+    if (opts.onUserDialog === undefined) throw new Error("onUserDialog not set")
+    const result = await opts.onUserDialog(
+      { dialogKind: "ask_user_question", payload: { nope: 1 } },
+      { signal: new AbortController().signal },
+    )
+    expect(result).toEqual({ behavior: "cancelled" })
+  })
+
+  it("returns cancelled from onUserDialog when the signal is already aborted", async () => {
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    await adapter.start(input, makeCtx([], []))
+
+    const opts = fake.capturedOptions()
+    if (opts.onUserDialog === undefined) throw new Error("onUserDialog not set")
+    const abort = new AbortController()
+    abort.abort()
+    const payload = {
+      questions: [
+        {
+          question: "Which library?",
+          header: "Library",
+          options: [{ label: "date-fns", description: "lightweight" }],
+          multiSelect: false,
+        },
+      ],
+    }
+    const result = await opts.onUserDialog(
+      { dialogKind: "ask_user_question", payload },
+      { signal: abort.signal },
+    )
+    expect(result).toEqual({ behavior: "cancelled" })
   })
 
   it("send pushes a user message into the streaming-input prompt", async () => {

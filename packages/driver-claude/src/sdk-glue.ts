@@ -6,6 +6,10 @@ import type {
   DriverAdapter,
 } from "@spectrum/driver-runtime"
 import type { Logger } from "@spectrum/logger"
+import {
+  mapAnswerToAskUserQuestionResult,
+  mapAskUserQuestionPayload,
+} from "./ask-user-question"
 import { initialClaudeMapState, mapClaudeMessage } from "./map-claude-message"
 import {
   CLAUDE_SUPPORTED_MODES,
@@ -17,6 +21,22 @@ import type { SdkMessageLike, SdkResultMessage } from "./sdk-types"
 const defaultSetTimer = (fn: () => void, ms: number): (() => void) => {
   const id = setTimeout(fn, ms)
   return () => clearTimeout(id)
+}
+
+const ABORTED = Symbol("aborted")
+const raceAbort = <T>(
+  p: Promise<T>,
+  signal: AbortSignal,
+): Promise<T | typeof ABORTED> => {
+  if (signal.aborted) return Promise.resolve(ABORTED)
+  return new Promise((resolve) => {
+    const onAbort = (): void => resolve(ABORTED)
+    signal.addEventListener("abort", onAbort, { once: true })
+    void p.then((v) => {
+      signal.removeEventListener("abort", onAbort)
+      resolve(v)
+    })
+  })
 }
 
 /** A user message in the SDK's streaming-input format. */
@@ -54,6 +74,18 @@ export interface SdkOptions {
     input: Record<string, unknown>,
     options: { signal: AbortSignal; toolUseID: string },
   ) => Promise<SdkPermissionResult>
+  readonly supportedDialogKinds?: readonly string[]
+  readonly onUserDialog?: (
+    request: {
+      readonly dialogKind: string
+      readonly payload: Record<string, unknown>
+      readonly toolUseID?: string
+    },
+    options: { readonly signal: AbortSignal },
+  ) => Promise<
+    | { readonly behavior: "completed"; readonly result: unknown }
+    | { readonly behavior: "cancelled" }
+  >
   readonly stderr?: (data: string) => void
 }
 
@@ -257,6 +289,27 @@ export const createClaudeAdapter = (deps: {
               decision,
               toolInput as Record<string, unknown>,
             )
+          },
+          supportedDialogKinds: ["ask_user_question"],
+          onUserDialog: async (request, { signal }) => {
+            if (request.dialogKind !== "ask_user_question")
+              return { behavior: "cancelled" }
+            const prompt = mapAskUserQuestionPayload(request.payload)
+            if (prompt === undefined) {
+              log?.warn("claude dialog payload unrecognized", {
+                dialogKind: request.dialogKind,
+              })
+              return { behavior: "cancelled" }
+            }
+            const answer = await raceAbort(
+              ctx.requestQuestion(ctx.rootRunnerId, prompt),
+              signal,
+            )
+            if (answer === ABORTED) return { behavior: "cancelled" }
+            return {
+              behavior: "completed",
+              result: mapAnswerToAskUserQuestionResult(prompt, answer),
+            }
           },
           stderr: (data) =>
             log?.warn("claude stderr", { chunk: data.slice(0, 1000) }),
