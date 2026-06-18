@@ -11,6 +11,7 @@ const fakeDriver: AgentDriver = {
       onEvent: () => undefined,
       send: () => ok(undefined),
       respondApproval: () => ok(undefined),
+      respondQuestion: () => ok(undefined),
       interrupt: () => ok(undefined),
       close: () => ok(undefined),
     }),

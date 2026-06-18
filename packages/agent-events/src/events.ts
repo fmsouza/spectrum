@@ -24,6 +24,45 @@ export type ApprovalTarget = z.infer<typeof ApprovalTargetSchema>
 export const ApprovalDecisionSchema = z.enum(["allow", "deny", "allow-always"])
 export type ApprovalDecision = z.infer<typeof ApprovalDecisionSchema>
 
+export const QuestionOptionSchema = z
+  .object({
+    label: z.string(),
+    description: z.string().optional(),
+    preview: z.string().optional(),
+  })
+  .strict()
+export type QuestionOption = z.infer<typeof QuestionOptionSchema>
+
+export const QuestionSchema = z
+  .object({
+    question: z.string(),
+    header: z.string(),
+    options: z.array(QuestionOptionSchema),
+    multiSelect: z.boolean(),
+    allowFreeText: z.boolean(),
+  })
+  .strict()
+export type Question = z.infer<typeof QuestionSchema>
+
+export const QuestionPromptSchema = z
+  .object({ questions: z.array(QuestionSchema).min(1) })
+  .strict()
+export type QuestionPrompt = z.infer<typeof QuestionPromptSchema>
+
+export const QuestionSelectionSchema = z
+  .object({
+    questionIndex: z.number().int().nonnegative(),
+    labels: z.array(z.string()),
+    freeText: z.string().optional(),
+  })
+  .strict()
+export type QuestionSelection = z.infer<typeof QuestionSelectionSchema>
+
+export const QuestionAnswerSchema = z
+  .object({ selections: z.array(QuestionSelectionSchema) })
+  .strict()
+export type QuestionAnswer = z.infer<typeof QuestionAnswerSchema>
+
 export const PermissionModeSchema = z.enum([
   "manual",
   "auto-edits",
@@ -144,6 +183,23 @@ export const CanonicalEventSchema = z.discriminatedUnion("type", [
       requestId: z.string(),
       decision: ApprovalDecisionSchema,
       by: z.enum(["user", "policy"]),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("question-requested"),
+      runnerId: RunnerIdSchema,
+      requestId: z.string(),
+      prompt: QuestionPromptSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("question-resolved"),
+      runnerId: RunnerIdSchema,
+      requestId: z.string(),
+      answer: QuestionAnswerSchema,
+      by: z.literal("user"),
     })
     .strict(),
   z

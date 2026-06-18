@@ -81,4 +81,14 @@ describe("decodeRunnerInbound", () => {
     expect(r.ok).toBe(false)
     expect(!r.ok && r.error.kind).toBe("bad-message")
   })
+
+  it("decodes a run-answer message", () => {
+    const r = decodeRunnerInbound({
+      type: "run-answer",
+      id: "s1",
+      requestId: "q1",
+      answer: { selections: [{ questionIndex: 0, labels: ["A"] }] },
+    })
+    expect(r.ok).toBe(true)
+  })
 })

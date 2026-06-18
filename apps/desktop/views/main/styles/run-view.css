@@ -17,7 +17,7 @@
 .lk-run-view__main {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
   min-height: 0;
 }
@@ -29,9 +29,13 @@
   padding: var(--sp-space-4);
 }
 
-/* The sub-runner pane: a fixed-width right column with its own border + scroll. */
+/* The sub-runner pane: a fixed-width right column with its own border + scroll.
+   max-width: 40% is the intentional hard cap (resolves against .lk-run-view) that
+   backs up the clamp() upper bound — do not remove it. */
 .lk-sub-runner-pane {
-  flex: 0 0 380px;
+  flex: 0 1 auto;
+  width: clamp(320px, 38vw, 40%);
+  max-width: 40%;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -274,7 +278,9 @@
 
 .lk-tool-call__name {
   font-family: var(--sp-font-mono);
-  font-size: var(--sp-text-sm);
+  font-size: var(--sp-text-base);
+  font-weight: 600;
+  color: var(--sp-text);
   flex: 0 0 auto;
 }
 
@@ -303,8 +309,15 @@
 }
 
 .lk-tool-call__chevron {
+  flex: 0 0 auto;
+  width: 0.9em;
+  text-align: center;
   color: var(--sp-text-muted);
   font-size: var(--sp-text-xs);
+}
+
+.lk-tool-call__chevron--spacer {
+  visibility: hidden;
 }
 
 .lk-tool-call__details {
@@ -332,11 +345,6 @@
   font-size: var(--sp-text-xs);
   white-space: pre-wrap;
   overflow-x: auto;
-}
-
-.lk-tool-icon {
-  font-family: var(--sp-font-mono);
-  color: var(--sp-text-secondary);
 }
 
 /* File diff cards: path header + a monospace diff body of DiffLines. */
@@ -408,6 +416,61 @@
   color: var(--sp-text-secondary);
 }
 
+/* Interactive question card (AskUserQuestion / requestUserInput). */
+.lk-question {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-space-2);
+  padding: var(--sp-space-3);
+  border: 1px solid var(--sp-border-strong);
+  border-radius: var(--sp-radius-sm);
+  background: var(--sp-surface-raised);
+}
+.lk-question__q {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-space-1);
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+.lk-question__header {
+  font-size: var(--sp-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sp-text-muted);
+}
+.lk-question__text {
+  margin: 0;
+  font-weight: 600;
+}
+.lk-question__opt {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-space-2);
+  cursor: pointer;
+}
+.lk-question__opt-desc {
+  color: var(--sp-text-secondary);
+  font-size: var(--sp-text-xs);
+}
+.lk-question__other {
+  margin-top: var(--sp-space-1);
+  padding: var(--sp-space-1) var(--sp-space-2);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  background: var(--sp-bg);
+  color: var(--sp-text);
+}
+.lk-question__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.lk-question__resolved {
+  color: var(--sp-text-secondary);
+  font-size: var(--sp-text-sm);
+}
+
 /* Openable sub-runner card (status dot + title + Open). */
 .lk-sub-runner-card {
   display: flex;
@@ -425,6 +488,17 @@
 
 .lk-sub-runner-card__title {
   font-size: var(--sp-text-sm);
+  font-weight: 600;
+}
+
+.lk-sub-runner-card__detail {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--sp-text-sm);
+  color: var(--sp-text-secondary);
 }
 
 .lk-sub-runner-card__open {
@@ -578,9 +652,13 @@
 
 /* ───────────────────────── Side rail (tasks + sub-runner) ───────────────── */
 /* The shared right column. Holds the task rail alone, or a segmented header that
-   swaps between the task rail and the sub-runner pane. */
+   swaps between the task rail and the sub-runner pane.
+   max-width: 40% is the intentional hard cap (resolves against .lk-run-view) that
+   backs up the clamp() upper bound — do not remove it. */
 .lk-side-rail {
-  flex: 0 0 380px;
+  flex: 0 1 auto;
+  width: clamp(320px, 38vw, 40%);
+  max-width: 40%;
   display: flex;
   flex-direction: column;
   min-height: 0;

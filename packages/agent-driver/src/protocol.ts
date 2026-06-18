@@ -1,10 +1,12 @@
 import {
   ApprovalDecisionSchema,
   PermissionModeSchema,
+  QuestionAnswerSchema,
 } from "@spectrum/agent-events"
 import type {
   ApprovalDecision,
   PermissionMode,
+  QuestionAnswer,
   StoredEvent,
 } from "@spectrum/agent-events"
 import {
@@ -32,6 +34,12 @@ export type RunnerInbound =
       readonly requestId: string
       readonly decision: ApprovalDecision
     }
+  | {
+      readonly type: "run-answer"
+      readonly id: SessionId
+      readonly requestId: string
+      readonly answer: QuestionAnswer
+    }
   | { readonly type: "run-interrupt"; readonly id: SessionId }
   | {
       readonly type: "run-set-mode"
@@ -56,6 +64,12 @@ const InboundSchema = z.discriminatedUnion("type", [
     id: SessionIdSchema,
     requestId: z.string(),
     decision: ApprovalDecisionSchema,
+  }),
+  z.object({
+    type: z.literal("run-answer"),
+    id: SessionIdSchema,
+    requestId: z.string(),
+    answer: QuestionAnswerSchema,
   }),
   z.object({ type: z.literal("run-interrupt"), id: SessionIdSchema }),
   z.object({

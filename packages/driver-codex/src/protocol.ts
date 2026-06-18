@@ -29,6 +29,8 @@ export const REQ_COMMAND_APPROVAL =
   "item/commandExecution/requestApproval" as const
 export const REQ_FILECHANGE_APPROVAL =
   "item/fileChange/requestApproval" as const
+export const REQ_USER_INPUT = "item/tool/requestUserInput" as const
+export const REQ_ELICITATION = "mcpServer/elicitation/request" as const
 
 // Client→server method strings used by the transport/adapter.
 export const M_INITIALIZE = "initialize" as const

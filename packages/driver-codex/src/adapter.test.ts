@@ -4,6 +4,8 @@ import type {
   ApprovalDecision,
   ApprovalTarget,
   CanonicalEvent,
+  QuestionAnswer,
+  QuestionPrompt,
   RunnerId,
 } from "@spectrum/agent-events"
 import type { AdapterCtx } from "@spectrum/driver-runtime"
@@ -103,14 +105,19 @@ interface RecordingCtx {
   readonly ctx: AdapterCtx
   readonly emitted: CanonicalEvent[]
   readonly approvalCalls: Array<{ runnerId: RunnerId; target: ApprovalTarget }>
+  readonly questionCalls: Array<{ runnerId: RunnerId; prompt: QuestionPrompt }>
   resolveApproval(decision: ApprovalDecision): void
+  resolveQuestion(answer: QuestionAnswer): void
 }
 
 const makeCtx = (): RecordingCtx => {
   const emitted: CanonicalEvent[] = []
   const approvalCalls: Array<{ runnerId: RunnerId; target: ApprovalTarget }> =
     []
+  const questionCalls: Array<{ runnerId: RunnerId; prompt: QuestionPrompt }> =
+    []
   let pendingApproval: ((d: ApprovalDecision) => void) | undefined
+  let pendingQuestion: ((a: QuestionAnswer) => void) | undefined
   let child = 0
   const ctx: AdapterCtx = {
     rootRunnerId: root,
@@ -122,12 +129,20 @@ const makeCtx = (): RecordingCtx => {
         pendingApproval = resolve
       })
     },
+    requestQuestion: (runnerId, prompt) => {
+      questionCalls.push({ runnerId, prompt })
+      return new Promise<QuestionAnswer>((resolve) => {
+        pendingQuestion = resolve
+      })
+    },
   }
   return {
     ctx,
     emitted,
     approvalCalls,
+    questionCalls,
     resolveApproval: (d) => pendingApproval?.(d),
+    resolveQuestion: (a) => pendingQuestion?.(a),
   }
 }
 
@@ -427,5 +442,61 @@ describe("createCodexAdapter.start", () => {
     handle.send("second")
     const secondTurn = ft.fake.outgoing.find(([, m]) => m === "turn/start")
     expect((secondTurn?.[2] as Record<string, unknown>).model).toBe("mdl_new")
+  })
+
+  it("routes a requestUserInput server request through ctx.requestQuestion and replies with id-keyed answers", async () => {
+    const ft = makeFakeTransport()
+    ft.fake.setResult("thread/start", { thread: { id: "th_1" } })
+    const ctx = makeCtx()
+    await makeAdapter(ft).start(startInput, ctx.ctx)
+    ft.fake.pushServerRequest({
+      id: 20,
+      method: "item/tool/requestUserInput",
+      params: {
+        threadId: "th_1",
+        turnId: "tn_1",
+        itemId: "it_q",
+        questions: [
+          {
+            id: "q1",
+            header: "Pick one",
+            question: "Which?",
+            isOther: false,
+            isSecret: false,
+            options: [
+              { label: "A", description: "first" },
+              { label: "B", description: "second" },
+            ],
+          },
+        ],
+      },
+    })
+    expect(ctx.questionCalls).toHaveLength(1)
+    expect(ctx.questionCalls[0]?.prompt.questions[0]?.header).toBe("Pick one")
+    ctx.resolveQuestion({ selections: [{ questionIndex: 0, labels: ["A"] }] })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(ft.fake.replies).toEqual([
+      { id: 20, result: { answers: { q1: { answers: ["A"] } } } },
+    ])
+  })
+
+  it("responds to mcpServer/elicitation/request with a graceful decline", async () => {
+    const ft = makeFakeTransport()
+    ft.fake.setResult("thread/start", { thread: { id: "th_1" } })
+    const ctx = makeCtx()
+    await makeAdapter(ft).start(startInput, ctx.ctx)
+    ft.fake.pushServerRequest({
+      id: 21,
+      method: "mcpServer/elicitation/request",
+      params: { title: "some form" },
+    })
+    await Promise.resolve()
+    expect(ft.fake.replies).toEqual([
+      {
+        id: 21,
+        result: { action: "decline", content: null, _meta: null },
+      },
+    ])
   })
 })

@@ -157,6 +157,9 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
       case "run-approve":
         agent.respondApproval(message.requestId, message.decision)
         return
+      case "run-answer":
+        agent.respondQuestion(message.requestId, message.answer)
+        return
       case "run-interrupt":
         agent.interrupt()
         return
