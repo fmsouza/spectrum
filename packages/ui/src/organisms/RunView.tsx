@@ -1,6 +1,7 @@
 import type {
   ApprovalDecision,
   PermissionMode,
+  QuestionAnswer,
   RunnerId,
   RunnerState,
 } from "@spectrum/agent-events"
@@ -21,6 +22,7 @@ export type RunViewProps = {
   readonly onCloseSub: () => void
   readonly onSend: (text: string) => void
   readonly onDecide: (requestId: string, decision: ApprovalDecision) => void
+  readonly onAnswer: (requestId: string, answer: QuestionAnswer) => void
   /** Show the typing indicator + keep the feed pinned to the bottom while a turn is in flight. */
   readonly busy?: boolean
   readonly inert?: boolean
@@ -57,6 +59,7 @@ export const RunView = ({
   onCloseSub,
   onSend,
   onDecide,
+  onAnswer,
   busy = false,
   inert = false,
   onInterrupt,
@@ -111,6 +114,7 @@ export const RunView = ({
             runners={runners}
             onOpenSubRunner={onOpenSubRunner}
             onDecide={onDecide}
+            onAnswer={onAnswer}
             inert={inert}
           />
           {busy ? <TypingIndicator /> : null}

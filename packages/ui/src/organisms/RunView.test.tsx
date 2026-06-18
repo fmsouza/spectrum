@@ -45,6 +45,7 @@ const base = {
   onCloseSub: () => {},
   onSend: () => {},
   onDecide: () => {},
+  onAnswer: () => {},
 }
 
 describe("RunView", () => {

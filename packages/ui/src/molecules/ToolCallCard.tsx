@@ -2,7 +2,6 @@ import type { Json, ToolCallItem } from "@spectrum/agent-events"
 import type { ReactElement } from "react"
 import type { DotStatus } from "../atoms/StatusDot"
 import { StatusDot } from "../atoms/StatusDot"
-import { ToolIcon } from "../atoms/ToolIcon"
 
 export type ToolCallCardProps = {
   readonly item: ToolCallItem
@@ -58,7 +57,16 @@ export const ToolCallCard = ({
         onClick={() => onToggle()}
       >
         <StatusDot status={dot} label={`tool ${item.status}`} />
-        <ToolIcon tool={item.tool} />
+        {hasDetails ? (
+          <span className="lk-tool-call__chevron" aria-hidden="true">
+            {expanded ? "▾" : "▸"}
+          </span>
+        ) : (
+          <span
+            className="lk-tool-call__chevron lk-tool-call__chevron--spacer"
+            aria-hidden="true"
+          />
+        )}
         <span className="lk-tool-call__name">{item.tool}</span>
         {summary === undefined ? null : (
           <span className="lk-tool-call__summary" title={summary}>
@@ -69,11 +77,6 @@ export const ToolCallCard = ({
           {item.exitCode === undefined ? null : (
             <span className="lk-tool-call__exit">{`exit ${item.exitCode}`}</span>
           )}
-          {hasDetails ? (
-            <span className="lk-tool-call__chevron" aria-hidden="true">
-              {expanded ? "▾" : "▸"}
-            </span>
-          ) : null}
         </span>
       </button>
       {expanded && hasDetails ? (

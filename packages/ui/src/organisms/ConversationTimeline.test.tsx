@@ -45,6 +45,7 @@ describe("ConversationTimeline", () => {
         runners={state.runners}
         onOpenSubRunner={() => {}}
         onDecide={() => {}}
+        onAnswer={() => {}}
       />,
     )
     expect(screen.getByText("Hello")).toBeInTheDocument()
@@ -77,6 +78,7 @@ describe("ConversationTimeline", () => {
         runners={state.runners}
         onOpenSubRunner={() => {}}
         onDecide={() => {}}
+        onAnswer={() => {}}
       />,
     )
     expect(
@@ -95,6 +97,7 @@ describe("ConversationTimeline", () => {
         runners={state.runners}
         onOpenSubRunner={() => {}}
         onDecide={() => {}}
+        onAnswer={() => {}}
       />,
     )
     expect(screen.getByTestId("tool-call-c1")).toBeInTheDocument()
@@ -114,6 +117,7 @@ describe("ConversationTimeline", () => {
         onDecide={(rq, d) => {
           decided = `${rq}:${d}`
         }}
+        onAnswer={() => {}}
       />,
     )
     fireEvent.click(screen.getByRole("button", { name: "Approve" }))
@@ -153,6 +157,7 @@ describe("ConversationTimeline", () => {
         runners={state.runners}
         onOpenSubRunner={() => {}}
         onDecide={() => {}}
+        onAnswer={() => {}}
       />,
     )
     expect(screen.queryByText("TodoWrite")).toBeNull()
@@ -204,6 +209,7 @@ describe("ConversationTimeline", () => {
         runners={state.runners}
         onOpenSubRunner={() => {}}
         onDecide={() => {}}
+        onAnswer={() => {}}
       />,
     )
     expect(screen.queryByText("TaskCreate")).toBeNull()
@@ -237,10 +243,57 @@ describe("ConversationTimeline", () => {
           opened = id
         }}
         onDecide={() => {}}
+        onAnswer={() => {}}
       />,
     )
     fireEvent.click(screen.getByRole("button", { name: /search docs/ }))
     expect(opened).toBe(child)
+    cleanup()
+  })
+
+  it("renders a question card and forwards the answer with requestId", () => {
+    const state = fold([
+      { type: "runner-started", runnerId: root },
+      {
+        type: "question-requested",
+        runnerId: root,
+        requestId: "qr1",
+        prompt: {
+          questions: [
+            {
+              question: "Pick one",
+              header: "Choice",
+              options: [{ label: "Alpha" }, { label: "Beta" }],
+              multiSelect: false,
+              allowFreeText: false,
+            },
+          ],
+        },
+      },
+    ])
+    const runner = state.runners.get(root)
+    if (runner === undefined) throw new Error("no root runner")
+    let answeredId: string | undefined
+    let answeredVal: unknown
+    render(
+      <ConversationTimeline
+        runner={runner}
+        runners={state.runners}
+        onOpenSubRunner={() => {}}
+        onDecide={() => {}}
+        onAnswer={(requestId, answer) => {
+          answeredId = requestId
+          answeredVal = answer
+        }}
+      />,
+    )
+    expect(screen.getByRole("button", { name: /submit/i })).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText("Alpha"))
+    fireEvent.click(screen.getByRole("button", { name: /submit/i }))
+    expect(answeredId).toBe("qr1")
+    expect(answeredVal).toEqual({
+      selections: [{ questionIndex: 0, labels: ["Alpha"] }],
+    })
     cleanup()
   })
 })

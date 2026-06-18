@@ -1,35 +1,53 @@
 import { describe, expect, it } from "bun:test"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import type { RunnerId } from "@spectrum/agent-events"
+import { cleanup, render, screen } from "@testing-library/react"
 import { SubRunnerCard } from "./SubRunnerCard"
 
+const rid = "r1" as RunnerId
+
 describe("SubRunnerCard", () => {
-  it("renders the sub-runner title", () => {
+  it("shows 'Agent' with the detail beside it", () => {
     render(
       <SubRunnerCard
-        runnerId="r2"
-        title="search docs"
+        runnerId={rid}
+        title="Agent"
+        detail="Investigate tool rendering"
         status="running"
         onOpen={() => {}}
       />,
     )
-    expect(screen.getByText("search docs")).toBeInTheDocument()
+    expect(screen.getByText("Agent")).toBeInTheDocument()
+    expect(screen.getByText("Investigate tool rendering")).toBeInTheDocument()
     cleanup()
   })
 
-  it("calls onOpen with the runner id when Open is clicked", () => {
-    let opened: string | undefined
+  it("shows just the title when no detail is given", () => {
     render(
       <SubRunnerCard
-        runnerId="r2"
-        title="search docs"
+        runnerId={rid}
+        title="Agent"
+        status="running"
+        onOpen={() => {}}
+      />,
+    )
+    expect(screen.getByText("Agent")).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("calls onOpen with the runner id when clicked", () => {
+    let called: RunnerId | undefined
+    render(
+      <SubRunnerCard
+        runnerId={rid}
+        title="Agent"
         status="running"
         onOpen={(id) => {
-          opened = id
+          called = id
         }}
       />,
     )
-    fireEvent.click(screen.getByRole("button", { name: /search docs/ }))
-    expect(opened).toBe("r2")
+    screen.getByRole("button").click()
+    expect(called).toBe(rid)
     cleanup()
   })
 })

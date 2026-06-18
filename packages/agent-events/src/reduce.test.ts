@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 import type { RunnerId } from "@spectrum/types"
 import type { CanonicalEvent } from "./events"
 import {
+  type QuestionItem,
   type RunState,
   type ToolCallItem,
   initialRunState,
@@ -599,5 +600,56 @@ describe("reduce — event-sourcing invariant", () => {
       runners: [...s.runners.entries()],
     })
     expect(normalize(allAtOnce)).toEqual(normalize(oneByOne))
+  })
+})
+
+describe("reduce — questions", () => {
+  const prompt = {
+    questions: [
+      {
+        question: "Q?",
+        header: "H",
+        options: [],
+        multiSelect: false,
+        allowFreeText: true,
+      },
+    ],
+  }
+  it("appends a question item on question-requested", () => {
+    let s = reduce(initialRunState, {
+      type: "runner-started",
+      runnerId: rid("r1"),
+    })
+    s = reduce(s, {
+      type: "question-requested",
+      runnerId: rid("r1"),
+      requestId: "q1",
+      prompt,
+    })
+    const item = s.runners.get(rid("r1"))?.items.at(-1) as QuestionItem
+    expect(item.kind).toBe("question")
+    expect(item.requestId).toBe("q1")
+    expect(item.answer).toBeUndefined()
+  })
+  it("sets the answer on question-resolved", () => {
+    let s = reduce(initialRunState, {
+      type: "runner-started",
+      runnerId: rid("r1"),
+    })
+    s = reduce(s, {
+      type: "question-requested",
+      runnerId: rid("r1"),
+      requestId: "q1",
+      prompt,
+    })
+    s = reduce(s, {
+      type: "question-resolved",
+      runnerId: rid("r1"),
+      requestId: "q1",
+      answer: { selections: [{ questionIndex: 0, labels: ["A"] }] },
+      by: "user",
+    })
+    const item = s.runners.get(rid("r1"))?.items.at(-1) as QuestionItem
+    expect(item.answer?.selections[0]?.labels).toEqual(["A"])
   })
 })

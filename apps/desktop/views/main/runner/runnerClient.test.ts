@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { RunnerOutbound } from "@spectrum/agent-driver"
-import type { StoredEvent } from "@spectrum/agent-events"
+import type { QuestionAnswer, StoredEvent } from "@spectrum/agent-events"
 import { SessionIdSchema } from "@spectrum/types"
 import { createRunnerClient } from "./runnerClient"
 
@@ -40,6 +40,16 @@ describe("createRunnerClient", () => {
     expect(sent).toEqual([
       { type: "run-approve", id, requestId: "rq1", decision: "allow" },
     ])
+  })
+
+  it("encodes answer as a run-answer message", () => {
+    const sent: unknown[] = []
+    const client = createRunnerClient((m) => sent.push(m))
+    const answer: QuestionAnswer = {
+      selections: [{ questionIndex: 0, labels: ["A"] }],
+    }
+    client.answer(id, "q1", answer)
+    expect(sent).toEqual([{ type: "run-answer", id, requestId: "q1", answer }])
   })
 
   it("sends a run-interrupt message", () => {
