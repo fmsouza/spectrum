@@ -274,7 +274,9 @@
 
 .lk-tool-call__name {
   font-family: var(--sp-font-mono);
-  font-size: var(--sp-text-sm);
+  font-size: var(--sp-text-base);
+  font-weight: 600;
+  color: var(--sp-text);
   flex: 0 0 auto;
 }
 
@@ -303,8 +305,15 @@
 }
 
 .lk-tool-call__chevron {
+  flex: 0 0 auto;
+  width: 0.9em;
+  text-align: center;
   color: var(--sp-text-muted);
   font-size: var(--sp-text-xs);
+}
+
+.lk-tool-call__chevron--spacer {
+  visibility: hidden;
 }
 
 .lk-tool-call__details {
@@ -332,11 +341,6 @@
   font-size: var(--sp-text-xs);
   white-space: pre-wrap;
   overflow-x: auto;
-}
-
-.lk-tool-icon {
-  font-family: var(--sp-font-mono);
-  color: var(--sp-text-secondary);
 }
 
 /* File diff cards: path header + a monospace diff body of DiffLines. */

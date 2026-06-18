@@ -105,7 +105,21 @@ describe("ToolCallCard", () => {
     cleanup()
   })
 
-  it("disables the row and hides the chevron when there is no output", () => {
+  it("shows a chevron (not a type-glyph) before the name when expandable", () => {
+    render(<ToolCallCard item={item} expanded={false} onToggle={() => {}} />)
+    expect(screen.getByText("▸")).toBeInTheDocument()
+    // The old type-glyph icon (role=img labelled with the tool name) is gone.
+    expect(screen.queryByRole("img", { name: "Bash" })).toBeNull()
+    cleanup()
+  })
+
+  it("toggles the chevron to ▾ when expanded", () => {
+    render(<ToolCallCard item={item} expanded onToggle={() => {}} />)
+    expect(screen.getByText("▾")).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("renders no chevron when there is no expandable output", () => {
     render(
       <ToolCallCard
         item={{ kind: "tool-call", callId: "c2", tool: "Read", status: "ok" }}
@@ -115,6 +129,12 @@ describe("ToolCallCard", () => {
     )
     expect(screen.getByRole("button")).toBeDisabled()
     expect(screen.queryByText("▸")).toBeNull()
+    cleanup()
+  })
+
+  it("marks the tool name as the prominent element", () => {
+    render(<ToolCallCard item={item} expanded={false} onToggle={() => {}} />)
+    expect(screen.getByText("Bash")).toHaveClass("lk-tool-call__name")
     cleanup()
   })
 
