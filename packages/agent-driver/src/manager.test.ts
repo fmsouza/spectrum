@@ -471,7 +471,9 @@ describe("createRunManager.handleInbound run-answer", () => {
       answer: { selections: [{ questionIndex: 0, labels: ["A"] }] },
     })
     expect(calls[0]?.requestId).toBe("q1")
-    expect(calls[0]?.answer).toEqual({ selections: [{ questionIndex: 0, labels: ["A"] }] })
+    expect(calls[0]?.answer).toEqual({
+      selections: [{ questionIndex: 0, labels: ["A"] }],
+    })
   })
 })
 
