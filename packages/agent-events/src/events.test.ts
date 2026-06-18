@@ -1,5 +1,11 @@
 import { describe, expect, it } from "bun:test"
-import { CanonicalEventSchema, StoredEventSchema, UsageSchema } from "./events"
+import {
+  CanonicalEventSchema,
+  QuestionAnswerSchema,
+  QuestionPromptSchema,
+  StoredEventSchema,
+  UsageSchema,
+} from "./events"
 
 describe("UsageSchema", () => {
   it("parses usage with required and optional fields", () => {
@@ -164,6 +170,62 @@ describe("CanonicalEventSchema", () => {
       supportedModes: ["yolo"],
     })
     expect(bad.success).toBe(false)
+  })
+})
+
+describe("QuestionPromptSchema", () => {
+  it("accepts a multi-question prompt with options and free text", () => {
+    const prompt = {
+      questions: [
+        {
+          question: "Which library?",
+          header: "Library",
+          options: [
+            { label: "date-fns", description: "lightweight" },
+            { label: "day.js", description: "tiny" },
+          ],
+          multiSelect: false,
+          allowFreeText: true,
+        },
+      ],
+    }
+    expect(QuestionPromptSchema.parse(prompt)).toEqual(prompt)
+  })
+  it("requires at least one question", () => {
+    expect(QuestionPromptSchema.safeParse({ questions: [] }).success).toBe(false)
+  })
+})
+
+describe("QuestionAnswerSchema", () => {
+  it("accepts index-keyed selections with labels and optional free text", () => {
+    const answer = { selections: [{ questionIndex: 0, labels: ["date-fns"] }] }
+    expect(QuestionAnswerSchema.parse(answer)).toEqual(answer)
+  })
+})
+
+describe("CanonicalEventSchema question events", () => {
+  it("accepts question-requested", () => {
+    const ev = {
+      type: "question-requested",
+      runnerId: "r1",
+      requestId: "q1",
+      prompt: {
+        questions: [
+          { question: "Q?", header: "H", options: [], multiSelect: false, allowFreeText: true },
+        ],
+      },
+    }
+    expect(CanonicalEventSchema.parse(ev)).toEqual(ev)
+  })
+  it("accepts question-resolved", () => {
+    const ev = {
+      type: "question-resolved",
+      runnerId: "r1",
+      requestId: "q1",
+      answer: { selections: [{ questionIndex: 0, labels: ["A"] }] },
+      by: "user",
+    }
+    expect(CanonicalEventSchema.parse(ev)).toEqual(ev)
   })
 })
 

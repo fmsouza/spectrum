@@ -99,6 +99,9 @@ export const ConversationTimeline = ({
                   onDecide={(d) => onDecide(item.requestId, d)}
                 />
               )
+            case "question":
+              // Placeholder: full question UI is rendered by a later task.
+              return null
             default: {
               const _exhaustive: never = item
               return _exhaustive

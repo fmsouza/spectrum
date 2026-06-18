@@ -5,6 +5,8 @@ import type {
   CanonicalEvent,
   Json,
   PermissionMode,
+  QuestionAnswer,
+  QuestionPrompt,
   Usage,
 } from "./events"
 
@@ -48,12 +50,19 @@ export type ApprovalItem = {
   decision?: ApprovalDecision
   by?: "user" | "policy"
 }
+export type QuestionItem = {
+  kind: "question"
+  requestId: string
+  prompt: QuestionPrompt
+  answer?: QuestionAnswer
+}
 export type TimelineItem =
   | MessageItem
   | ReasoningItem
   | ToolCallItem
   | FileChangeItem
   | ApprovalItem
+  | QuestionItem
 
 export type RunnerState = {
   id: RunnerId
@@ -253,6 +262,21 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
         items.map((item) =>
           item.kind === "approval" && item.requestId === event.requestId
             ? { ...item, decision: event.decision, by: event.by }
+            : item,
+        ),
+      )
+
+    case "question-requested":
+      return mapRunnerItems(state, event.runnerId, (items) => [
+        ...items,
+        { kind: "question", requestId: event.requestId, prompt: event.prompt },
+      ])
+
+    case "question-resolved":
+      return mapRunnerItems(state, event.runnerId, (items) =>
+        items.map((item) =>
+          item.kind === "question" && item.requestId === event.requestId
+            ? { ...item, answer: event.answer }
             : item,
         ),
       )
