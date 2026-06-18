@@ -44,9 +44,9 @@ curl -L -o spectrum-app.tar.gz \
 tar xzf spectrum-app.tar.gz
 
 # the build is unsigned — clear the Gatekeeper quarantine flag, then install
-xattr -dr com.apple.quarantine dev-macos-arm64/Spectrum-dev.app
-cp -R dev-macos-arm64/Spectrum-dev.app /Applications/
-open /Applications/Spectrum-dev.app
+xattr -dr com.apple.quarantine stable-macos-arm64/Spectrum.app
+cp -R stable-macos-arm64/Spectrum.app /Applications/
+open /Applications/Spectrum.app
 ```
 
 On launch the GUI starts a loopback proxy on `127.0.0.1:4000` and adds a menu-bar tray
@@ -76,7 +76,7 @@ PLATFORM=linux-x64   # or linux-arm64
 curl -L -o spectrum-app.tar.gz \
   "https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-${PLATFORM}-app.tar.gz"
 tar xzf spectrum-app.tar.gz
-./dev-${PLATFORM}/Spectrum-dev/bin/launcher
+./stable-${PLATFORM}/Spectrum/bin/launcher
 ```
 
 ### Windows — CLI (PowerShell)
@@ -99,7 +99,7 @@ The build is unsigned — Windows SmartScreen may prompt on first launch. Click
 Invoke-WebRequest -OutFile spectrum-app.zip `
   https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-windows-x64-app.zip
 Expand-Archive spectrum-app.zip
-.\dev-windows-x64\Spectrum-dev\bin\launcher.exe
+.\stable-windows-x64\Spectrum\bin\launcher.exe
 ```
 
 ### Verify the download (optional)
@@ -259,6 +259,3 @@ tasks:
 
 All other process (TDD, planning, review, debugging) is covered by the superpowers
 skills — invoke `using-superpowers` at the start of a session.
-
-> **GitHub social preview:** upload `assets/spectrum-og-card.png` at
-> Settings → General → Social preview. (Manual; cannot be automated.)
