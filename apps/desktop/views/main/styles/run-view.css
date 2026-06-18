@@ -17,7 +17,7 @@
 .lk-run-view__main {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
   min-height: 0;
 }
@@ -31,7 +31,9 @@
 
 /* The sub-runner pane: a fixed-width right column with its own border + scroll. */
 .lk-sub-runner-pane {
-  flex: 0 0 380px;
+  flex: 0 1 auto;
+  width: clamp(320px, 38vw, 40%);
+  max-width: 40%;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -595,7 +597,9 @@
 /* The shared right column. Holds the task rail alone, or a segmented header that
    swaps between the task rail and the sub-runner pane. */
 .lk-side-rail {
-  flex: 0 0 380px;
+  flex: 0 1 auto;
+  width: clamp(320px, 38vw, 40%);
+  max-width: 40%;
   display: flex;
   flex-direction: column;
   min-height: 0;
