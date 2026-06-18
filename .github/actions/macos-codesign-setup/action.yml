@@ -1,0 +1,92 @@
+name: "macOS codesign setup"
+description: "Import the Developer ID certificate into a temporary keychain and export Electrobun signing env vars."
+
+inputs:
+  certificate-p12-base64:
+    description: "Base64-encoded Developer ID Application certificate + key (.p12)."
+    required: true
+  certificate-password:
+    description: "Export password for the .p12."
+    required: true
+  sign-identity:
+    description: "Developer ID Application identity, e.g. 'Developer ID Application: Name (TEAMID)'."
+    required: true
+  keychain-password:
+    description: "Throwaway password for the temporary keychain."
+    required: true
+  api-key-p8-base64:
+    description: "Base64-encoded App Store Connect API key (.p8)."
+    required: true
+  api-key-id:
+    description: "App Store Connect API key id."
+    required: true
+  api-issuer-id:
+    description: "App Store Connect API issuer UUID."
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Preflight — required signing secrets present
+      shell: bash
+      run: |
+        missing=()
+        [ -n "${{ inputs.certificate-p12-base64 }}" ] || missing+=(MACOS_CERTIFICATE_P12_BASE64)
+        [ -n "${{ inputs.certificate-password }}" ]   || missing+=(MACOS_CERTIFICATE_PASSWORD)
+        [ -n "${{ inputs.sign-identity }}" ]          || missing+=(MACOS_SIGN_IDENTITY)
+        [ -n "${{ inputs.keychain-password }}" ]      || missing+=(MACOS_KEYCHAIN_PASSWORD)
+        [ -n "${{ inputs.api-key-p8-base64 }}" ]      || missing+=(APPLE_API_KEY_P8_BASE64)
+        [ -n "${{ inputs.api-key-id }}" ]             || missing+=(APPLE_API_KEY_ID)
+        [ -n "${{ inputs.api-issuer-id }}" ]          || missing+=(APPLE_API_ISSUER_ID)
+        if [ ${#missing[@]} -gt 0 ]; then
+          echo "::error::macOS signing secrets missing: ${missing[*]}. Channel builds must be signed — failing."
+          exit 1
+        fi
+
+    - name: Import Developer ID certificate into a temporary keychain
+      shell: bash
+      env:
+        CERT_P12_BASE64: ${{ inputs.certificate-p12-base64 }}
+        CERT_PASSWORD: ${{ inputs.certificate-password }}
+        KEYCHAIN_PASSWORD: ${{ inputs.keychain-password }}
+      run: |
+        set -euo pipefail
+        KEYCHAIN_PATH="$RUNNER_TEMP/spectrum-signing.keychain-db"
+        CERT_PATH="$RUNNER_TEMP/developer-id.p12"
+
+        printf '%s' "$CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+
+        security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+        security import "$CERT_PATH" -P "$CERT_PASSWORD" \
+          -t cert -f pkcs12 -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
+
+        security set-key-partition-list -S apple-tool:,apple:,codesign: \
+          -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+
+        # Put the temp keychain first in the user search list + make it default so codesign finds the identity.
+        security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed 's/[""]//g')
+        security default-keychain -s "$KEYCHAIN_PATH"
+
+        rm -f "$CERT_PATH"
+        echo "SPECTRUM_SIGNING_KEYCHAIN=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+
+    - name: Write App Store Connect API key + export Electrobun signing env
+      shell: bash
+      env:
+        API_KEY_P8_BASE64: ${{ inputs.api-key-p8-base64 }}
+        SIGN_IDENTITY: ${{ inputs.sign-identity }}
+        API_KEY_ID: ${{ inputs.api-key-id }}
+        API_ISSUER_ID: ${{ inputs.api-issuer-id }}
+      run: |
+        set -euo pipefail
+        API_KEY_PATH="$RUNNER_TEMP/asc-api-key.p8"
+        printf '%s' "$API_KEY_P8_BASE64" | base64 --decode > "$API_KEY_PATH"
+        {
+          echo "ELECTROBUN_DEVELOPER_ID=$SIGN_IDENTITY"
+          echo "ELECTROBUN_APPLEAPIKEYPATH=$API_KEY_PATH"
+          echo "ELECTROBUN_APPLEAPIKEY=$API_KEY_ID"
+          echo "ELECTROBUN_APPLEAPIISSUER=$API_ISSUER_ID"
+        } >> "$GITHUB_ENV"
