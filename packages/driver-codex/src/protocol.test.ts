@@ -7,7 +7,9 @@ import {
   ITEM_STARTED,
   REASONING_TEXT_DELTA,
   REQ_COMMAND_APPROVAL,
+  REQ_ELICITATION,
   REQ_FILECHANGE_APPROVAL,
+  REQ_USER_INPUT,
   THREAD_STARTED,
   TOKEN_USAGE_UPDATED,
   TURN_COMPLETED,
@@ -28,5 +30,7 @@ describe("codex protocol constants (pinned to 0.130.0)", () => {
     expect(ERROR_NOTIFICATION).toBe("error")
     expect(REQ_COMMAND_APPROVAL).toBe("item/commandExecution/requestApproval")
     expect(REQ_FILECHANGE_APPROVAL).toBe("item/fileChange/requestApproval")
+    expect(REQ_USER_INPUT).toBe("item/tool/requestUserInput")
+    expect(REQ_ELICITATION).toBe("mcpServer/elicitation/request")
   })
 })
