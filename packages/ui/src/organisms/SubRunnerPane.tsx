@@ -38,6 +38,7 @@ export const SubRunnerPane = ({
         runners={runners}
         onOpenSubRunner={onOpenSubRunner}
         onDecide={() => {}}
+        onAnswer={() => {}}
         inert
       />
     </div>

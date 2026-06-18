@@ -79,6 +79,9 @@ const LiveRunDetail = ({
       onDecide={(requestId, decision) =>
         runnerClient.approve(sessionId, requestId, decision)
       }
+      onAnswer={(requestId, answer) =>
+        runnerClient.answer(sessionId, requestId, answer)
+      }
       onInterrupt={() => runnerClient.interrupt(sessionId)}
       busy={busy}
       mode={mode}
@@ -164,6 +167,7 @@ const ReplayRunDetail = ({
       onCloseSub={() => setOpenSubId(undefined)}
       onSend={() => {}}
       onDecide={() => {}}
+      onAnswer={() => {}}
       inert
       {...(models === undefined ? {} : { models })}
       {...(providerNames === undefined ? {} : { providerNames })}

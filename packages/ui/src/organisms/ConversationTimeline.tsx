@@ -1,6 +1,7 @@
 import { isTaskTool } from "@spectrum/agent-events"
 import type {
   ApprovalDecision,
+  QuestionAnswer,
   RunnerId,
   RunnerState,
 } from "@spectrum/agent-events"
@@ -8,6 +9,7 @@ import { type ReactElement, useState } from "react"
 import { ApprovalCard } from "../molecules/ApprovalCard"
 import { FileDiffCard } from "../molecules/FileDiffCard"
 import { MessageBubble } from "../molecules/MessageBubble"
+import { QuestionCard } from "../molecules/QuestionCard"
 import { ReasoningBlock } from "../molecules/ReasoningBlock"
 import { SubRunnerCard } from "../molecules/SubRunnerCard"
 import { ToolCallCard } from "../molecules/ToolCallCard"
@@ -19,6 +21,7 @@ export type ConversationTimelineProps = {
   readonly runners: ReadonlyMap<RunnerId, RunnerState>
   readonly onOpenSubRunner: (id: RunnerId) => void
   readonly onDecide: (requestId: string, decision: ApprovalDecision) => void
+  readonly onAnswer: (requestId: string, answer: QuestionAnswer) => void
   readonly inert?: boolean
 }
 
@@ -27,6 +30,7 @@ export const ConversationTimeline = ({
   runners,
   onOpenSubRunner,
   onDecide,
+  onAnswer,
   inert = false,
 }: ConversationTimelineProps): ReactElement => {
   // Per-item expand state lives here (the page-level store holds RunState, not
@@ -100,8 +104,14 @@ export const ConversationTimeline = ({
                 />
               )
             case "question":
-              // Placeholder: full question UI is rendered by a later task.
-              return null
+              return (
+                <QuestionCard
+                  key={`q-${item.requestId}`}
+                  item={item}
+                  inert={inert}
+                  onAnswer={(a) => onAnswer(item.requestId, a)}
+                />
+              )
             default: {
               const _exhaustive: never = item
               return _exhaustive
