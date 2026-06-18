@@ -29,7 +29,9 @@
   padding: var(--sp-space-4);
 }
 
-/* The sub-runner pane: a fixed-width right column with its own border + scroll. */
+/* The sub-runner pane: a fixed-width right column with its own border + scroll.
+   max-width: 40% is the intentional hard cap (resolves against .lk-run-view) that
+   backs up the clamp() upper bound — do not remove it. */
 .lk-sub-runner-pane {
   flex: 0 1 auto;
   width: clamp(320px, 38vw, 40%);
@@ -595,7 +597,9 @@
 
 /* ───────────────────────── Side rail (tasks + sub-runner) ───────────────── */
 /* The shared right column. Holds the task rail alone, or a segmented header that
-   swaps between the task rail and the sub-runner pane. */
+   swaps between the task rail and the sub-runner pane.
+   max-width: 40% is the intentional hard cap (resolves against .lk-run-view) that
+   backs up the clamp() upper bound — do not remove it. */
 .lk-side-rail {
   flex: 0 1 auto;
   width: clamp(320px, 38vw, 40%);
