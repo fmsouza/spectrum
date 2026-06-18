@@ -73,15 +73,60 @@ jobs:
 
       - name: Set up macOS signing
         if: matrix.app && runner.os == 'macOS'
-        uses: ./.github/actions/macos-codesign-setup
-        with:
-          certificate-p12-base64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
-          certificate-password: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-          sign-identity: ${{ secrets.MACOS_SIGN_IDENTITY }}
-          keychain-password: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
-          api-key-p8-base64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
-          api-key-id: ${{ secrets.APPLE_API_KEY_ID }}
-          api-issuer-id: ${{ secrets.APPLE_API_ISSUER_ID }}
+        shell: bash
+        # Reads the signing material straight from GitHub Secrets (a composite action
+        # cannot access the `secrets` context, so this lives inline in the workflow).
+        # Imports the Developer ID cert into a temp keychain and exports the env vars
+        # Electrobun reads at sign/notarize time. The keychain is torn down by the
+        # "Clean up signing keychain" step (if: always()).
+        env:
+          CERT_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+          API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          # Preflight — every signing secret must be present (channel builds must be signed).
+          missing=()
+          [ -n "${CERT_P12_BASE64:-}" ]   || missing+=(MACOS_CERTIFICATE_P12_BASE64)
+          [ -n "${CERT_PASSWORD:-}" ]     || missing+=(MACOS_CERTIFICATE_PASSWORD)
+          [ -n "${SIGN_IDENTITY:-}" ]     || missing+=(MACOS_SIGN_IDENTITY)
+          [ -n "${KEYCHAIN_PASSWORD:-}" ] || missing+=(MACOS_KEYCHAIN_PASSWORD)
+          [ -n "${API_KEY_P8_BASE64:-}" ] || missing+=(APPLE_API_KEY_P8_BASE64)
+          [ -n "${API_KEY_ID:-}" ]        || missing+=(APPLE_API_KEY_ID)
+          [ -n "${API_ISSUER_ID:-}" ]     || missing+=(APPLE_API_ISSUER_ID)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::macOS signing secrets missing: ${missing[*]}. Channel builds must be signed — failing."
+            exit 1
+          fi
+          # Import the Developer ID certificate into a temporary keychain.
+          KEYCHAIN_PATH="$RUNNER_TEMP/spectrum-signing.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/developer-id.p12"
+          printf '%s' "$CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$CERT_PASSWORD" \
+            -t cert -f pkcs12 -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+          # Put the temp keychain first in the user search list + make it default so codesign finds the identity.
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed 's/[”"]//g')
+          security default-keychain -s "$KEYCHAIN_PATH"
+          rm -f "$CERT_PATH"
+          # Write the App Store Connect API key + export the signing env for the build + cleanup steps.
+          API_KEY_PATH="$RUNNER_TEMP/asc-api-key.p8"
+          printf '%s' "$API_KEY_P8_BASE64" | base64 --decode > "$API_KEY_PATH"
+          {
+            echo "SPECTRUM_SIGNING_KEYCHAIN=$KEYCHAIN_PATH"
+            echo "ELECTROBUN_DEVELOPER_ID=$SIGN_IDENTITY"
+            echo "ELECTROBUN_APPLEAPIKEYPATH=$API_KEY_PATH"
+            echo "ELECTROBUN_APPLEAPIKEY=$API_KEY_ID"
+            echo "ELECTROBUN_APPLEAPIISSUER=$API_ISSUER_ID"
+          } >> "$GITHUB_ENV"
 
       - name: Build desktop app (canary channel, for distribution + update artifacts)
         id: app
