@@ -667,9 +667,14 @@
 }
 
 /* When the sub-runner pane is nested inside the rail, drop its own column sizing
-   and border so it fills the shared column below the segmented header. */
+   and border so it fills the shared column below the segmented header. The base
+   rule's standalone-column cap (width/max-width) must be reset here — otherwise it
+   resolves against the rail and shrinks the pane to ~40% of the rail. The rail
+   itself keeps the 40%-of-.lk-run-view cap; only its inner pane fills. */
 .lk-side-rail .lk-sub-runner-pane {
   flex: 1 1 auto;
+  width: auto;
+  max-width: none;
   border-left: none;
 }
 
