@@ -23,4 +23,7 @@ describe("subAgentDetail", () => {
     expect(subAgentDetail(undefined)).toBeUndefined()
     expect(subAgentDetail({ foo: 1 })).toBeUndefined()
   })
+  it("returns undefined for array input", () => {
+    expect(subAgentDetail(["x"])).toBeUndefined()
+  })
 })

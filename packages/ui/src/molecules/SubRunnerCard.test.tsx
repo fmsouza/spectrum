@@ -33,4 +33,21 @@ describe("SubRunnerCard", () => {
     expect(screen.getByText("Agent")).toBeInTheDocument()
     cleanup()
   })
+
+  it("calls onOpen with the runner id when clicked", () => {
+    let called: RunnerId | undefined
+    render(
+      <SubRunnerCard
+        runnerId={rid}
+        title="Agent"
+        status="running"
+        onOpen={(id) => {
+          called = id
+        }}
+      />,
+    )
+    screen.getByRole("button").click()
+    expect(called).toBe(rid)
+    cleanup()
+  })
 })

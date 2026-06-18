@@ -196,12 +196,37 @@ describe("QuestionPromptSchema", () => {
       false,
     )
   })
+  it("rejects unknown keys (strict)", () => {
+    expect(
+      QuestionPromptSchema.safeParse({
+        questions: [
+          {
+            question: "Which library?",
+            header: "Library",
+            options: [{ label: "date-fns", description: "lightweight" }],
+            multiSelect: false,
+            allowFreeText: true,
+          },
+        ],
+        extra: 1,
+      }).success,
+    ).toBe(false)
+  })
 })
 
 describe("QuestionAnswerSchema", () => {
   it("accepts index-keyed selections with labels and optional free text", () => {
     const answer = { selections: [{ questionIndex: 0, labels: ["date-fns"] }] }
     expect(QuestionAnswerSchema.parse(answer)).toEqual(answer)
+  })
+
+  it("rejects unknown keys (strict)", () => {
+    expect(
+      QuestionAnswerSchema.safeParse({
+        selections: [{ questionIndex: 0, labels: ["date-fns"] }],
+        extra: 1,
+      }).success,
+    ).toBe(false)
   })
 })
 

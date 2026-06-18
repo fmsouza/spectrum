@@ -13,14 +13,18 @@ const firstLine = (v: unknown): string | undefined => {
  * else the first line of its prompt, else the agent type / name. PURE.
  */
 export const subAgentDetail = (input: Json | undefined): string | undefined => {
-  if (input === null || input === undefined || typeof input !== "object")
+  if (
+    input === null ||
+    input === undefined ||
+    typeof input !== "object" ||
+    Array.isArray(input)
+  )
     return undefined
   const o = input as Record<string, unknown>
   return (
     asString(o.description) ??
     firstLine(o.prompt) ??
     asString(o.subagent_type) ??
-    asString(o.name) ??
-    undefined
+    asString(o.name)
   )
 }

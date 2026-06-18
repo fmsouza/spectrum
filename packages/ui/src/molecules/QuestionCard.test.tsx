@@ -49,6 +49,36 @@ describe("QuestionCard", () => {
     cleanup()
   })
 
+  it("disables inputs when inert and unanswered", () => {
+    render(<QuestionCard item={item} onAnswer={() => {}} inert />)
+    expect(screen.getByLabelText("date-fns")).toBeDisabled()
+    expect(screen.getByRole("button", { name: /submit/i })).toBeDisabled()
+    cleanup()
+  })
+
+  it("includes the free-text Other value in the submitted answer", () => {
+    let got: unknown
+    render(
+      <QuestionCard
+        item={item}
+        onAnswer={(a) => {
+          got = a
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByLabelText("date-fns"))
+    fireEvent.change(screen.getByLabelText("Other"), {
+      target: { value: "moment" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /submit/i }))
+    expect(got).toEqual({
+      selections: [
+        { questionIndex: 0, labels: ["date-fns"], freeText: "moment" },
+      ],
+    })
+    cleanup()
+  })
+
   it("shows the resolved answer (inert) when already answered", () => {
     render(
       <QuestionCard
