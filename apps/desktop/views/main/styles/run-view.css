@@ -429,6 +429,17 @@
 
 .lk-sub-runner-card__title {
   font-size: var(--sp-text-sm);
+  font-weight: 600;
+}
+
+.lk-sub-runner-card__detail {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--sp-text-sm);
+  color: var(--sp-text-secondary);
 }
 
 .lk-sub-runner-card__open {
