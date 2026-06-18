@@ -247,6 +247,7 @@ const makeCtx = (
   newRunnerId: () => "rnr_child" as RunnerId,
   requestApproval: (runnerId) =>
     new Promise((resolve) => approvals.push({ runnerId, resolve })),
+  requestQuestion: () => Promise.resolve({ selections: [] }),
 })
 
 const input: AgentStartInput = {

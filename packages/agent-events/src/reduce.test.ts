@@ -606,20 +606,42 @@ describe("reduce — event-sourcing invariant", () => {
 describe("reduce — questions", () => {
   const prompt = {
     questions: [
-      { question: "Q?", header: "H", options: [], multiSelect: false, allowFreeText: true },
+      {
+        question: "Q?",
+        header: "H",
+        options: [],
+        multiSelect: false,
+        allowFreeText: true,
+      },
     ],
   }
   it("appends a question item on question-requested", () => {
-    let s = reduce(initialRunState, { type: "runner-started", runnerId: rid("r1") })
-    s = reduce(s, { type: "question-requested", runnerId: rid("r1"), requestId: "q1", prompt })
+    let s = reduce(initialRunState, {
+      type: "runner-started",
+      runnerId: rid("r1"),
+    })
+    s = reduce(s, {
+      type: "question-requested",
+      runnerId: rid("r1"),
+      requestId: "q1",
+      prompt,
+    })
     const item = s.runners.get(rid("r1"))?.items.at(-1) as QuestionItem
     expect(item.kind).toBe("question")
     expect(item.requestId).toBe("q1")
     expect(item.answer).toBeUndefined()
   })
   it("sets the answer on question-resolved", () => {
-    let s = reduce(initialRunState, { type: "runner-started", runnerId: rid("r1") })
-    s = reduce(s, { type: "question-requested", runnerId: rid("r1"), requestId: "q1", prompt })
+    let s = reduce(initialRunState, {
+      type: "runner-started",
+      runnerId: rid("r1"),
+    })
+    s = reduce(s, {
+      type: "question-requested",
+      runnerId: rid("r1"),
+      requestId: "q1",
+      prompt,
+    })
     s = reduce(s, {
       type: "question-resolved",
       runnerId: rid("r1"),

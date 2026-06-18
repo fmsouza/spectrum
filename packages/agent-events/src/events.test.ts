@@ -192,7 +192,9 @@ describe("QuestionPromptSchema", () => {
     expect(QuestionPromptSchema.parse(prompt)).toEqual(prompt)
   })
   it("requires at least one question", () => {
-    expect(QuestionPromptSchema.safeParse({ questions: [] }).success).toBe(false)
+    expect(QuestionPromptSchema.safeParse({ questions: [] }).success).toBe(
+      false,
+    )
   })
 })
 
@@ -211,7 +213,13 @@ describe("CanonicalEventSchema question events", () => {
       requestId: "q1",
       prompt: {
         questions: [
-          { question: "Q?", header: "H", options: [], multiSelect: false, allowFreeText: true },
+          {
+            question: "Q?",
+            header: "H",
+            options: [],
+            multiSelect: false,
+            allowFreeText: true,
+          },
         ],
       },
     }

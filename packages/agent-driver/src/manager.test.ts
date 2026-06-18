@@ -200,6 +200,7 @@ describe("createRunManager.launch", () => {
           onEvent: () => undefined,
           send: () => ok(undefined),
           respondApproval: () => ok(undefined),
+          respondQuestion: () => ok(undefined),
           interrupt: () => ok(undefined),
           close: () => ok(undefined),
         })
@@ -228,6 +229,7 @@ describe("createRunManager.launch", () => {
           onEvent: () => undefined,
           send: () => ok(undefined),
           respondApproval: () => ok(undefined),
+          respondQuestion: () => ok(undefined),
           interrupt: () => ok(undefined),
           close: () => ok(undefined),
         })
@@ -440,6 +442,37 @@ describe("createRunManager.handleInbound", () => {
   })
 })
 
+describe("createRunManager.handleInbound run-answer", () => {
+  it("routes run-answer to the session", () => {
+    const calls: Array<{ requestId: string }> = []
+    const capturingDriver: AgentDriver = {
+      start: () =>
+        ok({
+          rootRunnerId: root,
+          onEvent: () => undefined,
+          send: () => ok(undefined),
+          respondApproval: () => ok(undefined),
+          respondQuestion: (requestId: string) => {
+            calls.push({ requestId })
+            return ok(undefined)
+          },
+          interrupt: () => ok(undefined),
+          close: () => ok(undefined),
+        }),
+    }
+    const { deps } = makeDeps(scriptOf([]))
+    const manager = createRunManager({ ...deps, driver: capturingDriver })
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    manager.handleInbound({
+      type: "run-answer",
+      id: sessionId,
+      requestId: "q1",
+      answer: { selections: [] },
+    })
+    expect(calls[0]?.requestId).toBe("q1")
+  })
+})
+
 describe("createRunManager.handleInbound run-set-mode", () => {
   it("calls setMode on the live session with the requested mode", () => {
     const modeCalls: PermissionMode[] = []
@@ -450,6 +483,7 @@ describe("createRunManager.handleInbound run-set-mode", () => {
           onEvent: () => undefined,
           send: () => ok(undefined),
           respondApproval: () => ok(undefined),
+          respondQuestion: () => ok(undefined),
           interrupt: () => ok(undefined),
           close: () => ok(undefined),
           setMode: (mode) => {
@@ -493,6 +527,7 @@ describe("createRunManager.handleInbound run-set-model", () => {
           onEvent: () => undefined,
           send: () => ok(undefined),
           respondApproval: () => ok(undefined),
+          respondQuestion: () => ok(undefined),
           interrupt: () => ok(undefined),
           close: () => ok(undefined),
           setModel: (modelId) => {

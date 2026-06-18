@@ -3,6 +3,7 @@ import type {
   ApprovalDecision,
   CanonicalEvent,
   PermissionMode,
+  QuestionAnswer,
 } from "@spectrum/agent-events"
 import type { HarnessId, ModelId } from "@spectrum/types"
 import type { Result } from "@spectrum/utils"
@@ -47,6 +48,10 @@ export interface AgentSession {
   respondApproval(
     requestId: string,
     decision: ApprovalDecision,
+  ): Result<void, DriverError>
+  respondQuestion(
+    requestId: string,
+    answer: QuestionAnswer,
   ): Result<void, DriverError>
   interrupt(): Result<void, DriverError>
   close(): Result<void, DriverError>

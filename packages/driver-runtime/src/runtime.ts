@@ -8,6 +8,8 @@ import type {
   ApprovalTarget,
   CanonicalEvent,
   PermissionMode,
+  QuestionAnswer,
+  QuestionPrompt,
   RunnerId,
 } from "@spectrum/agent-events"
 import type { ModelId } from "@spectrum/types"
@@ -39,6 +41,10 @@ export const createDriver = (deps: {
       string,
       { runnerId: RunnerId; resolve: (d: ApprovalDecision) => void }
     >()
+    const questions = new Map<
+      string,
+      { runnerId: RunnerId; resolve: (a: QuestionAnswer) => void }
+    >()
     const queue: Array<(h: AdapterHandle) => void> = []
 
     const emit = (event: CanonicalEvent): void => {
@@ -58,6 +64,12 @@ export const createDriver = (deps: {
           const requestId = deps.idGen.next("apr")
           pending.set(requestId, { runnerId, resolve })
           emit({ type: "approval-requested", runnerId, requestId, target })
+        }),
+      requestQuestion: (runnerId: RunnerId, prompt: QuestionPrompt) =>
+        new Promise<QuestionAnswer>((resolve) => {
+          const requestId = deps.idGen.next("qst")
+          questions.set(requestId, { runnerId, resolve })
+          emit({ type: "question-requested", runnerId, requestId, prompt })
         }),
     }
 
@@ -134,6 +146,21 @@ export const createDriver = (deps: {
         }
         return ok(undefined)
       },
+      respondQuestion: (requestId, answer) => {
+        const entry = questions.get(requestId)
+        if (entry !== undefined) {
+          questions.delete(requestId)
+          emit({
+            type: "question-resolved",
+            runnerId: entry.runnerId,
+            requestId,
+            answer,
+            by: "user",
+          })
+          entry.resolve(answer)
+        }
+        return ok(undefined)
+      },
       interrupt: () => {
         runOrQueue((h) => h.interrupt())
         return ok(undefined)
@@ -153,6 +180,7 @@ export const createDriver = (deps: {
           handle = undefined
           queue.length = 0
           pending.clear()
+          questions.clear()
         }
         return ok(undefined)
       },

@@ -12,6 +12,7 @@ describe("agent-driver seam types", () => {
       onEvent: () => undefined,
       send: () => ok(undefined),
       respondApproval: () => ok(undefined),
+      respondQuestion: () => ok(undefined),
       interrupt: () => ok(undefined),
       close: () => ok(undefined),
     }
