@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 import type {
   CanonicalEvent,
   PermissionMode,
+  QuestionAnswer,
   RunnerId,
 } from "@spectrum/agent-events"
 import { createSequentialIdGen } from "@spectrum/utils"
@@ -565,5 +566,56 @@ describe("createDriver", () => {
     fake.resolveStart()
     await Promise.resolve()
     expect(fake.models).toEqual(["mdl_y"]) // drained into the handle
+  })
+
+  it("emits question-requested and resolves requestQuestion on respondQuestion", async () => {
+    const events: CanonicalEvent[] = []
+    let resolved: QuestionAnswer | undefined
+    const adapter: DriverAdapter = {
+      start: async (_input, ctx) => {
+        // Defer requestQuestion so it fires after onEvent is registered (mirrors real usage
+        // where a harness sends a question after first output, not during its start).
+        await Promise.resolve()
+        void ctx
+          .requestQuestion(ctx.rootRunnerId, {
+            questions: [
+              {
+                question: "Q?",
+                header: "H",
+                options: [],
+                multiSelect: false,
+                allowFreeText: true,
+              },
+            ],
+          })
+          .then((a) => {
+            resolved = a
+          })
+        return { send() {}, interrupt() {}, close() {} }
+      },
+    }
+    const driver = createDriver({
+      adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: (fn) => fn(),
+    })
+    const started = driver.start(startInput)
+    if (!started.ok) throw new Error("expected ok")
+    const session = started.value
+    session.onEvent((e: CanonicalEvent) => events.push(e))
+    // flush: adapter.start resolves → requestQuestion emits question-requested
+    await Promise.resolve()
+    await Promise.resolve()
+    const req = events.find((e) => e.type === "question-requested")
+    expect(req).toBeDefined()
+    if (req === undefined || req.type !== "question-requested")
+      throw new Error("expected question-requested")
+    const answer: QuestionAnswer = {
+      selections: [{ questionIndex: 0, labels: ["A"] }],
+    }
+    session.respondQuestion(req.requestId, answer)
+    await Promise.resolve()
+    expect(resolved).toEqual(answer)
+    expect(events.some((e) => e.type === "question-resolved")).toBe(true)
   })
 })

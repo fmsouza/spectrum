@@ -2,6 +2,7 @@ import type { RunnerInbound, RunnerOutbound } from "@spectrum/agent-driver"
 import type {
   ApprovalDecision,
   PermissionMode,
+  QuestionAnswer,
   StoredEvent,
 } from "@spectrum/agent-events"
 import type { ModelId, SessionId } from "@spectrum/types"
@@ -16,6 +17,7 @@ export interface RunnerClient {
   attach(id: SessionId): void
   send(id: SessionId, text: string): void
   approve(id: SessionId, requestId: string, decision: ApprovalDecision): void
+  answer(id: SessionId, requestId: string, answer: QuestionAnswer): void
   interrupt(id: SessionId): void
   setMode(id: SessionId, mode: PermissionMode): void
   setModel(id: SessionId, modelId: ModelId): void
@@ -47,6 +49,9 @@ export const createRunnerClient = (
     },
     approve: (id, requestId, decision) => {
       send({ type: "run-approve", id, requestId, decision })
+    },
+    answer: (id, requestId, answer) => {
+      send({ type: "run-answer", id, requestId, answer })
     },
     interrupt: (id) => {
       send({ type: "run-interrupt", id })

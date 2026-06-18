@@ -155,6 +155,33 @@ describe("createFakeDriver", () => {
     expect(second.ok).toBe(true)
     expect(seen).toEqual([])
   })
+
+  it("emits the answer batch on respondQuestion", () => {
+    const driver = createFakeDriver({
+      scheduler: sync,
+      script: {
+        rootRunnerId: root,
+        reactions: [
+          {
+            on: "answer",
+            emit: [
+              { type: "runner-finished", runnerId: root, status: "completed" },
+            ],
+          },
+        ],
+      },
+    })
+    const events: CanonicalEvent[] = []
+    const started = driver.start({
+      harnessId: "demo" as never,
+      cwd: "/tmp",
+      env: {},
+    })
+    if (!started.ok) throw new Error("expected start ok")
+    started.value.onEvent((e) => events.push(e))
+    started.value.respondQuestion("q1", { selections: [] })
+    expect(events.some((e) => e.type === "runner-finished")).toBe(true)
+  })
 })
 
 describe("demoScript", () => {

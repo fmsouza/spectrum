@@ -6,7 +6,12 @@ import type {
   DriverAdapter,
 } from "@spectrum/driver-runtime"
 import type { IdGen } from "@spectrum/utils"
+import type { ToolRequestUserInputParams } from "./bindings/v2/ToolRequestUserInputParams"
 import { type CodexMapState, mapCodexEvent } from "./map-codex-event"
+import {
+  mapAnswerToUserInputResponse,
+  mapUserInputParams,
+} from "./map-user-input"
 import { CODEX_SUPPORTED_MODES, toCodexTurnPolicy } from "./permission-mode"
 import {
   M_INITIALIZE,
@@ -16,7 +21,9 @@ import {
   M_TURN_START,
   M_TURN_STEER,
   REQ_COMMAND_APPROVAL,
+  REQ_ELICITATION,
   REQ_FILECHANGE_APPROVAL,
+  REQ_USER_INPUT,
   TURN_COMPLETED,
   TURN_STARTED,
   textInput,
@@ -164,6 +171,28 @@ export const createCodexAdapter = (
           .then((decision) => {
             dispatcher.respond(r.id, { decision: toFileDecision(decision) })
           })
+        return
+      }
+      if (r.method === REQ_USER_INPUT) {
+        const params = r.params as ToolRequestUserInputParams
+        void ctx
+          .requestQuestion(ctx.rootRunnerId, mapUserInputParams(params))
+          .then((answer) => {
+            dispatcher.respond(
+              r.id,
+              mapAnswerToUserInputResponse(params, answer),
+            )
+          })
+        return
+      }
+      if (r.method === REQ_ELICITATION) {
+        // MCP elicitation uses a rich form schema we do not yet render; decline gracefully so the
+        // server is not left hanging (better than a -32601 error). Tracked as a follow-up.
+        dispatcher.respond(r.id, {
+          action: "decline",
+          content: null,
+          _meta: null,
+        })
         return
       }
       dispatcher.respondError(

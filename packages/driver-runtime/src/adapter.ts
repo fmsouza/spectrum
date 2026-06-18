@@ -4,6 +4,8 @@ import type {
   ApprovalTarget,
   CanonicalEvent,
   PermissionMode,
+  QuestionAnswer,
+  QuestionPrompt,
   RunnerId,
 } from "@spectrum/agent-events"
 import type { ModelId } from "@spectrum/types"
@@ -31,6 +33,11 @@ export interface AdapterCtx {
     runnerId: RunnerId,
     target: ApprovalTarget,
   ): Promise<ApprovalDecision>
+  /** Emit `question-requested` and resolve when the user answers (`run-answer` → respondQuestion). */
+  requestQuestion(
+    runnerId: RunnerId,
+    prompt: QuestionPrompt,
+  ): Promise<QuestionAnswer>
   /** Mint a fresh RunnerId (the root is minted by the runtime and exposed as `rootRunnerId`). */
   newRunnerId(): RunnerId
   /** The root runner id (already minted by the runtime before `start` is called). */

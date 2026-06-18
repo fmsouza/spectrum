@@ -6,6 +6,7 @@ export type FakeReaction =
   | { on: "start"; emit: readonly CanonicalEvent[] }
   | { on: "send"; emit: readonly CanonicalEvent[] }
   | { on: "approve"; emit: readonly CanonicalEvent[] }
+  | { on: "answer"; emit: readonly CanonicalEvent[] }
   | { on: "interrupt"; emit: readonly CanonicalEvent[] }
 
 export type FakeScript = {
@@ -35,6 +36,9 @@ export const createFakeDriver = (deps: {
       approve: deps.script.reactions
         .filter((r) => r.on === "approve")
         .map((r) => r.emit),
+      answer: deps.script.reactions
+        .filter((r) => r.on === "answer")
+        .map((r) => r.emit),
       interrupt: deps.script.reactions
         .filter((r) => r.on === "interrupt")
         .map((r) => r.emit),
@@ -47,7 +51,9 @@ export const createFakeDriver = (deps: {
         for (const e of events) cb?.(e)
       })
     }
-    const dequeue = (kind: "send" | "approve" | "interrupt"): void => {
+    const dequeue = (
+      kind: "send" | "approve" | "answer" | "interrupt",
+    ): void => {
       const next = queues[kind].shift()
       if (next !== undefined) emit(next)
     }
@@ -64,6 +70,10 @@ export const createFakeDriver = (deps: {
       },
       respondApproval: () => {
         dequeue("approve")
+        return ok(undefined)
+      },
+      respondQuestion: () => {
+        dequeue("answer")
         return ok(undefined)
       },
       interrupt: () => {

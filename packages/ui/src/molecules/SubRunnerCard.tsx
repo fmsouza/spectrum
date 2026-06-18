@@ -5,6 +5,8 @@ import { StatusDot } from "../atoms/StatusDot"
 export type SubRunnerCardProps = {
   readonly runnerId: RunnerId
   readonly title: string
+  /** A short hint of what the sub-agent is doing, shown beside the title. */
+  readonly detail?: string
   readonly status: RunnerStatus
   readonly onOpen: (id: RunnerId) => void
 }
@@ -12,6 +14,7 @@ export type SubRunnerCardProps = {
 export const SubRunnerCard = ({
   runnerId,
   title,
+  detail,
   status,
   onOpen,
 }: SubRunnerCardProps): ReactElement => (
@@ -26,6 +29,11 @@ export const SubRunnerCard = ({
       label={`sub-runner ${status}`}
     />
     <span className="lk-sub-runner-card__title">{title}</span>
+    {detail === undefined ? null : (
+      <span className="lk-sub-runner-card__detail" title={detail}>
+        {detail}
+      </span>
+    )}
     <span className="lk-sub-runner-card__open" aria-hidden>
       Open ▸
     </span>

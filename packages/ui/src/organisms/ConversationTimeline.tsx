@@ -1,6 +1,7 @@
 import { isTaskTool } from "@spectrum/agent-events"
 import type {
   ApprovalDecision,
+  QuestionAnswer,
   RunnerId,
   RunnerState,
 } from "@spectrum/agent-events"
@@ -8,16 +9,19 @@ import { type ReactElement, useState } from "react"
 import { ApprovalCard } from "../molecules/ApprovalCard"
 import { FileDiffCard } from "../molecules/FileDiffCard"
 import { MessageBubble } from "../molecules/MessageBubble"
+import { QuestionCard } from "../molecules/QuestionCard"
 import { ReasoningBlock } from "../molecules/ReasoningBlock"
 import { SubRunnerCard } from "../molecules/SubRunnerCard"
 import { ToolCallCard } from "../molecules/ToolCallCard"
 import { UsageFooter } from "../molecules/UsageFooter"
+import { subAgentDetail } from "../molecules/subAgentDetail"
 
 export type ConversationTimelineProps = {
   readonly runner: RunnerState
   readonly runners: ReadonlyMap<RunnerId, RunnerState>
   readonly onOpenSubRunner: (id: RunnerId) => void
   readonly onDecide: (requestId: string, decision: ApprovalDecision) => void
+  readonly onAnswer: (requestId: string, answer: QuestionAnswer) => void
   readonly inert?: boolean
 }
 
@@ -26,6 +30,7 @@ export const ConversationTimeline = ({
   runners,
   onOpenSubRunner,
   onDecide,
+  onAnswer,
   inert = false,
 }: ConversationTimelineProps): ReactElement => {
   // Per-item expand state lives here (the page-level store holds RunState, not
@@ -66,11 +71,13 @@ export const ConversationTimeline = ({
             case "tool-call": {
               if (item.spawnedRunnerId !== undefined) {
                 const childRunner = runners.get(item.spawnedRunnerId)
+                const detail = childRunner?.title ?? subAgentDetail(item.input)
                 return (
                   <SubRunnerCard
                     key={`s-${item.callId}`}
                     runnerId={item.spawnedRunnerId}
-                    title={childRunner?.title ?? item.tool}
+                    title="Agent"
+                    {...(detail === undefined ? {} : { detail })}
                     status={childRunner?.status ?? "running"}
                     onOpen={onOpenSubRunner}
                   />
@@ -94,6 +101,15 @@ export const ConversationTimeline = ({
                   item={item}
                   inert={inert}
                   onDecide={(d) => onDecide(item.requestId, d)}
+                />
+              )
+            case "question":
+              return (
+                <QuestionCard
+                  key={`q-${item.requestId}`}
+                  item={item}
+                  inert={inert}
+                  onAnswer={(a) => onAnswer(item.requestId, a)}
                 />
               )
             default: {
