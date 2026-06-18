@@ -30,8 +30,9 @@ Spectrum runs GUI + CLI on macOS, Linux, and Windows. Provider API keys are stor
 platform's secret store — macOS Keychain, Linux Secret Service (libsecret), or Windows DPAPI —
 so stored-key proxy routing works on all three. On a headless Linux box with no keyring, set
 `SPECTRUM_SECRET_PASSPHRASE` to enable an encrypted-file fallback (Spectrum never writes secrets
-in plaintext). Code signing / notarization is not yet applied, so you may need to allow the app past
-your OS's first-run gatekeeper.
+in plaintext). macOS builds are signed with a Developer ID certificate and notarized + stapled by
+Apple, so the downloaded `.dmg` runs without removing the quarantine flag. Windows and Linux builds
+are not yet code-signed.
 
 ### macOS — GUI app
 
