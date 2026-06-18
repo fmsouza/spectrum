@@ -48,13 +48,8 @@ describe("createRunnerClient", () => {
     const answer: QuestionAnswer = {
       selections: [{ questionIndex: 0, labels: ["A"] }],
     }
-    client.answer("s1" as never, "q1", answer)
-    expect(sent[0]).toEqual({
-      type: "run-answer",
-      id: "s1",
-      requestId: "q1",
-      answer: { selections: [{ questionIndex: 0, labels: ["A"] }] },
-    })
+    client.answer(id, "q1", answer)
+    expect(sent).toEqual([{ type: "run-answer", id, requestId: "q1", answer }])
   })
 
   it("sends a run-interrupt message", () => {
