@@ -16,8 +16,8 @@ import type { ElectrobunConfig } from "electrobun"
  *   sessions-detail, forms, modal, lists, page) next to the bundled `app.js` so the
  *   `views://main/index.html` URL (see `gui/window.ts`) resolves to local, bundled assets only —
  *   each partial is linked same-origin under `style-src 'self'`.
- * - `build.mac.createDmg: true` → emit a DMG installer for macOS releases (unsigned — signing is
- *   out of scope for now).
+ * - `build.mac.createDmg: true` + `codesign`/`notarize` → emit a signed + notarized + stapled DMG
+ *   installer for macOS channel builds. Dev builds (`buildEnvironment === "dev"`) auto-skip signing.
  * - `build.watch`/`build.watchIgnore` → extra paths for `electrobun dev --watch` (rebuild + relaunch
  *   on change). The default watch only covers this app's `src/` + `views/`; we add the workspace
  *   `packages/` so editing a `@spectrum/*` package (proxy, harnesses, drivers, …) also live-reloads.
@@ -76,7 +76,19 @@ const config = {
     },
     // `icons` points at the macOS .iconset (built from the brand squircle icon); Electrobun
     // runs `iconutil` at build time to emit AppIcon.icns (CFBundleIconFile) into the bundle.
-    mac: { createDmg: true, icons: "icon.iconset" },
+    // codesign + notarize the macOS channel builds (`build:stable`/`build:canary`). Electrobun
+    // only signs when buildEnvironment !== "dev" on a macOS host, so local `bun run start`/`dev`/
+    // `build` and the CI dev/smoke build auto-skip — and require no Apple credentials. CI injects
+    // the Developer ID identity + App Store Connect API key via the `macos-codesign-setup`
+    // composite action (env: ELECTROBUN_DEVELOPER_ID, ELECTROBUN_APPLEAPIKEYPATH/KEY/ISSUER).
+    // Default entitlements (allow-jit, allow-unsigned-executable-memory, disable-library-validation)
+    // are correct for the Bun runtime under the hardened runtime notarization requires.
+    mac: {
+      createDmg: true,
+      icons: "icon.iconset",
+      codesign: true,
+      notarize: true,
+    },
     linux: { bundleCEF: true, defaultRenderer: "cef" },
     win: {},
   },
