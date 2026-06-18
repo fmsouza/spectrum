@@ -163,9 +163,9 @@ jobs:
           Remove-Item "stage/${{ matrix.asset }}-cli.exe"
           # OS installer: Windows self-extracting installer, wrapped in a zip by Electrobun.
           if ("${{ steps.app.outcome }}" -eq "success") {
-            $installers = Get-ChildItem "apps/desktop/artifacts" -Filter "*-Setup.exe.zip" -ErrorAction SilentlyContinue
+            $installers = Get-ChildItem "apps/desktop/artifacts" -Filter "*-Setup*.zip" -ErrorAction SilentlyContinue
             if (-not $installers) {
-              Write-Error "No Windows installer (*-Setup.exe.zip) in apps/desktop/artifacts/"
+              Write-Error "No Windows installer (*-Setup*.zip) in apps/desktop/artifacts/"
               Get-ChildItem "apps/desktop/artifacts" -ErrorAction SilentlyContinue | Format-Table
               exit 1
             }
@@ -248,7 +248,7 @@ jobs:
           # The release page must hold ONLY the installer(s) + CLI archive — no feed leakage, no dev bundles.
           for f in stage/*; do
             case "$(basename "$f")" in
-              *-cli.tar.gz|*-cli.zip|*.dmg|*-Setup.tar.gz|*-Setup.exe.zip) ;;
+              *-cli.tar.gz|*-cli.zip|*.dmg|*-Setup.tar.gz|*-Setup*.zip) ;;
               *) echo "::error::Unexpected artifact staged for the release page: $f"; exit 1 ;;
             esac
           done

@@ -20,11 +20,11 @@ release.
 
 | Platform | GUI app | CLI binary | Download |
 |---|:---:|:---:|---|
-| **macOS** — Apple Silicon (`arm64`) | ✅ | ✅ | [app](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-darwin-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-darwin-arm64-cli.tar.gz) |
-| **macOS** — Intel (`x64`) | ✅ | ✅ | [app](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-darwin-x64-app.tar.gz) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-darwin-x64-cli.tar.gz) |
-| **Linux** — `x64` | ✅ | ✅ | [app](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-linux-x64-app.tar.gz) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-linux-x64-cli.tar.gz) |
-| **Linux** — `arm64` | ✅ | ✅ | [app](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-linux-arm64-app.tar.gz) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-linux-arm64-cli.tar.gz) |
-| **Windows** — `x64` | ✅ | ✅ | [app](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-windows-x64-app.zip) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-windows-x64-cli.zip) |
+| **macOS** — Apple Silicon (`arm64`) | ✅ | ✅ | [dmg](https://github.com/fmsouza/spectrum/releases/latest/download/stable-macos-arm64-Spectrum.dmg) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-darwin-arm64-cli.tar.gz) |
+| **macOS** — Intel (`x64`) | ✅ | ✅ | [dmg](https://github.com/fmsouza/spectrum/releases/latest/download/stable-macos-x64-Spectrum.dmg) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-darwin-x64-cli.tar.gz) |
+| **Linux** — `x64` | ✅ | ✅ | [installer](https://github.com/fmsouza/spectrum/releases/latest/download/stable-linux-x64-Spectrum-Setup.tar.gz) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-linux-x64-cli.tar.gz) |
+| **Linux** — `arm64` | ✅ | ✅ | [installer](https://github.com/fmsouza/spectrum/releases/latest/download/stable-linux-arm64-Spectrum-Setup.tar.gz) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-linux-arm64-cli.tar.gz) |
+| **Windows** — `x64` | ✅ | ✅ | [installer](https://github.com/fmsouza/spectrum/releases/latest/download/stable-win-x64-Spectrum-Setup.zip) · [cli](https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-windows-x64-cli.zip) |
 
 Spectrum runs GUI + CLI on macOS, Linux, and Windows. Provider API keys are stored in the
 platform's secret store — macOS Keychain, Linux Secret Service (libsecret), or Windows DPAPI —
@@ -36,17 +36,16 @@ are not yet code-signed.
 
 ### macOS — GUI app
 
-Apple Silicon (`arm64`); for an Intel Mac swap `darwin-arm64` → `darwin-x64` and
-`dev-macos-arm64` → `dev-macos-x64`.
+Apple Silicon (`arm64`); for an Intel Mac swap `macos-arm64` → `macos-x64`.
+
+The `.dmg` is signed with a Developer ID certificate and notarized by Apple, so it runs
+with no Gatekeeper workaround:
 
 ```sh
-curl -L -o spectrum-app.tar.gz \
-  https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-darwin-arm64-app.tar.gz
-tar xzf spectrum-app.tar.gz
-
-# the build is unsigned — clear the Gatekeeper quarantine flag, then install
-xattr -dr com.apple.quarantine stable-macos-arm64/Spectrum.app
-cp -R stable-macos-arm64/Spectrum.app /Applications/
+curl -L -o Spectrum.dmg \
+  https://github.com/fmsouza/spectrum/releases/latest/download/stable-macos-arm64-Spectrum.dmg
+open Spectrum.dmg
+# drag Spectrum.app from the mounted volume into /Applications, then:
 open /Applications/Spectrum.app
 ```
 
@@ -74,10 +73,10 @@ spectrum list harnesses
 
 ```sh
 PLATFORM=linux-x64   # or linux-arm64
-curl -L -o spectrum-app.tar.gz \
-  "https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-${PLATFORM}-app.tar.gz"
-tar xzf spectrum-app.tar.gz
-./stable-${PLATFORM}/Spectrum/bin/launcher
+curl -L -o Spectrum-Setup.tar.gz \
+  "https://github.com/fmsouza/spectrum/releases/latest/download/stable-${PLATFORM}-Spectrum-Setup.tar.gz"
+tar xzf Spectrum-Setup.tar.gz
+./installer
 ```
 
 ### Windows — CLI (PowerShell)
@@ -93,14 +92,14 @@ spectrum list harnesses
 
 ### Windows — GUI app
 
-The build is unsigned — Windows SmartScreen may prompt on first launch. Click
+Windows builds are not yet code-signed — SmartScreen may prompt on first launch. Click
 **More info** → **Run anyway** to proceed.
 
 ```powershell
-Invoke-WebRequest -OutFile spectrum-app.zip `
-  https://github.com/fmsouza/spectrum/releases/latest/download/spectrum-windows-x64-app.zip
-Expand-Archive spectrum-app.zip
-.\stable-windows-x64\Spectrum\bin\launcher.exe
+Invoke-WebRequest -OutFile Spectrum-Setup.zip `
+  https://github.com/fmsouza/spectrum/releases/latest/download/stable-win-x64-Spectrum-Setup.zip
+Expand-Archive Spectrum-Setup.zip
+.\Spectrum-Setup\Spectrum-Setup.exe
 ```
 
 ### Verify the download (optional)
