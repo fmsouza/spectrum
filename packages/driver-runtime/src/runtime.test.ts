@@ -608,10 +608,11 @@ describe("createDriver", () => {
     await Promise.resolve()
     const req = events.find((e) => e.type === "question-requested")
     expect(req).toBeDefined()
+    if (req === undefined || req.type !== "question-requested") throw new Error("expected question-requested")
     const answer: QuestionAnswer = {
       selections: [{ questionIndex: 0, labels: ["A"] }],
     }
-    session.respondQuestion((req as { requestId: string }).requestId, answer)
+    session.respondQuestion(req.requestId, answer)
     await Promise.resolve()
     expect(resolved).toEqual(answer)
     expect(events.some((e) => e.type === "question-resolved")).toBe(true)

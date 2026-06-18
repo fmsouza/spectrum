@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 import type {
   CanonicalEvent,
   PermissionMode,
+  QuestionAnswer,
   RunnerId,
   StoredEvent,
 } from "@spectrum/agent-events"
@@ -444,7 +445,7 @@ describe("createRunManager.handleInbound", () => {
 
 describe("createRunManager.handleInbound run-answer", () => {
   it("routes run-answer to the session", () => {
-    const calls: Array<{ requestId: string }> = []
+    const calls: Array<{ requestId: string; answer: QuestionAnswer }> = []
     const capturingDriver: AgentDriver = {
       start: () =>
         ok({
@@ -452,8 +453,8 @@ describe("createRunManager.handleInbound run-answer", () => {
           onEvent: () => undefined,
           send: () => ok(undefined),
           respondApproval: () => ok(undefined),
-          respondQuestion: (requestId: string) => {
-            calls.push({ requestId })
+          respondQuestion: (requestId: string, answer: QuestionAnswer) => {
+            calls.push({ requestId, answer })
             return ok(undefined)
           },
           interrupt: () => ok(undefined),
@@ -467,9 +468,10 @@ describe("createRunManager.handleInbound run-answer", () => {
       type: "run-answer",
       id: sessionId,
       requestId: "q1",
-      answer: { selections: [] },
+      answer: { selections: [{ questionIndex: 0, labels: ["A"] }] },
     })
     expect(calls[0]?.requestId).toBe("q1")
+    expect(calls[0]?.answer).toEqual({ selections: [{ questionIndex: 0, labels: ["A"] }] })
   })
 })
 
