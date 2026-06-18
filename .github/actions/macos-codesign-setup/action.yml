@@ -29,15 +29,24 @@ runs:
   steps:
     - name: Preflight — required signing secrets present
       shell: bash
+      env:
+        CERT_P12_BASE64: ${{ inputs.certificate-p12-base64 }}
+        CERT_PASSWORD: ${{ inputs.certificate-password }}
+        SIGN_IDENTITY: ${{ inputs.sign-identity }}
+        KEYCHAIN_PASSWORD: ${{ inputs.keychain-password }}
+        API_KEY_P8_BASE64: ${{ inputs.api-key-p8-base64 }}
+        API_KEY_ID: ${{ inputs.api-key-id }}
+        API_ISSUER_ID: ${{ inputs.api-issuer-id }}
       run: |
+        set -euo pipefail
         missing=()
-        [ -n "${{ inputs.certificate-p12-base64 }}" ] || missing+=(MACOS_CERTIFICATE_P12_BASE64)
-        [ -n "${{ inputs.certificate-password }}" ]   || missing+=(MACOS_CERTIFICATE_PASSWORD)
-        [ -n "${{ inputs.sign-identity }}" ]          || missing+=(MACOS_SIGN_IDENTITY)
-        [ -n "${{ inputs.keychain-password }}" ]      || missing+=(MACOS_KEYCHAIN_PASSWORD)
-        [ -n "${{ inputs.api-key-p8-base64 }}" ]      || missing+=(APPLE_API_KEY_P8_BASE64)
-        [ -n "${{ inputs.api-key-id }}" ]             || missing+=(APPLE_API_KEY_ID)
-        [ -n "${{ inputs.api-issuer-id }}" ]          || missing+=(APPLE_API_ISSUER_ID)
+        [ -n "${CERT_P12_BASE64:-}" ]  || missing+=(MACOS_CERTIFICATE_P12_BASE64)
+        [ -n "${CERT_PASSWORD:-}" ]     || missing+=(MACOS_CERTIFICATE_PASSWORD)
+        [ -n "${SIGN_IDENTITY:-}" ]     || missing+=(MACOS_SIGN_IDENTITY)
+        [ -n "${KEYCHAIN_PASSWORD:-}" ] || missing+=(MACOS_KEYCHAIN_PASSWORD)
+        [ -n "${API_KEY_P8_BASE64:-}" ] || missing+=(APPLE_API_KEY_P8_BASE64)
+        [ -n "${API_KEY_ID:-}" ]        || missing+=(APPLE_API_KEY_ID)
+        [ -n "${API_ISSUER_ID:-}" ]     || missing+=(APPLE_API_ISSUER_ID)
         if [ ${#missing[@]} -gt 0 ]; then
           echo "::error::macOS signing secrets missing: ${missing[*]}. Channel builds must be signed — failing."
           exit 1
