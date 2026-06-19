@@ -3,9 +3,23 @@
 // Exits non-zero on any failure.
 import { existsSync, readdirSync, statSync } from "node:fs"
 import { join } from "node:path"
-import { type Platform, detectPlatform } from "@spectrum/platform"
+import { defaultConfig } from "@spectrum/config"
+import {
+  type Platform,
+  channelProxyPortOffset,
+  detectPlatform,
+} from "@spectrum/platform"
 
-const PORT = Number(process.env.LK_PORT ?? "4000")
+/**
+ * The port the smoke polls for /health. The smoke always launches the DEV bundle (CI builds the dev
+ * bundle for the verified-running smoke), whose proxy binds the dev channel's EFFECTIVE port —
+ * mirroring composition: the default proxy port + the dev channel offset (stable 0 / canary 1 /
+ * dev 2). Hardcoding the base port broke the canary build once channels gained per-channel ports.
+ */
+export const smokeHealthPort = (): number =>
+  defaultConfig().settings.proxyPort + channelProxyPortOffset("development")
+
+const PORT = Number(process.env.LK_PORT ?? String(smokeHealthPort()))
 const BUILD_DIR = join(import.meta.dir, "..", "build")
 
 /**
