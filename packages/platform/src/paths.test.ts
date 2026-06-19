@@ -1,5 +1,4 @@
 import { describe, expect, it } from "bun:test"
-import type { Channel } from "./app-env"
 import { resolveAppPaths } from "./paths"
 
 const env = (e: Record<string, string | undefined> = {}) => e
@@ -141,7 +140,7 @@ describe("resolveAppPaths", () => {
       platform: "macos",
       homeDir: "/Users/me",
       env: {},
-      channel: "canary" as Channel,
+      channel: "canary",
     })
     expect(p.dataDir).toBe(
       "/Users/me/Library/Application Support/Spectrum (Canary)",
@@ -155,7 +154,7 @@ describe("resolveAppPaths", () => {
       platform: "linux",
       homeDir: "/home/me",
       env: {},
-      channel: "canary" as Channel,
+      channel: "canary",
     })
     expect(p.dataDir).toBe("/home/me/.config/spectrum-canary")
   })
