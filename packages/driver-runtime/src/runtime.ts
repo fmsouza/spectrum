@@ -169,8 +169,11 @@ export const createDriver = (deps: {
         runOrQueue((h) => h.setMode?.(mode))
         return ok(undefined)
       },
-      setModel: (modelId: ModelId) => {
-        runOrQueue((h) => h.setModel?.(modelId))
+      setModel: (
+        modelId: ModelId | null,
+        env?: Readonly<Record<string, string>>,
+      ) => {
+        runOrQueue((h) => h.setModel?.(modelId, env))
         return ok(undefined)
       },
       close: () => {

@@ -5,6 +5,7 @@ import type {
   QuestionAnswer,
   RunnerId,
 } from "@spectrum/agent-events"
+import type { ModelId } from "@spectrum/types"
 import { createSequentialIdGen } from "@spectrum/utils"
 import type { AdapterCtx, AdapterHandle, DriverAdapter } from "./adapter"
 import { createDriver } from "./runtime"
@@ -566,6 +567,37 @@ describe("createDriver", () => {
     fake.resolveStart()
     await Promise.resolve()
     expect(fake.models).toEqual(["mdl_y"]) // drained into the handle
+  })
+
+  it("forwards the env argument to the adapter handle when setModel is called", async () => {
+    const calls: Array<{
+      modelId: string
+      env: Readonly<Record<string, string>> | undefined
+    }> = []
+    const adapter: DriverAdapter = {
+      supportedModes: ["manual"],
+      start: async () => ({
+        send: () => {},
+        interrupt: () => {},
+        close: () => {},
+        setModel: (modelId, env) =>
+          calls.push({ modelId: String(modelId), env }),
+      }),
+    }
+    const driver = createDriver({
+      adapter,
+      idGen: createSequentialIdGen(),
+      scheduler: sync,
+    })
+    const started = driver.start(startInput)
+    expect(started.ok).toBe(true)
+    if (!started.ok) return
+    // flush the async adapter start promise before calling setModel so the handle exists
+    await Promise.resolve()
+    started.value.setModel?.("mdl_x" as ModelId, { ANTHROPIC_MODEL: "mdl_x" })
+    expect(calls).toEqual([
+      { modelId: "mdl_x", env: { ANTHROPIC_MODEL: "mdl_x" } },
+    ])
   })
 
   it("emits question-requested and resolves requestQuestion on respondQuestion", async () => {

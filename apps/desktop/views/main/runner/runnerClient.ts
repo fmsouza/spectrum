@@ -20,7 +20,7 @@ export interface RunnerClient {
   answer(id: SessionId, requestId: string, answer: QuestionAnswer): void
   interrupt(id: SessionId): void
   setMode(id: SessionId, mode: PermissionMode): void
-  setModel(id: SessionId, modelId: ModelId): void
+  setModel(id: SessionId, modelId: ModelId | null): void
   /** route an inbound RunnerOutbound frame to the registered per-session listener */
   dispatch(message: RunnerOutbound): void
   onEvent(id: SessionId, cb: (event: StoredEvent) => void): void

@@ -1,5 +1,12 @@
 export { type Platform, detectPlatform } from "./platform"
-export { type SpectrumEnv, detectAppEnv, resolveAppEnv } from "./app-env"
+export {
+  type Channel,
+  type SpectrumEnv,
+  detectAppEnv,
+  resolveAppEnv,
+  resolveChannel,
+} from "./app-env"
+export { channelProxyPortOffset } from "./proxy-port"
 export {
   type AppPaths,
   type ResolveAppPathsInput,
