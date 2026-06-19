@@ -8,8 +8,7 @@ import {
 import { resolveAppPaths } from "@spectrum/platform"
 import { createProjectStore } from "@spectrum/projects"
 import { createInMemoryRuntimeState } from "@spectrum/proxy"
-import { ok } from "@spectrum/utils"
-import { err } from "@spectrum/utils"
+import { err, ok } from "@spectrum/utils"
 import { createAppContext } from "./composition"
 import type { CreateAppContextDeps } from "./composition"
 import { DEMO_HARNESS_ID } from "./gui/driver-registry"
@@ -702,5 +701,64 @@ describe("createAppContext resolveModelEnv wiring", () => {
     expect(env.ANTHROPIC_BASE_URL).toContain("127.0.0.1")
     expect(env.ANTHROPIC_BASE_URL).toContain("9999")
     expect(env.ANTHROPIC_MODEL).toBe("mdl_default")
+  })
+
+  it("returns {} when the harnessId is not registered", async () => {
+    let capturedResolveModelEnv:
+      | ((input: {
+          readonly harnessId: import("@spectrum/types").HarnessId
+          readonly modelId: import("@spectrum/types").ModelId
+        }) => Promise<Readonly<Record<string, string>>>)
+      | undefined
+
+    const { deps } = makeFakeDeps()
+
+    // Provide a minimal config store so composition.ts can call .load() without error.
+    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
+      () => ({
+        load: async () =>
+          ok({
+            version: 2,
+            providers: [],
+            models: [],
+            settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+          }),
+        save: async () => ok(undefined),
+      })
+
+    // Provide a minimal registry so resolveModelEnv can call registry.list() without error.
+    // list() returns an empty harness list so any harnessId lookup finds nothing → returns {}.
+    ;(deps as { createRegistry: unknown }).createRegistry = () => ({
+      list: async () => ok([]),
+      add: async () => ok(undefined),
+      remove: async () => ok(undefined),
+    })
+
+    // Override createRunManager to capture the resolveModelEnv it receives.
+    ;(deps as { createRunManager: unknown }).createRunManager = ((managerDeps: {
+      resolveModelEnv?: (input: {
+        readonly harnessId: import("@spectrum/types").HarnessId
+        readonly modelId: import("@spectrum/types").ModelId
+      }) => Promise<Readonly<Record<string, string>>>
+    }) => {
+      capturedResolveModelEnv = managerDeps.resolveModelEnv
+      return {
+        launch: () => ok({ sessionId: "s1" }),
+        handleInbound: () => undefined,
+        bindSend: () => undefined,
+      }
+    }) as never
+
+    createAppContext(deps)
+
+    expect(capturedResolveModelEnv).toBeDefined()
+    if (capturedResolveModelEnv === undefined) return
+
+    const env = await capturedResolveModelEnv({
+      harnessId: "not-a-real-harness" as import("@spectrum/types").HarnessId,
+      modelId: "mdl_any" as import("@spectrum/types").ModelId,
+    })
+
+    expect(env).toEqual({})
   })
 })
