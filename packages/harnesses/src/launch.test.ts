@@ -6,6 +6,7 @@ import {
   ModelIdSchema,
 } from "@spectrum/types"
 import { type Result, err, isOk } from "@spectrum/utils"
+import { claude as claudeBuiltin } from "./builtin"
 import {
   type CommandResolver,
   createFakeCommandResolver,
@@ -370,5 +371,16 @@ describe("launchHarness", () => {
 
     expect(r.ok).toBe(true)
     expect(logger.records).toEqual([])
+  })
+
+  it("renders ANTHROPIC_SMALL_FAST_MODEL equal to the route model for a proxied claude launch", () => {
+    const resolve = resolveHarnessLaunch({
+      resolver: createFakeCommandResolver({ claude: "/usr/bin/claude" }),
+    })
+    const result = resolve({ harness: claudeBuiltin, route: proxiedRoute })
+    expect(isOk(result)).toBe(true)
+    if (!isOk(result)) return
+    expect(result.value.env.ANTHROPIC_SMALL_FAST_MODEL).toBe("mdl_x")
+    expect(result.value.env.ANTHROPIC_MODEL).toBe("mdl_x")
   })
 })
