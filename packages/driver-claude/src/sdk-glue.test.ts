@@ -390,21 +390,25 @@ describe("createClaudeAdapter", () => {
     await expect(denyP).resolves.toMatchObject({ behavior: "deny" })
   })
 
-  it("routes onUserDialog through ctx.requestQuestion and returns completed result", async () => {
+  it("routes AskUserQuestion through ctx.requestQuestion and returns allow with updatedInput answers", async () => {
     const fake = makeFakeSdk([])
     const emitted: CanonicalEvent[] = []
+    const approvals: Array<{
+      runnerId: RunnerId
+      resolve: (d: "allow" | "deny") => void
+    }> = []
     const questions: Array<{
       runnerId: RunnerId
       requestId: string
       resolve: (a: QuestionAnswer) => void
     }> = []
     const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
-    await adapter.start(input, makeCtx(emitted, [], questions))
+    await adapter.start(input, makeCtx(emitted, approvals, questions))
 
-    const opts = fake.capturedOptions()
-    expect(opts.supportedDialogKinds).toContain("ask_user_question")
+    const canUseTool = fake.capturedOptions().canUseTool
+    if (canUseTool === undefined) throw new Error("canUseTool not set")
 
-    const payload = {
+    const toolInput = {
       questions: [
         {
           question: "Which library?",
@@ -415,16 +419,18 @@ describe("createClaudeAdapter", () => {
       ],
     }
 
-    if (opts.onUserDialog === undefined) throw new Error("onUserDialog not set")
-    const resultP = opts.onUserDialog(
-      { dialogKind: "ask_user_question", payload },
-      { signal: new AbortController().signal },
-    )
+    const resultP = canUseTool("AskUserQuestion", toolInput, {
+      signal: new AbortController().signal,
+      toolUseID: "t1",
+    })
+
     // Allow requestQuestion to be called and emit the question-requested event
     await Promise.resolve()
 
-    const req = emitted.find((e) => e.type === "question-requested")
-    expect(req).toBeDefined()
+    // A question-requested event must have been emitted, NO approval-requested
+    const questionReq = emitted.find((e) => e.type === "question-requested")
+    expect(questionReq).toBeDefined()
+    expect(approvals).toHaveLength(0)
 
     // Resolve the pending question
     questions[0]?.resolve({
@@ -432,33 +438,26 @@ describe("createClaudeAdapter", () => {
     })
 
     const result = await resultP
-    expect(result).toEqual({ behavior: "completed", result: expect.anything() })
+    expect(result).toMatchObject({ behavior: "allow" })
+    const allowResult = result as {
+      behavior: "allow"
+      updatedInput: { answers: Record<string, string> }
+    }
+    expect(allowResult.updatedInput.answers["Which library?"]).toBe("date-fns")
   })
 
-  it("returns cancelled from onUserDialog when the payload is malformed", async () => {
+  it("denies AskUserQuestion when the signal is already aborted", async () => {
     const fake = makeFakeSdk([])
     const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
     await adapter.start(input, makeCtx([], []))
 
-    const opts = fake.capturedOptions()
-    if (opts.onUserDialog === undefined) throw new Error("onUserDialog not set")
-    const result = await opts.onUserDialog(
-      { dialogKind: "ask_user_question", payload: { nope: 1 } },
-      { signal: new AbortController().signal },
-    )
-    expect(result).toEqual({ behavior: "cancelled" })
-  })
+    const canUseTool = fake.capturedOptions().canUseTool
+    if (canUseTool === undefined) throw new Error("canUseTool not set")
 
-  it("returns cancelled from onUserDialog when the signal is already aborted", async () => {
-    const fake = makeFakeSdk([])
-    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
-    await adapter.start(input, makeCtx([], []))
-
-    const opts = fake.capturedOptions()
-    if (opts.onUserDialog === undefined) throw new Error("onUserDialog not set")
     const abort = new AbortController()
     abort.abort()
-    const payload = {
+
+    const toolInput = {
       questions: [
         {
           question: "Which library?",
@@ -468,11 +467,28 @@ describe("createClaudeAdapter", () => {
         },
       ],
     }
-    const result = await opts.onUserDialog(
-      { dialogKind: "ask_user_question", payload },
-      { signal: abort.signal },
+
+    const result = await canUseTool("AskUserQuestion", toolInput, {
+      signal: abort.signal,
+      toolUseID: "t2",
+    })
+    expect(result).toMatchObject({ behavior: "deny" })
+  })
+
+  it("denies AskUserQuestion when the input is malformed", async () => {
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    await adapter.start(input, makeCtx([], []))
+
+    const canUseTool = fake.capturedOptions().canUseTool
+    if (canUseTool === undefined) throw new Error("canUseTool not set")
+
+    const result = await canUseTool(
+      "AskUserQuestion",
+      { nope: 1 },
+      { signal: new AbortController().signal, toolUseID: "t3" },
     )
-    expect(result).toEqual({ behavior: "cancelled" })
+    expect(result).toEqual({ behavior: "deny", message: expect.any(String) })
   })
 
   it("send pushes a user message into the streaming-input prompt", async () => {
@@ -1235,5 +1251,114 @@ describe("createClaudeAdapter", () => {
     // Exactly TWO queries: the original + one restart.
     // A third query would mean the stale rejection triggered an extra restart.
     expect(queries).toHaveLength(2)
+  })
+
+  // --- Task 2: refusal_fallback_prompt dialog via onUserDialog ----------------------------
+
+  it("declares the refusal_fallback_prompt dialog kind", async () => {
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    await adapter.start(input, makeCtx([], []))
+    const opts = fake.capturedOptions()
+    expect(opts.supportedDialogKinds).toContain("refusal_fallback_prompt")
+    expect(opts.supportedDialogKinds).not.toContain("ask_user_question")
+  })
+
+  it("routes a refusal_fallback_prompt dialog through ctx.requestQuestion and returns the chosen result", async () => {
+    const fake = makeFakeSdk([])
+    const emitted: CanonicalEvent[] = []
+    const approvals: Array<{
+      runnerId: RunnerId
+      resolve: (d: "allow" | "deny") => void
+    }> = []
+    const questions: Array<{
+      runnerId: RunnerId
+      requestId: string
+      resolve: (a: QuestionAnswer) => void
+    }> = []
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    await adapter.start(input, makeCtx(emitted, approvals, questions))
+
+    const onUserDialog = fake.capturedOptions().onUserDialog
+    if (onUserDialog === undefined) throw new Error("onUserDialog not set")
+
+    const signal = new AbortController().signal
+    const resultP = onUserDialog(
+      {
+        dialogKind: "refusal_fallback_prompt",
+        payload: { originalModel: "opus", fallbackModel: "sonnet" },
+      },
+      { signal },
+    )
+
+    // Allow requestQuestion to be called
+    await Promise.resolve()
+
+    const questionReq = emitted.find((e) => e.type === "question-requested")
+    if (questionReq?.type !== "question-requested")
+      throw new Error("expected a question-requested event")
+
+    // Resolve with the FIRST option's label, read from the prompt the glue emitted,
+    // so this stays coupled to the real mapper output (a label rename must break it).
+    const retryLabel = questionReq.prompt.questions[0]?.options[0]?.label
+    if (retryLabel === undefined)
+      throw new Error("expected a retry option label")
+    questions[0]?.resolve({
+      selections: [{ questionIndex: 0, labels: [retryLabel] }],
+    })
+
+    const result = await resultP
+    expect(result).toEqual({ behavior: "completed", result: "retry_fallback" })
+  })
+
+  it("returns cancelled for an unrecognized dialog kind", async () => {
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    await adapter.start(input, makeCtx([], []))
+
+    const onUserDialog = fake.capturedOptions().onUserDialog
+    if (onUserDialog === undefined) throw new Error("onUserDialog not set")
+
+    const result = await onUserDialog(
+      { dialogKind: "something_else", payload: {} },
+      { signal: new AbortController().signal },
+    )
+    expect(result).toEqual({ behavior: "cancelled" })
+  })
+
+  it("returns cancelled when the refusal payload is malformed", async () => {
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    await adapter.start(input, makeCtx([], []))
+
+    const onUserDialog = fake.capturedOptions().onUserDialog
+    if (onUserDialog === undefined) throw new Error("onUserDialog not set")
+
+    const result = await onUserDialog(
+      { dialogKind: "refusal_fallback_prompt", payload: { nope: 1 } },
+      { signal: new AbortController().signal },
+    )
+    expect(result).toEqual({ behavior: "cancelled" })
+  })
+
+  it("returns cancelled when the signal is already aborted", async () => {
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    await adapter.start(input, makeCtx([], [], []))
+
+    const onUserDialog = fake.capturedOptions().onUserDialog
+    if (onUserDialog === undefined) throw new Error("onUserDialog not set")
+
+    const abort = new AbortController()
+    abort.abort()
+
+    const result = await onUserDialog(
+      {
+        dialogKind: "refusal_fallback_prompt",
+        payload: { originalModel: "opus", fallbackModel: "sonnet" },
+      },
+      { signal: abort.signal },
+    )
+    expect(result).toEqual({ behavior: "cancelled" })
   })
 })
