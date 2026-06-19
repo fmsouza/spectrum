@@ -205,6 +205,9 @@ export const createClaudeAdapter = (deps: {
     let currentMode = toClaudePermissionMode(input.permissionMode ?? "manual")
     let currentModel =
       input.modelId !== undefined ? String(input.modelId) : undefined
+    // Mutable env: setModel may swap the route (direct↔proxied) by supplying a freshly
+    // rendered proxy env. launch()/restart() always read the CURRENT env.
+    let currentEnv: Readonly<Record<string, string>> = input.env
 
     log?.info("claude adapter starting", {
       cwd: input.cwd,
@@ -272,7 +275,7 @@ export const createClaudeAdapter = (deps: {
         prompt: inputStream.stream,
         options: {
           cwd: input.cwd,
-          env: { ...(deps.baseEnv?.() ?? {}), ...input.env },
+          env: { ...(deps.baseEnv?.() ?? {}), ...currentEnv },
           ...(currentModel !== undefined ? { model: currentModel } : {}),
           abortController: abort,
           permissionMode: currentMode,
@@ -445,12 +448,15 @@ export const createClaudeAdapter = (deps: {
           })
         }
       },
-      setModel: (modelId) => {
+      setModel: (modelId, env) => {
         // Model is fixed per SDK query (the SDK reads `options.model` at query() time and
         // does not support a live-switch endpoint). To change models we relaunch resuming
         // the same claude session so conversation history is preserved. "default" (no
         // model) is not reachable here — the selector only sends real route ids.
+        // An optional env swaps the route — a direct-launched session becomes proxied
+        // when a real model is picked.
         currentModel = String(modelId)
+        if (env !== undefined) currentEnv = env
         restart()
       },
       interrupt: () => {

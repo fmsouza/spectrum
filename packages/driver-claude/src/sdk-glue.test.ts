@@ -691,6 +691,57 @@ describe("createClaudeAdapter", () => {
     expect(queries[1]?.options?.resume).toBe("sess_mdl")
   })
 
+  it("relaunches with the new env and model when setModel is called with an env", async () => {
+    const launchedEnvs: Array<Record<string, string | undefined>> = []
+    const fakeSdk: ClaudeSdk = {
+      query: (args) => {
+        launchedEnvs.push({ ...(args.options?.env ?? {}) })
+        // Build a minimal multi-query compatible fake: async-iterable that blocks until closed.
+        const done = { resolve: (): void => {} }
+        const doneP = new Promise<void>((r) => {
+          done.resolve = r
+        })
+        const iterator = (async function* (): AsyncGenerator<SdkMessageLike> {
+          // Yield a system:init so the glue captures the session id.
+          yield {
+            type: "system",
+            subtype: "init",
+            model: "m",
+            session_id: "sess_env_test",
+          } as SdkMessageLike
+          await doneP
+        })()
+        const q: ClaudeQuery = Object.assign(iterator, {
+          interrupt: async () => {},
+          close: () => {
+            done.resolve()
+          },
+        })
+        return q
+      },
+    }
+    const adapter = createClaudeAdapter({ loadSdk: async () => fakeSdk })
+    const handle = await adapter.start(
+      {
+        harnessId: "claude" as never,
+        cwd: "/tmp",
+        env: {},
+      },
+      makeCtx([], []),
+    )
+    // Allow the first query's system:init to be processed (capturing the session id).
+    await new Promise((r) => setTimeout(r, 20))
+    handle.setModel?.("mdl_x" as never, {
+      ANTHROPIC_BASE_URL: "http://127.0.0.1:4000",
+      ANTHROPIC_MODEL: "mdl_x",
+    })
+    // Allow the restart to happen.
+    await new Promise((r) => setTimeout(r, 20))
+    const last = launchedEnvs.at(-1)
+    expect(last?.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:4000")
+    expect(last?.ANTHROPIC_MODEL).toBe("mdl_x")
+  })
+
   it("setModel does not emit errored when the old query throws on teardown", async () => {
     const { sdk, queries } = makeMultiQueryFakeSdk("resolve", true)
     const adapter = createClaudeAdapter({ loadSdk: async () => sdk })
