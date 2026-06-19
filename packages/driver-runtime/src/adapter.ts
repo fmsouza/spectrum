@@ -21,7 +21,7 @@ export interface AdapterHandle {
   /** Switch the normalized permission mode (apply natively now, or stash for the next turn). */
   setMode?(mode: PermissionMode): void
   /** Switch the model (apply natively now, resume-restart, or fresh session). */
-  setModel?(modelId: ModelId): void
+  setModel?(modelId: ModelId, env?: Readonly<Record<string, string>>): void
 }
 
 /** What the runtime gives the adapter: a push channel + the approval bridge + runner-id minting. */
