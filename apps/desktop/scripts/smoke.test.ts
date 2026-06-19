@@ -2,7 +2,17 @@ import { describe, expect, it } from "bun:test"
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { isLauncherEntry, resolveAppExecutable } from "./smoke"
+import { isLauncherEntry, resolveAppExecutable, smokeHealthPort } from "./smoke"
+
+describe("smokeHealthPort", () => {
+  it("polls the dev bundle's channel-offset proxy port, not the base port", () => {
+    // The smoke launches the DEV bundle, whose proxy binds the dev channel's effective port:
+    // the base proxy port (4000) + the dev channel offset (2) = 4002. Polling the base 4000
+    // (the old hardcoded default) never gets a /health response, which broke the canary build.
+    expect(smokeHealthPort()).toBe(4002)
+    expect(smokeHealthPort()).not.toBe(4000)
+  })
+})
 
 describe("isLauncherEntry", () => {
   it("matches the Electrobun launcher on posix platforms", () => {
