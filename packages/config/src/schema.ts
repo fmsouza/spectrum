@@ -42,6 +42,15 @@ export const SettingsSchema = z
      * version re-triggers it. `null` = nothing dismissed.
      */
     dismissedUpdateVersion: z.string().nullable().default(null),
+    /**
+     * Max ms to wait for the FIRST streamed chunk from the LLM provider before
+     * treating the stream as a silent hang. Generous by default — slow/local
+     * models warm up slowly; genuine provider errors surface instantly via the
+     * proxy's error fast-path regardless of this value.
+     */
+    firstTokenTimeoutMs: z.number().int().min(5000).max(600000).default(120000),
+    /** Max ms of idle gap BETWEEN streamed chunks before treating the stream as hung. */
+    interTokenTimeoutMs: z.number().int().min(1000).max(600000).default(60000),
   })
   .strict()
 

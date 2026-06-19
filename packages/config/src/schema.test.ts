@@ -26,6 +26,8 @@ describe("SettingsSchema", () => {
       lastByHarness: {},
       updateChannel: "stable",
       dismissedUpdateVersion: null,
+      firstTokenTimeoutMs: 120000,
+      interTokenTimeoutMs: 60000,
     })
   })
   it("rejects a non-loopback proxyHost so the proxy can never bind a public interface", () => {
@@ -128,6 +130,8 @@ describe("ConfigSchema", () => {
         lastByHarness: {},
         updateChannel: "stable",
         dismissedUpdateVersion: null,
+        firstTokenTimeoutMs: 120000,
+        interTokenTimeoutMs: 60000,
       },
     }
     expect(ConfigSchema.parse(config)).toEqual(config)
@@ -157,6 +161,23 @@ describe("ConfigSchema", () => {
   })
 })
 
+describe("SettingsSchema timeout fields", () => {
+  it("defaults firstTokenTimeoutMs to 120000 and interTokenTimeoutMs to 60000", () => {
+    const s = SettingsSchema.parse({})
+    expect(s.firstTokenTimeoutMs).toBe(120000)
+    expect(s.interTokenTimeoutMs).toBe(60000)
+  })
+
+  it("rejects a firstTokenTimeoutMs below the 5000ms floor", () => {
+    expect(() => SettingsSchema.parse({ firstTokenTimeoutMs: 100 })).toThrow()
+  })
+
+  it("accepts an old config that omits the timeout fields (additive defaults, no migration)", () => {
+    const s = SettingsSchema.parse({ proxyPort: 4000, proxyHost: "127.0.0.1" })
+    expect(s.firstTokenTimeoutMs).toBe(120000)
+  })
+})
+
 describe("defaultConfig", () => {
   it("returns the current version, empty providers/models, and loopback defaults", () => {
     expect(defaultConfig()).toEqual({
@@ -172,6 +193,8 @@ describe("defaultConfig", () => {
         lastByHarness: {},
         updateChannel: "stable",
         dismissedUpdateVersion: null,
+        firstTokenTimeoutMs: 120000,
+        interTokenTimeoutMs: 60000,
       },
     })
   })
