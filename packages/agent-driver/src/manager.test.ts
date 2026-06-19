@@ -601,15 +601,20 @@ describe("createRunManager.handleInbound run-set-model", () => {
       }),
     )
 
+    let capturedHarnessId: HarnessId | undefined
     const resolveModelEnv = async ({
+      harnessId: resolvedHarnessId,
       modelId,
     }: {
       harnessId: HarnessId
       modelId: ModelId
-    }): Promise<Readonly<Record<string, string>>> => ({
-      ANTHROPIC_BASE_URL: "http://127.0.0.1:4000",
-      ANTHROPIC_MODEL: String(modelId),
-    })
+    }): Promise<Readonly<Record<string, string>>> => {
+      capturedHarnessId = resolvedHarnessId
+      return {
+        ANTHROPIC_BASE_URL: "http://127.0.0.1:4000",
+        ANTHROPIC_MODEL: String(modelId),
+      }
+    }
 
     const { deps } = makeDeps(scriptOf([]))
     const manager = createRunManager({ ...deps, driver, resolveModelEnv })
@@ -639,6 +644,64 @@ describe("createRunManager.handleInbound run-set-model", () => {
         },
       },
     ])
+    expect(capturedHarnessId).toBe("claude" as HarnessId)
+  })
+
+  it("logs an error via the injected logger when resolveModelEnv rejects", async () => {
+    const { logger, calls } = createFakeLogger()
+    const capturingDriver: AgentDriver = {
+      start: () =>
+        ok({
+          rootRunnerId: root,
+          onEvent: () => undefined,
+          send: () => ok(undefined),
+          respondApproval: () => ok(undefined),
+          respondQuestion: () => ok(undefined),
+          interrupt: () => ok(undefined),
+          close: () => ok(undefined),
+          setModel: () => ok(undefined),
+        }),
+    }
+    const resolveModelEnv = async (_input: {
+      harnessId: HarnessId
+      modelId: ModelId
+    }): Promise<Readonly<Record<string, string>>> => {
+      throw new Error("env resolution boom")
+    }
+    const { deps } = makeDeps(scriptOf([]))
+    const manager = createRunManager({
+      ...deps,
+      driver: capturingDriver,
+      logger,
+      resolveModelEnv,
+    })
+    const launched = manager.launch({
+      harnessId: "claude" as HarnessId,
+      cwd: "/tmp",
+      env: {},
+    })
+    expect(isOk(launched)).toBe(true)
+    if (!isOk(launched)) return
+
+    manager.handleInbound({
+      type: "run-set-model",
+      id: launched.value.sessionId,
+      modelId: "mdl_x" as ModelId,
+    })
+
+    await new Promise((r) => setTimeout(r, 0))
+
+    const errLog = calls.find(
+      (c) => c.level === "error" && c.msg === "resolveModelEnv failed",
+    )
+    expect(errLog).toBeDefined()
+    expect(errLog?.fields).toMatchObject({
+      harnessId: "claude",
+      modelId: "mdl_x",
+      error: "env resolution boom",
+    })
+    // Must NOT log the env or any secret
+    expect(JSON.stringify(errLog?.fields)).not.toContain("ANTHROPIC")
   })
 })
 

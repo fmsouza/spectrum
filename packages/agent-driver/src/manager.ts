@@ -188,6 +188,14 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
         void deps
           .resolveModelEnv({ harnessId, modelId: message.modelId })
           .then((env) => agent.setModel?.(message.modelId, env))
+          .catch((err: unknown) => {
+            logger.error("resolveModelEnv failed", {
+              sessionId: message.id,
+              harnessId,
+              modelId: message.modelId,
+              error: err instanceof Error ? err.message : String(err),
+            })
+          })
         return
       }
       default:
