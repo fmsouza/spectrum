@@ -115,6 +115,7 @@ import { startRunnerSocket } from "./gui/runner-socket"
 import { createElectrobunUpdater } from "./gui/updater/electrobun-updater"
 import type { UpdaterAdapter } from "./gui/updater/updater-adapter"
 import { isWindowFocused } from "./gui/window"
+import { migrateProductionToCanary } from "./migrate-canary-data"
 import {
   migrateLaunchkitToSpectrum,
   migrateLegacyMacosConfig,
@@ -270,6 +271,7 @@ export interface CreateAppContextDeps {
   readonly ensureDir: (dir: string) => void
   readonly migrateLegacyMacosConfig: typeof migrateLegacyMacosConfig
   readonly migrateLaunchkitToSpectrum: typeof migrateLaunchkitToSpectrum
+  readonly migrateProductionToCanary: typeof migrateProductionToCanary
   readonly createFsConfigFile: typeof createFsConfigFile
   readonly createFileConfigStore: typeof createFileConfigStore
   readonly createCachedConfigStore: typeof createCachedConfigStore
@@ -336,6 +338,7 @@ const realDeps: CreateAppContextDeps = {
   },
   migrateLegacyMacosConfig,
   migrateLaunchkitToSpectrum,
+  migrateProductionToCanary,
   createFsConfigFile,
   createFileConfigStore,
   createCachedConfigStore,
@@ -517,6 +520,16 @@ export const createAppContext = (
       env: deps.env,
     })
     deps.migrateLaunchkitToSpectrum({
+      platform: deps.platform,
+      homeDir: deps.homeDir(),
+      env: deps.env,
+    })
+  }
+  // One-time seed: copy the production data dir into the canary dir on first canary run so the user
+  // keeps their providers/models/sessions. The OS keychain stays shared, so copied secret refs
+  // resolve. No-op once the canary dir exists. Must run BEFORE ensureDir/db-open.
+  if (channel === "canary") {
+    deps.migrateProductionToCanary({
       platform: deps.platform,
       homeDir: deps.homeDir(),
       env: deps.env,

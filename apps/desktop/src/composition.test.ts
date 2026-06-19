@@ -35,6 +35,7 @@ const makeFakeDeps = (): {
     }) as never,
     migrateLegacyMacosConfig: record("migrateLegacyMacosConfig") as never,
     migrateLaunchkitToSpectrum: record("migrateLaunchkitToSpectrum") as never,
+    migrateProductionToCanary: record("migrateProductionToCanary") as never,
     createFsConfigFile: record("createFsConfigFile") as never,
     createFileConfigStore: record("createFileConfigStore") as never,
     createCachedConfigStore: record("createCachedConfigStore") as never,
