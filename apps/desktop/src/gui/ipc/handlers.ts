@@ -295,7 +295,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       if (effectiveModelId === undefined) {
         route = { kind: "direct" }
       } else {
-        const proxyUrl = `http://${config.settings.proxyHost}:${config.settings.proxyPort}`
+        const proxyUrl = `http://${config.settings.proxyHost}:${ctx.proxyPort}`
         // The GUI proxy runs persistently and stored its per-run key in runtime state; reuse it so
         // the running proxy accepts the harness's requests. If absent, mint a fresh key (security.md).
         const proxyKey = (await ctx.runtime.readProxyKey()) ?? ctx.genProxyKey()

@@ -65,11 +65,13 @@ import {
 } from "@spectrum/logger"
 import {
   type Platform,
+  channelProxyPortOffset,
   detectPlatform,
   legacyLaunchkitDataDir,
   legacyMacosConfigDir,
   resolveAppEnv,
   resolveAppPaths,
+  resolveChannel,
 } from "@spectrum/platform"
 import {
   createDraftProviderTester,
@@ -505,6 +507,7 @@ export const createAppContext = (
 ): AppContext => {
   const buildChannel = deps.readBuildChannel()
   const appEnv = resolveAppEnv({ buildChannel, env: deps.env })
+  const channel = resolveChannel({ buildChannel, env: deps.env })
 
   // Legacy data lived only under the production dirs; never migrate it into a dev sandbox.
   if (appEnv === "production") {
@@ -524,6 +527,7 @@ export const createAppContext = (
     homeDir: deps.homeDir(),
     env: deps.env,
     appEnv,
+    channel,
   })
   const configFile = paths.configFile
   const dbFile = paths.dbFile
@@ -812,7 +816,7 @@ export const createAppContext = (
       ? listed.value.find((h) => h.id === input.harnessId)
       : undefined
     if (harness === undefined) return {}
-    const proxyUrl = `http://${cfg.settings.proxyHost}:${cfg.settings.proxyPort}`
+    const proxyUrl = `http://${cfg.settings.proxyHost}:${proxyPort}`
     const proxyKey = (await runtime.readProxyKey()) ?? genProxyKey()
     const resolved = resolveLaunch({
       harness,
@@ -867,7 +871,7 @@ export const createAppContext = (
 
   // proxy settings resolved from the default config shape (loopback only, security.md)
   const settings = defaultConfig().settings
-  const proxyPort = settings.proxyPort
+  const proxyPort = settings.proxyPort + channelProxyPortOffset(channel)
   const proxyBaseUrl = `http://${settings.proxyHost}:${proxyPort}`
 
   /**

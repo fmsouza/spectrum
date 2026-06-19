@@ -954,6 +954,26 @@ describe("createIpcHandlers.launchHarness", () => {
   })
 })
 
+describe("createIpcHandlers.launchHarness effective proxy port", () => {
+  it("uses the effective (channel-offset) proxy port in the launch proxy URL", async () => {
+    // ctx.proxyPort = 4001 (canary offset); the handler must build proxyUrl from ctx.proxyPort
+    const { ctx, runnerLaunchInputs } = makeCtx({
+      providers: [provider()],
+      proxyKeyStored: "stored-run-key",
+      proxyPort: 4001,
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({
+      id: "claude" as HarnessId,
+      modelId: "mdl_x" as ModelId,
+    })
+
+    const input = runnerLaunchInputs[0] as { env: Record<string, string> }
+    expect(input.env.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:4001")
+  })
+})
+
 describe("createIpcHandlers.getHarnesses", () => {
   it("getHarnesses sets native from the driver registry", async () => {
     const { ctx } = makeCtx({ nativeHarnessId: "claude" })

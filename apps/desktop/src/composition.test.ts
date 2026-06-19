@@ -356,6 +356,22 @@ describe("createAppContext wiring", () => {
     expect(ctx.proxyPort).toBe(4000)
   })
 
+  it("offsets the proxy port for canary (base + 1)", () => {
+    const { deps } = makeFakeDeps()
+    ;(deps as { readBuildChannel: unknown }).readBuildChannel = () => "canary"
+    const ctx = createAppContext(deps)
+    expect(ctx.proxyPort).toBe(4001)
+    expect(ctx.proxyBaseUrl).toBe("http://127.0.0.1:4001")
+  })
+
+  it("keeps port 4000 for stable (offset 0)", () => {
+    const { deps } = makeFakeDeps()
+    ;(deps as { readBuildChannel: unknown }).readBuildChannel = () => "stable"
+    const ctx = createAppContext(deps)
+    expect(ctx.proxyPort).toBe(4000)
+    expect(ctx.proxyBaseUrl).toBe("http://127.0.0.1:4000")
+  })
+
   it("exposes a pickFolder function on the context", () => {
     const { deps } = makeFakeDeps()
     const ctx = createAppContext(deps)
@@ -649,7 +665,11 @@ describe("createAppContext resolveModelEnv wiring", () => {
     ;(deps as { createFileRuntimeState: unknown }).createFileRuntimeState =
       () => runtimeState
 
-    // Override createCachedConfigStore to return a config with known proxyHost/proxyPort.
+    // Override createCachedConfigStore to return a config with known proxyHost.
+    // NOTE: proxyPort in config is no longer the source for resolveModelEnv — the composition-level
+    // effective port (defaultConfig().settings.proxyPort + channelProxyPortOffset(channel)) is used
+    // instead. For the stable channel (readBuildChannel returns undefined → stable), offset=0, so
+    // effective port = 4000.
     ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
       () => ({
         load: async () =>
@@ -698,8 +718,10 @@ describe("createAppContext resolveModelEnv wiring", () => {
       modelId: "mdl_default" as import("@spectrum/types").ModelId,
     })
 
+    // The host comes from config (127.0.0.1); the port comes from the effective composition-level
+    // proxyPort (defaultConfig base=4000 + stable offset=0 = 4000), NOT from cfg.settings.proxyPort.
     expect(env.ANTHROPIC_BASE_URL).toContain("127.0.0.1")
-    expect(env.ANTHROPIC_BASE_URL).toContain("9999")
+    expect(env.ANTHROPIC_BASE_URL).toContain("4000")
     expect(env.ANTHROPIC_MODEL).toBe("mdl_default")
   })
 
@@ -811,5 +833,91 @@ describe("createAppContext resolveModelEnv wiring", () => {
     })
 
     expect(env).toEqual({})
+  })
+
+  it("resolveModelEnv uses the effective (channel-offset) proxy port for canary", async () => {
+    // A canary build should route resolveModelEnv through port 4001 (base 4000 + offset 1)
+    let capturedResolveModelEnv:
+      | ((input: {
+          readonly harnessId: import("@spectrum/types").HarnessId
+          readonly modelId: import("@spectrum/types").ModelId
+        }) => Promise<Readonly<Record<string, string>>>)
+      | undefined
+
+    const { deps } = makeFakeDeps()
+
+    // Set the build channel to canary
+    ;(deps as { readBuildChannel: unknown }).readBuildChannel = () => "canary"
+
+    // Override createPathCommandResolver to return a fake that resolves "claude".
+    ;(
+      deps as { createPathCommandResolver: unknown }
+    ).createPathCommandResolver = () =>
+      createFakeCommandResolver({ claude: "/usr/local/bin/claude" }, "linux")
+
+    // Override createRegistry to return a real in-memory registry (builtins only, including claude).
+    ;(deps as { createRegistry: unknown }).createRegistry = () =>
+      createRegistry({
+        fileSource: createInMemoryHarnessFileSource([]),
+      })
+
+    // Override createFileRuntimeState to return an in-memory runtime state with a known key.
+    const runtimeState = createInMemoryRuntimeState()
+    await runtimeState.writeProxyKey("test-proxy-key-abc")
+    ;(deps as { createFileRuntimeState: unknown }).createFileRuntimeState =
+      () => runtimeState
+
+    // Config with base proxyPort = 4000; effective port for canary = 4001
+    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
+      () => ({
+        load: async () =>
+          ok({
+            version: 2,
+            providers: [
+              {
+                id: "p1",
+                name: "Local",
+                sdkProvider: "openai",
+                config: {},
+                secrets: {},
+                models: ["gpt-4o"],
+              },
+            ],
+            models: [
+              { id: "mdl_default", providerId: "p1", providerModel: "gpt-4o" },
+            ],
+            settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+          }),
+        save: async () => ok(undefined),
+      })
+
+    // Override createRunManager to capture the resolveModelEnv it receives.
+    ;(deps as { createRunManager: unknown }).createRunManager = ((managerDeps: {
+      resolveModelEnv?: (input: {
+        readonly harnessId: import("@spectrum/types").HarnessId
+        readonly modelId: import("@spectrum/types").ModelId
+      }) => Promise<Readonly<Record<string, string>>>
+    }) => {
+      capturedResolveModelEnv = managerDeps.resolveModelEnv
+      return {
+        launch: () => ok({ sessionId: "s1" }),
+        handleInbound: () => undefined,
+        bindSend: () => undefined,
+      }
+    }) as never
+
+    createAppContext(deps)
+
+    expect(capturedResolveModelEnv).toBeDefined()
+    if (capturedResolveModelEnv === undefined) return
+
+    const env = await capturedResolveModelEnv({
+      harnessId: "claude" as import("@spectrum/types").HarnessId,
+      modelId: "mdl_default" as import("@spectrum/types").ModelId,
+    })
+
+    // Canary channel: base 4000 + offset 1 = effective port 4001
+    expect(env.ANTHROPIC_BASE_URL).toContain("4001")
+    expect(env.ANTHROPIC_BASE_URL).not.toContain("4000")
   })
 })
