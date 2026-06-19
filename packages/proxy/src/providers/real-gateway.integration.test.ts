@@ -85,4 +85,136 @@ describe("createRealGateway", () => {
     // 20s chunk-timeout path this test exists to prevent.
     { timeout: 3000 },
   )
+
+  it("times out with the slow-provider message when the first chunk misses the first-token window", async () => {
+    const model = new MockLanguageModelV3({
+      doStream: async () => ({
+        stream: simulateReadableStream({
+          initialDelayInMs: 200, // first chunk arrives AFTER the 80ms window
+          chunkDelayInMs: 0,
+          chunks: [
+            { type: "text-start" as const, id: "0" },
+            { type: "text-delta" as const, id: "0", delta: "hi" },
+            {
+              type: "finish" as const,
+              finishReason: { unified: "stop" as const, raw: "stop" },
+              usage: {
+                inputTokens: {
+                  total: 1,
+                  noCache: 1,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                },
+                outputTokens: { total: 1, text: 1, reasoning: 0 },
+              },
+            },
+          ],
+        }),
+      }),
+    })
+    const gw = createRealGateway({
+      getTimeouts: () => ({
+        firstTokenTimeoutMs: 80,
+        interTokenTimeoutMs: 1000,
+      }),
+    })
+    const req: NormalizedRequest = {
+      model: "m",
+      messages: [{ role: "user", content: "hi" }],
+      stream: true,
+    }
+    const events: StreamEvent[] = []
+    for await (const e of gw.stream(model, req)) events.push(e)
+    expect(events.at(-1)).toMatchObject({ type: "error" })
+    expect((events.at(-1) as { detail: string }).detail).toContain(
+      "did not respond",
+    )
+  })
+
+  it("completes when the first chunk arrives within the first-token window", async () => {
+    const model = new MockLanguageModelV3({
+      doStream: async () => ({
+        stream: simulateReadableStream({
+          initialDelayInMs: 20, // within the 200ms window
+          chunkDelayInMs: 5,
+          chunks: [
+            { type: "text-start" as const, id: "0" },
+            { type: "text-delta" as const, id: "0", delta: "ok" },
+            {
+              type: "finish" as const,
+              finishReason: { unified: "stop" as const, raw: "stop" },
+              usage: {
+                inputTokens: {
+                  total: 1,
+                  noCache: 1,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                },
+                outputTokens: { total: 1, text: 1, reasoning: 0 },
+              },
+            },
+          ],
+        }),
+      }),
+    })
+    const gw = createRealGateway({
+      getTimeouts: () => ({
+        firstTokenTimeoutMs: 200,
+        interTokenTimeoutMs: 200,
+      }),
+    })
+    const req: NormalizedRequest = {
+      model: "m",
+      messages: [{ role: "user", content: "hi" }],
+      stream: true,
+    }
+    const events: StreamEvent[] = []
+    for await (const e of gw.stream(model, req)) events.push(e)
+    expect(events.some((e) => e.type === "text-delta")).toBe(true)
+    expect(events.some((e) => e.type === "error")).toBe(false)
+  })
+
+  it("times out when the gap between chunks exceeds the inter-token window", async () => {
+    const model = new MockLanguageModelV3({
+      doStream: async () => ({
+        stream: simulateReadableStream({
+          initialDelayInMs: 5, // first chunk is fast (passes first-token window)
+          chunkDelayInMs: 200, // second chunk is slow (exceeds the 60ms inter-token window)
+          chunks: [
+            { type: "text-start" as const, id: "0" },
+            { type: "text-delta" as const, id: "0", delta: "part1" },
+            { type: "text-delta" as const, id: "0", delta: "part2" },
+            {
+              type: "finish" as const,
+              finishReason: { unified: "stop" as const, raw: "stop" },
+              usage: {
+                inputTokens: {
+                  total: 1,
+                  noCache: 1,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                },
+                outputTokens: { total: 2, text: 2, reasoning: 0 },
+              },
+            },
+          ],
+        }),
+      }),
+    })
+    const gw = createRealGateway({
+      getTimeouts: () => ({
+        firstTokenTimeoutMs: 1000,
+        interTokenTimeoutMs: 60,
+      }),
+    })
+    const req: NormalizedRequest = {
+      model: "m",
+      messages: [{ role: "user", content: "hi" }],
+      stream: true,
+    }
+    const events: StreamEvent[] = []
+    for await (const e of gw.stream(model, req)) events.push(e)
+    expect(events.some((e) => e.type === "text-delta")).toBe(true) // got part1
+    expect(events.at(-1)).toMatchObject({ type: "error" }) // then timed out on the gap
+  })
 })
