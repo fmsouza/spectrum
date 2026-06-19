@@ -276,21 +276,26 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
           : PermissionModeSchema.safeParse(storedMode)
       const permissionMode = parsedMode?.success ? parsedMode.data : undefined
 
-      // Resolve the effective model: an explicit launch model wins; otherwise the persisted per-harness
-      // one (a stored "" means "default" — no model). This lets the modal drop its model selector.
-      const storedModel = config.settings.lastByHarness?.[String(id)]?.modelId
+      // Resolve the effective model: an explicit launch model wins; else the remembered per-harness
+      // one. A remembered "" means the user chose "default" (subscription) — honor it as direct.
+      // Otherwise, when models are configured, default to the first so a new session is proxied
+      // from turn one (the in-session picker can still switch to "default").
+      const stored = config.settings.lastByHarness?.[String(id)]?.modelId
+      const rememberedDefault = stored === "" // explicit subscription choice
       const effectiveModelId: ModelId | undefined =
         modelId ??
-        (storedModel !== undefined && storedModel !== ""
-          ? (storedModel as ModelId)
-          : undefined)
+        (stored !== undefined && stored !== ""
+          ? (stored as ModelId)
+          : rememberedDefault
+            ? undefined
+            : config.models[0]?.id)
 
       // modelId present → route through the proxy; absent → "default" = bypass the proxy.
       let route: import("@spectrum/harnesses").LaunchRoute
       if (effectiveModelId === undefined) {
         route = { kind: "direct" }
       } else {
-        const proxyUrl = `http://${config.settings.proxyHost}:${config.settings.proxyPort}`
+        const proxyUrl = `http://${config.settings.proxyHost}:${ctx.proxyPort}`
         // The GUI proxy runs persistently and stored its per-run key in runtime state; reuse it so
         // the running proxy accepts the harness's requests. If absent, mint a fresh key (security.md).
         const proxyKey = (await ctx.runtime.readProxyKey()) ?? ctx.genProxyKey()

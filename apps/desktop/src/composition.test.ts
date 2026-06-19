@@ -1,7 +1,13 @@
 import { describe, expect, it } from "bun:test"
-import { claude } from "@spectrum/harnesses"
+import {
+  claude,
+  createFakeCommandResolver,
+  createInMemoryHarnessFileSource,
+  createRegistry,
+} from "@spectrum/harnesses"
 import { resolveAppPaths } from "@spectrum/platform"
 import { createProjectStore } from "@spectrum/projects"
+import { createInMemoryRuntimeState } from "@spectrum/proxy"
 import { err, ok } from "@spectrum/utils"
 import { createAppContext } from "./composition"
 import type { CreateAppContextDeps } from "./composition"
@@ -29,6 +35,7 @@ const makeFakeDeps = (): {
     }) as never,
     migrateLegacyMacosConfig: record("migrateLegacyMacosConfig") as never,
     migrateLaunchkitToSpectrum: record("migrateLaunchkitToSpectrum") as never,
+    migrateProductionToCanary: record("migrateProductionToCanary") as never,
     createFsConfigFile: record("createFsConfigFile") as never,
     createFileConfigStore: record("createFileConfigStore") as never,
     createCachedConfigStore: record("createCachedConfigStore") as never,
@@ -350,6 +357,22 @@ describe("createAppContext wiring", () => {
     expect(ctx.proxyPort).toBe(4000)
   })
 
+  it("offsets the proxy port for canary (base + 1)", () => {
+    const { deps } = makeFakeDeps()
+    ;(deps as { readBuildChannel: unknown }).readBuildChannel = () => "canary"
+    const ctx = createAppContext(deps)
+    expect(ctx.proxyPort).toBe(4001)
+    expect(ctx.proxyBaseUrl).toBe("http://127.0.0.1:4001")
+  })
+
+  it("keeps port 4000 for stable (offset 0)", () => {
+    const { deps } = makeFakeDeps()
+    ;(deps as { readBuildChannel: unknown }).readBuildChannel = () => "stable"
+    const ctx = createAppContext(deps)
+    expect(ctx.proxyPort).toBe(4000)
+    expect(ctx.proxyBaseUrl).toBe("http://127.0.0.1:4000")
+  })
+
   it("exposes a pickFolder function on the context", () => {
     const { deps } = makeFakeDeps()
     const ctx = createAppContext(deps)
@@ -608,5 +631,294 @@ describe("createAppContext native run path wiring", () => {
     expect(ids).toContain(DEMO_HARNESS_ID)
     expect(ids).toContain("claude")
     expect(ctx.driverRegistry.isNative(DEMO_HARNESS_ID as never)).toBe(true)
+  })
+})
+
+describe("createAppContext resolveModelEnv wiring", () => {
+  it("re-renders a proxied env for an in-session model pick", async () => {
+    // This test captures the `resolveModelEnv` passed to createRunManager,
+    // then calls it with a real harness/model pair and asserts the env is proxied.
+    let capturedResolveModelEnv:
+      | ((input: {
+          readonly harnessId: import("@spectrum/types").HarnessId
+          readonly modelId: import("@spectrum/types").ModelId
+        }) => Promise<Readonly<Record<string, string>>>)
+      | undefined
+
+    const { deps } = makeFakeDeps()
+
+    // Override createPathCommandResolver to return a fake that resolves "claude".
+    // The fake maps "claude" -> "/usr/local/bin/claude" (absolute so guard passes).
+    ;(
+      deps as { createPathCommandResolver: unknown }
+    ).createPathCommandResolver = () =>
+      createFakeCommandResolver({ claude: "/usr/local/bin/claude" }, "linux")
+
+    // Override createRegistry to return a real in-memory registry (builtins only, including claude).
+    ;(deps as { createRegistry: unknown }).createRegistry = () =>
+      createRegistry({
+        fileSource: createInMemoryHarnessFileSource([]),
+      })
+
+    // Override createFileRuntimeState to return an in-memory runtime state with a known key.
+    const runtimeState = createInMemoryRuntimeState()
+    await runtimeState.writeProxyKey("test-proxy-key-abc")
+    ;(deps as { createFileRuntimeState: unknown }).createFileRuntimeState =
+      () => runtimeState
+
+    // Override createCachedConfigStore to return a config with known proxyHost.
+    // NOTE: proxyPort in config is no longer the source for resolveModelEnv — the composition-level
+    // effective port (defaultConfig().settings.proxyPort + channelProxyPortOffset(channel)) is used
+    // instead. For the stable channel (readBuildChannel returns undefined → stable), offset=0, so
+    // effective port = 4000.
+    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
+      () => ({
+        load: async () =>
+          ok({
+            version: 2,
+            providers: [
+              {
+                id: "p1",
+                name: "Local",
+                sdkProvider: "openai",
+                config: {},
+                secrets: {},
+                models: ["gpt-4o"],
+              },
+            ],
+            models: [
+              { id: "mdl_default", providerId: "p1", providerModel: "gpt-4o" },
+            ],
+            settings: { proxyPort: 9999, proxyHost: "127.0.0.1" },
+          }),
+        save: async () => ok(undefined),
+      })
+
+    // Override createRunManager to capture the resolveModelEnv it receives.
+    ;(deps as { createRunManager: unknown }).createRunManager = ((managerDeps: {
+      resolveModelEnv?: (input: {
+        readonly harnessId: import("@spectrum/types").HarnessId
+        readonly modelId: import("@spectrum/types").ModelId
+      }) => Promise<Readonly<Record<string, string>>>
+    }) => {
+      capturedResolveModelEnv = managerDeps.resolveModelEnv
+      return {
+        launch: () => ok({ sessionId: "s1" }),
+        handleInbound: () => undefined,
+        bindSend: () => undefined,
+      }
+    }) as never
+
+    createAppContext(deps)
+
+    expect(capturedResolveModelEnv).toBeDefined()
+    if (capturedResolveModelEnv === undefined) return
+
+    const env = await capturedResolveModelEnv({
+      harnessId: "claude" as import("@spectrum/types").HarnessId,
+      modelId: "mdl_default" as import("@spectrum/types").ModelId,
+    })
+
+    // The host comes from config (127.0.0.1); the port comes from the effective composition-level
+    // proxyPort (defaultConfig base=4000 + stable offset=0 = 4000), NOT from cfg.settings.proxyPort.
+    expect(env.ANTHROPIC_BASE_URL).toContain("127.0.0.1")
+    expect(env.ANTHROPIC_BASE_URL).toContain("4000")
+    expect(env.ANTHROPIC_MODEL).toBe("mdl_default")
+  })
+
+  it("returns {} when the harnessId is not registered", async () => {
+    let capturedResolveModelEnv:
+      | ((input: {
+          readonly harnessId: import("@spectrum/types").HarnessId
+          readonly modelId: import("@spectrum/types").ModelId
+        }) => Promise<Readonly<Record<string, string>>>)
+      | undefined
+
+    const { deps } = makeFakeDeps()
+
+    // Provide a minimal config store so composition.ts can call .load() without error.
+    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
+      () => ({
+        load: async () =>
+          ok({
+            version: 2,
+            providers: [],
+            models: [],
+            settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+          }),
+        save: async () => ok(undefined),
+      })
+
+    // Provide a minimal registry so resolveModelEnv can call registry.list() without error.
+    // list() returns an empty harness list so any harnessId lookup finds nothing → returns {}.
+    ;(deps as { createRegistry: unknown }).createRegistry = () => ({
+      list: async () => ok([]),
+      add: async () => ok(undefined),
+      remove: async () => ok(undefined),
+    })
+
+    // Override createRunManager to capture the resolveModelEnv it receives.
+    ;(deps as { createRunManager: unknown }).createRunManager = ((managerDeps: {
+      resolveModelEnv?: (input: {
+        readonly harnessId: import("@spectrum/types").HarnessId
+        readonly modelId: import("@spectrum/types").ModelId
+      }) => Promise<Readonly<Record<string, string>>>
+    }) => {
+      capturedResolveModelEnv = managerDeps.resolveModelEnv
+      return {
+        launch: () => ok({ sessionId: "s1" }),
+        handleInbound: () => undefined,
+        bindSend: () => undefined,
+      }
+    }) as never
+
+    createAppContext(deps)
+
+    expect(capturedResolveModelEnv).toBeDefined()
+    if (capturedResolveModelEnv === undefined) return
+
+    const env = await capturedResolveModelEnv({
+      harnessId: "not-a-real-harness" as import("@spectrum/types").HarnessId,
+      modelId: "mdl_any" as import("@spectrum/types").ModelId,
+    })
+
+    expect(env).toEqual({})
+  })
+
+  it("returns {} (direct) when resolveModelEnv is called with a null modelId", async () => {
+    let capturedResolveModelEnv:
+      | ((input: {
+          readonly harnessId: import("@spectrum/types").HarnessId
+          readonly modelId: import("@spectrum/types").ModelId | null
+        }) => Promise<Readonly<Record<string, string>>>)
+      | undefined
+
+    const { deps } = makeFakeDeps()
+
+    // Provide a minimal config store so composition.ts can call .load() without error.
+    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
+      () => ({
+        load: async () =>
+          ok({
+            version: 2,
+            providers: [],
+            models: [],
+            settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+          }),
+        save: async () => ok(undefined),
+      })
+
+    // Override createRunManager to capture the resolveModelEnv it receives.
+    ;(deps as { createRunManager: unknown }).createRunManager = ((managerDeps: {
+      resolveModelEnv?: (input: {
+        readonly harnessId: import("@spectrum/types").HarnessId
+        readonly modelId: import("@spectrum/types").ModelId | null
+      }) => Promise<Readonly<Record<string, string>>>
+    }) => {
+      capturedResolveModelEnv = managerDeps.resolveModelEnv
+      return {
+        launch: () => ok({ sessionId: "s1" }),
+        handleInbound: () => undefined,
+        bindSend: () => undefined,
+      }
+    }) as never
+
+    createAppContext(deps)
+
+    expect(capturedResolveModelEnv).toBeDefined()
+    if (capturedResolveModelEnv === undefined) return
+
+    const env = await capturedResolveModelEnv({
+      harnessId: "claude" as import("@spectrum/types").HarnessId,
+      modelId: null,
+    })
+
+    expect(env).toEqual({})
+  })
+
+  it("resolveModelEnv uses the effective (channel-offset) proxy port for canary", async () => {
+    // A canary build should route resolveModelEnv through port 4001 (base 4000 + offset 1)
+    let capturedResolveModelEnv:
+      | ((input: {
+          readonly harnessId: import("@spectrum/types").HarnessId
+          readonly modelId: import("@spectrum/types").ModelId
+        }) => Promise<Readonly<Record<string, string>>>)
+      | undefined
+
+    const { deps } = makeFakeDeps()
+
+    // Set the build channel to canary
+    ;(deps as { readBuildChannel: unknown }).readBuildChannel = () => "canary"
+
+    // Override createPathCommandResolver to return a fake that resolves "claude".
+    ;(
+      deps as { createPathCommandResolver: unknown }
+    ).createPathCommandResolver = () =>
+      createFakeCommandResolver({ claude: "/usr/local/bin/claude" }, "linux")
+
+    // Override createRegistry to return a real in-memory registry (builtins only, including claude).
+    ;(deps as { createRegistry: unknown }).createRegistry = () =>
+      createRegistry({
+        fileSource: createInMemoryHarnessFileSource([]),
+      })
+
+    // Override createFileRuntimeState to return an in-memory runtime state with a known key.
+    const runtimeState = createInMemoryRuntimeState()
+    await runtimeState.writeProxyKey("test-proxy-key-abc")
+    ;(deps as { createFileRuntimeState: unknown }).createFileRuntimeState =
+      () => runtimeState
+
+    // Config with base proxyPort = 4000; effective port for canary = 4001
+    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
+      () => ({
+        load: async () =>
+          ok({
+            version: 2,
+            providers: [
+              {
+                id: "p1",
+                name: "Local",
+                sdkProvider: "openai",
+                config: {},
+                secrets: {},
+                models: ["gpt-4o"],
+              },
+            ],
+            models: [
+              { id: "mdl_default", providerId: "p1", providerModel: "gpt-4o" },
+            ],
+            settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+          }),
+        save: async () => ok(undefined),
+      })
+
+    // Override createRunManager to capture the resolveModelEnv it receives.
+    ;(deps as { createRunManager: unknown }).createRunManager = ((managerDeps: {
+      resolveModelEnv?: (input: {
+        readonly harnessId: import("@spectrum/types").HarnessId
+        readonly modelId: import("@spectrum/types").ModelId
+      }) => Promise<Readonly<Record<string, string>>>
+    }) => {
+      capturedResolveModelEnv = managerDeps.resolveModelEnv
+      return {
+        launch: () => ok({ sessionId: "s1" }),
+        handleInbound: () => undefined,
+        bindSend: () => undefined,
+      }
+    }) as never
+
+    createAppContext(deps)
+
+    expect(capturedResolveModelEnv).toBeDefined()
+    if (capturedResolveModelEnv === undefined) return
+
+    const env = await capturedResolveModelEnv({
+      harnessId: "claude" as import("@spectrum/types").HarnessId,
+      modelId: "mdl_default" as import("@spectrum/types").ModelId,
+    })
+
+    // Canary channel: base 4000 + offset 1 = effective port 4001
+    expect(env.ANTHROPIC_BASE_URL).toContain("4001")
+    expect(env.ANTHROPIC_BASE_URL).not.toContain("4000")
   })
 })

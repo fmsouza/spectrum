@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { detectAppEnv, resolveAppEnv } from "./app-env"
+import { detectAppEnv, resolveAppEnv, resolveChannel } from "./app-env"
 
 describe("detectAppEnv", () => {
   it("returns development when SPECTRUM_ENV is exactly development", () => {
@@ -18,6 +18,27 @@ describe("detectAppEnv", () => {
     expect(detectAppEnv({ SPECTRUM_ENV: "dev" })).toBe("production")
     expect(detectAppEnv({ SPECTRUM_ENV: "DEVELOPMENT" })).toBe("production")
     expect(detectAppEnv({ SPECTRUM_ENV: "" })).toBe("production")
+  })
+})
+
+describe("resolveChannel", () => {
+  it("returns canary when the bundled channel is canary", () => {
+    expect(resolveChannel({ buildChannel: "canary", env: {} })).toBe("canary")
+  })
+  it("returns development when the bundled channel is dev", () => {
+    expect(resolveChannel({ buildChannel: "dev", env: {} })).toBe("development")
+  })
+  it("returns stable for the stable channel", () => {
+    expect(resolveChannel({ buildChannel: "stable", env: {} })).toBe("stable")
+  })
+  it("falls back to SPECTRUM_ENV when no channel is bundled", () => {
+    expect(
+      resolveChannel({
+        buildChannel: undefined,
+        env: { SPECTRUM_ENV: "development" },
+      }),
+    ).toBe("development")
+    expect(resolveChannel({ buildChannel: undefined, env: {} })).toBe("stable")
   })
 })
 
