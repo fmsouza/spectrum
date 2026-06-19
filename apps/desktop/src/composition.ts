@@ -802,8 +802,9 @@ export const createAppContext = (
   // SECURITY: never log the proxy key or the rendered env.
   const resolveModelEnv = async (input: {
     readonly harnessId: import("@spectrum/types").HarnessId
-    readonly modelId: import("@spectrum/types").ModelId
+    readonly modelId: import("@spectrum/types").ModelId | null
   }): Promise<Readonly<Record<string, string>>> => {
+    if (input.modelId === null) return {} // switch to default/subscription ⇒ direct (no proxy env)
     const loaded = await config.load()
     const cfg = loaded.ok ? loaded.value : defaultConfig()
     const listed = await registry.list()

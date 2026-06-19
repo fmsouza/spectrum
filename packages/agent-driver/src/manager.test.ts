@@ -607,7 +607,7 @@ describe("createRunManager.handleInbound run-set-model", () => {
       modelId,
     }: {
       harnessId: HarnessId
-      modelId: ModelId
+      modelId: ModelId | null
     }): Promise<Readonly<Record<string, string>>> => {
       capturedHarnessId = resolvedHarnessId
       return {
@@ -647,6 +647,58 @@ describe("createRunManager.handleInbound run-set-model", () => {
     expect(capturedHarnessId).toBe("claude" as HarnessId)
   })
 
+  it("resolves a direct (empty) env and forwards null to setModel on run-set-model with null", async () => {
+    const setModelCalls: Array<{
+      modelId: unknown
+      env?: Readonly<Record<string, string>>
+    }> = []
+    const makeRecordingDriver = (
+      record: (
+        modelId: ModelId | null,
+        env?: Readonly<Record<string, string>>,
+      ) => void,
+    ): AgentDriver => ({
+      start: () =>
+        ok({
+          rootRunnerId: root,
+          onEvent: () => undefined,
+          send: () => ok(undefined),
+          respondApproval: () => ok(undefined),
+          respondQuestion: () => ok(undefined),
+          interrupt: () => ok(undefined),
+          close: () => ok(undefined),
+          setModel: (modelId, env) => {
+            record(modelId, env)
+            return ok(undefined)
+          },
+        }),
+    })
+    const driver = makeRecordingDriver((modelId, env) =>
+      setModelCalls.push({ modelId, ...(env !== undefined ? { env } : {}) }),
+    )
+    const resolveModelEnv = async ({
+      modelId,
+    }: {
+      harnessId: HarnessId
+      modelId: ModelId | null
+    }) => (modelId === null ? {} : { ANTHROPIC_MODEL: String(modelId) })
+    const { deps } = makeDeps(scriptOf([]))
+    const manager = createRunManager({ ...deps, driver, resolveModelEnv })
+    const launched = manager.launch({
+      harnessId: "claude" as HarnessId,
+      cwd: "/tmp",
+      env: {},
+    })
+    if (!launched.ok) throw new Error("launch failed")
+    manager.handleInbound({
+      type: "run-set-model",
+      id: launched.value.sessionId,
+      modelId: null,
+    })
+    await new Promise((r) => setTimeout(r, 0))
+    expect(setModelCalls).toEqual([{ modelId: null, env: {} }])
+  })
+
   it("logs an error via the injected logger when resolveModelEnv rejects", async () => {
     const { logger, calls } = createFakeLogger()
     const capturingDriver: AgentDriver = {
@@ -664,7 +716,7 @@ describe("createRunManager.handleInbound run-set-model", () => {
     }
     const resolveModelEnv = async (_input: {
       harnessId: HarnessId
-      modelId: ModelId
+      modelId: ModelId | null
     }): Promise<Readonly<Record<string, string>>> => {
       throw new Error("env resolution boom")
     }

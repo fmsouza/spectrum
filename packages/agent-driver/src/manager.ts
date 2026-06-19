@@ -39,7 +39,7 @@ export interface RunManagerDeps {
    */
   readonly resolveModelEnv?: (input: {
     readonly harnessId: HarnessId
-    readonly modelId: ModelId
+    readonly modelId: ModelId | null
   }) => Promise<Readonly<Record<string, string>>>
   send(message: RunnerOutbound): void
 }

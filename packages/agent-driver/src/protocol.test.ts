@@ -91,4 +91,19 @@ describe("decodeRunnerInbound", () => {
     })
     expect(r.ok).toBe(true)
   })
+
+  it("decodes run-set-model with a null modelId (switch to default)", () => {
+    const result = decodeRunnerInbound({
+      type: "run-set-model",
+      id: "s_1",
+      modelId: null,
+    })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value).toEqual({
+      type: "run-set-model",
+      id: "s_1" as never,
+      modelId: null,
+    })
+  })
 })

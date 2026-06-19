@@ -761,4 +761,55 @@ describe("createAppContext resolveModelEnv wiring", () => {
 
     expect(env).toEqual({})
   })
+
+  it("returns {} (direct) when resolveModelEnv is called with a null modelId", async () => {
+    let capturedResolveModelEnv:
+      | ((input: {
+          readonly harnessId: import("@spectrum/types").HarnessId
+          readonly modelId: import("@spectrum/types").ModelId | null
+        }) => Promise<Readonly<Record<string, string>>>)
+      | undefined
+
+    const { deps } = makeFakeDeps()
+
+    // Provide a minimal config store so composition.ts can call .load() without error.
+    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
+      () => ({
+        load: async () =>
+          ok({
+            version: 2,
+            providers: [],
+            models: [],
+            settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+          }),
+        save: async () => ok(undefined),
+      })
+
+    // Override createRunManager to capture the resolveModelEnv it receives.
+    ;(deps as { createRunManager: unknown }).createRunManager = ((managerDeps: {
+      resolveModelEnv?: (input: {
+        readonly harnessId: import("@spectrum/types").HarnessId
+        readonly modelId: import("@spectrum/types").ModelId | null
+      }) => Promise<Readonly<Record<string, string>>>
+    }) => {
+      capturedResolveModelEnv = managerDeps.resolveModelEnv
+      return {
+        launch: () => ok({ sessionId: "s1" }),
+        handleInbound: () => undefined,
+        bindSend: () => undefined,
+      }
+    }) as never
+
+    createAppContext(deps)
+
+    expect(capturedResolveModelEnv).toBeDefined()
+    if (capturedResolveModelEnv === undefined) return
+
+    const env = await capturedResolveModelEnv({
+      harnessId: "claude" as import("@spectrum/types").HarnessId,
+      modelId: null,
+    })
+
+    expect(env).toEqual({})
+  })
 })
