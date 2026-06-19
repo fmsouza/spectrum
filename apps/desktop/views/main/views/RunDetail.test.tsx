@@ -3,6 +3,7 @@ import type { RunnerOutbound } from "@spectrum/agent-driver"
 import type { CanonicalEvent, StoredEvent } from "@spectrum/agent-events"
 import {
   type HarnessId,
+  type ModelId,
   type ModelRoute,
   type SessionId,
   SessionIdSchema,
@@ -20,14 +21,14 @@ const makeFakeRunner = (): RunnerClient & {
   readonly attached: SessionId[]
   readonly sends: string[]
   readonly setModes: Array<{ id: SessionId; mode: string }>
-  readonly setModels: Array<{ id: SessionId; modelId: string }>
+  readonly setModels: Array<{ id: SessionId; modelId: ModelId | null }>
   push: (event: StoredEvent) => void
 } => {
   let listener: ((event: StoredEvent) => void) | undefined
   const attached: SessionId[] = []
   const sends: string[] = []
   const setModes: Array<{ id: SessionId; mode: string }> = []
-  const setModels: Array<{ id: SessionId; modelId: string }> = []
+  const setModels: Array<{ id: SessionId; modelId: ModelId | null }> = []
   return {
     attached,
     sends,
@@ -38,8 +39,7 @@ const makeFakeRunner = (): RunnerClient & {
     approve: () => {},
     interrupt: () => {},
     setMode: (sid, mode) => setModes.push({ id: sid, mode }),
-    setModel: (sid, modelId) =>
-      setModels.push({ id: sid, modelId: String(modelId) }),
+    setModel: (sid, modelId) => setModels.push({ id: sid, modelId }),
     dispatch: (_m: RunnerOutbound) => {},
     onEvent: (_sid, cb) => {
       listener = cb
@@ -235,7 +235,7 @@ describe("RunDetail (live)", () => {
       screen.getByRole("button", { name: /Anthropic \/ sonnet/i }),
     )
     fireEvent.click(screen.getByRole("menuitemradio", { name: /^default$/i }))
-    expect(runner.setModels).toEqual([{ id, modelId: "null" }])
+    expect(runner.setModels).toEqual([{ id, modelId: null }])
     cleanup()
   })
 
