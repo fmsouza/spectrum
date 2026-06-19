@@ -450,6 +450,20 @@
   gap: var(--sp-space-2);
   cursor: pointer;
 }
+/* The option's radio/checkbox must opt out of the global full-width input
+   styling (controls.css `input { width: 100%; min-height: 38px; ... }`);
+   otherwise it stretches to fill the row and shoves the label off-screen. */
+.lk-question__opt input[type="radio"],
+.lk-question__opt input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+}
+.lk-question__opt-label {
+  color: var(--sp-text);
+}
 .lk-question__opt-desc {
   color: var(--sp-text-secondary);
   font-size: var(--sp-text-xs);
