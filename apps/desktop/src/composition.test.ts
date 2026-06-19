@@ -1,8 +1,15 @@
 import { describe, expect, it } from "bun:test"
-import { claude } from "@spectrum/harnesses"
+import {
+  claude,
+  createFakeCommandResolver,
+  createInMemoryHarnessFileSource,
+  createRegistry,
+} from "@spectrum/harnesses"
 import { resolveAppPaths } from "@spectrum/platform"
 import { createProjectStore } from "@spectrum/projects"
-import { err, ok } from "@spectrum/utils"
+import { createInMemoryRuntimeState } from "@spectrum/proxy"
+import { ok } from "@spectrum/utils"
+import { err } from "@spectrum/utils"
 import { createAppContext } from "./composition"
 import type { CreateAppContextDeps } from "./composition"
 import { DEMO_HARNESS_ID } from "./gui/driver-registry"
@@ -608,5 +615,92 @@ describe("createAppContext native run path wiring", () => {
     expect(ids).toContain(DEMO_HARNESS_ID)
     expect(ids).toContain("claude")
     expect(ctx.driverRegistry.isNative(DEMO_HARNESS_ID as never)).toBe(true)
+  })
+})
+
+describe("createAppContext resolveModelEnv wiring", () => {
+  it("re-renders a proxied env for an in-session model pick", async () => {
+    // This test captures the `resolveModelEnv` passed to createRunManager,
+    // then calls it with a real harness/model pair and asserts the env is proxied.
+    let capturedResolveModelEnv:
+      | ((input: {
+          readonly harnessId: import("@spectrum/types").HarnessId
+          readonly modelId: import("@spectrum/types").ModelId
+        }) => Promise<Readonly<Record<string, string>>>)
+      | undefined
+
+    const { deps } = makeFakeDeps()
+
+    // Override createPathCommandResolver to return a fake that resolves "claude".
+    // The fake maps "claude" -> "/usr/local/bin/claude" (absolute so guard passes).
+    ;(
+      deps as { createPathCommandResolver: unknown }
+    ).createPathCommandResolver = () =>
+      createFakeCommandResolver({ claude: "/usr/local/bin/claude" }, "linux")
+
+    // Override createRegistry to return a real in-memory registry (builtins only, including claude).
+    ;(deps as { createRegistry: unknown }).createRegistry = () =>
+      createRegistry({
+        fileSource: createInMemoryHarnessFileSource([]),
+      })
+
+    // Override createFileRuntimeState to return an in-memory runtime state with a known key.
+    const runtimeState = createInMemoryRuntimeState()
+    await runtimeState.writeProxyKey("test-proxy-key-abc")
+    ;(deps as { createFileRuntimeState: unknown }).createFileRuntimeState =
+      () => runtimeState
+
+    // Override createCachedConfigStore to return a config with known proxyHost/proxyPort.
+    ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
+      () => ({
+        load: async () =>
+          ok({
+            version: 2,
+            providers: [
+              {
+                id: "p1",
+                name: "Local",
+                sdkProvider: "openai",
+                config: {},
+                secrets: {},
+                models: ["gpt-4o"],
+              },
+            ],
+            models: [
+              { id: "mdl_default", providerId: "p1", providerModel: "gpt-4o" },
+            ],
+            settings: { proxyPort: 9999, proxyHost: "127.0.0.1" },
+          }),
+        save: async () => ok(undefined),
+      })
+
+    // Override createRunManager to capture the resolveModelEnv it receives.
+    ;(deps as { createRunManager: unknown }).createRunManager = ((managerDeps: {
+      resolveModelEnv?: (input: {
+        readonly harnessId: import("@spectrum/types").HarnessId
+        readonly modelId: import("@spectrum/types").ModelId
+      }) => Promise<Readonly<Record<string, string>>>
+    }) => {
+      capturedResolveModelEnv = managerDeps.resolveModelEnv
+      return {
+        launch: () => ok({ sessionId: "s1" }),
+        handleInbound: () => undefined,
+        bindSend: () => undefined,
+      }
+    }) as never
+
+    createAppContext(deps)
+
+    expect(capturedResolveModelEnv).toBeDefined()
+    if (capturedResolveModelEnv === undefined) return
+
+    const env = await capturedResolveModelEnv({
+      harnessId: "claude" as import("@spectrum/types").HarnessId,
+      modelId: "mdl_default" as import("@spectrum/types").ModelId,
+    })
+
+    expect(env.ANTHROPIC_BASE_URL).toContain("127.0.0.1")
+    expect(env.ANTHROPIC_BASE_URL).toContain("9999")
+    expect(env.ANTHROPIC_MODEL).toBe("mdl_default")
   })
 })

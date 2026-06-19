@@ -796,6 +796,35 @@ export const createAppContext = (
     notifier.onRunFinished(finished)
   }
 
+  // Re-render a session's proxied route env when the user picks a model in-session. Mirrors the
+  // proxied branch of launchHarness: proxy URL from settings, the running proxy's per-run key from
+  // runtime (mint one only as a defensive fallback), env rendered via resolveHarnessLaunch.
+  // SECURITY: never log the proxy key or the rendered env.
+  const resolveModelEnv = async (input: {
+    readonly harnessId: import("@spectrum/types").HarnessId
+    readonly modelId: import("@spectrum/types").ModelId
+  }): Promise<Readonly<Record<string, string>>> => {
+    const loaded = await config.load()
+    const cfg = loaded.ok ? loaded.value : defaultConfig()
+    const listed = await registry.list()
+    const harness = listed.ok
+      ? listed.value.find((h) => h.id === input.harnessId)
+      : undefined
+    if (harness === undefined) return {}
+    const proxyUrl = `http://${cfg.settings.proxyHost}:${cfg.settings.proxyPort}`
+    const proxyKey = (await runtime.readProxyKey()) ?? genProxyKey()
+    const resolved = resolveLaunch({
+      harness,
+      route: {
+        kind: "proxied",
+        proxyUrl,
+        proxyKey,
+        modelId: input.modelId,
+      },
+    })
+    return resolved.ok ? resolved.value.env : {}
+  }
+
   const baseRunner = deps.createRunManager({
     driver: routingDriver,
     sessions: sessionSink,
@@ -804,6 +833,7 @@ export const createAppContext = (
     logger: log.child("runner"),
     // Before the webview socket connects, the manager's sink is this notifier tap.
     send: notifyOnRunFinished,
+    resolveModelEnv,
   })
   // The runner socket calls `bindSend` on connect, REPLACING the manager's sink with one that pushes
   // to the live websocket. `withNotifierTap` composes the notifier tap INTO that socket sink —
