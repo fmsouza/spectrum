@@ -15,6 +15,10 @@ import {
   CLAUDE_SUPPORTED_MODES,
   toClaudePermissionMode,
 } from "./permission-mode"
+import {
+  mapAnswerToRefusalChoice,
+  mapRefusalFallbackPayload,
+} from "./refusal-fallback"
 import type { SdkMessageLike, SdkResultMessage } from "./sdk-types"
 
 /** Default timer implementation backed by global setTimeout/clearTimeout. */
@@ -318,6 +322,27 @@ export const createClaudeAdapter = (deps: {
               decision,
               toolInput as Record<string, unknown>,
             )
+          },
+          supportedDialogKinds: ["refusal_fallback_prompt"],
+          onUserDialog: async (request, { signal }) => {
+            if (request.dialogKind !== "refusal_fallback_prompt")
+              return { behavior: "cancelled" }
+            const prompt = mapRefusalFallbackPayload(request.payload)
+            if (prompt === undefined) {
+              log?.warn("claude refusal dialog payload unrecognized", {
+                dialogKind: request.dialogKind,
+              })
+              return { behavior: "cancelled" }
+            }
+            const answer = await raceAbort(
+              ctx.requestQuestion(ctx.rootRunnerId, prompt),
+              signal,
+            )
+            if (answer === ABORTED) return { behavior: "cancelled" }
+            return {
+              behavior: "completed",
+              result: mapAnswerToRefusalChoice(answer),
+            }
           },
           stderr: (data) =>
             log?.warn("claude stderr", { chunk: data.slice(0, 1000) }),
