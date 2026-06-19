@@ -1,7 +1,7 @@
 import type { QuestionAnswer, QuestionPrompt } from "@spectrum/agent-events"
 import { z } from "zod"
 
-/** The AskUserQuestion tool input shape (SDK sdk-tools.d.ts), as carried by the dialog payload. */
+/** The AskUserQuestion tool input shape (SDK sdk-tools.d.ts), as carried by the canUseTool tool input. */
 const PayloadSchema = z.object({
   questions: z
     .array(
