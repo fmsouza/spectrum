@@ -71,6 +71,63 @@ jobs:
       - name: Compile CLI binary
         run: bun run --filter spectrum compile
 
+      - name: Set up macOS signing
+        if: matrix.app && runner.os == 'macOS'
+        shell: bash
+        # Reads the signing material straight from GitHub Secrets (a composite action
+        # cannot access the `secrets` context, so this lives inline in the workflow).
+        # Imports the Developer ID cert into a temp keychain and exports the env vars
+        # Electrobun reads at sign/notarize time. The keychain is torn down by the
+        # "Clean up signing keychain" step (if: always()).
+        env:
+          CERT_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+          API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          # Preflight — every signing secret must be present (channel builds must be signed).
+          missing=()
+          [ -n "${CERT_P12_BASE64:-}" ]   || missing+=(MACOS_CERTIFICATE_P12_BASE64)
+          [ -n "${CERT_PASSWORD:-}" ]     || missing+=(MACOS_CERTIFICATE_PASSWORD)
+          [ -n "${SIGN_IDENTITY:-}" ]     || missing+=(MACOS_SIGN_IDENTITY)
+          [ -n "${KEYCHAIN_PASSWORD:-}" ] || missing+=(MACOS_KEYCHAIN_PASSWORD)
+          [ -n "${API_KEY_P8_BASE64:-}" ] || missing+=(APPLE_API_KEY_P8_BASE64)
+          [ -n "${API_KEY_ID:-}" ]        || missing+=(APPLE_API_KEY_ID)
+          [ -n "${API_ISSUER_ID:-}" ]     || missing+=(APPLE_API_ISSUER_ID)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::macOS signing secrets missing: ${missing[*]}. Channel builds must be signed — failing."
+            exit 1
+          fi
+          # Import the Developer ID certificate into a temporary keychain.
+          KEYCHAIN_PATH="$RUNNER_TEMP/spectrum-signing.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/developer-id.p12"
+          printf '%s' "$CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$CERT_PASSWORD" \
+            -t cert -f pkcs12 -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+          # Put the temp keychain first in the user search list + make it default so codesign finds the identity.
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed 's/[”"]//g')
+          security default-keychain -s "$KEYCHAIN_PATH"
+          rm -f "$CERT_PATH"
+          # Write the App Store Connect API key + export the signing env for the build + cleanup steps.
+          API_KEY_PATH="$RUNNER_TEMP/asc-api-key.p8"
+          printf '%s' "$API_KEY_P8_BASE64" | base64 --decode > "$API_KEY_PATH"
+          {
+            echo "SPECTRUM_SIGNING_KEYCHAIN=$KEYCHAIN_PATH"
+            echo "ELECTROBUN_DEVELOPER_ID=$SIGN_IDENTITY"
+            echo "ELECTROBUN_APPLEAPIKEYPATH=$API_KEY_PATH"
+            echo "ELECTROBUN_APPLEAPIKEY=$API_KEY_ID"
+            echo "ELECTROBUN_APPLEAPIISSUER=$API_ISSUER_ID"
+          } >> "$GITHUB_ENV"
+
       - name: Build desktop app (canary channel, for distribution + update artifacts)
         id: app
         if: matrix.app
@@ -81,49 +138,98 @@ jobs:
         # prefixed `canary-<os>-<arch>-…`.
         run: bun run --filter spectrum build:canary
 
+      - name: Verify macOS signing + notarization (hard gate)
+        if: matrix.app && runner.os == 'macOS' && steps.app.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          DMG=$(find apps/desktop/artifacts -maxdepth 2 -name '*.dmg' | head -1)
+          if [ -z "$DMG" ]; then
+            echo "::error::No .dmg in apps/desktop/artifacts/ — the channel build produced no macOS installer."
+            ls -la apps/desktop/artifacts/ || true
+            exit 1
+          fi
+          echo "Verifying installer: $DMG"
+
+          # 1. The DMG carries a valid Developer ID signature (not adhoc/unsigned).
+          codesign --verify --verbose=2 "$DMG"
+          codesign -dvvv "$DMG" 2>&1 | tee /tmp/dmg-codesign.txt
+          grep -q "Authority=Developer ID Application" /tmp/dmg-codesign.txt \
+            || { echo "::error::DMG is not signed with a Developer ID Application identity."; exit 1; }
+
+          # 2. The DMG has a stapled notarization ticket.
+          xcrun stapler validate "$DMG"
+
+          # 3. Mount the DMG and fully verify the inner .app.
+          MNT=$(mktemp -d)
+          hdiutil attach "$DMG" -nobrowse -mountpoint "$MNT" >/dev/null
+          trap 'hdiutil detach "$MNT" >/dev/null 2>&1 || true' EXIT
+          APP=$(find "$MNT" -maxdepth 1 -name '*.app' | head -1)
+          if [ -z "$APP" ]; then echo "::error::No .app inside the DMG."; exit 1; fi
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dvvv "$APP" 2>&1 | grep -q "Authority=Developer ID Application" \
+            || { echo "::error::App inside the DMG is not Developer ID signed."; exit 1; }
+          spctl -a -t exec -vvv "$APP" 2>&1 | tee /tmp/app-spctl.txt
+          grep -q "source=Notarized Developer ID" /tmp/app-spctl.txt \
+            || { echo "::error::Gatekeeper did not accept the app as Notarized Developer ID."; exit 1; }
+          xcrun stapler validate "$APP"
+          echo "✓ macOS installer is signed + notarized + stapled"
+
       - name: Stage artifacts (unix)
         if: matrix.archive == 'tar.gz'
         shell: bash
         run: |
-          mkdir -p stage
+          set -euo pipefail
+          mkdir -p stage update-feed
+          # CLI archive (kept as a standalone download).
           cp apps/desktop/dist/spectrum-cli "stage/${{ matrix.asset }}-cli"
-          if [ "${{ steps.app.outcome }}" = "success" ]; then
-            tar czf "stage/${{ matrix.asset }}-app.tar.gz" -C apps/desktop/build .
-            # Electrobun emits the per-OS installer (.dmg / .deb) into apps/desktop/artifacts
-            # (the channel build's artifactFolder), alongside the build/ bundle.
-            find apps/desktop/build apps/desktop/artifacts -maxdepth 3 \( -name '*.dmg' -o -name '*.deb' \) -exec cp {} "stage/" \;
-          fi
           tar czf "stage/${{ matrix.asset }}-cli.tar.gz" -C stage "${{ matrix.asset }}-cli"
           rm -f "stage/${{ matrix.asset }}-cli"
+          # OS installer replaces the old raw app bundle: macOS *.dmg, Linux *-Setup.tar.gz.
+          if [ "${{ steps.app.outcome }}" = "success" ]; then
+            shopt -s nullglob
+            installers=(apps/desktop/artifacts/*.dmg apps/desktop/artifacts/*-Setup.tar.gz)
+            if [ ${#installers[@]} -eq 0 ]; then
+              echo "::error::No OS installer (*.dmg / *-Setup.tar.gz) in apps/desktop/artifacts/"
+              ls -la apps/desktop/artifacts/ || true
+              exit 1
+            fi
+            for f in "${installers[@]}"; do cp "$f" stage/; done
+          fi
 
       - name: Stage artifacts (windows)
         if: matrix.archive == 'zip'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path stage | Out-Null
+          New-Item -ItemType Directory -Force -Path stage, update-feed | Out-Null
+          # CLI archive (kept as a standalone download).
           Copy-Item "apps/desktop/dist/spectrum-cli.exe" "stage/${{ matrix.asset }}-cli.exe" -ErrorAction SilentlyContinue
           if (-not (Test-Path "stage/${{ matrix.asset }}-cli.exe")) {
             Copy-Item "apps/desktop/dist/spectrum-cli" "stage/${{ matrix.asset }}-cli.exe"
           }
-          if ("${{ steps.app.outcome }}" -eq "success") {
-            Compress-Archive "apps/desktop/build/*" "stage/${{ matrix.asset }}-app.zip"
-          }
           Compress-Archive "stage/${{ matrix.asset }}-cli.exe" "stage/${{ matrix.asset }}-cli.zip"
           Remove-Item "stage/${{ matrix.asset }}-cli.exe"
+          # OS installer: Windows self-extracting installer, wrapped in a zip by Electrobun.
+          if ("${{ steps.app.outcome }}" -eq "success") {
+            $installers = Get-ChildItem "apps/desktop/artifacts" -Filter "*-Setup*.zip" -ErrorAction SilentlyContinue
+            if (-not $installers) {
+              Write-Error "No Windows installer (*-Setup*.zip) in apps/desktop/artifacts/"
+              Get-ChildItem "apps/desktop/artifacts" -ErrorAction SilentlyContinue | Format-Table
+              exit 1
+            }
+            foreach ($f in $installers) { Copy-Item $f.FullName "stage/" }
+          }
 
-      - name: Stage update artifacts
+      - name: Stage update artifacts (auto-update feed → update-feed/)
         if: matrix.app && steps.app.outcome == 'success'
         shell: bash
         run: |
-          mkdir -p stage
-          # Confirmed (Task 12): electrobun build writes the flat-named update artifacts
-          # (update.json, .tar.zst, .patch) to `apps/desktop/artifacts/` (the config
-          # `build.artifactFolder` default), not under `build/`. The build folder holds
-          # only the intermediate app bundle. No separate command is needed.
-          # Source: apps/desktop/node_modules/electrobun/src/cli/index.ts lines 4192-4236.
+          mkdir -p update-feed
+          # The in-app auto-updater reads these from the rolling `updates` tag, NOT the versioned
+          # release page — so they go to a separate bucket and never clutter the release.
           find apps/desktop/artifacts -maxdepth 2 \
             \( -name '*-update.json' -o -name '*.patch' -o -name '*.tar.zst' \) \
-            -exec cp {} stage/ \; || true
+            -exec cp {} update-feed/ \; || true
 
       - name: Build desktop app (dev bundle, for the verified-running smoke)
         id: smokebuild
@@ -175,30 +281,50 @@ jobs:
         if: matrix.app && runner.os != 'Linux' && steps.smokebuild.outcome == 'success'
         run: bun run --filter spectrum smoke
 
-      - name: Guard — stage holds only production artifacts
+      - name: Guard — buckets hold exactly the expected artifacts
         if: matrix.app
         shell: bash
         run: |
+          set -euo pipefail
           shopt -s nullglob
-          updates=(stage/*-update.json)
+          # The auto-update feed must exist (proves the channel build emitted update metadata).
+          updates=(update-feed/*-update.json)
           if [ ${#updates[@]} -eq 0 ]; then
-            echo "::error::No channel update artifacts in stage/ — the production build did not emit update metadata"
-            ls -la stage/ || true
+            echo "::error::No *-update.json in update-feed/ — the channel build emitted no update metadata."
+            ls -la update-feed/ stage/ || true
             exit 1
           fi
+          # The release page must hold ONLY the installer(s) + CLI archive — no feed leakage, no dev bundles.
           for f in stage/*; do
             case "$(basename "$f")" in
-              canary-*|spectrum-*|Spectrum-*|Spectrum.*|*.dmg|*.deb) ;;  # channel artifacts, app/cli bundles, installers
-              *) echo "::error::Unexpected (possibly dev) artifact staged: $f"; exit 1 ;;
+              *-cli.tar.gz|*-cli.zip|*.dmg|*-Setup.tar.gz|*-Setup*.zip) ;;
+              *) echo "::error::Unexpected artifact staged for the release page: $f"; exit 1 ;;
             esac
           done
-          echo "stage/ contains only production artifacts:"; ls -1 stage/
+          echo "stage/ (release-page assets):"; ls -1 stage/
+          echo "update-feed/:"; ls -1 update-feed/
 
-      - uses: actions/upload-artifact@v7
+      - name: Upload release-page assets
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset }}
           path: stage/*
           if-no-files-found: error
+
+      - name: Upload auto-update feed
+        if: matrix.app && steps.app.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: update-feed-${{ matrix.asset }}
+          path: update-feed/*
+          if-no-files-found: error
+
+      - name: Clean up signing keychain
+        if: always() && runner.os == 'macOS'
+        shell: bash
+        run: |
+          [ -n "${SPECTRUM_SIGNING_KEYCHAIN:-}" ] && security delete-keychain "$SPECTRUM_SIGNING_KEYCHAIN" || true
+          rm -f "$RUNNER_TEMP/asc-api-key.p8" || true
 
   release:
     name: Publish Canary Release
@@ -206,10 +332,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v8
-        with:
-          path: artifacts
-          merge-multiple: true
       - name: Determine canary version
         id: version
         env:
@@ -220,8 +342,20 @@ jobs:
             "[.[] | select(.tagName | startswith(\"v${VERSION}-canary.\")) | .tagName | ltrimstr(\"v${VERSION}-canary.\") | tonumber] | max // 0")
           NEXT=$((LATEST + 1))
           echo "tag=v${VERSION}-canary.${NEXT}" >> "$GITHUB_OUTPUT"
-      - name: Checksums
-        run: cd artifacts && sha256sum * > checksums-sha256.txt
+      - name: Download release-page assets
+        uses: actions/download-artifact@v8
+        with:
+          path: release-assets
+          pattern: spectrum-*
+          merge-multiple: true
+      - name: Download auto-update feed
+        uses: actions/download-artifact@v8
+        with:
+          path: update-feed
+          pattern: update-feed-*
+          merge-multiple: true
+      - name: Checksums (release-page assets only)
+        run: cd release-assets && sha256sum * > checksums-sha256.txt
       - name: Create canary release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -230,7 +364,7 @@ jobs:
             --title "${{ steps.version.outputs.tag }}" \
             --notes "Automated canary build from \`main\` (${{ github.sha }}). Unstable pre-release." \
             --prerelease --target ${{ github.sha }} \
-            artifacts/*
+            release-assets/*
 
       - name: Publish update artifacts to rolling tag
         env:
@@ -246,7 +380,7 @@ jobs:
               --notes "Rolling update metadata + patches. Managed by CI." \
               --prerelease
           shopt -s nullglob
-          UPDATE_ASSETS=(artifacts/*-update.json artifacts/*.patch artifacts/*.tar.zst)
+          UPDATE_ASSETS=(update-feed/*-update.json update-feed/*.patch update-feed/*.tar.zst)
           if [ ${#UPDATE_ASSETS[@]} -gt 0 ]; then
             gh release upload updates "${UPDATE_ASSETS[@]}" --clobber
           fi
