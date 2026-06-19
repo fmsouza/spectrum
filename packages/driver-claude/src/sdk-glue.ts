@@ -451,11 +451,13 @@ export const createClaudeAdapter = (deps: {
       setModel: (modelId, env) => {
         // Model is fixed per SDK query (the SDK reads `options.model` at query() time and
         // does not support a live-switch endpoint). To change models we relaunch resuming
-        // the same claude session so conversation history is preserved. "default" (no
-        // model) is not reachable here — the selector only sends real route ids.
+        // the same claude session so conversation history is preserved.
+        // null ⇒ switch back to "default" (no model): the SDK omits `model` and uses the
+        // harness's own credentials. A provided env (the direct `{}`) replaces the proxy env
+        // so the relaunched query drops ANTHROPIC_BASE_URL/_MODEL/_AUTH_TOKEN. Resume preserves history.
         // An optional env swaps the route — a direct-launched session becomes proxied
-        // when a real model is picked.
-        currentModel = String(modelId)
+        // when a real model is picked, or a proxied session goes direct when null + {} is supplied.
+        currentModel = modelId === null ? undefined : String(modelId)
         if (env !== undefined) currentEnv = env
         restart()
       },

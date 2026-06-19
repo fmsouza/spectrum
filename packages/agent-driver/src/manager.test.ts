@@ -574,7 +574,7 @@ describe("createRunManager.handleInbound run-set-model", () => {
     // Local recording fake — extends the session stub just for this test.
     const makeRecordingDriver = (
       record: (
-        modelId: ModelId,
+        modelId: ModelId | null,
         env?: Readonly<Record<string, string>>,
       ) => void,
     ): AgentDriver => ({

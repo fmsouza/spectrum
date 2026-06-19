@@ -57,9 +57,9 @@ export interface AgentSession {
   close(): Result<void, DriverError>
   /** Switch the normalized permission mode mid-session (driver applies natively or on next turn). */
   setMode?(mode: PermissionMode): Result<void, DriverError>
-  /** Switch the model mid-session; an optional env re-renders the route (direct↔proxied). */
+  /** Switch the model mid-session; an optional env re-renders the route (direct↔proxied). null clears the model (back to harness default / subscription). */
   setModel?(
-    modelId: ModelId,
+    modelId: ModelId | null,
     env?: Readonly<Record<string, string>>,
   ): Result<void, DriverError>
 }
