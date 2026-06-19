@@ -26,6 +26,10 @@ jobs:
     name: Build (${{ matrix.name }})
     needs: gate
     runs-on: ${{ matrix.os }}
+    # Signing secrets live in the "Production" GitHub Environment (scoped to main + v* tags).
+    # A job can only read environment secrets if it declares the environment. Release builds
+    # run on v* tags, which the environment's deployment rules allow.
+    environment: Production
     strategy:
       fail-fast: false
       matrix:
