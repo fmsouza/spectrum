@@ -203,6 +203,42 @@ describe("RunDetail (live)", () => {
     cleanup()
   })
 
+  it("forwards the default pick (empty string) as a null modelId over the socket", async () => {
+    const runner = makeFakeRunner()
+    const models = [
+      { id: "mdl_a", providerId: "p1", providerModel: "sonnet" },
+    ] as readonly ModelRoute[]
+    const providerNames: Readonly<Record<string, string>> = { p1: "Anthropic" }
+    renderWithProviders(
+      <RunDetail
+        mode="live"
+        sessionId={id}
+        runnerClient={runner}
+        models={models}
+        providerNames={providerNames}
+      />,
+      createFakeIpcClient({}),
+    )
+    runner.push(
+      stored(0, {
+        type: "runner-started",
+        runnerId: "run_root" as never,
+        model: "mdl_a",
+      }),
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Anthropic \/ sonnet/i }),
+      ).toBeInTheDocument(),
+    )
+    fireEvent.click(
+      screen.getByRole("button", { name: /Anthropic \/ sonnet/i }),
+    )
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /^default$/i }))
+    expect(runner.setModels).toEqual([{ id, modelId: "null" }])
+    cleanup()
+  })
+
   it("renders the model selector pill and calls runnerClient.setModel on pick", async () => {
     const runner = makeFakeRunner()
     const models = [
