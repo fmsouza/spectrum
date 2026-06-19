@@ -32,6 +32,15 @@ export interface RunManagerDeps {
   readonly clock: Clock
   /** Optional structured logger (default noop). Logs lifecycle ids/kinds only — never message content. */
   readonly logger?: Logger
+  /**
+   * Re-render a session's route env for an in-session model change. Injected by the composition
+   * root (the manager stays free of config/proxy/harnesses deps). Returns the proxy env vars
+   * (ANTHROPIC_BASE_URL / ANTHROPIC_AUTH_TOKEN / ANTHROPIC_MODEL / …) for a real model id.
+   */
+  readonly resolveModelEnv?: (input: {
+    readonly harnessId: HarnessId
+    readonly modelId: ModelId
+  }) => Promise<Readonly<Record<string, string>>>
   send(message: RunnerOutbound): void
 }
 
@@ -46,6 +55,7 @@ export interface RunManager {
 
 export const createRunManager = (deps: RunManagerDeps): RunManager => {
   const live = new Map<SessionId, AgentSession>()
+  const harnessOf = new Map<SessionId, HarnessId>()
   const logger = deps.logger ?? createNoopLogger()
   let sink: (message: RunnerOutbound) => void = deps.send
   const send = (message: RunnerOutbound): void => sink(message)
@@ -102,6 +112,7 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
     }
     const agent = started.value
     live.set(id, agent)
+    harnessOf.set(id, input.harnessId)
     logger.info("session launched", {
       sessionId: id,
       harnessId: input.harnessId,
@@ -166,9 +177,19 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
       case "run-set-mode":
         agent.setMode?.(message.mode)
         return
-      case "run-set-model":
-        agent.setModel?.(message.modelId)
+      case "run-set-model": {
+        const harnessId = harnessOf.get(message.id)
+        if (deps.resolveModelEnv === undefined || harnessId === undefined) {
+          agent.setModel?.(message.modelId)
+          return
+        }
+        // Async resolve (reads the per-run proxy key); the socket protocol has no reply frame,
+        // so failures surface as canonical events from the relaunched driver, not here.
+        void deps
+          .resolveModelEnv({ harnessId, modelId: message.modelId })
+          .then((env) => agent.setModel?.(message.modelId, env))
         return
+      }
       default:
         // Compile-time exhaustiveness: a new RunnerInbound variant fails the build here.
         message satisfies never
