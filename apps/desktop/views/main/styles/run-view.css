@@ -446,7 +446,7 @@
 }
 .lk-question__opt {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: var(--sp-space-2);
   cursor: pointer;
 }
@@ -460,6 +460,14 @@
   min-height: 0;
   margin: 0;
   padding: 0;
+  margin-top: 0.15em; /* nudge onto the label's first text line */
+}
+/* Stack the option title above its description instead of side-by-side. */
+.lk-question__opt-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-space-1);
+  min-width: 0;
 }
 .lk-question__opt-label {
   color: var(--sp-text);

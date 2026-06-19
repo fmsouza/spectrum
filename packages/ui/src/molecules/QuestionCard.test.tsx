@@ -93,4 +93,23 @@ describe("QuestionCard", () => {
     expect(screen.queryByRole("button", { name: /submit/i })).toBeNull()
     cleanup()
   })
+
+  it("groups each option's label and description in one stacking container, separate from the radio", () => {
+    render(<QuestionCard item={item} onAnswer={() => {}} />)
+    const label = screen.getByText(
+      item.prompt.questions[0]?.options[0]?.label ?? "",
+    )
+    const wrapper = label.closest(".lk-question__opt-text")
+    expect(wrapper).not.toBeNull()
+    // The description (if any) lives in the SAME wrapper as the label…
+    const desc = item.prompt.questions[0]?.options[0]?.description
+    if (desc !== undefined)
+      expect(wrapper).toContainElement(screen.getByText(desc))
+    // …and the radio/checkbox is NOT inside that text wrapper (it stays beside it).
+    const opt = label.closest(".lk-question__opt")
+    expect(
+      opt?.querySelector("input")?.closest(".lk-question__opt-text"),
+    ).toBeNull()
+    cleanup()
+  })
 })

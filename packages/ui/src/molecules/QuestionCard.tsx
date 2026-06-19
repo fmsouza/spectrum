@@ -75,10 +75,12 @@ export const QuestionCard = ({
                 checked={(drafts[qi] as Draft).labels.includes(o.label)}
                 onChange={() => toggle(qi, o.label, q.multiSelect)}
               />
-              <span className="lk-question__opt-label">{o.label}</span>
-              {o.description === undefined ? null : (
-                <span className="lk-question__opt-desc">{o.description}</span>
-              )}
+              <span className="lk-question__opt-text">
+                <span className="lk-question__opt-label">{o.label}</span>
+                {o.description === undefined ? null : (
+                  <span className="lk-question__opt-desc">{o.description}</span>
+                )}
+              </span>
             </label>
           ))}
           {q.allowFreeText ? (
