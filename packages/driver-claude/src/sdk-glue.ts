@@ -7,7 +7,7 @@ import type {
 } from "@spectrum/driver-runtime"
 import type { Logger } from "@spectrum/logger"
 import {
-  mapAnswerToAskUserQuestionResult,
+  mapAnswerToUpdatedInput,
   mapAskUserQuestionPayload,
 } from "./ask-user-question"
 import { initialClaudeMapState, mapClaudeMessage } from "./map-claude-message"
@@ -15,6 +15,10 @@ import {
   CLAUDE_SUPPORTED_MODES,
   toClaudePermissionMode,
 } from "./permission-mode"
+import {
+  mapAnswerToRefusalChoice,
+  mapRefusalFallbackPayload,
+} from "./refusal-fallback"
 import type { SdkMessageLike, SdkResultMessage } from "./sdk-types"
 
 /** Default timer implementation backed by global setTimeout/clearTimeout. */
@@ -283,7 +287,33 @@ export const createClaudeAdapter = (deps: {
             ? { pathToClaudeCodeExecutable: executable }
             : {}),
           ...(resume !== undefined ? { resume } : {}),
-          canUseTool: async (toolName, toolInput) => {
+          canUseTool: async (toolName, toolInput, { signal }) => {
+            if (toolName === "AskUserQuestion") {
+              const prompt = mapAskUserQuestionPayload(
+                toolInput as Record<string, unknown>,
+              )
+              if (prompt === undefined) {
+                log?.warn("claude AskUserQuestion input unrecognized")
+                return {
+                  behavior: "deny",
+                  message: "Malformed AskUserQuestion input",
+                }
+              }
+              const answer = await raceAbort(
+                ctx.requestQuestion(ctx.rootRunnerId, prompt),
+                signal,
+              )
+              if (answer === ABORTED)
+                return { behavior: "deny", message: "Question cancelled" }
+              return {
+                behavior: "allow",
+                updatedInput: mapAnswerToUpdatedInput(
+                  prompt,
+                  toolInput as Record<string, unknown>,
+                  answer,
+                ),
+              }
+            }
             const decision = await ctx.requestApproval(
               ctx.rootRunnerId,
               targetFor(toolName, toolInput),
@@ -293,13 +323,13 @@ export const createClaudeAdapter = (deps: {
               toolInput as Record<string, unknown>,
             )
           },
-          supportedDialogKinds: ["ask_user_question"],
+          supportedDialogKinds: ["refusal_fallback_prompt"],
           onUserDialog: async (request, { signal }) => {
-            if (request.dialogKind !== "ask_user_question")
+            if (request.dialogKind !== "refusal_fallback_prompt")
               return { behavior: "cancelled" }
-            const prompt = mapAskUserQuestionPayload(request.payload)
+            const prompt = mapRefusalFallbackPayload(request.payload)
             if (prompt === undefined) {
-              log?.warn("claude dialog payload unrecognized", {
+              log?.warn("claude refusal dialog payload unrecognized", {
                 dialogKind: request.dialogKind,
               })
               return { behavior: "cancelled" }
@@ -311,7 +341,7 @@ export const createClaudeAdapter = (deps: {
             if (answer === ABORTED) return { behavior: "cancelled" }
             return {
               behavior: "completed",
-              result: mapAnswerToAskUserQuestionResult(prompt, answer),
+              result: mapAnswerToRefusalChoice(answer),
             }
           },
           stderr: (data) =>
