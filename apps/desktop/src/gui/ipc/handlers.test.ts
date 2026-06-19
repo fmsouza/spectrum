@@ -10,6 +10,7 @@ import { type Logger, createNoopLogger } from "@spectrum/logger"
 import type {
   HarnessId,
   ModelId,
+  ModelRoute,
   Provider,
   ProviderId,
   Session,
@@ -953,6 +954,26 @@ describe("createIpcHandlers.launchHarness", () => {
   })
 })
 
+describe("createIpcHandlers.launchHarness effective proxy port", () => {
+  it("uses the effective (channel-offset) proxy port in the launch proxy URL", async () => {
+    // ctx.proxyPort = 4001 (canary offset); the handler must build proxyUrl from ctx.proxyPort
+    const { ctx, runnerLaunchInputs } = makeCtx({
+      providers: [provider()],
+      proxyKeyStored: "stored-run-key",
+      proxyPort: 4001,
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({
+      id: "claude" as HarnessId,
+      modelId: "mdl_x" as ModelId,
+    })
+
+    const input = runnerLaunchInputs[0] as { env: Record<string, string> }
+    expect(input.env.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:4001")
+  })
+})
+
 describe("createIpcHandlers.getHarnesses", () => {
   it("getHarnesses sets native from the driver registry", async () => {
     const { ctx } = makeCtx({ nativeHarnessId: "claude" })
@@ -1359,6 +1380,55 @@ describe("createIpcHandlers.launchHarness (persisted model)", () => {
 
     const input = runnerLaunchInputs[0] as { modelId?: string }
     expect(input.modelId).toBe("mdl_explicit")
+  })
+})
+
+describe("createIpcHandlers.launchHarness (model default fallback)", () => {
+  it("defaults the launch model to the first configured model when none is remembered", async () => {
+    const { ctx, runnerLaunchInputs } = makeCtx({ providers: [provider()] })
+    const loaded = (await ctx.config.load()).value
+    await ctx.config.save({
+      ...loaded,
+      models: [
+        {
+          id: "mdl_a" as ModelId,
+          providerId: "p1" as ProviderId,
+          providerModel: "m",
+        } satisfies ModelRoute,
+      ],
+      settings: { ...loaded.settings, lastByHarness: {} },
+    } as Config)
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({ id: "claude" as HarnessId, cwd: "/tmp" })
+
+    const input = runnerLaunchInputs[0] as { modelId?: string }
+    expect(input.modelId).toBe("mdl_a") // proxied launch, not direct
+  })
+
+  it("keeps the explicit default (no model) when the remembered model is the empty sentinel", async () => {
+    const { ctx, runnerLaunchInputs } = makeCtx({ providers: [provider()] })
+    const loaded = (await ctx.config.load()).value
+    await ctx.config.save({
+      ...loaded,
+      models: [
+        {
+          id: "mdl_a" as ModelId,
+          providerId: "p1" as ProviderId,
+          providerModel: "m",
+        } satisfies ModelRoute,
+      ],
+      settings: {
+        ...loaded.settings,
+        lastByHarness: { claude: { modelId: "" } },
+      },
+    } as Config)
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.launchHarness({ id: "claude" as HarnessId, cwd: "/tmp" })
+
+    const input = runnerLaunchInputs[0] as Record<string, unknown>
+    expect("modelId" in input).toBe(false) // direct: user opted into subscription
   })
 })
 

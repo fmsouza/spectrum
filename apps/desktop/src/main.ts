@@ -62,7 +62,7 @@ export const buildRealDeps = (
           const proxyKey = ctx.genProxyKey()
           const running = ctx.proxy.start({
             host: loaded.value.settings.proxyHost,
-            port: loaded.value.settings.proxyPort,
+            port: ctx.proxyPort,
             proxyKey,
             config: loaded.value,
           })

@@ -96,6 +96,13 @@ describe("createRunnerClient", () => {
     expect(sent).toEqual([{ type: "run-set-model", id, modelId: "mdl_x" }])
   })
 
+  it("sends run-set-model with a null modelId when default is selected", () => {
+    const sent: unknown[] = []
+    const client = createRunnerClient((m) => sent.push(m))
+    client.setModel(id, null)
+    expect(sent).toEqual([{ type: "run-set-model", id, modelId: null }])
+  })
+
   it("onAny receives every dispatched frame regardless of attach", () => {
     const c = createRunnerClient(() => {})
     const seen: string[] = []

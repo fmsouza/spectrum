@@ -97,12 +97,12 @@ const LiveRunDetail = ({
       {...(providerNames === undefined ? {} : { providerNames })}
       onModelChange={(modelId) => {
         setModelStore(sessionId, modelId)
-        // The runner seam takes a real ModelId — only forward real picks; the
-        // "" (default) sentinel is a no-op over the socket for now. Persistence
-        // still records "" so the next launch of this harness starts default.
-        if (modelId !== "") {
-          runnerClient.setModel(sessionId, modelId as ModelId)
-        }
+        // Forward to the live session: a real id routes via the proxy, "" (default) clears the
+        // model so the session switches back to the harness's own subscription/credentials.
+        runnerClient.setModel(
+          sessionId,
+          modelId === "" ? null : (modelId as ModelId),
+        )
         if (harnessId !== undefined)
           void client.updateHarnessPrefs({ harnessId, modelId })
       }}

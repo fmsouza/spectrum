@@ -49,7 +49,7 @@ export type RunnerInbound =
   | {
       readonly type: "run-set-model"
       readonly id: SessionId
-      readonly modelId: ModelId
+      readonly modelId: ModelId | null
     }
 
 const InboundSchema = z.discriminatedUnion("type", [
@@ -80,7 +80,7 @@ const InboundSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("run-set-model"),
     id: SessionIdSchema,
-    modelId: ModelIdSchema,
+    modelId: ModelIdSchema.nullable(),
   }),
 ])
 

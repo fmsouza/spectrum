@@ -65,11 +65,13 @@ import {
 } from "@spectrum/logger"
 import {
   type Platform,
+  channelProxyPortOffset,
   detectPlatform,
   legacyLaunchkitDataDir,
   legacyMacosConfigDir,
   resolveAppEnv,
   resolveAppPaths,
+  resolveChannel,
 } from "@spectrum/platform"
 import {
   createDraftProviderTester,
@@ -113,6 +115,7 @@ import { startRunnerSocket } from "./gui/runner-socket"
 import { createElectrobunUpdater } from "./gui/updater/electrobun-updater"
 import type { UpdaterAdapter } from "./gui/updater/updater-adapter"
 import { isWindowFocused } from "./gui/window"
+import { migrateProductionToCanary } from "./migrate-canary-data"
 import {
   migrateLaunchkitToSpectrum,
   migrateLegacyMacosConfig,
@@ -268,6 +271,7 @@ export interface CreateAppContextDeps {
   readonly ensureDir: (dir: string) => void
   readonly migrateLegacyMacosConfig: typeof migrateLegacyMacosConfig
   readonly migrateLaunchkitToSpectrum: typeof migrateLaunchkitToSpectrum
+  readonly migrateProductionToCanary: typeof migrateProductionToCanary
   readonly createFsConfigFile: typeof createFsConfigFile
   readonly createFileConfigStore: typeof createFileConfigStore
   readonly createCachedConfigStore: typeof createCachedConfigStore
@@ -334,6 +338,7 @@ const realDeps: CreateAppContextDeps = {
   },
   migrateLegacyMacosConfig,
   migrateLaunchkitToSpectrum,
+  migrateProductionToCanary,
   createFsConfigFile,
   createFileConfigStore,
   createCachedConfigStore,
@@ -505,6 +510,7 @@ export const createAppContext = (
 ): AppContext => {
   const buildChannel = deps.readBuildChannel()
   const appEnv = resolveAppEnv({ buildChannel, env: deps.env })
+  const channel = resolveChannel({ buildChannel, env: deps.env })
 
   // Legacy data lived only under the production dirs; never migrate it into a dev sandbox.
   if (appEnv === "production") {
@@ -519,11 +525,22 @@ export const createAppContext = (
       env: deps.env,
     })
   }
+  // One-time seed: copy the production data dir into the canary dir on first canary run so the user
+  // keeps their providers/models/sessions. The OS keychain stays shared, so copied secret refs
+  // resolve. No-op once the canary dir exists. Must run BEFORE ensureDir/db-open.
+  if (channel === "canary") {
+    deps.migrateProductionToCanary({
+      platform: deps.platform,
+      homeDir: deps.homeDir(),
+      env: deps.env,
+    })
+  }
   const paths = deps.resolveAppPaths({
     platform: deps.platform,
     homeDir: deps.homeDir(),
     env: deps.env,
     appEnv,
+    channel,
   })
   const configFile = paths.configFile
   const dbFile = paths.dbFile
@@ -796,6 +813,36 @@ export const createAppContext = (
     notifier.onRunFinished(finished)
   }
 
+  // Re-render a session's proxied route env when the user picks a model in-session. Mirrors the
+  // proxied branch of launchHarness: proxy URL from settings, the running proxy's per-run key from
+  // runtime (mint one only as a defensive fallback), env rendered via resolveHarnessLaunch.
+  // SECURITY: never log the proxy key or the rendered env.
+  const resolveModelEnv = async (input: {
+    readonly harnessId: import("@spectrum/types").HarnessId
+    readonly modelId: import("@spectrum/types").ModelId | null
+  }): Promise<Readonly<Record<string, string>>> => {
+    if (input.modelId === null) return {} // switch to default/subscription ⇒ direct (no proxy env)
+    const loaded = await config.load()
+    const cfg = loaded.ok ? loaded.value : defaultConfig()
+    const listed = await registry.list()
+    const harness = listed.ok
+      ? listed.value.find((h) => h.id === input.harnessId)
+      : undefined
+    if (harness === undefined) return {}
+    const proxyUrl = `http://${cfg.settings.proxyHost}:${proxyPort}`
+    const proxyKey = (await runtime.readProxyKey()) ?? genProxyKey()
+    const resolved = resolveLaunch({
+      harness,
+      route: {
+        kind: "proxied",
+        proxyUrl,
+        proxyKey,
+        modelId: input.modelId,
+      },
+    })
+    return resolved.ok ? resolved.value.env : {}
+  }
+
   const baseRunner = deps.createRunManager({
     driver: routingDriver,
     sessions: sessionSink,
@@ -804,6 +851,7 @@ export const createAppContext = (
     logger: log.child("runner"),
     // Before the webview socket connects, the manager's sink is this notifier tap.
     send: notifyOnRunFinished,
+    resolveModelEnv,
   })
   // The runner socket calls `bindSend` on connect, REPLACING the manager's sink with one that pushes
   // to the live websocket. `withNotifierTap` composes the notifier tap INTO that socket sink —
@@ -836,7 +884,7 @@ export const createAppContext = (
 
   // proxy settings resolved from the default config shape (loopback only, security.md)
   const settings = defaultConfig().settings
-  const proxyPort = settings.proxyPort
+  const proxyPort = settings.proxyPort + channelProxyPortOffset(channel)
   const proxyBaseUrl = `http://${settings.proxyHost}:${proxyPort}`
 
   /**

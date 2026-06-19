@@ -134,4 +134,28 @@ describe("resolveAppPaths", () => {
     })
     expect(p.dataDir).toBe("/custom/dir")
   })
+
+  it("uses 'Spectrum (Canary)' on macOS when channel is canary", () => {
+    const p = resolveAppPaths({
+      platform: "macos",
+      homeDir: "/Users/me",
+      env: {},
+      channel: "canary",
+    })
+    expect(p.dataDir).toBe(
+      "/Users/me/Library/Application Support/Spectrum (Canary)",
+    )
+    expect(p.runtimeFile).toBe(
+      "/Users/me/Library/Application Support/Spectrum (Canary)/runtime.json",
+    )
+  })
+  it("uses 'spectrum-canary' on Linux when channel is canary", () => {
+    const p = resolveAppPaths({
+      platform: "linux",
+      homeDir: "/home/me",
+      env: {},
+      channel: "canary",
+    })
+    expect(p.dataDir).toBe("/home/me/.config/spectrum-canary")
+  })
 })
