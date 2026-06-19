@@ -7,7 +7,7 @@ import type {
 } from "@spectrum/driver-runtime"
 import type { Logger } from "@spectrum/logger"
 import {
-  mapAnswerToAskUserQuestionResult,
+  mapAnswerToUpdatedInput,
   mapAskUserQuestionPayload,
 } from "./ask-user-question"
 import { initialClaudeMapState, mapClaudeMessage } from "./map-claude-message"
@@ -283,7 +283,33 @@ export const createClaudeAdapter = (deps: {
             ? { pathToClaudeCodeExecutable: executable }
             : {}),
           ...(resume !== undefined ? { resume } : {}),
-          canUseTool: async (toolName, toolInput) => {
+          canUseTool: async (toolName, toolInput, { signal }) => {
+            if (toolName === "AskUserQuestion") {
+              const prompt = mapAskUserQuestionPayload(
+                toolInput as Record<string, unknown>,
+              )
+              if (prompt === undefined) {
+                log?.warn("claude AskUserQuestion input unrecognized")
+                return {
+                  behavior: "deny",
+                  message: "Malformed AskUserQuestion input",
+                }
+              }
+              const answer = await raceAbort(
+                ctx.requestQuestion(ctx.rootRunnerId, prompt),
+                signal,
+              )
+              if (answer === ABORTED)
+                return { behavior: "deny", message: "Question cancelled" }
+              return {
+                behavior: "allow",
+                updatedInput: mapAnswerToUpdatedInput(
+                  prompt,
+                  toolInput as Record<string, unknown>,
+                  answer,
+                ),
+              }
+            }
             const decision = await ctx.requestApproval(
               ctx.rootRunnerId,
               targetFor(toolName, toolInput),
@@ -292,27 +318,6 @@ export const createClaudeAdapter = (deps: {
               decision,
               toolInput as Record<string, unknown>,
             )
-          },
-          supportedDialogKinds: ["ask_user_question"],
-          onUserDialog: async (request, { signal }) => {
-            if (request.dialogKind !== "ask_user_question")
-              return { behavior: "cancelled" }
-            const prompt = mapAskUserQuestionPayload(request.payload)
-            if (prompt === undefined) {
-              log?.warn("claude dialog payload unrecognized", {
-                dialogKind: request.dialogKind,
-              })
-              return { behavior: "cancelled" }
-            }
-            const answer = await raceAbort(
-              ctx.requestQuestion(ctx.rootRunnerId, prompt),
-              signal,
-            )
-            if (answer === ABORTED) return { behavior: "cancelled" }
-            return {
-              behavior: "completed",
-              result: mapAnswerToAskUserQuestionResult(prompt, answer),
-            }
           },
           stderr: (data) =>
             log?.warn("claude stderr", { chunk: data.slice(0, 1000) }),
