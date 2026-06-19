@@ -906,3 +906,14 @@
 .lk-task-rail__title {
   flex: 1 1 auto;
 }
+
+.lk-message-bubble__retry {
+  align-self: flex-start;
+  margin-top: var(--sp-space-2);
+  padding: var(--sp-space-1) var(--sp-space-2);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  background: var(--sp-bg);
+  color: var(--sp-text);
+  cursor: pointer;
+}

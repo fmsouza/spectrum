@@ -8,6 +8,8 @@ export type MessageBubbleProps = {
   readonly author?: "user" | "assistant"
   /** Set when the message carries a turn error (e.g. a provider failure) — renders the error state. */
   readonly tone?: "error"
+  /** When the turn failed (tone="error"), fires to re-run the prompt. */
+  readonly onRetry?: () => void
 }
 
 /**
@@ -20,6 +22,7 @@ export const MessageBubble = ({
   text,
   author = "assistant",
   tone,
+  onRetry,
 }: MessageBubbleProps): ReactElement => (
   <div
     className="lk-message-bubble"
@@ -40,5 +43,14 @@ export const MessageBubble = ({
         {text}
       </ReactMarkdown>
     </div>
+    {tone === "error" && onRetry !== undefined ? (
+      <button
+        type="button"
+        className="lk-message-bubble__retry"
+        onClick={() => onRetry()}
+      >
+        Retry
+      </button>
+    ) : null}
   </div>
 )

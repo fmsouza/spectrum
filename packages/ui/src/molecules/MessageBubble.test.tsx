@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { MessageBubble } from "./MessageBubble"
 
 describe("MessageBubble", () => {
@@ -49,6 +49,28 @@ describe("MessageBubble", () => {
     const bubble = container.querySelector(".lk-message-bubble")
     expect(bubble).not.toHaveAttribute("data-tone")
     expect(bubble).not.toHaveAttribute("role")
+    cleanup()
+  })
+
+  it("renders a Retry button and fires onRetry when tone is error", () => {
+    let retried = 0
+    render(
+      <MessageBubble
+        text="API Error: rate limited"
+        tone="error"
+        onRetry={() => {
+          retried += 1
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }))
+    expect(retried).toBe(1)
+    cleanup()
+  })
+
+  it("does not render a Retry button when there is no error tone", () => {
+    render(<MessageBubble text="all good" onRetry={() => {}} />)
+    expect(screen.queryByRole("button", { name: /retry/i })).toBeNull()
     cleanup()
   })
 })
