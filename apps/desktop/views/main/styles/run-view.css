@@ -488,7 +488,16 @@
   display: flex;
   justify-content: flex-end;
 }
-.lk-question__resolved {
+.lk-question__resolved-q {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-space-1);
+}
+.lk-question__resolved-q + .lk-question__resolved-q {
+  margin-top: var(--sp-space-2);
+}
+.lk-question__resolved-answer {
+  margin: 0;
   color: var(--sp-text-secondary);
   font-size: var(--sp-text-sm);
 }
