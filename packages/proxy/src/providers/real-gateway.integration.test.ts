@@ -215,11 +215,19 @@ describe("createRealGateway", () => {
     const events: StreamEvent[] = []
     for await (const e of gw.stream(model, req)) events.push(e)
     expect(events.some((e) => e.type === "text-delta")).toBe(true) // got part1
-    expect(events.at(-1)).toMatchObject({ type: "error" }) // then timed out on the gap
-    // Inter-token stall must use the "stalled" wording (not the first-token "did not respond")
-    expect((events.at(-1) as { detail: string }).detail).toContain("stalled")
-    expect((events.at(-1) as { detail: string }).detail).toContain(
-      "after the last token",
-    )
+    // Inter-token stall must use the "stalled" wording (not the first-token "did not respond").
+    // toMatchObject with expect.stringContaining mutates the matched object in this bun version,
+    // so we snapshot the detail string first, then run the structural assertion.
+    const lastEvent = events.at(-1)
+    const lastDetail =
+      lastEvent !== undefined && "detail" in lastEvent
+        ? String((lastEvent as { detail: unknown }).detail)
+        : undefined
+    expect(lastEvent).toMatchObject({
+      type: "error",
+      detail: expect.stringContaining("stalled"),
+    })
+    expect(lastDetail).toEqual(expect.stringContaining("stalled"))
+    expect(lastDetail).toEqual(expect.stringContaining("after the last token"))
   })
 })
