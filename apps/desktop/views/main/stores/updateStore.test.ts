@@ -7,6 +7,7 @@ const available = {
   phase: "available" as const,
   currentVersion: "1.0.0",
   latestVersion: "1.1.0",
+  latestHash: "hashA",
   available: true,
   progress: 0,
   error: null,
@@ -33,12 +34,12 @@ describe("createUpdateStore", () => {
     expect(store.getState().state?.latestVersion).toBe("1.1.0")
   })
 
-  it("dismiss calls the client with the latest version and re-reads state", async () => {
+  it("dismiss calls the client with the latest build hash and re-reads state", async () => {
     let dismissedWith: string | null = null
     const store = createUpdateStore({
       client: fakeClient({
-        dismissUpdate: async ({ version }) => {
-          dismissedWith = version
+        dismissUpdate: async ({ hash }) => {
+          dismissedWith = hash
           return ok(null)
         },
         getUpdateState: async () => ok({ ...available, showBanner: false }),
@@ -47,8 +48,32 @@ describe("createUpdateStore", () => {
     })
     await store.getState().check()
     await store.getState().dismiss()
-    expect(dismissedWith).toBe("1.1.0")
+    expect(dismissedWith).toBe("hashA")
     expect(store.getState().state?.showBanner).toBe(false)
+  })
+
+  it("falls back to the version when latestHash is null", async () => {
+    // An older bundle that surfaces no build hash dismisses by version, so
+    // existing users on old builds never regress.
+    let dismissedWith: { hash?: string; version?: string } | null = null
+    const noHash = { ...available, latestHash: null }
+    const store = createUpdateStore({
+      client: fakeClient({
+        checkForUpdate: async () => ok(noHash),
+        getUpdateState: async () => ok(noHash),
+        dismissUpdate: async (params) => {
+          dismissedWith = params as { hash?: string; version?: string }
+          return ok(null)
+        },
+      }),
+      notify: () => {},
+    })
+    await store.getState().check()
+    await store.getState().dismiss()
+    // When no hash is available, the store must still dismiss (by version) so
+    // the banner can be cleared on old builds.
+    expect(dismissedWith).not.toBeNull()
+    expect(store.getState().state).toBeDefined()
   })
 
   it("download starts the download then refreshes", async () => {

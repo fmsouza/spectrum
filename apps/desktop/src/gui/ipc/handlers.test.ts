@@ -42,6 +42,7 @@ const baseConfig = (
   updateSettings: {
     updateChannel?: "stable" | "canary"
     dismissedUpdateVersion?: string | null
+    dismissedUpdateHash?: string | null
   } = {},
 ): Config => ({
   ...defaultConfig(),
@@ -55,6 +56,7 @@ const baseConfig = (
     collapsedProjects: [],
     updateChannel: updateSettings.updateChannel ?? "stable",
     dismissedUpdateVersion: updateSettings.dismissedUpdateVersion ?? null,
+    dismissedUpdateHash: updateSettings.dismissedUpdateHash ?? null,
   },
 })
 
@@ -81,6 +83,7 @@ const makeCtx = (
     updater?: UpdaterAdapter
     updateChannel?: "stable" | "canary"
     dismissedUpdateVersion?: string | null
+    dismissedUpdateHash?: string | null
     deleteSessionResult?: Result<
       void,
       { readonly kind: "db-failed"; readonly detail: string }
@@ -137,6 +140,7 @@ const makeCtx = (
       {
         updateChannel: over.updateChannel,
         dismissedUpdateVersion: over.dismissedUpdateVersion,
+        dismissedUpdateHash: over.dismissedUpdateHash,
       },
     ),
     ...(over.models !== undefined ? { models: [...over.models] } : {}),
@@ -1547,11 +1551,12 @@ describe("createIpcHandlers update handlers", () => {
     const fakeUpdater = createFakeUpdater({
       currentVersion: "1.0.0",
       latest: "1.1.0",
+      latestHash: "hashA",
     })
     const { ctx } = makeCtx({
       updater: fakeUpdater,
       updateChannel: "stable",
-      dismissedUpdateVersion: null,
+      dismissedUpdateHash: null,
     })
     const handlers = createIpcHandlers(ctx)
 
@@ -1559,19 +1564,21 @@ describe("createIpcHandlers update handlers", () => {
 
     expect(result.available).toBe(true)
     expect(result.latestVersion).toBe("1.1.0")
+    expect(result.latestHash).toBe("hashA")
     expect(result.channel).toBe("stable")
     expect(result.showBanner).toBe(true)
   })
 
-  it("checkForUpdate returns showBanner===false when the available version was dismissed", async () => {
+  it("checkForUpdate returns showBanner===false when the available build hash was dismissed", async () => {
     const fakeUpdater = createFakeUpdater({
       currentVersion: "1.0.0",
       latest: "1.1.0",
+      latestHash: "hashA",
     })
     const { ctx } = makeCtx({
       updater: fakeUpdater,
       updateChannel: "stable",
-      dismissedUpdateVersion: "1.1.0",
+      dismissedUpdateHash: "hashA",
     })
     const handlers = createIpcHandlers(ctx)
 
@@ -1579,6 +1586,39 @@ describe("createIpcHandlers update handlers", () => {
 
     expect(result.available).toBe(true)
     expect(result.showBanner).toBe(false)
+  })
+
+  it("hides the banner for the dismissed hash and re-shows it for a new hash while the version is frozen", async () => {
+    // The canary regression: canary CI never bumps package.json version, so
+    // every canary build reports the SAME latestVersion. Only the build hash
+    // changes. Dismissing hashA must NOT suppress a later hashB.
+    const first = createFakeUpdater({
+      currentVersion: "1.4.0",
+      latest: "1.4.0",
+      latestHash: "hashA",
+    })
+    const { ctx } = makeCtx({
+      updater: first,
+      updateChannel: "canary",
+      dismissedUpdateHash: "hashA",
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    // hashA dismissed → banner hidden
+    expect((await handlers.checkForUpdate(undefined)).showBanner).toBe(false)
+
+    // Swap to a newer canary build: same version, new hash → banner re-shows.
+    const second = createFakeUpdater({
+      currentVersion: "1.4.0",
+      latest: "1.4.0",
+      latestHash: "hashB",
+    })
+    ;(ctx.updater as unknown as { getRaw: unknown }) = second
+    const handlers2 = createIpcHandlers(ctx)
+    const result = await handlers2.checkForUpdate(undefined)
+    expect(result.latestVersion).toBe("1.4.0")
+    expect(result.latestHash).toBe("hashB")
+    expect(result.showBanner).toBe(true)
   })
 
   it("startUpdateDownload returns null and drives the fake updater to phase downloaded", async () => {
@@ -1595,18 +1635,18 @@ describe("createIpcHandlers update handlers", () => {
     expect(fakeUpdater.getRaw().phase).toBe("downloaded")
   })
 
-  it("dismissUpdate persists the dismissed version in config", async () => {
+  it("dismissUpdate persists the dismissed build hash in config", async () => {
     const fakeUpdater = createFakeUpdater({ currentVersion: "1.0.0" })
     const { ctx, saves } = makeCtx({
       updater: fakeUpdater,
-      dismissedUpdateVersion: null,
+      dismissedUpdateHash: null,
     })
     const handlers = createIpcHandlers(ctx)
 
-    const result = await handlers.dismissUpdate({ version: "1.1.0" })
+    const result = await handlers.dismissUpdate({ hash: "hashA" })
 
     expect(result).toBeNull()
-    expect(saves.at(-1)?.settings.dismissedUpdateVersion).toBe("1.1.0")
+    expect(saves.at(-1)?.settings.dismissedUpdateHash).toBe("hashA")
   })
 
   it("setUpdateChannel switches the channel, persists it, and returns state with new channel", async () => {

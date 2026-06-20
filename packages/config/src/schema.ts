@@ -43,6 +43,20 @@ export const SettingsSchema = z
      */
     dismissedUpdateVersion: z.string().nullable().default(null),
     /**
+     * The build `hash` of the update the user dismissed from the banner
+     * (unique per build for BOTH stable and canary). The banner stays hidden
+     * for exactly this build; a newer build (different hash) re-triggers it.
+     * `null` = nothing dismissed by hash. This is the source of truth for
+     * dismissal; `dismissedUpdateVersion` is retained only as a legacy
+     * fallback for configs written before hash-keyed dismissal existed.
+     *
+     * Canary CI never bumps package.json `version`, so every canary build
+     * reports the same `latestVersion` — keying dismissal on the version would
+     * permanently suppress every canary after the first dismiss. The hash is
+     * unique per build, so it is the correct dismissal key.
+     */
+    dismissedUpdateHash: z.string().nullable().default(null),
+    /**
      * Max ms to wait for the FIRST streamed chunk from the LLM provider before
      * treating the stream as a silent hang. Generous by default — slow/local models
      * warm up slowly. Buffered providers (e.g. Ollama Cloud) raise this further via

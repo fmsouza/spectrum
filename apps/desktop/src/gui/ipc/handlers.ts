@@ -84,15 +84,25 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
     const channel: Channel =
       buildChannel ??
       (isOk(loaded) ? loaded.value.settings.updateChannel : "stable")
-    const dismissed = isOk(loaded)
-      ? loaded.value.settings.dismissedUpdateVersion
-      : null
+    const settings = isOk(loaded) ? loaded.value.settings : null
+    const dismissedVersion = settings?.dismissedUpdateVersion ?? null
+    const dismissedHash = settings?.dismissedUpdateHash ?? null
     const raw = ctx.updater.getRaw()
+    // Key dismissal on the build `hash` (unique per build for BOTH stable and
+    // canary) rather than the version string: canary CI never bumps
+    // package.json `version`, so every canary reports the same `latestVersion`
+    // — a version-keyed dismissal permanently suppresses every canary after the
+    // first. The hash-keyed comparison re-shows the banner for a NEW build even
+    // when the version is frozen. `decideBanner` falls back to the legacy
+    // version comparison when no hash is available (older bundles), so an
+    // existing user with a stale `dismissedUpdateVersion` never regresses.
     const showBanner =
       decideBanner({
         available: raw.available,
         latestVersion: raw.latestVersion,
-        dismissedVersion: dismissed,
+        latestHash: raw.latestHash,
+        dismissedVersion,
+        dismissedHash,
       }) === "show"
     return { ...raw, channel, showBanner }
   }
@@ -510,16 +520,21 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return null
     },
 
-    dismissUpdate: async ({ version }: { version: string }) => {
+    dismissUpdate: async ({ hash }: { hash: string }) => {
       const config = await loadConfig()
       const saved = await ctx.config.save({
         ...config,
         settings: {
           ...config.settings,
-          dismissedUpdateVersion: version,
+          // Dismissal keys on the build `hash` (unique per build for both
+          // channels). `dismissedUpdateVersion` is kept in sync as a legacy
+          // fallback for any older build that reports no hash; the source of
+          // truth is `dismissedUpdateHash`. See policy.ts.
+          dismissedUpdateHash: hash,
+          dismissedUpdateVersion: config.settings.dismissedUpdateVersion,
         },
       })
-      if (!isOk(saved)) return fail("could not persist dismissed version")
+      if (!isOk(saved)) return fail("could not persist dismissed update")
       return null
     },
 

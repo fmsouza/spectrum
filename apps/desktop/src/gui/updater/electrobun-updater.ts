@@ -60,6 +60,7 @@ export const createElectrobunUpdater = (
     phase: "idle",
     currentVersion: "",
     latestVersion: null,
+    latestHash: null,
     available: false,
     progress: 0,
     error: null,
@@ -127,6 +128,14 @@ export const createElectrobunUpdater = (
           currentVersion: current,
           available,
           latestVersion: available ? info.version : null,
+          // The build `hash` is unique per build for BOTH stable and canary
+          // (canary CI never bumps package.json version, so `latestVersion`
+          // repeats across canary builds — see updater-adapter.ts). Keying
+          // update dismissal on the hash (not the version) is what lets a
+          // dismissed canary build stay dismissed while a *new* canary build
+          // re-shows the banner. Electrobun only omits `hash` on an error
+          // parse path where `available` is already false.
+          latestHash: available ? info.hash : null,
           error: null,
         }
         return ok(undefined)
