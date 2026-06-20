@@ -20,7 +20,13 @@ export const resolveTimeouts = (
 ): TimeoutWindows => {
   if (streaming === "incremental") return settings
   return {
-    firstTokenTimeoutMs: Math.max(settings.firstTokenTimeoutMs, BUFFERED_FLOOR_MS),
-    interTokenTimeoutMs: Math.max(settings.interTokenTimeoutMs, BUFFERED_FLOOR_MS),
+    firstTokenTimeoutMs: Math.max(
+      settings.firstTokenTimeoutMs,
+      BUFFERED_FLOOR_MS,
+    ),
+    interTokenTimeoutMs: Math.max(
+      settings.interTokenTimeoutMs,
+      BUFFERED_FLOOR_MS,
+    ),
   }
 }

@@ -73,6 +73,7 @@ import {
   resolveAppPaths,
   resolveChannel,
 } from "@spectrum/platform"
+import { getDescriptor } from "@spectrum/providers"
 import {
   createDraftProviderTester,
   createFetchHttpGet,
@@ -88,7 +89,6 @@ import {
   resolveTimeouts,
   startProxy,
 } from "@spectrum/proxy"
-import { getDescriptor } from "@spectrum/providers"
 import { createRunStore } from "@spectrum/run-store"
 import {
   createBunProcessRunner,
