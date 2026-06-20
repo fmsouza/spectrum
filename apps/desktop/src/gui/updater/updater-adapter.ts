@@ -17,6 +17,14 @@ export interface RawUpdateState {
   readonly phase: UpdatePhase
   readonly currentVersion: string
   readonly latestVersion: string | null
+  /**
+   * The build `hash` of the latest available build (unique per build for BOTH
+   * stable and canary), or null when up-to-date / unknown. Unlike
+   * `latestVersion` — which canary CI never bumps (frozen at the last stable
+   * `package.json` version) — the hash changes on every build, so it is the
+   * correct key for per-build update dismissal. See electrobun-updater.ts.
+   */
+  readonly latestHash: string | null
   readonly available: boolean
   readonly progress: number
   readonly error: string | null
