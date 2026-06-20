@@ -9,4 +9,17 @@ describe("TypingIndicator", () => {
     expect(container.querySelectorAll(".lk-typing__dot")).toHaveLength(3)
     cleanup()
   })
+
+  it("shows the elapsed seconds when provided", () => {
+    render(<TypingIndicator elapsedSeconds={45} />)
+    expect(screen.getByText(/still generating/i)).toBeInTheDocument()
+    expect(screen.getByText(/45s/)).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("shows only the dots when elapsedSeconds is undefined", () => {
+    render(<TypingIndicator />)
+    expect(screen.queryByText(/still generating/i)).toBeNull()
+    cleanup()
+  })
 })

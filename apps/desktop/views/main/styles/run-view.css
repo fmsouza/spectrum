@@ -917,3 +917,9 @@
   color: var(--sp-text);
   cursor: pointer;
 }
+
+.lk-typing__elapsed {
+  margin-left: var(--sp-space-2);
+  color: var(--sp-text-secondary);
+  font-size: var(--sp-text-xs);
+}
