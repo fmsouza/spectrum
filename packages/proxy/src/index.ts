@@ -15,6 +15,7 @@ export type {
   LoadSdk,
 } from "./providers/factory"
 export { loadSdk } from "./providers/load-sdk"
+export { resolveTimeouts } from "./providers/resolve-timeouts"
 export { createRealGateway } from "./providers/real-gateway"
 export { createScriptedGateway } from "./gateway"
 export type { LanguageModelGateway } from "./gateway"

@@ -87,6 +87,13 @@ export type ProviderDescriptor = {
   readonly configFields: readonly ConfigFieldSpec[]
   readonly secretFields: readonly SecretFieldSpec[]
   readonly supportsCustomHeaders: boolean
+  /**
+   * How the provider delivers a stream. "incremental" providers stream tokens as
+   * generated (cloud APIs). "buffered" providers (e.g. Ollama Cloud) compute the
+   * whole response server-side and flush it at once after a long quiet period —
+   * the stream watchdog must be far more generous for these or it false-fires.
+   */
+  readonly streaming: "incremental" | "buffered"
   readonly configSchema: ZodTypeAny
   readonly sdkMapping: SdkMapping
   readonly discovery: DiscoverySpec

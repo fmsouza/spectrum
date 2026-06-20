@@ -179,7 +179,9 @@ export const createHandler = (
       route.value.providerModel,
     )
     if (isErr(model)) return fail(model.error)
-    const events = deps.gateway.stream(model.value, parsed.value)
+    const events = deps.gateway.stream(model.value, parsed.value, {
+      sdkProvider: route.value.provider.sdkProvider,
+    })
     const checked = await errorOrStream(events)
     if (checked.kind === "error")
       return fail({

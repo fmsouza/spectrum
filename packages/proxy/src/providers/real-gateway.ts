@@ -1,5 +1,9 @@
 import { jsonSchema, streamText } from "ai"
-import type { LanguageModelGateway, TimeoutWindows } from "../gateway"
+import type {
+  LanguageModelGateway,
+  StreamContext,
+  TimeoutWindows,
+} from "../gateway"
 import type {
   NormalizedContentPart,
   NormalizedMessage,
@@ -40,7 +44,12 @@ export const describeStreamError = (
       ...(e.statusCode !== undefined ? { statusCode: e.statusCode } : {}),
     }
   }
-  if (err instanceof Error) return { detail: err.message }
+  if (err instanceof Error) {
+    const code = (err as { statusCode?: unknown }).statusCode
+    return typeof code === "number"
+      ? { detail: err.message, statusCode: code }
+      : { detail: err.message }
+  }
   return { detail: String(err) }
 }
 
@@ -174,28 +183,49 @@ const DEFAULT_TIMEOUTS: TimeoutWindows = {
   interTokenTimeoutMs: 60_000,
 }
 
+/** A synthetic stall/no-response error carrying a retryable HTTP status so the
+ *  outbound serializers map it to a retryable provider error type. */
+class StallError extends Error {
+  readonly statusCode = 529
+  constructor(message: string) {
+    super(message)
+    this.name = "StallError"
+  }
+}
+
+/** Build the right stall message for the first-token vs inter-token window. */
+const stallError = (
+  firstChunkSeen: boolean,
+  interTokenTimeoutMs: number,
+  firstTokenTimeoutMs: number,
+): StallError =>
+  firstChunkSeen
+    ? new StallError(
+        `LLM provider stalled: no further output for ${interTokenTimeoutMs}ms after the last token; check your provider credentials, rate limits, and network`,
+      )
+    : new StallError(
+        `LLM provider did not respond within ${firstTokenTimeoutMs}ms; check your provider credentials, rate limits, and network`,
+      )
+
 export const createRealGateway = (opts?: {
-  readonly getTimeouts?: () => TimeoutWindows
+  readonly getTimeouts?: (ctx?: StreamContext) => TimeoutWindows
 }): LanguageModelGateway => ({
   async *stream(
     model: ModelHandle,
     req: NormalizedRequest,
+    ctx?: StreamContext,
   ): AsyncIterable<StreamEvent> {
     // The AI SDK v6's streamText has an unawaited recordSpan() call in its
     // DefaultStreamTextResult constructor. When the LLM provider rejects (e.g. 429),
-    // that promise becomes an unhandled rejection, the internal stitchable stream is
-    // never closed/errored, and result.fullStream hangs forever. We work around this
-    // by racing each iterator.next() against a timeout window. The first real (mapped)
-    // event is awaited under `firstTokenTimeoutMs`; gaps between subsequent tokens use
-    // the shorter `interTokenTimeoutMs`. An unhandledRejection fast-path captures AI
-    // SDK errors immediately and short-circuits the pending wait, so real provider
-    // errors (e.g. 429) surface instantly without waiting for a timer to fire.
+    // that promise would become a stray unhandled rejection. We absorb it by
+    // attaching a rejection handler to `result.text` (see `errorSignal` below),
+    // which also gives us a deterministic per-request provider-error signal. Each
+    // iterator.next() is raced against a timeout window: the first real (mapped)
+    // event is awaited under `firstTokenTimeoutMs`; gaps between subsequent tokens
+    // use the shorter `interTokenTimeoutMs`. The error signal short-circuits the
+    // pending wait so a real provider error surfaces instantly, without a timer.
     const { firstTokenTimeoutMs, interTokenTimeoutMs } =
-      opts?.getTimeouts?.() ?? DEFAULT_TIMEOUTS
-    // The first real (mapped) event gets the (generous) first-token window;
-    // every event after it gets the inter-token idle window. The error
-    // fast-path below is unchanged.
-    let firstChunkSeen = false
+      opts?.getTimeouts?.(ctx) ?? DEFAULT_TIMEOUTS
 
     const controller = new AbortController()
 
@@ -221,27 +251,36 @@ export const createRealGateway = (opts?: {
 
     const iterator = result.fullStream[Symbol.asyncIterator]()
 
-    // Capture AI SDK errors from unhandled rejections and short-circuit the
-    // pending chunk wait IMMEDIATELY — without this, a captured provider error
-    // would only surface when the chunk timer fires.
-    let captureError: Error | null = null
-    let shortCircuit: ((err: Error) => void) | null = null
-    const onUnhandled = (reason: unknown) => {
-      if (reason instanceof Error && reason.name.startsWith("AI_")) {
-        captureError = reason
-        controller.abort()
-        shortCircuit?.(reason)
-        shortCircuit = null
-      }
-    }
-    process.on("unhandledRejection", onUnhandled)
+    // Deterministic provider-error signal. In ai@6 a provider rejection surfaces
+    // as a rejected `result.text` (and as an `error` part on fullStream). We attach
+    // a rejection handler — which ALSO absorbs the AI SDK's stray recordSpan
+    // unhandled rejection — and resolve a sentinel so the chunk race can surface the
+    // error immediately, without a process-global unhandledRejection listener.
+    // This whole design is coupled to AI SDK behavior verified against ai@6.0.194
+    // (error part on rejection + `result.text` rejects + `.then` absorbs recordSpan);
+    // re-probe these three on any `ai` major/minor bump.
+    let capturedError: Error | undefined
+    const errorSignal = new Promise<void>((resolve) => {
+      void (result.text as Promise<unknown>).then(
+        () => {}, // success: leave pending; the iterator drives completion
+        (e: unknown) => {
+          capturedError = e instanceof Error ? e : new Error(String(e))
+          resolve()
+        },
+      )
+    })
 
+    let firstChunkSeen = false
+    // In ai@6 a provider rejection surfaces BOTH as an `error` part on fullStream
+    // (carrying the rich upstream error — e.g. the 429 + provider body) AND as a
+    // rejected `result.text` (a generic AI_NoOutputGeneratedError). The fullStream
+    // part is authoritative, so once it has been yielded we suppress the redundant
+    // `result.text` signal to surface exactly one error event.
+    let errorYielded = false
     try {
       while (true) {
         type Next = Awaited<ReturnType<typeof iterator.next>>
-
-        // A provider error may have been captured between chunks.
-        if (captureError !== null) throw captureError
+        if (capturedError !== undefined && !errorYielded) throw capturedError
 
         const timeoutMs = firstChunkSeen
           ? interTokenTimeoutMs
@@ -250,58 +289,45 @@ export const createRealGateway = (opts?: {
         const next: Next = await new Promise<Next>((resolve, reject) => {
           const id = setTimeout(() => {
             controller.abort()
-            shortCircuit = null
             reject(
-              captureError !== null
-                ? captureError
-                : firstChunkSeen
-                  ? new Error(
-                      `LLM provider stalled: no further output for ${interTokenTimeoutMs}ms after the last token; check your provider credentials, rate limits, and network`,
-                    )
-                  : new Error(
-                      `LLM provider did not respond within ${firstTokenTimeoutMs}ms; check your provider credentials, rate limits, and network`,
-                    ),
+              stallError(
+                firstChunkSeen,
+                interTokenTimeoutMs,
+                firstTokenTimeoutMs,
+              ),
             )
           }, timeoutMs)
-
-          shortCircuit = (err) => {
+          // Surface a deterministic provider error the instant it is captured,
+          // unless the fullStream already surfaced (a richer) one.
+          void errorSignal.then(() => {
+            if (errorYielded) return // the iterator's error part wins; ignore.
             clearTimeout(id)
-            reject(err)
-          }
-
+            reject(capturedError ?? new Error("provider error"))
+          })
           void iterator.next().then(
             (val) => {
               clearTimeout(id)
-              shortCircuit = null
               resolve(val)
             },
             (err) => {
               clearTimeout(id)
-              shortCircuit = null
               reject(err)
             },
           )
         })
 
         if (next.done) break
-
         const event = mapFullStreamPart(
           next.value as { type: string } & Record<string, unknown>,
         )
         if (event !== undefined) {
-          // The AI SDK's fullStream emits synthetic framing parts (start /
-          // start-step / text-start) that map to `undefined` BEFORE the
-          // provider's first real token. The first-token window must cover the
-          // wait for that first real event; only after we surface a meaningful
-          // event do we narrow to the inter-token idle window.
           firstChunkSeen = true
+          if (event.type === "error") errorYielded = true
           yield event
         }
       }
     } catch (e: unknown) {
-      yield { type: "error", ...describeStreamError(captureError ?? e) }
-    } finally {
-      process.off("unhandledRejection", onUnhandled)
+      yield { type: "error", ...describeStreamError(capturedError ?? e) }
     }
   },
 })
