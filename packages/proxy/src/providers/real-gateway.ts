@@ -256,6 +256,9 @@ export const createRealGateway = (opts?: {
     // a rejection handler — which ALSO absorbs the AI SDK's stray recordSpan
     // unhandled rejection — and resolve a sentinel so the chunk race can surface the
     // error immediately, without a process-global unhandledRejection listener.
+    // This whole design is coupled to AI SDK behavior verified against ai@6.0.194
+    // (error part on rejection + `result.text` rejects + `.then` absorbs recordSpan);
+    // re-probe these three on any `ai` major/minor bump.
     let capturedError: Error | undefined
     const errorSignal = new Promise<void>((resolve) => {
       void (result.text as Promise<unknown>).then(
