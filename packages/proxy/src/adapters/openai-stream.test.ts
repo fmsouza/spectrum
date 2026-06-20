@@ -37,4 +37,21 @@ describe("serializeOpenAIStream", () => {
     expect(out).toContain('"finish_reason":"tool_calls"')
     expect(out).toContain("data: [DONE]")
   })
+
+  it("emits an OpenAI error object (not a fake success) on a provider error", async () => {
+    async function* events() {
+      yield { type: "text-delta", text: "partial" } as const
+      yield {
+        type: "error",
+        detail: "LLM provider stalled",
+        statusCode: 529,
+      } as const
+    }
+    const stream = serializeOpenAIStream(events(), "m")
+    const text = await new Response(stream).text()
+    expect(text).toContain('"error"')
+    expect(text).toContain("LLM provider stalled")
+    expect(text).not.toContain("[error:")
+    expect(text).not.toContain('"finish_reason":"stop"')
+  })
 })
