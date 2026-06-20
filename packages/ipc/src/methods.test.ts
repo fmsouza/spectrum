@@ -119,7 +119,11 @@ describe("AddModelParamsSchema", () => {
     ).toBe(false)
   })
   it("AddModelParams accepts optional aliases", () => {
-    const r = AddModelParamsSchema.safeParse({ providerId: "p1", providerModel: "claude-haiku-4-5", aliases: ["haiku"] })
+    const r = AddModelParamsSchema.safeParse({
+      providerId: "p1",
+      providerModel: "claude-haiku-4-5",
+      aliases: ["haiku"],
+    })
     expect(r.success).toBe(true)
   })
 })
@@ -136,7 +140,11 @@ describe("UpdateModelParamsSchema", () => {
   it("keys by id and carries the new provider + model (sans id)", () => {
     const params = {
       id: "mdl_x" as ModelId,
-      input: { providerId: "openai" as ProviderId, providerModel: "gpt-4o", aliases: [] as string[] },
+      input: {
+        providerId: "openai" as ProviderId,
+        providerModel: "gpt-4o",
+        aliases: [] as string[],
+      },
     }
     expect(UpdateModelParamsSchema.parse(params)).toEqual(params)
   })

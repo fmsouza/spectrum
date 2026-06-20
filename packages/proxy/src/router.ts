@@ -7,15 +7,28 @@ export type ResolvedRoute = {
   readonly provider: Provider
   readonly providerModel: string
   readonly routeId: string
-  readonly resolvedVia: "exact" | "alias" | "provider-model" | "session-fallback"
+  readonly resolvedVia:
+    | "exact"
+    | "alias"
+    | "provider-model"
+    | "session-fallback"
 }
 
 // Well-known model "family" keywords. A requested id is reduced to the FIRST family keyword it
 // contains (case-insensitive); a route claims a family/tier by listing the keyword in `aliases`.
 const FAMILY_KEYWORDS = [
-  "opus", "sonnet", "haiku", "fable",
-  "gpt-5", "gpt-4", "o4", "o3",
-  "mini", "nano", "flash", "pro",
+  "opus",
+  "sonnet",
+  "haiku",
+  "fable",
+  "gpt-5",
+  "gpt-4",
+  "o4",
+  "o3",
+  "mini",
+  "nano",
+  "flash",
+  "pro",
 ] as const
 
 const familyOf = (id: string): string | undefined => {

@@ -8,7 +8,12 @@ import { createRouter } from "./router"
 // Fixture helpers
 // ---------------------------------------------------------------------------
 
-type ModelStub = { id: string; providerId: string; providerModel: string; aliases?: string[] }
+type ModelStub = {
+  id: string
+  providerId: string
+  providerModel: string
+  aliases?: string[]
+}
 
 const configWith = (models: ModelStub[]): Config =>
   ({
@@ -147,10 +152,22 @@ describe("createRouter", () => {
   // -------------------------------------------------------------------------
 
   it("maps a requested alias to the route that claims it", () => {
-    const router = createRouter(configWith([
-      { id: "mdl_big", providerId: "p1", providerModel: "claude-opus", aliases: ["opus", "big"] },
-      { id: "mdl_small", providerId: "p1", providerModel: "claude-haiku-4-5", aliases: ["haiku", "small"] },
-    ]))
+    const router = createRouter(
+      configWith([
+        {
+          id: "mdl_big",
+          providerId: "p1",
+          providerModel: "claude-opus",
+          aliases: ["opus", "big"],
+        },
+        {
+          id: "mdl_small",
+          providerId: "p1",
+          providerModel: "claude-haiku-4-5",
+          aliases: ["haiku", "small"],
+        },
+      ]),
+    )
     const r = router.resolve("haiku", { fallbackModelId: "mdl_big" })
     expect(r.ok).toBe(true)
     if (r.ok) expect(r.value.resolvedVia).toBe("alias")
@@ -158,20 +175,41 @@ describe("createRouter", () => {
   })
 
   it("reduces a concrete model id to its family keyword to match an alias", () => {
-    const router = createRouter(configWith([
-      { id: "mdl_small", providerId: "p1", providerModel: "claude-haiku-4-5", aliases: ["haiku"] },
-      { id: "mdl_big", providerId: "p1", providerModel: "claude-opus", aliases: ["opus"] },
-    ]))
-    const r = router.resolve("claude-haiku-4-5-20251001", { fallbackModelId: "mdl_big" })
+    const router = createRouter(
+      configWith([
+        {
+          id: "mdl_small",
+          providerId: "p1",
+          providerModel: "claude-haiku-4-5",
+          aliases: ["haiku"],
+        },
+        {
+          id: "mdl_big",
+          providerId: "p1",
+          providerModel: "claude-opus",
+          aliases: ["opus"],
+        },
+      ]),
+    )
+    const r = router.resolve("claude-haiku-4-5-20251001", {
+      fallbackModelId: "mdl_big",
+    })
     expect(r.ok).toBe(true)
     if (r.ok) expect(r.value.resolvedVia).toBe("alias")
     if (r.ok) expect(r.value.routeId).toBe("mdl_small")
   })
 
   it("collapses to the session model when no alias claims the requested tier", () => {
-    const router = createRouter(configWith([
-      { id: "mdl_big", providerId: "p1", providerModel: "claude-opus", aliases: [] },
-    ]))
+    const router = createRouter(
+      configWith([
+        {
+          id: "mdl_big",
+          providerId: "p1",
+          providerModel: "claude-opus",
+          aliases: [],
+        },
+      ]),
+    )
     const r = router.resolve("claude-haiku-4-5", { fallbackModelId: "mdl_big" })
     expect(r.ok).toBe(true)
     if (r.ok) expect(r.value.resolvedVia).toBe("session-fallback")

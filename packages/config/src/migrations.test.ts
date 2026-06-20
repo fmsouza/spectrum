@@ -190,7 +190,12 @@ describe("v3 → v4 (aliases → models)", () => {
     if (!isOk(result)) return
     expect(result.value.version).toBe(CURRENT_CONFIG_VERSION)
     expect(result.value.models).toEqual([
-      { id: "fast", providerId: "openai", providerModel: "gpt-4o-mini", aliases: [] },
+      {
+        id: "fast",
+        providerId: "openai",
+        providerModel: "gpt-4o-mini",
+        aliases: [],
+      },
     ])
     expect("profiles" in result.value).toBe(false)
     expect("aliases" in result.value).toBe(false)
@@ -325,7 +330,16 @@ describe("v10 → v11 (models[].aliases)", () => {
   it("migrates a v10 config to v11, defaulting model aliases to []", () => {
     const raw = {
       version: 10,
-      providers: [{ id: "p1", name: "P1", sdkProvider: "openai", config: {}, secrets: {}, models: [] }],
+      providers: [
+        {
+          id: "p1",
+          name: "P1",
+          sdkProvider: "openai",
+          config: {},
+          secrets: {},
+          models: [],
+        },
+      ],
       models: [{ id: "mdl_a", providerId: "p1", providerModel: "gpt-4o" }],
       settings: {},
     }

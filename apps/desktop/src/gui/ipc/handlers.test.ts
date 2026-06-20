@@ -673,7 +673,11 @@ describe("createIpcHandlers models CRUD", () => {
 
     const updated = await handlers.updateModel({
       id: "mdl_a" as ModelId,
-      input: { providerId: "p_anthropic" as ProviderId, providerModel: "opus", aliases: ["opus-fast"] },
+      input: {
+        providerId: "p_anthropic" as ProviderId,
+        providerModel: "opus",
+        aliases: ["opus-fast"],
+      },
     })
 
     expect(updated).toEqual({
