@@ -50,10 +50,16 @@ export const createStores = ({
   const notify = (input: NotificationInput): void => {
     notifications.getState().notify(input)
   }
+  const providers = createProvidersStore(deps)
+  const providerNameResolver = (): Readonly<Record<string, string>> => {
+    const out: Record<string, string> = {}
+    for (const p of providers.getState().data ?? []) out[p.id] = p.name
+    return out
+  }
   return {
     proxy: createProxyStore(deps),
-    providers: createProvidersStore(deps),
-    models: createModelsStore(deps),
+    providers,
+    models: createModelsStore({ ...deps, providerNameResolver }),
     notifications,
     harnesses: createHarnessesStore(deps),
     projects: createProjectsStore(deps),

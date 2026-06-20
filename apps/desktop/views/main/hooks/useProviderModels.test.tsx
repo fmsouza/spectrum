@@ -75,4 +75,23 @@ describe("useProviderModels", () => {
     )
     expect(document.body).toHaveTextContent("no-data")
   })
+
+  it("returns models sorted alphabetically even when the provider returns them unsorted", async () => {
+    const client = createFakeIpcClient({
+      listProviderModels: async () => ({
+        ok: true,
+        value: { models: ["gpt-4o-mini", "gpt-4o", "gpt-3.5"] },
+      }),
+    })
+    render(
+      <IpcClientProvider client={client}>
+        <Probe providerId="p_openai" />
+      </IpcClientProvider>,
+    )
+    await waitFor(() =>
+      expect(document.body).toHaveTextContent(
+        "models:gpt-3.5,gpt-4o,gpt-4o-mini",
+      ),
+    )
+  })
 })

@@ -23,6 +23,26 @@ describe("createProvidersStore", () => {
     expect(store.getState().data).toEqual([view])
   })
 
+  it("sorts provider views by name after fetch", async () => {
+    const zeta = {
+      ...view,
+      id: "p_zeta",
+      name: "Zeta",
+    } as unknown as ProviderView
+    const alpha = {
+      ...view,
+      id: "p_alpha",
+      name: "Alpha",
+    } as unknown as ProviderView
+    const store = createProvidersStore({
+      client: createFakeIpcClient({
+        getProviders: async () => ({ ok: true, value: [zeta, alpha] }),
+      }),
+    })
+    await store.getState().fetch()
+    expect(store.getState().data).toEqual([alpha, zeta])
+  })
+
   it("add calls addProvider then invalidates (refetches)", async () => {
     const getProviders = mock(async () => ({
       ok: true as const,
