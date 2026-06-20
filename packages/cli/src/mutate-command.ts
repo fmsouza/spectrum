@@ -122,10 +122,19 @@ const addModel = async (
   const model = requireFlag(flags, "model")
   if (isErr(model)) return model
 
+  const aliasesRaw = flags.aliases
+  const aliases =
+    typeof aliasesRaw === "string"
+      ? aliasesRaw
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s !== "")
+      : []
   const candidate = ModelRouteSchema.safeParse({
     id: `mdl_${crypto.randomUUID()}`,
     providerId: provider.value,
     providerModel: model.value,
+    aliases,
   })
   if (!candidate.success) {
     return err({ kind: "usage", detail: candidate.error.message })

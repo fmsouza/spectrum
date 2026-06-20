@@ -1,3 +1,6 @@
+export { encodeSessionProxyKey, decodeSessionToken } from "./session-token"
+export { checkAuth } from "./auth"
+export type { AuthPrincipal } from "./auth"
 export { startProxy, isProxyRunning } from "./server"
 export type { StartProxyOptions, RunningProxy } from "./server"
 export { createHandler } from "./handler"

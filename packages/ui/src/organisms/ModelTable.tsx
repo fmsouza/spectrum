@@ -30,6 +30,7 @@ export const ModelTable = ({
         <tr>
           <th>Provider</th>
           <th>Model</th>
+          <th>Aliases</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -42,6 +43,7 @@ export const ModelTable = ({
               providerNames[String(m.providerId)] ?? String(m.providerId)
             }
             model={m.providerModel}
+            aliases={(m.aliases ?? []).join(", ")}
             onEdit={onEdit}
             onDelete={onDelete}
           />

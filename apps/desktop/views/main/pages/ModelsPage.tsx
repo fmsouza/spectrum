@@ -10,6 +10,7 @@ import {
   Select,
   SettingsLayout,
   Spinner,
+  TextInput,
 } from "@spectrum/ui"
 import { type ReactElement, useState } from "react"
 import { useModels } from "../hooks/useModels"
@@ -20,6 +21,7 @@ import { useProviders } from "../hooks/useProviders"
 type ModelDraft = {
   readonly providerId: string
   readonly providerModel: string
+  readonly aliases: string
   /** When editing, the ModelId being updated; undefined for a new model. */
   readonly editingOf: string | undefined
 }
@@ -27,6 +29,7 @@ type ModelDraft = {
 const EMPTY_DRAFT: ModelDraft = {
   providerId: "",
   providerModel: "",
+  aliases: "",
   editingOf: undefined,
 }
 
@@ -82,6 +85,7 @@ export const ModelsPage = (): ReactElement => {
     setDraft({
       providerId: found.providerId,
       providerModel: found.providerModel,
+      aliases: (found.aliases ?? []).join(", "),
       editingOf: found.id,
     })
   }
@@ -91,15 +95,22 @@ export const ModelsPage = (): ReactElement => {
     if (draft.providerId.trim() === "" || draft.providerModel.trim() === "")
       return
 
+    const aliases = draft.aliases
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s !== "")
+
     const r =
       draft.editingOf === undefined
         ? await models.add({
             providerId: draft.providerId as ProviderId,
             providerModel: draft.providerModel,
+            aliases,
           })
         : await models.update(draft.editingOf as ModelId, {
             providerId: draft.providerId as ProviderId,
             providerModel: draft.providerModel,
+            aliases,
           })
     if (r.ok) setDraft(undefined)
     else
@@ -205,6 +216,14 @@ export const ModelsPage = (): ReactElement => {
               value={draft.providerModel}
               onChange={(v) => update("providerModel", v)}
             />
+            <FormField id="model-aliases" label="Aliases">
+              <TextInput
+                id="model-aliases"
+                value={draft.aliases}
+                placeholder="Optional, comma-separated (e.g. haiku, small)"
+                onChange={(v) => update("aliases", v)}
+              />
+            </FormField>
             <Row gap={2} className="lk-form-actions">
               <Button
                 onClick={() => void submitDraft()}

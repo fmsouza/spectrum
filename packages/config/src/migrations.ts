@@ -217,6 +217,17 @@ const v9ToV10: Migration = {
   migrate: (raw) => ({ ...raw, version: 10 }),
 }
 
+/**
+ * v11 adds `models[].aliases` (optional tier/alias labels for tolerant proxy routing). The new field
+ * has a schema-level default of `[]`, so v10 documents simply gain it on first load — no data
+ * transformation beyond bumping the version (mirrors v5→v6).
+ */
+const v10ToV11: Migration = {
+  from: 10,
+  to: 11,
+  migrate: (raw) => ({ ...raw, version: 11 }),
+}
+
 /** Ordered list of forward migrations. Append a new step whenever `CURRENT_CONFIG_VERSION` bumps. */
 export const migrations: readonly Migration[] = [
   v1ToV2,
@@ -228,6 +239,7 @@ export const migrations: readonly Migration[] = [
   v7ToV8,
   v8ToV9,
   v9ToV10,
+  v10ToV11,
 ]
 
 /**

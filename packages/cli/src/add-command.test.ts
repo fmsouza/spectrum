@@ -161,4 +161,36 @@ describe("add model", () => {
     if (result.ok) return
     expect(result.error.kind).toBe("usage")
   })
+
+  it("add model parses comma-separated --aliases into the route", async () => {
+    const seeded = {
+      ...defaultConfig(),
+      providers: [
+        {
+          id: "p1" as never,
+          name: "P1",
+          sdkProvider: "anthropic" as const,
+          config: {},
+          secrets: {},
+          models: ["claude-haiku-4-5"],
+        },
+      ],
+    }
+    const deps = makeFakeDeps({ initialConfig: seeded })
+    const r = await runCli(deps)([
+      "add",
+      "model",
+      "--provider",
+      "p1",
+      "--model",
+      "claude-haiku-4-5",
+      "--aliases",
+      "haiku,small",
+    ])
+    expect(r.ok).toBe(true)
+    const loaded = await deps.config.load()
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+    expect(loaded.value.models.at(-1)?.aliases).toEqual(["haiku", "small"])
+  })
 })

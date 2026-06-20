@@ -4,10 +4,11 @@ import type { Logger } from "@spectrum/logger"
 import { createScriptedGateway } from "./gateway"
 import { createHandler } from "./handler"
 import { createRouter } from "./router"
+import { encodeSessionProxyKey } from "./session-token"
 import { collectStream } from "./test-helpers"
 
 type Captured = {
-  level: "warn" | "error"
+  level: "info" | "warn" | "error"
   msg: string
   fields: Record<string, unknown> | undefined
 }
@@ -15,12 +16,15 @@ type Captured = {
 const makeFakeLogger = (): {
   logger: Logger
   records: Captured[]
+  infosOf: () => Captured[]
   errorsOf: () => Captured[]
 } => {
   const records: Captured[] = []
   const logger: Logger = {
     debug: () => {},
-    info: () => {},
+    info: (msg, fields) => {
+      records.push({ level: "info", msg, fields })
+    },
     warn: (msg, fields) => {
       records.push({ level: "warn", msg, fields })
     },
@@ -33,6 +37,7 @@ const makeFakeLogger = (): {
   return {
     logger,
     records,
+    infosOf: () => records.filter((r) => r.level === "info"),
     errorsOf: () => records.filter((r) => r.level === "error"),
   }
 }
@@ -66,6 +71,42 @@ const deps = (key: string) => ({
   ]),
   listModels: () => config.models.map((m) => m.id as string),
 })
+
+type MakeDepsOpts = {
+  proxyKey: string
+  models: Config["models"]
+}
+
+const makeDeps = ({ proxyKey, models }: MakeDepsOpts) => {
+  const cfg: Config = {
+    version: 2,
+    settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
+    providers: [
+      {
+        id: "p1",
+        name: "x",
+        sdkProvider: "openai",
+        config: {},
+        secrets: {},
+        models: [],
+      },
+    ],
+    models,
+  } as unknown as Config
+  return {
+    proxyKey,
+    router: createRouter(cfg),
+    factory: {
+      getModel: async () => ({ ok: true as const, value: {} }),
+      getModelFromResolved: async () => ({ ok: true as const, value: {} }),
+    },
+    gateway: createScriptedGateway([
+      { type: "text-delta", text: "Hi" },
+      { type: "finish", finishReason: "stop" },
+    ]),
+    listModels: () => models.map((m) => m.id as string),
+  }
+}
 
 const handler = (key = "k") => createHandler(deps(key))
 const post = (
@@ -346,5 +387,124 @@ describe("createHandler", () => {
     )
     const json = (await res.json()) as { data: { id: string }[] }
     expect(json.data.map((m) => m.id)).toContain("mdl_default")
+  })
+  it("routes an unknown sub-agent model id to the session's selected route (200)", async () => {
+    const h = createHandler(
+      makeDeps({
+        proxyKey: "master",
+        models: [
+          { id: "mdl_sel", providerId: "p1", providerModel: "claude-opus" },
+        ] as Config["models"],
+      }),
+    )
+    const res = await h.fetch(
+      new Request("http://x/v1/messages", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${encodeSessionProxyKey("master", "mdl_sel")}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5",
+          messages: [{ role: "user", content: "hi" }],
+          stream: true,
+        }),
+      }),
+    )
+    expect(res.status).toBe(200)
+  })
+  it("still 400s an unknown id when the token carries no session (bare master key)", async () => {
+    const h = createHandler(
+      makeDeps({
+        proxyKey: "master",
+        models: [
+          { id: "mdl_sel", providerId: "p1", providerModel: "claude-opus" },
+        ] as Config["models"],
+      }),
+    )
+    const res = await h.fetch(
+      new Request("http://x/v1/messages", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer master",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "ghost",
+          messages: [{ role: "user", content: "hi" }],
+          stream: true,
+        }),
+      }),
+    )
+    expect(res.status).toBe(400)
+    const body = (await res.json()) as { error: { kind: string; id?: string } }
+    expect(body.error.kind).toBe("unknown-model")
+    expect(body.error.id).toBe("ghost")
+  })
+  it("emits exactly one info log with resolvedVia and routeId (no secret) when a request resolves via session-fallback", async () => {
+    const { logger, infosOf } = makeFakeLogger()
+    const sessionToken = encodeSessionProxyKey("secret-master-key", "mdl_sel")
+    const h = createHandler({
+      ...makeDeps({
+        proxyKey: "secret-master-key",
+        models: [
+          { id: "mdl_sel", providerId: "p1", providerModel: "claude-opus" },
+        ] as Config["models"],
+      }),
+      logger,
+    })
+    const res = await h.fetch(
+      new Request("http://x/v1/messages", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${sessionToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5",
+          messages: [{ role: "user", content: "hi" }],
+          stream: true,
+        }),
+      }),
+    )
+    expect(res.status).toBe(200)
+    const infos = infosOf()
+    expect(infos).toHaveLength(1)
+    expect(infos[0]?.msg).toBe("proxy model routed via fallback")
+    expect(infos[0]?.fields).toMatchObject({
+      resolvedVia: "session-fallback",
+      routeId: "mdl_sel",
+    })
+    const serialized = JSON.stringify(infos)
+    expect(serialized).not.toContain("secret-master-key")
+    expect(serialized).not.toContain(sessionToken)
+  })
+  it("does not emit a fallback-routing log when a request resolves via exact id match", async () => {
+    const { logger, infosOf } = makeFakeLogger()
+    const h = createHandler({
+      ...makeDeps({
+        proxyKey: "master",
+        models: [
+          { id: "mdl_sel", providerId: "p1", providerModel: "claude-opus" },
+        ] as Config["models"],
+      }),
+      logger,
+    })
+    const res = await h.fetch(
+      new Request("http://x/v1/messages", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer master",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "mdl_sel",
+          messages: [{ role: "user", content: "hi" }],
+          stream: true,
+        }),
+      }),
+    )
+    expect(res.status).toBe(200)
+    expect(infosOf()).toHaveLength(0)
   })
 })
