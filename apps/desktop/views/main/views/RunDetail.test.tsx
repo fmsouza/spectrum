@@ -331,6 +331,49 @@ describe("RunDetail (live)", () => {
     expect(runner.setModels).toEqual([{ id, modelId: "mdl_b" }])
     cleanup()
   })
+
+  it("re-sends the last user prompt over the runner socket when Retry is clicked", async () => {
+    const runner = makeFakeRunner()
+    renderWithProviders(
+      <RunDetail mode="live" sessionId={id} runnerClient={runner} />,
+      createFakeIpcClient({}),
+    )
+    runner.push(
+      stored(0, { type: "runner-started", runnerId: "run_root" as never }),
+    )
+    runner.push(
+      stored(1, {
+        type: "text-delta",
+        runnerId: "run_root" as never,
+        messageId: "u1",
+        text: "fix the bug",
+        role: "user",
+      }),
+    )
+    runner.push(
+      stored(2, {
+        type: "text-delta",
+        runnerId: "run_root" as never,
+        messageId: "a1",
+        text: "Error: rate limited",
+      }),
+    )
+    runner.push(
+      stored(3, {
+        type: "turn-finished",
+        runnerId: "run_root" as never,
+        error: { detail: "Error: rate limited", messageId: "a1" },
+      }),
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /retry/i }),
+      ).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }))
+    expect(runner.sends).toEqual(["fix the bug"])
+    cleanup()
+  })
 })
 
 describe("RunDetail (replay)", () => {

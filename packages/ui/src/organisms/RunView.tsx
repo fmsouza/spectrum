@@ -23,6 +23,8 @@ export type RunViewProps = {
   readonly onSend: (text: string) => void
   readonly onDecide: (requestId: string, decision: ApprovalDecision) => void
   readonly onAnswer: (requestId: string, answer: QuestionAnswer) => void
+  /** Re-run the last user prompt after a failed turn (hidden while busy). */
+  readonly onRetry?: (prompt: string) => void
   /** Show the typing indicator + keep the feed pinned to the bottom while a turn is in flight. */
   readonly busy?: boolean
   readonly inert?: boolean
@@ -60,6 +62,7 @@ export const RunView = ({
   onSend,
   onDecide,
   onAnswer,
+  onRetry,
   busy = false,
   inert = false,
   onInterrupt,
@@ -115,6 +118,7 @@ export const RunView = ({
             onOpenSubRunner={onOpenSubRunner}
             onDecide={onDecide}
             onAnswer={onAnswer}
+            {...(onRetry !== undefined && !busy ? { onRetry } : {})}
             inert={inert}
           />
           {busy ? <TypingIndicator /> : null}

@@ -76,6 +76,7 @@ const LiveRunDetail = ({
       onOpenSubRunner={(rid) => openSub(sessionId, rid)}
       onCloseSub={() => closeSub(sessionId)}
       onSend={(text) => runnerClient.send(sessionId, text)}
+      onRetry={(prompt) => runnerClient.send(sessionId, prompt)}
       onDecide={(requestId, decision) =>
         runnerClient.approve(sessionId, requestId, decision)
       }
