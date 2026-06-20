@@ -18,7 +18,9 @@ describe("useElapsedSeconds", () => {
       jest.advanceTimersByTime(4000)
     })
     expect(result.current).toBe(4)
-    rerender({ active: false })
+    act(() => {
+      rerender({ active: false })
+    })
     expect(result.current).toBeUndefined()
   })
 })
