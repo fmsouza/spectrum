@@ -1,5 +1,5 @@
 import { jsonSchema, streamText } from "ai"
-import type { LanguageModelGateway, TimeoutWindows } from "../gateway"
+import type { LanguageModelGateway, StreamContext, TimeoutWindows } from "../gateway"
 import type {
   NormalizedContentPart,
   NormalizedMessage,
@@ -175,11 +175,12 @@ const DEFAULT_TIMEOUTS: TimeoutWindows = {
 }
 
 export const createRealGateway = (opts?: {
-  readonly getTimeouts?: () => TimeoutWindows
+  readonly getTimeouts?: (ctx?: StreamContext) => TimeoutWindows
 }): LanguageModelGateway => ({
   async *stream(
     model: ModelHandle,
     req: NormalizedRequest,
+    ctx?: StreamContext,
   ): AsyncIterable<StreamEvent> {
     // The AI SDK v6's streamText has an unawaited recordSpan() call in its
     // DefaultStreamTextResult constructor. When the LLM provider rejects (e.g. 429),
@@ -191,7 +192,7 @@ export const createRealGateway = (opts?: {
     // SDK errors immediately and short-circuits the pending wait, so real provider
     // errors (e.g. 429) surface instantly without waiting for a timer to fire.
     const { firstTokenTimeoutMs, interTokenTimeoutMs } =
-      opts?.getTimeouts?.() ?? DEFAULT_TIMEOUTS
+      opts?.getTimeouts?.(ctx) ?? DEFAULT_TIMEOUTS
     // The first real (mapped) event gets the (generous) first-token window;
     // every event after it gets the inter-token idle window. The error
     // fast-path below is unchanged.

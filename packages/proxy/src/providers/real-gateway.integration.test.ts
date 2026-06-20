@@ -230,4 +230,40 @@ describe("createRealGateway", () => {
     expect(lastDetail).toEqual(expect.stringContaining("stalled"))
     expect(lastDetail).toEqual(expect.stringContaining("after the last token"))
   })
+
+  it("uses provider-aware timeouts from the stream context", async () => {
+    const seen: Array<string | undefined> = []
+    const model = new MockLanguageModelV3({
+      doStream: async () => ({
+        stream: simulateReadableStream({
+          chunks: [
+            { type: "text-start" as const, id: "0" },
+            { type: "text-delta" as const, id: "0", delta: "ok" },
+            {
+              type: "finish" as const,
+              finishReason: { unified: "stop" as const, raw: "stop" },
+              usage: {
+                inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+                outputTokens: { total: 1, text: 1, reasoning: 0 },
+              },
+            },
+          ],
+        }),
+      }),
+    })
+    const gw = createRealGateway({
+      getTimeouts: (ctx) => {
+        seen.push(ctx?.sdkProvider)
+        return { firstTokenTimeoutMs: 1000, interTokenTimeoutMs: 1000 }
+      },
+    })
+    const req: NormalizedRequest = {
+      model: "m",
+      messages: [{ role: "user", content: "hi" }],
+      stream: true,
+    }
+    const events: StreamEvent[] = []
+    for await (const e of gw.stream(model, req, { sdkProvider: "ollama" })) events.push(e)
+    expect(seen).toContain("ollama")
+  })
 })

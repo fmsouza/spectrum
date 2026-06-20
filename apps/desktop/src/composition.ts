@@ -85,8 +85,10 @@ import {
   encodeSessionProxyKey,
   isProxyRunning,
   loadSdk,
+  resolveTimeouts,
   startProxy,
 } from "@spectrum/proxy"
+import { getDescriptor } from "@spectrum/providers"
 import { createRunStore } from "@spectrum/run-store"
 import {
   createBunProcessRunner,
@@ -728,12 +730,15 @@ export const createAppContext = (
     loadSdk: deps.loadSdk,
   })
   const gateway = deps.createRealGateway({
-    getTimeouts: () => {
+    getTimeouts: (ctx) => {
       const s = (liveConfig ?? defaultConfig()).settings
-      return {
+      const windows = {
         firstTokenTimeoutMs: s.firstTokenTimeoutMs,
         interTokenTimeoutMs: s.interTokenTimeoutMs,
       }
+      return ctx === undefined
+        ? windows
+        : resolveTimeouts(getDescriptor(ctx.sdkProvider).streaming, windows)
     },
   })
 
