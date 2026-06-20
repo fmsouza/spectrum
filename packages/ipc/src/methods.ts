@@ -258,6 +258,29 @@ export const UpdateHarnessPrefsParamsSchema = z
   .strict()
 export const UpdateHarnessPrefsResultSchema = VoidSchema
 
+// ── Timeout settings ──────────────────────────────────────────────────────
+
+// Read both LLM streaming timeout values from persisted settings.
+export const GetTimeoutSettingsParamsSchema = z.undefined()
+export const GetTimeoutSettingsResultSchema = z
+  .object({
+    // mirrors SettingsSchema (packages/config/src/schema.ts)
+    firstTokenTimeoutMs: z.number().int(),
+    interTokenTimeoutMs: z.number().int(),
+  })
+  .strict()
+
+// Persist both LLM streaming timeout values. Bounds mirror SettingsSchema.
+export const UpdateTimeoutSettingsParamsSchema = z
+  .object({
+    // mirrors SettingsSchema: min 5000 max 600000
+    firstTokenTimeoutMs: z.number().int().min(5000).max(600000),
+    // mirrors SettingsSchema: min 1000 max 600000
+    interTokenTimeoutMs: z.number().int().min(1000).max(600000),
+  })
+  .strict()
+export const UpdateTimeoutSettingsResultSchema = VoidSchema
+
 // ── Projects ──────────────────────────────────────────────────────────────
 
 export const GetProjectsParamsSchema = z.undefined()
@@ -447,6 +470,14 @@ export const IpcMethodSchemas = {
   getSettings: {
     params: GetSettingsParamsSchema,
     result: GetSettingsResultSchema,
+  },
+  getTimeoutSettings: {
+    params: GetTimeoutSettingsParamsSchema,
+    result: GetTimeoutSettingsResultSchema,
+  },
+  updateTimeoutSettings: {
+    params: UpdateTimeoutSettingsParamsSchema,
+    result: UpdateTimeoutSettingsResultSchema,
   },
   getProjects: {
     params: GetProjectsParamsSchema,

@@ -713,7 +713,15 @@ export const createAppContext = (
     secretStore: secrets,
     loadSdk: deps.loadSdk,
   })
-  const gateway = deps.createRealGateway()
+  const gateway = deps.createRealGateway({
+    getTimeouts: () => {
+      const s = (liveConfig ?? defaultConfig()).settings
+      return {
+        firstTokenTimeoutMs: s.firstTokenTimeoutMs,
+        interTokenTimeoutMs: s.interTokenTimeoutMs,
+      }
+    },
+  })
 
   // runtime: persists only the running proxy's per-run key so the CLI can reuse it. Wrapped so a
   // key RESTORED from persisted state (cross-process / GUI-restart reuse) — not just a freshly
