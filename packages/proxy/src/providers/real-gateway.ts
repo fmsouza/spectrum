@@ -185,9 +185,11 @@ export const createRealGateway = (opts?: {
     // DefaultStreamTextResult constructor. When the LLM provider rejects (e.g. 429),
     // that promise becomes an unhandled rejection, the internal stitchable stream is
     // never closed/errored, and result.fullStream hangs forever. We work around this
-    // by racing EVERY iterator.next() against a per-chunk timeout. Additionally, an
-    // unhandledRejection listener captures the actual AI SDK error message so it can
-    // be surfaced instead of the generic timeout message.
+    // by racing each iterator.next() against a timeout window. The first real (mapped)
+    // event is awaited under `firstTokenTimeoutMs`; gaps between subsequent tokens use
+    // the shorter `interTokenTimeoutMs`. An unhandledRejection fast-path captures AI
+    // SDK errors immediately and short-circuits the pending wait, so real provider
+    // errors (e.g. 429) surface instantly without waiting for a timer to fire.
     const { firstTokenTimeoutMs, interTokenTimeoutMs } =
       opts?.getTimeouts?.() ?? DEFAULT_TIMEOUTS
     // The first real (mapped) event gets the (generous) first-token window;
@@ -252,9 +254,13 @@ export const createRealGateway = (opts?: {
             reject(
               captureError !== null
                 ? captureError
-                : new Error(
-                    `LLM provider did not respond within ${timeoutMs}ms; check your provider credentials, rate limits, and network`,
-                  ),
+                : firstChunkSeen
+                  ? new Error(
+                      `LLM provider stalled: no further output for ${interTokenTimeoutMs}ms after the last token; check your provider credentials, rate limits, and network`,
+                    )
+                  : new Error(
+                      `LLM provider did not respond within ${firstTokenTimeoutMs}ms; check your provider credentials, rate limits, and network`,
+                    ),
             )
           }, timeoutMs)
 
