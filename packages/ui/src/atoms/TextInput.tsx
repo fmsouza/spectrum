@@ -5,6 +5,7 @@ export type TextInputType = "text" | "password" | "url" | "number"
 export type TextInputProps = {
   readonly value: string
   readonly onChange: (value: string) => void
+  readonly onBlur?: () => void
   readonly placeholder?: string
   readonly type?: TextInputType
   readonly id?: string
@@ -14,6 +15,7 @@ export type TextInputProps = {
 export const TextInput = ({
   value,
   onChange,
+  onBlur,
   placeholder,
   type = "text",
   id,
@@ -26,5 +28,6 @@ export const TextInput = ({
     placeholder={placeholder}
     disabled={disabled}
     onChange={(e) => onChange(e.currentTarget.value)}
+    onBlur={onBlur}
   />
 )

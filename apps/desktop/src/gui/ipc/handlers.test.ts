@@ -1874,3 +1874,67 @@ describe("createIpcHandlers.testProviderDraft (error detail)", () => {
     ).rejects.toThrow(/provider draft test failed: boom from upstream/)
   })
 })
+
+describe("createIpcHandlers.getTimeoutSettings", () => {
+  it("returns the default timeout values from config when nothing has been changed", async () => {
+    const { ctx } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.getTimeoutSettings(undefined)
+
+    expect(result.firstTokenTimeoutMs).toBe(120000)
+    expect(result.interTokenTimeoutMs).toBe(60000)
+  })
+
+  it("returns the persisted timeout values when config has non-default values", async () => {
+    const { ctx } = makeCtx()
+    const loaded = (await ctx.config.load()).value
+    await ctx.config.save({
+      ...loaded,
+      settings: {
+        ...loaded.settings,
+        firstTokenTimeoutMs: 90000,
+        interTokenTimeoutMs: 30000,
+      },
+    } as Config)
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.getTimeoutSettings(undefined)
+
+    expect(result.firstTokenTimeoutMs).toBe(90000)
+    expect(result.interTokenTimeoutMs).toBe(30000)
+  })
+})
+
+describe("createIpcHandlers.updateTimeoutSettings", () => {
+  it("persists both timeout values into settings when called with valid values", async () => {
+    const { ctx, saves } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.updateTimeoutSettings({
+      firstTokenTimeoutMs: 90000,
+      interTokenTimeoutMs: 45000,
+    })
+
+    expect(result).toBeNull()
+    expect(saves.at(-1)?.settings.firstTokenTimeoutMs).toBe(90000)
+    expect(saves.at(-1)?.settings.interTokenTimeoutMs).toBe(45000)
+  })
+
+  it("does not modify other settings fields when persisting timeout values", async () => {
+    const { ctx, saves } = makeCtx({
+      lastSelectedFolder: "/home/me",
+      lastSelectedHarnessId: "claude",
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    await handlers.updateTimeoutSettings({
+      firstTokenTimeoutMs: 60000,
+      interTokenTimeoutMs: 20000,
+    })
+
+    const saved = saves.at(-1)
+    expect(saved?.settings.lastSelectedFolder).toBe("/home/me")
+    expect(saved?.settings.lastSelectedHarnessId).toBe("claude")
+  })
+})

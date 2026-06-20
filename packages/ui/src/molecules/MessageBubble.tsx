@@ -1,4 +1,4 @@
-import type { ReactElement } from "react"
+import { type ReactElement, useId } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
@@ -8,6 +8,8 @@ export type MessageBubbleProps = {
   readonly author?: "user" | "assistant"
   /** Set when the message carries a turn error (e.g. a provider failure) — renders the error state. */
   readonly tone?: "error"
+  /** When the turn failed (tone="error"), fires to re-run the prompt. */
+  readonly onRetry?: () => void
 }
 
 /**
@@ -20,25 +22,39 @@ export const MessageBubble = ({
   text,
   author = "assistant",
   tone,
-}: MessageBubbleProps): ReactElement => (
-  <div
-    className="lk-message-bubble"
-    data-role={author}
-    {...(tone === "error" ? { "data-tone": "error", role: "alert" } : {})}
-  >
-    <div className="lk-markdown">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          a: ({ href, children }) => (
-            <a href={href} title={href} onClick={(e) => e.preventDefault()}>
-              {children}
-            </a>
-          ),
-        }}
-      >
-        {text}
-      </ReactMarkdown>
+  onRetry,
+}: MessageBubbleProps): ReactElement => {
+  const msgId = useId()
+  return (
+    <div
+      className="lk-message-bubble"
+      data-role={author}
+      {...(tone === "error" ? { "data-tone": "error", role: "alert" } : {})}
+    >
+      <div id={msgId} className="lk-markdown">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            a: ({ href, children }) => (
+              <a href={href} title={href} onClick={(e) => e.preventDefault()}>
+                {children}
+              </a>
+            ),
+          }}
+        >
+          {text}
+        </ReactMarkdown>
+      </div>
+      {tone === "error" && onRetry !== undefined ? (
+        <button
+          type="button"
+          className="lk-message-bubble__retry"
+          aria-describedby={msgId}
+          onClick={() => onRetry()}
+        >
+          Retry
+        </button>
+      ) : null}
     </div>
-  </div>
-)
+  )
+}
