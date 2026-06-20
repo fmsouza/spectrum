@@ -107,4 +107,20 @@ describe("serializeAnthropicStream", () => {
     const out = await collectStream(serializeAnthropicStream(fromArray(events)))
     expect(out).toContain('"type":"api_error"')
   })
+
+  it("renders a stalled error as a retryable overloaded_error frame", async () => {
+    async function* events() {
+      yield { type: "text-delta", text: "partial" } as const
+      yield {
+        type: "error",
+        detail:
+          "LLM provider stalled: no further output for 60000ms after the last token",
+        statusCode: 529,
+      } as const
+    }
+    const stream = serializeAnthropicStream(events())
+    const text = await new Response(stream).text()
+    expect(text).toContain('"type":"overloaded_error"')
+    expect(text).not.toContain('"type":"api_error"')
+  })
 })
