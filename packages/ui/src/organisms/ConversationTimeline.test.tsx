@@ -296,4 +296,46 @@ describe("ConversationTimeline", () => {
     })
     cleanup()
   })
+
+  it("fires onRetry with the last user prompt when the last message is a turn error", () => {
+    const state = fold([
+      { type: "runner-started", runnerId: root },
+      {
+        type: "text-delta",
+        runnerId: root,
+        messageId: "u1",
+        text: "summarize this repo",
+        role: "user",
+      },
+      {
+        type: "text-delta",
+        runnerId: root,
+        messageId: "a1",
+        text: "Error: rate limited",
+      },
+      {
+        type: "turn-finished",
+        runnerId: root,
+        error: { detail: "Error: rate limited", messageId: "a1" },
+      },
+    ])
+    const runner = state.runners.get(root)
+    if (runner === undefined) throw new Error("no root runner")
+    let retried: string | undefined
+    render(
+      <ConversationTimeline
+        runner={runner}
+        runners={state.runners}
+        onOpenSubRunner={() => {}}
+        onDecide={() => {}}
+        onAnswer={() => {}}
+        onRetry={(p) => {
+          retried = p
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }))
+    expect(retried).toBe("summarize this repo")
+    cleanup()
+  })
 })
