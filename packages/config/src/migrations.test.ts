@@ -72,6 +72,7 @@ describe("runMigrations", () => {
         lastByHarness: {},
         updateChannel: "stable" as const,
         dismissedUpdateVersion: null,
+        dismissedUpdateHash: null,
         firstTokenTimeoutMs: 120000,
         interTokenTimeoutMs: 60000,
       },

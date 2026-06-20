@@ -34,6 +34,36 @@ describe("createElectrobunUpdater", () => {
     expect(u.getRaw().currentVersion).toBe("1.0.0")
   })
 
+  it("populates latestHash from the feed hash when an update is available", async () => {
+    const u = createElectrobunUpdater({
+      loadEngine: async () =>
+        baseEngine({
+          checkForUpdate: async () => ({
+            version: "1.4.0",
+            hash: "1wg7wj2g0bm4w",
+            updateAvailable: true,
+          }),
+        }),
+    })
+    await u.check("canary")
+    expect(u.getRaw().latestHash).toBe("1wg7wj2g0bm4w")
+  })
+
+  it("sets latestHash to null when up-to-date", async () => {
+    const u = createElectrobunUpdater({
+      loadEngine: async () =>
+        baseEngine({
+          checkForUpdate: async () => ({
+            version: "1.4.0",
+            hash: "h",
+            updateAvailable: false,
+          }),
+        }),
+    })
+    await u.check("stable")
+    expect(u.getRaw().latestHash).toBeNull()
+  })
+
   it("coerces a missing updateAvailable to a boolean false (up-to-date path)", async () => {
     // Electrobun's real Updater.checkForUpdate returns the raw parsed update.json on
     // the hash-matches path — which has NO `updateAvailable` field (undefined). The

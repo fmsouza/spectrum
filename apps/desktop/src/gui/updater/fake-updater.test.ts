@@ -8,6 +8,7 @@ describe("createFakeUpdater", () => {
       phase: "idle",
       currentVersion: "1.0.0",
       latestVersion: null,
+      latestHash: null,
       available: false,
       progress: 0,
       error: null,

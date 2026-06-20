@@ -26,6 +26,7 @@ describe("SettingsSchema", () => {
       lastByHarness: {},
       updateChannel: "stable",
       dismissedUpdateVersion: null,
+      dismissedUpdateHash: null,
       firstTokenTimeoutMs: 120000,
       interTokenTimeoutMs: 60000,
     })
@@ -100,6 +101,15 @@ describe("SettingsSchema", () => {
     expect(s.dismissedUpdateVersion).toBeNull()
   })
 
+  it("defaults dismissedUpdateHash to null and accepts a hash string", () => {
+    const s = SettingsSchema.parse({})
+    expect(s.dismissedUpdateHash).toBeNull()
+    const withHash = SettingsSchema.parse({
+      dismissedUpdateHash: "1wg7wj2g0bm4w",
+    })
+    expect(withHash.dismissedUpdateHash).toBe("1wg7wj2g0bm4w")
+  })
+
   it("accepts canary as an update channel", () => {
     expect(
       SettingsSchema.parse({ updateChannel: "canary" }).updateChannel,
@@ -135,6 +145,7 @@ describe("ConfigSchema", () => {
         lastByHarness: {},
         updateChannel: "stable",
         dismissedUpdateVersion: null,
+        dismissedUpdateHash: null,
         firstTokenTimeoutMs: 120000,
         interTokenTimeoutMs: 60000,
       },
@@ -210,6 +221,7 @@ describe("defaultConfig", () => {
         lastByHarness: {},
         updateChannel: "stable",
         dismissedUpdateVersion: null,
+        dismissedUpdateHash: null,
         firstTokenTimeoutMs: 120000,
         interTokenTimeoutMs: 60000,
       },

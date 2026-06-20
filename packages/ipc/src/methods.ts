@@ -336,6 +336,14 @@ export const UpdateStateSchema = z
     phase: UpdatePhaseSchema,
     currentVersion: z.string(),
     latestVersion: z.string().nullable(),
+    /**
+     * The build `hash` of the latest available build (unique per build for BOTH
+     * stable and canary), or null when up-to-date / unknown. Unlike
+     * `latestVersion` — which canary CI never bumps (frozen at the last stable
+     * `package.json` version) — the hash changes on every build, so it is the
+     * correct key for per-build update dismissal.
+     */
+    latestHash: z.string().nullable(),
     available: z.boolean(),
     progress: z.number().min(0).max(1),
     error: z.string().nullable(),
@@ -357,7 +365,11 @@ export const ApplyUpdateParamsSchema = z.undefined()
 export const ApplyUpdateResultSchema = VoidSchema
 
 export const DismissUpdateParamsSchema = z
-  .object({ version: z.string().min(1) })
+  // Key dismissal on the build `hash` (unique per build for both channels),
+  // not the version string — canary CI never bumps package.json version, so a
+  // version-keyed dismissal permanently suppresses every canary after the
+  // first dismiss. See policy.ts.
+  .object({ hash: z.string().min(1) })
   .strict()
 export const DismissUpdateResultSchema = VoidSchema
 
