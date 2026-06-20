@@ -27,6 +27,8 @@ export type RunViewProps = {
   readonly onRetry?: (prompt: string) => void
   /** Show the typing indicator + keep the feed pinned to the bottom while a turn is in flight. */
   readonly busy?: boolean
+  /** Seconds the in-flight turn has run; shown in the typing indicator. */
+  readonly elapsedSeconds?: number
   readonly inert?: boolean
   readonly onInterrupt?: () => void
   readonly mode?: PermissionMode
@@ -64,6 +66,7 @@ export const RunView = ({
   onAnswer,
   onRetry,
   busy = false,
+  elapsedSeconds,
   inert = false,
   onInterrupt,
   mode,
@@ -121,7 +124,11 @@ export const RunView = ({
             {...(onRetry !== undefined && !busy ? { onRetry } : {})}
             inert={inert}
           />
-          {busy ? <TypingIndicator /> : null}
+          {busy ? (
+            <TypingIndicator
+              {...(elapsedSeconds === undefined ? {} : { elapsedSeconds })}
+            />
+          ) : null}
         </div>
         <Composer
           onSend={onSend}

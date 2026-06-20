@@ -4,6 +4,7 @@ import { EmptyState, RunView, Spinner } from "@spectrum/ui"
 import { type ReactElement, useEffect, useState } from "react"
 import { useStore } from "zustand"
 import { useIpcClient } from "../IpcClientContext"
+import { useElapsedSeconds } from "../hooks/useElapsedSeconds"
 import type { RunnerClient } from "../runner/runnerClient"
 import { useStores } from "../stores/createStores"
 
@@ -38,6 +39,7 @@ const LiveRunDetail = ({
   const runState = useStore(store, (s) => s.byId[sessionId])
   const openSubId = useStore(store, (s) => s.openSubBySession[sessionId])
   const busy = useStore(store, (s) => s.busyBySession[sessionId] ?? false)
+  const elapsedSeconds = useElapsedSeconds(busy)
   const mode = useStore(store, (s) => s.modeBySession[sessionId] ?? "manual")
   const model = useStore(store, (s) => s.modelBySession[sessionId] ?? "")
   const applyEvent = useStore(store, (s) => s.applyEvent)
@@ -85,6 +87,7 @@ const LiveRunDetail = ({
       }
       onInterrupt={() => runnerClient.interrupt(sessionId)}
       busy={busy}
+      {...(elapsedSeconds === undefined ? {} : { elapsedSeconds })}
       mode={mode}
       onModeChange={(m) => {
         setMode(sessionId, m)
