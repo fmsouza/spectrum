@@ -219,6 +219,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         id: `mdl_${crypto.randomUUID()}` as ModelRoute["id"],
         providerId: input.providerId,
         providerModel: input.providerModel,
+        aliases: [],
       }
       const saved = await ctx.config.save({
         ...config,
@@ -234,6 +235,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         id,
         providerId: input.providerId,
         providerModel: input.providerModel,
+        aliases: input.aliases,
       }
       const models = config.models.map((m) => (m.id === id ? next : m))
       const saved = await ctx.config.save({ ...config, models })

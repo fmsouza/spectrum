@@ -100,6 +100,7 @@ export const ModelsPage = (): ReactElement => {
         : await models.update(draft.editingOf as ModelId, {
             providerId: draft.providerId as ProviderId,
             providerModel: draft.providerModel,
+            aliases: [],
           })
     if (r.ok) setDraft(undefined)
     else
