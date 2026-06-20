@@ -405,6 +405,31 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       }
     },
 
+    getTimeoutSettings: async () => {
+      const config = await loadConfig()
+      return {
+        firstTokenTimeoutMs: config.settings.firstTokenTimeoutMs,
+        interTokenTimeoutMs: config.settings.interTokenTimeoutMs,
+      }
+    },
+
+    updateTimeoutSettings: async ({
+      firstTokenTimeoutMs,
+      interTokenTimeoutMs,
+    }) => {
+      const config = await loadConfig()
+      const saved = await ctx.config.save({
+        ...config,
+        settings: {
+          ...config.settings,
+          firstTokenTimeoutMs,
+          interTokenTimeoutMs,
+        },
+      })
+      if (!isOk(saved)) return fail("could not save timeout settings")
+      return null
+    },
+
     // ── Projects ──────────────────────────────────────────────────────────────
     getProjects: async () => {
       const result = ctx.projects.list()
