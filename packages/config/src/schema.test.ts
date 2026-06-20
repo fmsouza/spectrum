@@ -169,7 +169,19 @@ describe("SettingsSchema timeout fields", () => {
   })
 
   it("rejects a firstTokenTimeoutMs below the 5000ms floor", () => {
-    expect(() => SettingsSchema.parse({ firstTokenTimeoutMs: 100 })).toThrow()
+    const result = SettingsSchema.safeParse({ firstTokenTimeoutMs: 100 })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.code === "too_small")).toBe(true)
+    }
+  })
+
+  it("rejects an interTokenTimeoutMs below the 1000ms floor", () => {
+    const result = SettingsSchema.safeParse({ interTokenTimeoutMs: 500 })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.code === "too_small")).toBe(true)
+    }
   })
 
   it("accepts an old config that omits the timeout fields (additive defaults, no migration)", () => {
