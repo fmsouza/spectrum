@@ -86,6 +86,38 @@ describe("createRealGateway", () => {
     { timeout: 3000 },
   )
 
+  it("surfaces a provider rejection without registering a process-global unhandledRejection listener", async () => {
+    const before = process.listenerCount("unhandledRejection")
+    const model = new MockLanguageModelV3({
+      doStream: async () => {
+        throw new APICallError({
+          message: "Too Many Requests",
+          url: "http://127.0.0.1:11434/api/chat",
+          requestBodyValues: {},
+          statusCode: 429,
+          responseBody: '{"error":"you have reached your session usage limit"}',
+          isRetryable: true,
+        })
+      },
+    })
+    const gw = createRealGateway()
+    const req: NormalizedRequest = {
+      model: "m",
+      messages: [{ role: "user", content: "hi" }],
+      stream: true,
+    }
+    const events: StreamEvent[] = []
+    for await (const e of gw.stream(model, req)) events.push(e)
+    expect(events).toEqual([
+      {
+        type: "error",
+        detail: "you have reached your session usage limit",
+        statusCode: 429,
+      },
+    ])
+    expect(process.listenerCount("unhandledRejection")).toBe(before)
+  })
+
   it("times out with the slow-provider message when the first chunk misses the first-token window", async () => {
     const model = new MockLanguageModelV3({
       doStream: async () => ({
@@ -129,6 +161,7 @@ describe("createRealGateway", () => {
     expect((events.at(-1) as { detail: string }).detail).toContain(
       "did not respond",
     )
+    expect((events.at(-1) as { statusCode?: number }).statusCode).toBe(529)
   })
 
   it("completes when the first chunk arrives within the first-token window", async () => {
@@ -229,6 +262,7 @@ describe("createRealGateway", () => {
     })
     expect(lastDetail).toEqual(expect.stringContaining("stalled"))
     expect(lastDetail).toEqual(expect.stringContaining("after the last token"))
+    expect((lastEvent as { statusCode?: number }).statusCode).toBe(529)
   })
 
   it("uses provider-aware timeouts from the stream context", async () => {
@@ -243,7 +277,12 @@ describe("createRealGateway", () => {
               type: "finish" as const,
               finishReason: { unified: "stop" as const, raw: "stop" },
               usage: {
-                inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+                inputTokens: {
+                  total: 1,
+                  noCache: 1,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                },
                 outputTokens: { total: 1, text: 1, reasoning: 0 },
               },
             },
@@ -263,7 +302,8 @@ describe("createRealGateway", () => {
       stream: true,
     }
     const events: StreamEvent[] = []
-    for await (const e of gw.stream(model, req, { sdkProvider: "ollama" })) events.push(e)
+    for await (const e of gw.stream(model, req, { sdkProvider: "ollama" }))
+      events.push(e)
     expect(seen).toContain("ollama")
   })
 })
