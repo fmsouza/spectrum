@@ -665,6 +665,7 @@ describe("createIpcHandlers models CRUD", () => {
       id: "mdl_a",
       providerId: "p_anthropic",
       providerModel: "opus",
+      aliases: [],
     })
     expect(saves.at(-1)?.models).toEqual([updated])
   })
