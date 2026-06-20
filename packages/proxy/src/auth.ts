@@ -1,4 +1,5 @@
 import { type Result, err, ok } from "@spectrum/utils"
+import { decodeSessionToken } from "./session-token"
 import type { ProxyError } from "./types"
 
 const constantTimeEquals = (a: string, b: string): boolean => {
@@ -8,14 +9,24 @@ const constantTimeEquals = (a: string, b: string): boolean => {
   return diff === 0
 }
 
+export type AuthPrincipal =
+  | { readonly kind: "master" }
+  | { readonly kind: "session"; readonly fallbackModelId: string }
+
 export const checkAuth = (
   headers: Headers,
   proxyKey: string,
-): Result<void, ProxyError> => {
+): Result<AuthPrincipal, ProxyError> => {
   const bearer = headers.get("authorization")?.replace(/^Bearer\s+/i, "")
   const apiKey = headers.get("x-api-key") ?? undefined
   const presented = bearer ?? apiKey
-  if (presented !== undefined && constantTimeEquals(presented, proxyKey))
-    return ok(undefined)
-  return err({ kind: "unauthorized" })
+  if (presented === undefined) return err({ kind: "unauthorized" })
+  const { masterKey, modelId } = decodeSessionToken(presented)
+  if (!constantTimeEquals(masterKey, proxyKey))
+    return err({ kind: "unauthorized" })
+  return ok(
+    modelId === undefined
+      ? { kind: "master" }
+      : { kind: "session", fallbackModelId: modelId },
+  )
 }

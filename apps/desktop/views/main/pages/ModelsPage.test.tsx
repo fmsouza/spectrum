@@ -11,6 +11,7 @@ const model = {
   id: "m_1",
   providerId: "p_openai",
   providerModel: "gpt-4o-mini",
+  aliases: ["haiku", "small"],
 } as unknown as ModelRoute
 const view = {
   id: "p_openai",
@@ -159,6 +160,7 @@ describe("ModelsPage", () => {
     expect(client.calls.addModel[0]).toEqual({
       providerId: "p_openai",
       providerModel: "gpt-4o",
+      aliases: [],
     })
   })
 
@@ -195,7 +197,11 @@ describe("ModelsPage", () => {
     await waitFor(() => expect(client.calls.updateModel.length).toBe(1))
     expect(client.calls.updateModel[0]).toEqual({
       id: "m_1",
-      input: { providerId: "p_openai", providerModel: "gpt-4o" },
+      input: {
+        providerId: "p_openai",
+        providerModel: "gpt-4o",
+        aliases: ["haiku", "small"],
+      },
     })
   })
 
@@ -330,6 +336,7 @@ describe("ModelsPage", () => {
     expect(client.calls.addModel[0]).toEqual({
       providerId: "p_openai",
       providerModel: "gpt-4o",
+      aliases: [],
     })
   })
 
@@ -461,6 +468,58 @@ describe("ModelsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /delete/i }))
 
     await screen.findByText("Couldn't delete the model")
+  })
+
+  // ── Aliases field tests ───────────────────────────────────────────────────
+
+  it("pre-fills the aliases input with existing aliases when editing a model", async () => {
+    renderPage({
+      updateModel: async () => ({ ok: true, value: model }),
+      listProviderModels: async () => ({ ok: true, value: { models: [] } }),
+    })
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }))
+    await waitFor(() =>
+      expect(screen.getByLabelText("Model")).toHaveValue("gpt-4o-mini"),
+    )
+    expect(screen.getByLabelText("Aliases")).toHaveValue("haiku, small")
+  })
+
+  it("sends aliases as parsed array when typing aliases and saving", async () => {
+    const client = renderPage({
+      addModel: async (p) => ({
+        ok: true,
+        value: { id: "m_2", ...p } as unknown as ModelRoute,
+      }),
+      listProviderModels: async () => ({ ok: true, value: { models: [] } }),
+    })
+    await waitFor(() =>
+      expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /add model/i }))
+    fireEvent.change(screen.getByLabelText("Provider"), {
+      target: { value: "p_openai" },
+    })
+    await waitFor(() =>
+      expect(screen.getByLabelText("Model")).toBeInTheDocument(),
+    )
+    fireEvent.change(screen.getByLabelText("Model"), {
+      target: { value: "gpt-4o" },
+    })
+    fireEvent.change(screen.getByLabelText("Aliases"), {
+      target: { value: "haiku, small" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /save model/i }))
+
+    await waitFor(() => expect(client.calls.addModel.length).toBe(1))
+    expect(client.calls.addModel[0]).toEqual({
+      providerId: "p_openai",
+      providerModel: "gpt-4o",
+      aliases: ["haiku", "small"],
+    })
   })
 
   it("shows an error toast when updating a model fails", async () => {

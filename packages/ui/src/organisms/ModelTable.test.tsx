@@ -4,11 +4,17 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { ModelTable } from "./ModelTable"
 
 const models = [
-  { id: "mdl_fast", providerId: "p_openai", providerModel: "gpt-4o-mini" },
+  {
+    id: "mdl_fast",
+    providerId: "p_openai",
+    providerModel: "gpt-4o-mini",
+    aliases: ["haiku", "small"],
+  },
   {
     id: "mdl_smart",
     providerId: "p_anthropic",
     providerModel: "claude-3-5-sonnet",
+    aliases: [],
   },
 ] as unknown as readonly ModelRoute[]
 
@@ -18,7 +24,7 @@ const providerNames: Readonly<Record<string, string>> = {
 }
 
 describe("ModelTable", () => {
-  it("renders Provider/Model/Actions headers and no Alias header", () => {
+  it("renders Provider/Model/Aliases/Actions column headers", () => {
     render(
       <ModelTable
         models={models}
@@ -34,9 +40,22 @@ describe("ModelTable", () => {
       screen.getByRole("columnheader", { name: "Model" }),
     ).toBeInTheDocument()
     expect(
+      screen.getByRole("columnheader", { name: "Aliases" }),
+    ).toBeInTheDocument()
+    expect(
       screen.getByRole("columnheader", { name: "Actions" }),
     ).toBeInTheDocument()
-    expect(screen.queryByRole("columnheader", { name: "Alias" })).toBeNull()
+  })
+  it("renders joined aliases for a model row", () => {
+    render(
+      <ModelTable
+        models={models}
+        providerNames={providerNames}
+        onEdit={() => {}}
+        onDelete={() => {}}
+      />,
+    )
+    expect(screen.getByText("haiku, small")).toBeInTheDocument()
   })
   it("renders a row for each model with the resolved provider name", () => {
     render(

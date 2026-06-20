@@ -62,6 +62,7 @@ const baseConfig = (
 const makeCtx = (
   over: {
     providers?: readonly Provider[]
+    models?: readonly ModelRoute[]
     setResult?: Result<{ readonly ref: string }, { readonly kind: string }>
     proxyRunning?: boolean
     proxyPort?: number
@@ -99,6 +100,7 @@ const makeCtx = (
       { readonly ok: boolean; readonly latencyMs: number },
       { readonly kind: string; readonly detail?: string }
     >
+    mintSessionProxyKey?: (modelId: string) => Promise<string>
   } = {},
 ): {
   ctx: AppContext
@@ -127,15 +129,18 @@ const makeCtx = (
   const draftTestInputs: unknown[] = []
   const draftListInputs: unknown[] = []
   const resetState = { count: 0 }
-  let current = baseConfig(
-    over.providers ?? [provider()],
-    over.lastSelectedFolder ?? "",
-    over.lastSelectedHarnessId ?? "",
-    {
-      updateChannel: over.updateChannel,
-      dismissedUpdateVersion: over.dismissedUpdateVersion,
-    },
-  )
+  let current: Config = {
+    ...baseConfig(
+      over.providers ?? [provider()],
+      over.lastSelectedFolder ?? "",
+      over.lastSelectedHarnessId ?? "",
+      {
+        updateChannel: over.updateChannel,
+        dismissedUpdateVersion: over.dismissedUpdateVersion,
+      },
+    ),
+    ...(over.models !== undefined ? { models: [...over.models] } : {}),
+  }
 
   // The handler resolves the harness command+env via ctx.resolveLaunch — use the REAL renderer
   // over a fake resolver so the rendered proxy vars (ANTHROPIC_*) are asserted faithfully.
@@ -226,6 +231,9 @@ const makeCtx = (
         ]),
     },
     genProxyKey: () => "test-key",
+    mintSessionProxyKey:
+      over.mintSessionProxyKey ??
+      (async (m: string) => `master.${Buffer.from(m).toString("base64url")}`),
     factory: {},
     gateway: {},
     paths: {
@@ -635,12 +643,27 @@ describe("createIpcHandlers models CRUD", () => {
     expect(saves[0]?.models).toEqual([created])
   })
 
-  it("updateModel replaces the matching route by id, preserving the id", async () => {
+  it("addModel persists the aliases passed in params", async () => {
+    const { ctx, saves } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+
+    const created = await handlers.addModel({
+      providerId: "p_anthropic" as ProviderId,
+      providerModel: "claude-haiku-4-5",
+      aliases: ["haiku", "fast"],
+    })
+
+    expect(created.aliases).toEqual(["haiku", "fast"])
+    expect(saves[0]?.models.at(-1)?.aliases).toEqual(["haiku", "fast"])
+  })
+
+  it("updateModel replaces the matching route by id, preserving the id and persisting aliases", async () => {
     const { ctx, saves } = makeCtx()
     const route = {
       id: "mdl_a" as ModelId,
       providerId: "p_openai" as ProviderId,
       providerModel: "gpt-4o",
+      aliases: [] as string[],
     }
     await ctx.config.save({
       ...(await ctx.config.load()).value,
@@ -650,13 +673,18 @@ describe("createIpcHandlers models CRUD", () => {
 
     const updated = await handlers.updateModel({
       id: "mdl_a" as ModelId,
-      input: { providerId: "p_anthropic" as ProviderId, providerModel: "opus" },
+      input: {
+        providerId: "p_anthropic" as ProviderId,
+        providerModel: "opus",
+        aliases: ["opus-fast"],
+      },
     })
 
     expect(updated).toEqual({
       id: "mdl_a",
       providerId: "p_anthropic",
       providerModel: "opus",
+      aliases: ["opus-fast"],
     })
     expect(saves.at(-1)?.models).toEqual([updated])
   })
@@ -708,9 +736,12 @@ describe("createIpcHandlers.launchHarness", () => {
     // The session is stored against the routed modelId (no alias anymore).
     expect(input.modelId).toBe("mdl_x")
     expect(input.command).toBe("/usr/local/bin/claude")
-    // The rendered proxy vars carry the loopback proxy URL + stored per-run key + modelId.
+    // The rendered proxy vars carry the loopback proxy URL + session-encoded proxy key + modelId.
     expect(input.env.ANTHROPIC_BASE_URL).toBe("http://127.0.0.1:4000")
-    expect(input.env.ANTHROPIC_API_KEY).toBe("stored-run-key")
+    // Key is now a session-encoded token: <masterKey>.<base64url(modelId)> from mintSessionProxyKey.
+    expect(input.env.ANTHROPIC_API_KEY).toBe(
+      `master.${Buffer.from("mdl_x").toString("base64url")}`,
+    )
     expect(input.env.ANTHROPIC_MODEL).toBe("mdl_x")
   })
 
@@ -760,7 +791,11 @@ describe("createIpcHandlers.launchHarness", () => {
     })
 
     const input = runnerLaunchInputs[0] as { env: Record<string, string> }
-    expect(input.env.ANTHROPIC_API_KEY).toBe("test-key") // ctx.genProxyKey()
+    // Key is now a session-encoded token from mintSessionProxyKey; when no key is stored the
+    // default fake uses "master" as the prefix: master.<base64url(modelId)>.
+    expect(input.env.ANTHROPIC_API_KEY).toBe(
+      `master.${Buffer.from("mdl_x").toString("base64url")}`,
+    )
   })
 
   it("throws so the server surfaces handler-failed when the harness has no native driver", async () => {
@@ -951,6 +986,34 @@ describe("createIpcHandlers.launchHarness", () => {
     expect(
       ipcErrors.some((m) => m.includes("command not found on PATH: claude")),
     ).toBe(true)
+  })
+})
+
+describe("createIpcHandlers.launchHarness session-encoded proxy key", () => {
+  it("renders the harness env from a session-encoded proxy key", async () => {
+    const minted: string[] = []
+    const ctx = makeCtx({
+      // config has one model so the launch is proxied
+      models: [
+        {
+          id: "mdl_sel" as ModelId,
+          providerId: "p1" as ProviderId,
+          providerModel: "claude-opus",
+        } satisfies ModelRoute,
+      ],
+      mintSessionProxyKey: async (modelId: string) => {
+        minted.push(modelId)
+        return `master.${Buffer.from(modelId).toString("base64url")}`
+      },
+    }).ctx
+    const handlers = createIpcHandlers(ctx)
+    const r = await handlers.launchHarness({
+      id: "claude" as HarnessId,
+      modelId: "mdl_sel" as ModelId,
+      cwd: "/tmp",
+    })
+    expect(r).toHaveProperty("sessionId")
+    expect(minted).toEqual(["mdl_sel"])
   })
 })
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { LaunchParams } from "@spectrum/harnesses"
-import { createInMemoryRuntimeState } from "@spectrum/proxy"
+import { createInMemoryRuntimeState, decodeSessionToken } from "@spectrum/proxy"
 import { type HarnessDefinition, HarnessIdSchema } from "@spectrum/types"
 import type { StartProxyDeps } from "./deps"
 import { runCli } from "./run"
@@ -83,21 +83,28 @@ describe("launch", () => {
     const route = launchCalls[0]?.route
     expect(route?.kind).toBe("proxied")
     if (route?.kind === "proxied") {
-      expect(route.proxyKey).toBe("KEY-FROM-RUNNING")
+      // The route carries the ENCODED session token, not the bare master key.
+      const decoded = decodeSessionToken(route.proxyKey)
+      expect(decoded.masterKey).toBe("KEY-FROM-RUNNING")
+      expect(decoded.modelId).toBe("fast")
     }
   })
 
   it("mints and persists a key when starting a fresh proxy", async () => {
     let started = false
+    let startProxyKey: string | undefined
     const runtime = createInMemoryRuntimeState()
+    const launchCalls: LaunchParams[] = []
     const deps = makeFakeDeps({
       harnesses: [claude],
       isProxyRunning: false,
       runtime,
       proxyKey: "MINTED-KEY",
-      proxyStartSpy: () => {
+      proxyStartSpy: (opts) => {
         started = true
+        startProxyKey = opts.proxyKey
       },
+      launchSpy: (p) => launchCalls.push(p),
     })
 
     const result = await runCli(deps)([
@@ -111,7 +118,20 @@ describe("launch", () => {
 
     expect(result).toEqual({ ok: true, value: undefined })
     expect(started).toBe(true)
+    // (a) proxy.start receives the BARE master key, never the encoded token
+    expect(startProxyKey).toBe("MINTED-KEY")
+    // (b) writeProxyKey persists the BARE master key
     expect(await runtime.readProxyKey()).toBe("MINTED-KEY")
+    // (c) the route carries the ENCODED session token
+    const route = launchCalls[0]?.route
+    expect(route?.kind).toBe("proxied")
+    if (route?.kind === "proxied") {
+      const decoded = decodeSessionToken(route.proxyKey)
+      expect(decoded.masterKey).toBe("MINTED-KEY")
+      expect(decoded.modelId).toBe("fast")
+      // bare-vs-encoded split: the route key is NOT the bare master key
+      expect(route.proxyKey).not.toBe("MINTED-KEY")
+    }
   })
 
   it("starts an ephemeral proxy when none is running (proxied launch)", async () => {
@@ -309,13 +329,16 @@ describe("launch", () => {
       }),
     )(["launch", "claude", "--model", "fast", "--cwd", "/tmp/proj"])
 
-    // The key reaches the launcher (which puts it in the child env) ...
+    // The encoded session token (containing the master key) reaches the launcher ...
     const route = launchCalls[0]?.route
     expect(route?.kind).toBe("proxied")
     if (route?.kind === "proxied") {
-      expect(route.proxyKey).toBe(SECRET_KEY)
+      // The route carries the encoded token; decoding it reveals the original master key.
+      const decoded = decodeSessionToken(route.proxyKey)
+      expect(decoded.masterKey).toBe(SECRET_KEY)
+      expect(decoded.modelId).toBe("fast")
     }
-    // ... but is NEVER printed.
+    // ... but the secret key (bare or encoded) is NEVER printed.
     expect(out.lines.join("\n")).not.toContain(SECRET_KEY)
   })
 
