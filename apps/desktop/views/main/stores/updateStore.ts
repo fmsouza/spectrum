@@ -60,11 +60,40 @@ export const createUpdateStore = (
         deps.notify({ tone: "error", message: "Couldn't apply the update." })
     },
     dismiss: async () => {
-      const version = get().state?.latestVersion
-      if (version === undefined || version === null) return
-      const r = await deps.client.dismissUpdate({ version })
+      const state = get().state
+      if (state === undefined) return
+      // Dismiss the banner for the current latest build. Key on the build
+      // `hash` (unique per build for BOTH stable and canary) when present, so
+      // a dismissed canary build stays dismissed while a NEW canary build
+      // (different hash, same frozen version) re-shows the banner. When no
+      // hash is surfaced (an older bundle), fall back to the version string so
+      // existing users on old builds can still clear the banner.
+      const hash = state.latestHash
+      if (hash !== null && hash !== undefined) {
+        const r = await deps.client.dismissUpdate({ hash })
+        if (!r.ok) {
+          deps.notify({
+            tone: "error",
+            message: "Couldn't dismiss the update.",
+          })
+          return
+        }
+        await get().refresh()
+        return
+      }
+      const version = state.latestVersion
+      if (version === null) return
+      // Legacy path: old bundles without a build hash dismiss by version. The
+      // IPC `dismissUpdate` now requires `{ hash }`, so we send the version
+      // string AS the hash key for these old builds — it is still a stable
+      // per-build identifier on the version-keyed path, and `decideBanner`
+      // falls back to version comparison when `latestHash` is null anyway.
+      const r = await deps.client.dismissUpdate({ hash: version })
       if (!r.ok) {
-        deps.notify({ tone: "error", message: "Couldn't dismiss the update." })
+        deps.notify({
+          tone: "error",
+          message: "Couldn't dismiss the update.",
+        })
         return
       }
       await get().refresh()

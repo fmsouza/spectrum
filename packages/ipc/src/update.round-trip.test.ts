@@ -5,6 +5,7 @@ const sampleState = {
   phase: "available",
   currentVersion: "1.0.0",
   latestVersion: "1.1.0",
+  latestHash: "1wg7wj2g0bm4w",
   available: true,
   progress: 0,
   error: null,
@@ -17,6 +18,17 @@ describe("update IPC schemas", () => {
     const parsed = IpcMethodSchemas.getUpdateState.result.parse(sampleState)
     expect(parsed.phase).toBe("available")
     expect(parsed.showBanner).toBe(true)
+  })
+
+  it("validates a null latestHash when up-to-date", () => {
+    const parsed = IpcMethodSchemas.getUpdateState.result.parse({
+      ...sampleState,
+      available: false,
+      phase: "up-to-date",
+      latestVersion: null,
+      latestHash: null,
+    })
+    expect(parsed.latestHash).toBeNull()
   })
 
   it("rejects an unknown phase", () => {
@@ -38,10 +50,16 @@ describe("update IPC schemas", () => {
     ).toBe(false)
   })
 
-  it("validates dismissUpdate params", () => {
+  it("validates dismissUpdate params by build hash", () => {
     expect(
-      IpcMethodSchemas.dismissUpdate.params.parse({ version: "1.1.0" }),
-    ).toEqual({ version: "1.1.0" })
+      IpcMethodSchemas.dismissUpdate.params.parse({ hash: "1wg7wj2g0bm4w" }),
+    ).toEqual({ hash: "1wg7wj2g0bm4w" })
+  })
+
+  it("rejects a dismissUpdate with an empty hash", () => {
+    expect(
+      IpcMethodSchemas.dismissUpdate.params.safeParse({ hash: "" }).success,
+    ).toBe(false)
   })
 
   it("encodes void results as null for download/apply", () => {

@@ -11,6 +11,8 @@ export interface FakeUpdaterOptions {
   readonly currentVersion: string
   /** A newer version to advertise; omit for "up to date". */
   readonly latest?: string
+  /** The build `hash` of the advertised update (mirrors Electrobun's feed hash). */
+  readonly latestHash?: string
   /** Make `check` fail with this error kind. */
   readonly failCheck?: UpdaterErrorKind
   /** Make `apply` fail with this error kind. */
@@ -29,6 +31,7 @@ export const createFakeUpdater = (opts: FakeUpdaterOptions): FakeUpdater => {
     phase: "idle",
     currentVersion: opts.currentVersion,
     latestVersion: null,
+    latestHash: null,
     available: false,
     progress: 0,
     error: null,
@@ -52,6 +55,7 @@ export const createFakeUpdater = (opts: FakeUpdaterOptions): FakeUpdater => {
         phase: available ? "available" : "up-to-date",
         available,
         latestVersion: opts.latest ?? null,
+        latestHash: available ? (opts.latestHash ?? null) : null,
         error: null,
       }
       return ok(undefined)
