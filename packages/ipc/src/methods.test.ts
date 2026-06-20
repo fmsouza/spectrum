@@ -118,6 +118,10 @@ describe("AddModelParamsSchema", () => {
       }).success,
     ).toBe(false)
   })
+  it("AddModelParams accepts optional aliases", () => {
+    const r = AddModelParamsSchema.safeParse({ providerId: "p1", providerModel: "claude-haiku-4-5", aliases: ["haiku"] })
+    expect(r.success).toBe(true)
+  })
 })
 
 describe("AddModelResultSchema", () => {

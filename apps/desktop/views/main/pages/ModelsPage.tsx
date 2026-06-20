@@ -96,6 +96,7 @@ export const ModelsPage = (): ReactElement => {
         ? await models.add({
             providerId: draft.providerId as ProviderId,
             providerModel: draft.providerModel,
+            aliases: [],
           })
         : await models.update(draft.editingOf as ModelId, {
             providerId: draft.providerId as ProviderId,

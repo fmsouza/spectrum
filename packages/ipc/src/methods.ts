@@ -96,6 +96,7 @@ export const AddModelParamsSchema = z
   .object({
     providerId: ProviderIdSchema,
     providerModel: z.string().min(1),
+    aliases: z.array(z.string()).default([]),
   })
   .strict()
 export const AddModelResultSchema = ModelRouteSchema

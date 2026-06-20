@@ -643,12 +643,27 @@ describe("createIpcHandlers models CRUD", () => {
     expect(saves[0]?.models).toEqual([created])
   })
 
-  it("updateModel replaces the matching route by id, preserving the id", async () => {
+  it("addModel persists the aliases passed in params", async () => {
+    const { ctx, saves } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+
+    const created = await handlers.addModel({
+      providerId: "p_anthropic" as ProviderId,
+      providerModel: "claude-haiku-4-5",
+      aliases: ["haiku", "fast"],
+    })
+
+    expect(created.aliases).toEqual(["haiku", "fast"])
+    expect(saves[0]?.models.at(-1)?.aliases).toEqual(["haiku", "fast"])
+  })
+
+  it("updateModel replaces the matching route by id, preserving the id and persisting aliases", async () => {
     const { ctx, saves } = makeCtx()
     const route = {
       id: "mdl_a" as ModelId,
       providerId: "p_openai" as ProviderId,
       providerModel: "gpt-4o",
+      aliases: [] as string[],
     }
     await ctx.config.save({
       ...(await ctx.config.load()).value,
@@ -658,14 +673,14 @@ describe("createIpcHandlers models CRUD", () => {
 
     const updated = await handlers.updateModel({
       id: "mdl_a" as ModelId,
-      input: { providerId: "p_anthropic" as ProviderId, providerModel: "opus" },
+      input: { providerId: "p_anthropic" as ProviderId, providerModel: "opus", aliases: ["opus-fast"] },
     })
 
     expect(updated).toEqual({
       id: "mdl_a",
       providerId: "p_anthropic",
       providerModel: "opus",
-      aliases: [],
+      aliases: ["opus-fast"],
     })
     expect(saves.at(-1)?.models).toEqual([updated])
   })
