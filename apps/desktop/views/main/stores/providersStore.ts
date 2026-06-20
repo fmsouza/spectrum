@@ -2,6 +2,7 @@ import type { IpcError, IpcMethods, ProviderView } from "@spectrum/ipc"
 import type { ProviderId } from "@spectrum/types"
 import type { Result } from "@spectrum/utils"
 import { type StoreApi, createStore } from "zustand/vanilla"
+import { sortProviderViews } from "../model-sort"
 import { type ResourceState, createResource } from "./resource"
 import type { StoreDeps } from "./types"
 
@@ -24,7 +25,11 @@ export const createProvidersStore = (
 ): StoreApi<ProvidersStore> =>
   createStore<ProvidersStore>()((set, get) => ({
     ...createResource<readonly ProviderView[]>(
-      () => deps.client.getProviders(undefined),
+      async () => {
+        const r = await deps.client.getProviders(undefined)
+        if (!r.ok) return r
+        return { ok: true, value: sortProviderViews(r.value) }
+      },
       (patch) => set(patch),
       () => get().data,
     ),
