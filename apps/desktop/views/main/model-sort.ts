@@ -25,3 +25,13 @@ export const sortModelRoutes = (
       ? byProvider
       : collator.compare(a.providerModel, b.providerModel)
   })
+
+/** Sort by display name (fallback id). Same collator. Stable. */
+export const sortProviderViews = <
+  T extends { readonly name: string; readonly id: string },
+>(
+  views: readonly T[],
+): readonly T[] =>
+  [...views].sort(
+    (a, b) => collator.compare(a.name, b.name) || collator.compare(a.id, b.id),
+  )

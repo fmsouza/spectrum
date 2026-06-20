@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { ModelRoute } from "@spectrum/types"
-import { sortModelIds, sortModelRoutes } from "./model-sort"
+import { sortModelIds, sortModelRoutes, sortProviderViews } from "./model-sort"
 
 const route = (
   id: string,
@@ -97,5 +97,49 @@ describe("sortModelRoutes", () => {
 
   it("returns an empty array unchanged", () => {
     expect(sortModelRoutes([], () => undefined)).toEqual([])
+  })
+})
+
+describe("sortProviderViews", () => {
+  const view = (id: string, name: string) => ({ id, name })
+
+  it("orders by display name", () => {
+    const input = [
+      view("p_openai", "OpenAI"),
+      view("p_anthropic", "Anthropic"),
+      view("p_bedrock", "Bedrock"),
+    ]
+    expect(sortProviderViews(input)).toEqual([
+      view("p_anthropic", "Anthropic"),
+      view("p_bedrock", "Bedrock"),
+      view("p_openai", "OpenAI"),
+    ])
+  })
+
+  it("breaks name ties by id", () => {
+    const input = [view("p_b", "Acme"), view("p_a", "Acme")]
+    expect(sortProviderViews(input)).toEqual([
+      view("p_a", "Acme"),
+      view("p_b", "Acme"),
+    ])
+  })
+
+  it("sorts case-insensitively and numerically", () => {
+    const input = [view("p1", "provider-10"), view("p2", "Provider-2")]
+    expect(sortProviderViews(input)).toEqual([
+      view("p2", "Provider-2"),
+      view("p1", "provider-10"),
+    ])
+  })
+
+  it("does not mutate the input array", () => {
+    const input = [view("p_b", "B"), view("p_a", "A")]
+    const snapshot = [...input]
+    sortProviderViews(input)
+    expect(input).toEqual(snapshot)
+  })
+
+  it("returns an empty array unchanged", () => {
+    expect(sortProviderViews([])).toEqual([])
   })
 })
