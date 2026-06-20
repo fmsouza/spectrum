@@ -82,6 +82,7 @@ import {
   createProviderTester,
   createRealGateway,
   createRouter,
+  encodeSessionProxyKey,
   isProxyRunning,
   loadSdk,
   startProxy,
@@ -207,6 +208,11 @@ export interface AppContext {
   readonly proxyBaseUrl: string
   /** Mints the per-run >=32-byte proxy key (security.md) when the shell starts an ephemeral proxy. */
   readonly genProxyKey: () => string
+  /**
+   * The proxy token a harness session presents: `<masterKey>.<base64url(modelId)>`. The proxy decodes
+   * the model id and routes any non-exact request (sub-agents, background, review) to it.
+   */
+  readonly mintSessionProxyKey: (modelId: string) => Promise<string>
   /**
    * The native run engine: starts an AgentDriver per launched harness and streams its canonical
    * events over a dedicated loopback WebSocket (`runnerSocketUrl`). Its `send` sink is a no-op until the
@@ -567,6 +573,14 @@ export const createAppContext = (
     return key
   }
 
+  // Session-encoded proxy token: <masterKey>.<base64url(modelId)>. The proxy decodes the model id
+  // and routes any non-exact request (sub-agents, background, review) to it.
+  // SECURITY: never log the returned token — it contains the master proxy key.
+  const mintSessionProxyKey = async (modelId: string): Promise<string> => {
+    const masterKey = (await runtime.readProxyKey()) ?? genProxyKey()
+    return encodeSessionProxyKey(masterKey, modelId)
+  }
+
   const log = createLogger({
     sinks: [
       createConsoleSink({
@@ -838,7 +852,7 @@ export const createAppContext = (
       : undefined
     if (harness === undefined) return {}
     const proxyUrl = `http://${cfg.settings.proxyHost}:${proxyPort}`
-    const proxyKey = (await runtime.readProxyKey()) ?? genProxyKey()
+    const proxyKey = await mintSessionProxyKey(String(input.modelId))
     const resolved = resolveLaunch({
       harness,
       route: {
@@ -969,6 +983,7 @@ export const createAppContext = (
     proxyPort,
     proxyBaseUrl,
     genProxyKey,
+    mintSessionProxyKey,
     runner,
     runnerSocketUrl,
     runEvents: { read: runStore.read },
