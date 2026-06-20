@@ -93,4 +93,59 @@ describe("QuestionCard", () => {
     expect(screen.queryByRole("button", { name: /submit/i })).toBeNull()
     cleanup()
   })
+
+  it("shows the original question text and the chosen answer in the resolved state", () => {
+    const q = item.prompt.questions[0]
+    const answered = {
+      ...item,
+      answer: {
+        selections: [
+          { questionIndex: 0, labels: [q?.options[0]?.label ?? ""] },
+        ],
+      },
+    }
+    render(<QuestionCard item={answered} onAnswer={() => {}} />)
+    // The question is echoed so it stays clear what was asked.
+    expect(screen.getByText(q?.question ?? "")).toBeInTheDocument()
+    // The chosen answer is shown.
+    expect(
+      screen.getByText(new RegExp(q?.options[0]?.label ?? "")),
+    ).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("shows a free-text answer in the resolved state", () => {
+    const q = item.prompt.questions[0]
+    const answered = {
+      ...item,
+      answer: {
+        selections: [
+          { questionIndex: 0, labels: [], freeText: "custom reply" },
+        ],
+      },
+    }
+    render(<QuestionCard item={answered} onAnswer={() => {}} />)
+    expect(screen.getByText(q?.question ?? "")).toBeInTheDocument()
+    expect(screen.getByText("custom reply")).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("groups each option's label and description in one stacking container, separate from the radio", () => {
+    render(<QuestionCard item={item} onAnswer={() => {}} />)
+    const label = screen.getByText(
+      item.prompt.questions[0]?.options[0]?.label ?? "",
+    )
+    const wrapper = label.closest(".lk-question__opt-text")
+    expect(wrapper).not.toBeNull()
+    // The description (if any) lives in the SAME wrapper as the label…
+    const desc = item.prompt.questions[0]?.options[0]?.description
+    if (desc !== undefined)
+      expect(wrapper).toContainElement(screen.getByText(desc))
+    // …and the radio/checkbox is NOT inside that text wrapper (it stays beside it).
+    const opt = label.closest(".lk-question__opt")
+    expect(
+      opt?.querySelector("input")?.closest(".lk-question__opt-text"),
+    ).toBeNull()
+    cleanup()
+  })
 })

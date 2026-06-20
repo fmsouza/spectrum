@@ -382,6 +382,8 @@ describe("IpcMethodSchemas", () => {
       "testProviderDraft",
       "listProviderModelsDraft",
       "getSettings",
+      "getTimeoutSettings",
+      "updateTimeoutSettings",
       "getProjects",
       "setCollapsedProjects",
       "deleteProject",

@@ -33,6 +33,8 @@ const METHOD_NAMES = [
   "pickFolder",
   "listProviderModels",
   "getSettings",
+  "getTimeoutSettings",
+  "updateTimeoutSettings",
   "getProjects",
   "setCollapsedProjects",
   "getRunnerSocketUrl",

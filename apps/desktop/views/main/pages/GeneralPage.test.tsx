@@ -16,6 +16,11 @@ const upToDate = {
   showBanner: false,
 }
 
+const defaultTimeouts = {
+  firstTokenTimeoutMs: 120000,
+  interTokenTimeoutMs: 60000,
+}
+
 describe("GeneralPage updates section", () => {
   it("shows the current version", async () => {
     renderWithProviders(
@@ -23,6 +28,7 @@ describe("GeneralPage updates section", () => {
       createFakeIpcClient({
         checkForUpdate: async () => ok(upToDate),
         getUpdateState: async () => ok(upToDate),
+        getTimeoutSettings: async () => ok(defaultTimeouts),
       }),
     )
     await waitFor(() => expect(screen.getByText(/1\.0\.0/)).toBeTruthy())
@@ -39,6 +45,7 @@ describe("GeneralPage updates section", () => {
       createFakeIpcClient({
         checkForUpdate: async () => ok(canaryState),
         getUpdateState: async () => ok(canaryState),
+        getTimeoutSettings: async () => ok(defaultTimeouts),
       }),
     )
     await waitFor(() =>
@@ -53,6 +60,7 @@ describe("GeneralPage updates section", () => {
       createFakeIpcClient({
         checkForUpdate: async () => ok(upToDate),
         getUpdateState: async () => ok(upToDate),
+        getTimeoutSettings: async () => ok(defaultTimeouts),
         setUpdateChannel: async ({ channel }) => {
           chosen = channel
           return ok({ ...upToDate, channel })
@@ -62,5 +70,78 @@ describe("GeneralPage updates section", () => {
     await waitFor(() => screen.getByLabelText(/canary/i))
     fireEvent.click(screen.getByLabelText(/canary/i))
     await waitFor(() => expect(chosen).toBe("canary"))
+  })
+})
+
+describe("GeneralPage timeout settings section", () => {
+  it("renders the two timeout fields populated with values from getTimeoutSettings", async () => {
+    renderWithProviders(
+      <GeneralPage />,
+      createFakeIpcClient({
+        checkForUpdate: async () => ok(upToDate),
+        getUpdateState: async () => ok(upToDate),
+        getTimeoutSettings: async () =>
+          ok({ firstTokenTimeoutMs: 120000, interTokenTimeoutMs: 60000 }),
+      }),
+    )
+    await waitFor(() => {
+      const firstInput = screen.getByLabelText(/first.token timeout/i)
+      const interInput = screen.getByLabelText(/inter.token timeout/i)
+      expect((firstInput as HTMLInputElement).value).toBe("120000")
+      expect((interInput as HTMLInputElement).value).toBe("60000")
+    })
+  })
+
+  it("calls updateTimeoutSettings with new firstToken and unchanged interToken on blur", async () => {
+    let captured: {
+      firstTokenTimeoutMs: number
+      interTokenTimeoutMs: number
+    } | null = null
+    renderWithProviders(
+      <GeneralPage />,
+      createFakeIpcClient({
+        checkForUpdate: async () => ok(upToDate),
+        getUpdateState: async () => ok(upToDate),
+        getTimeoutSettings: async () =>
+          ok({ firstTokenTimeoutMs: 120000, interTokenTimeoutMs: 60000 }),
+        updateTimeoutSettings: async (params) => {
+          captured = params
+          return ok(null)
+        },
+      }),
+    )
+    await waitFor(() => screen.getByLabelText(/first.token timeout/i))
+    const firstInput = screen.getByLabelText(/first.token timeout/i)
+    fireEvent.change(firstInput, { target: { value: "90000" } })
+    fireEvent.blur(firstInput)
+    await waitFor(() =>
+      expect(captured).toEqual({
+        firstTokenTimeoutMs: 90000,
+        interTokenTimeoutMs: 60000,
+      }),
+    )
+  })
+
+  it("shows a validation error and does not call updateTimeoutSettings when an out-of-bounds value is entered", async () => {
+    let saveCalled = false
+    renderWithProviders(
+      <GeneralPage />,
+      createFakeIpcClient({
+        checkForUpdate: async () => ok(upToDate),
+        getUpdateState: async () => ok(upToDate),
+        getTimeoutSettings: async () =>
+          ok({ firstTokenTimeoutMs: 120000, interTokenTimeoutMs: 60000 }),
+        updateTimeoutSettings: async () => {
+          saveCalled = true
+          return ok(null)
+        },
+      }),
+    )
+    await waitFor(() => screen.getByLabelText(/first.token timeout/i))
+    const firstInput = screen.getByLabelText(/first.token timeout/i)
+    fireEvent.change(firstInput, { target: { value: "100" } })
+    fireEvent.blur(firstInput)
+    await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy())
+    expect(saveCalled).toBe(false)
   })
 })

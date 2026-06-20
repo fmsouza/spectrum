@@ -70,6 +70,8 @@ describe("runMigrations", () => {
         lastByHarness: {},
         updateChannel: "stable" as const,
         dismissedUpdateVersion: null,
+        firstTokenTimeoutMs: 120000,
+        interTokenTimeoutMs: 60000,
       },
     }
     expect(runMigrations(current)).toEqual({ ok: true, value: current })

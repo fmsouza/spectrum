@@ -11,10 +11,15 @@ export type QuestionCardProps = {
 
 type Draft = { labels: string[]; freeText: string }
 
-const summarize = (answer: QuestionAnswer): string =>
-  answer.selections
-    .map((s) => [...s.labels, ...(s.freeText ? [s.freeText] : [])].join(", "))
-    .join(" · ")
+const selectionText = (
+  answer: QuestionAnswer,
+  questionIndex: number,
+): string => {
+  const sel = answer.selections.find((s) => s.questionIndex === questionIndex)
+  if (sel === undefined) return "—"
+  const parts = [...sel.labels, ...(sel.freeText ? [sel.freeText] : [])]
+  return parts.length > 0 ? parts.join(", ") : "—"
+}
 
 export const QuestionCard = ({
   item,
@@ -25,12 +30,24 @@ export const QuestionCard = ({
     item.prompt.questions.map(() => ({ labels: [], freeText: "" })),
   )
 
-  if (item.answer !== undefined)
+  if (item.answer !== undefined) {
+    const answer = item.answer
     return (
       <div className="lk-question" data-resolved>
-        <div className="lk-question__resolved">{summarize(item.answer)}</div>
+        {item.prompt.questions.map((q, qi) => (
+          <div
+            className="lk-question__resolved-q"
+            key={`${item.requestId}-${qi}`}
+          >
+            <p className="lk-question__text">{q.question}</p>
+            <p className="lk-question__resolved-answer">
+              {selectionText(answer, qi)}
+            </p>
+          </div>
+        ))}
       </div>
     )
+  }
 
   const setDraft = (qi: number, next: Draft): void =>
     setDrafts((prev) => prev.map((d, i) => (i === qi ? next : d)))
@@ -75,10 +92,12 @@ export const QuestionCard = ({
                 checked={(drafts[qi] as Draft).labels.includes(o.label)}
                 onChange={() => toggle(qi, o.label, q.multiSelect)}
               />
-              <span className="lk-question__opt-label">{o.label}</span>
-              {o.description === undefined ? null : (
-                <span className="lk-question__opt-desc">{o.description}</span>
-              )}
+              <span className="lk-question__opt-text">
+                <span className="lk-question__opt-label">{o.label}</span>
+                {o.description === undefined ? null : (
+                  <span className="lk-question__opt-desc">{o.description}</span>
+                )}
+              </span>
             </label>
           ))}
           {q.allowFreeText ? (

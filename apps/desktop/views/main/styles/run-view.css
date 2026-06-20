@@ -446,7 +446,7 @@
 }
 .lk-question__opt {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: var(--sp-space-2);
   cursor: pointer;
 }
@@ -460,6 +460,14 @@
   min-height: 0;
   margin: 0;
   padding: 0;
+  margin-top: 0.15em; /* nudge onto the label's first text line */
+}
+/* Stack the option title above its description instead of side-by-side. */
+.lk-question__opt-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-space-1);
+  min-width: 0;
 }
 .lk-question__opt-label {
   color: var(--sp-text);
@@ -480,7 +488,16 @@
   display: flex;
   justify-content: flex-end;
 }
-.lk-question__resolved {
+.lk-question__resolved-q {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-space-1);
+}
+.lk-question__resolved-q + .lk-question__resolved-q {
+  margin-top: var(--sp-space-2);
+}
+.lk-question__resolved-answer {
+  margin: 0;
   color: var(--sp-text-secondary);
   font-size: var(--sp-text-sm);
 }
@@ -888,4 +905,21 @@
 /* Let the task-rail title take the slack so the count + collapse button group right. */
 .lk-task-rail__title {
   flex: 1 1 auto;
+}
+
+.lk-message-bubble__retry {
+  align-self: flex-start;
+  margin-top: var(--sp-space-2);
+  padding: var(--sp-space-1) var(--sp-space-2);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  background: var(--sp-bg);
+  color: var(--sp-text);
+  cursor: pointer;
+}
+
+.lk-typing__elapsed {
+  margin-left: var(--sp-space-2);
+  color: var(--sp-text-secondary);
+  font-size: var(--sp-text-xs);
 }

@@ -1,5 +1,5 @@
 import { jsonSchema, streamText } from "ai"
-import type { LanguageModelGateway } from "../gateway"
+import type { LanguageModelGateway, TimeoutWindows } from "../gateway"
 import type {
   NormalizedContentPart,
   NormalizedMessage,
@@ -169,7 +169,14 @@ export const toModelTools = (tools: readonly NormalizedTool[]): ToolSet =>
     ]),
   ) as ToolSet
 
-export const createRealGateway = (): LanguageModelGateway => ({
+const DEFAULT_TIMEOUTS: TimeoutWindows = {
+  firstTokenTimeoutMs: 120_000,
+  interTokenTimeoutMs: 60_000,
+}
+
+export const createRealGateway = (opts?: {
+  readonly getTimeouts?: () => TimeoutWindows
+}): LanguageModelGateway => ({
   async *stream(
     model: ModelHandle,
     req: NormalizedRequest,
@@ -178,10 +185,17 @@ export const createRealGateway = (): LanguageModelGateway => ({
     // DefaultStreamTextResult constructor. When the LLM provider rejects (e.g. 429),
     // that promise becomes an unhandled rejection, the internal stitchable stream is
     // never closed/errored, and result.fullStream hangs forever. We work around this
-    // by racing EVERY iterator.next() against a per-chunk timeout. Additionally, an
-    // unhandledRejection listener captures the actual AI SDK error message so it can
-    // be surfaced instead of the generic timeout message.
-    const CHUNK_TIMEOUT_MS = 20_000
+    // by racing each iterator.next() against a timeout window. The first real (mapped)
+    // event is awaited under `firstTokenTimeoutMs`; gaps between subsequent tokens use
+    // the shorter `interTokenTimeoutMs`. An unhandledRejection fast-path captures AI
+    // SDK errors immediately and short-circuits the pending wait, so real provider
+    // errors (e.g. 429) surface instantly without waiting for a timer to fire.
+    const { firstTokenTimeoutMs, interTokenTimeoutMs } =
+      opts?.getTimeouts?.() ?? DEFAULT_TIMEOUTS
+    // The first real (mapped) event gets the (generous) first-token window;
+    // every event after it gets the inter-token idle window. The error
+    // fast-path below is unchanged.
+    let firstChunkSeen = false
 
     const controller = new AbortController()
 
@@ -229,6 +243,10 @@ export const createRealGateway = (): LanguageModelGateway => ({
         // A provider error may have been captured between chunks.
         if (captureError !== null) throw captureError
 
+        const timeoutMs = firstChunkSeen
+          ? interTokenTimeoutMs
+          : firstTokenTimeoutMs
+
         const next: Next = await new Promise<Next>((resolve, reject) => {
           const id = setTimeout(() => {
             controller.abort()
@@ -236,11 +254,15 @@ export const createRealGateway = (): LanguageModelGateway => ({
             reject(
               captureError !== null
                 ? captureError
-                : new Error(
-                    `LLM provider did not respond within ${CHUNK_TIMEOUT_MS}ms; check your provider credentials, rate limits, and network`,
-                  ),
+                : firstChunkSeen
+                  ? new Error(
+                      `LLM provider stalled: no further output for ${interTokenTimeoutMs}ms after the last token; check your provider credentials, rate limits, and network`,
+                    )
+                  : new Error(
+                      `LLM provider did not respond within ${firstTokenTimeoutMs}ms; check your provider credentials, rate limits, and network`,
+                    ),
             )
-          }, CHUNK_TIMEOUT_MS)
+          }, timeoutMs)
 
           shortCircuit = (err) => {
             clearTimeout(id)
@@ -266,7 +288,15 @@ export const createRealGateway = (): LanguageModelGateway => ({
         const event = mapFullStreamPart(
           next.value as { type: string } & Record<string, unknown>,
         )
-        if (event !== undefined) yield event
+        if (event !== undefined) {
+          // The AI SDK's fullStream emits synthetic framing parts (start /
+          // start-step / text-start) that map to `undefined` BEFORE the
+          // provider's first real token. The first-token window must cover the
+          // wait for that first real event; only after we surface a meaningful
+          // event do we narrow to the inter-token idle window.
+          firstChunkSeen = true
+          yield event
+        }
       }
     } catch (e: unknown) {
       yield { type: "error", ...describeStreamError(captureError ?? e) }

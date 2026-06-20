@@ -1,6 +1,7 @@
 import { isTaskTool } from "@spectrum/agent-events"
 import type {
   ApprovalDecision,
+  MessageItem,
   QuestionAnswer,
   RunnerId,
   RunnerState,
@@ -22,6 +23,8 @@ export type ConversationTimelineProps = {
   readonly onOpenSubRunner: (id: RunnerId) => void
   readonly onDecide: (requestId: string, decision: ApprovalDecision) => void
   readonly onAnswer: (requestId: string, answer: QuestionAnswer) => void
+  /** Re-run the last user prompt after a turn failed. Wired only on the last error message. */
+  readonly onRetry?: (prompt: string) => void
   readonly inert?: boolean
 }
 
@@ -31,6 +34,7 @@ export const ConversationTimeline = ({
   onOpenSubRunner,
   onDecide,
   onAnswer,
+  onRetry,
   inert = false,
 }: ConversationTimelineProps): ReactElement => {
   // Per-item expand state lives here (the page-level store holds RunState, not
@@ -44,80 +48,94 @@ export const ConversationTimeline = ({
       return next
     })
 
+  const visible = runner.items.filter(
+    (item) => !(item.kind === "tool-call" && isTaskTool(item.tool)),
+  )
+  const lastUserPrompt = runner.items.findLast(
+    (i): i is MessageItem => i.kind === "message" && i.role === "user",
+  )?.text
+
   return (
     <div className="lk-timeline" data-runner={runner.id}>
-      {runner.items
-        .filter((item) => !(item.kind === "tool-call" && isTaskTool(item.tool)))
-        .map((item, i) => {
-          switch (item.kind) {
-            case "message":
-              return (
-                <MessageBubble
-                  key={`m-${item.messageId}`}
-                  text={item.text}
-                  author={item.role}
-                  {...(item.tone !== undefined ? { tone: item.tone } : {})}
-                />
-              )
-            case "reasoning":
-              return (
-                <ReasoningBlock
-                  key={`r-${item.messageId}`}
-                  text={item.text}
-                  expanded={expanded.has(item.messageId)}
-                  onToggle={() => toggle(item.messageId)}
-                />
-              )
-            case "tool-call": {
-              if (item.spawnedRunnerId !== undefined) {
-                const childRunner = runners.get(item.spawnedRunnerId)
-                const detail = childRunner?.title ?? subAgentDetail(item.input)
-                return (
-                  <SubRunnerCard
-                    key={`s-${item.callId}`}
-                    runnerId={item.spawnedRunnerId}
-                    title="Agent"
-                    {...(detail === undefined ? {} : { detail })}
-                    status={childRunner?.status ?? "running"}
-                    onOpen={onOpenSubRunner}
-                  />
-                )
-              }
-              return (
-                <ToolCallCard
-                  key={`c-${item.callId}`}
-                  item={item}
-                  expanded={expanded.has(item.callId)}
-                  onToggle={() => toggle(item.callId)}
-                />
-              )
-            }
-            case "file-change":
-              return <FileDiffCard key={`f-${i}-${item.path}`} item={item} />
-            case "approval":
-              return (
-                <ApprovalCard
-                  key={`a-${item.requestId}`}
-                  item={item}
-                  inert={inert}
-                  onDecide={(d) => onDecide(item.requestId, d)}
-                />
-              )
-            case "question":
-              return (
-                <QuestionCard
-                  key={`q-${item.requestId}`}
-                  item={item}
-                  inert={inert}
-                  onAnswer={(a) => onAnswer(item.requestId, a)}
-                />
-              )
-            default: {
-              const _exhaustive: never = item
-              return _exhaustive
-            }
+      {visible.map((item, i) => {
+        switch (item.kind) {
+          case "message": {
+            const canRetry =
+              i === visible.length - 1 &&
+              item.tone === "error" &&
+              onRetry !== undefined &&
+              lastUserPrompt !== undefined
+            return (
+              <MessageBubble
+                key={`m-${item.messageId}`}
+                text={item.text}
+                author={item.role}
+                {...(item.tone !== undefined ? { tone: item.tone } : {})}
+                {...(canRetry
+                  ? { onRetry: () => onRetry(lastUserPrompt) }
+                  : {})}
+              />
+            )
           }
-        })}
+          case "reasoning":
+            return (
+              <ReasoningBlock
+                key={`r-${item.messageId}`}
+                text={item.text}
+                expanded={expanded.has(item.messageId)}
+                onToggle={() => toggle(item.messageId)}
+              />
+            )
+          case "tool-call": {
+            if (item.spawnedRunnerId !== undefined) {
+              const childRunner = runners.get(item.spawnedRunnerId)
+              const detail = childRunner?.title ?? subAgentDetail(item.input)
+              return (
+                <SubRunnerCard
+                  key={`s-${item.callId}`}
+                  runnerId={item.spawnedRunnerId}
+                  title="Agent"
+                  {...(detail === undefined ? {} : { detail })}
+                  status={childRunner?.status ?? "running"}
+                  onOpen={onOpenSubRunner}
+                />
+              )
+            }
+            return (
+              <ToolCallCard
+                key={`c-${item.callId}`}
+                item={item}
+                expanded={expanded.has(item.callId)}
+                onToggle={() => toggle(item.callId)}
+              />
+            )
+          }
+          case "file-change":
+            return <FileDiffCard key={`f-${i}-${item.path}`} item={item} />
+          case "approval":
+            return (
+              <ApprovalCard
+                key={`a-${item.requestId}`}
+                item={item}
+                inert={inert}
+                onDecide={(d) => onDecide(item.requestId, d)}
+              />
+            )
+          case "question":
+            return (
+              <QuestionCard
+                key={`q-${item.requestId}`}
+                item={item}
+                inert={inert}
+                onAnswer={(a) => onAnswer(item.requestId, a)}
+              />
+            )
+          default: {
+            const _exhaustive: never = item
+            return _exhaustive
+          }
+        }
+      })}
       {runner.usage === undefined ? null : <UsageFooter usage={runner.usage} />}
     </div>
   )
