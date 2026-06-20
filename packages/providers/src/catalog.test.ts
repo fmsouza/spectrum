@@ -62,4 +62,9 @@ describe("provider catalog", () => {
       ].sort(),
     )
   })
+
+  it("marks ollama as a buffered-streaming provider and openai as incremental", () => {
+    expect(getDescriptor("ollama").streaming).toBe("buffered")
+    expect(getDescriptor("openai").streaming).toBe("incremental")
+  })
 })
