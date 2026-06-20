@@ -8,7 +8,7 @@ import { encodeSessionProxyKey } from "./session-token"
 import { collectStream } from "./test-helpers"
 
 type Captured = {
-  level: "warn" | "error"
+  level: "info" | "warn" | "error"
   msg: string
   fields: Record<string, unknown> | undefined
 }
@@ -16,12 +16,15 @@ type Captured = {
 const makeFakeLogger = (): {
   logger: Logger
   records: Captured[]
+  infosOf: () => Captured[]
   errorsOf: () => Captured[]
 } => {
   const records: Captured[] = []
   const logger: Logger = {
     debug: () => {},
-    info: () => {},
+    info: (msg, fields) => {
+      records.push({ level: "info", msg, fields })
+    },
     warn: (msg, fields) => {
       records.push({ level: "warn", msg, fields })
     },
@@ -34,6 +37,7 @@ const makeFakeLogger = (): {
   return {
     logger,
     records,
+    infosOf: () => records.filter((r) => r.level === "info"),
     errorsOf: () => records.filter((r) => r.level === "error"),
   }
 }
@@ -436,5 +440,71 @@ describe("createHandler", () => {
     const body = (await res.json()) as { error: { kind: string; id?: string } }
     expect(body.error.kind).toBe("unknown-model")
     expect(body.error.id).toBe("ghost")
+  })
+  it("emits exactly one info log with resolvedVia and routeId (no secret) when a request resolves via session-fallback", async () => {
+    const { logger, infosOf } = makeFakeLogger()
+    const sessionToken = encodeSessionProxyKey("secret-master-key", "mdl_sel")
+    const h = createHandler({
+      ...makeDeps({
+        proxyKey: "secret-master-key",
+        models: [
+          { id: "mdl_sel", providerId: "p1", providerModel: "claude-opus" },
+        ] as Config["models"],
+      }),
+      logger,
+    })
+    const res = await h.fetch(
+      new Request("http://x/v1/messages", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${sessionToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5",
+          messages: [{ role: "user", content: "hi" }],
+          stream: true,
+        }),
+      }),
+    )
+    expect(res.status).toBe(200)
+    const infos = infosOf()
+    expect(infos).toHaveLength(1)
+    expect(infos[0]?.msg).toBe("proxy model routed via fallback")
+    expect(infos[0]?.fields).toMatchObject({
+      resolvedVia: "session-fallback",
+      routeId: "mdl_sel",
+    })
+    const serialized = JSON.stringify(infos)
+    expect(serialized).not.toContain("secret-master-key")
+    expect(serialized).not.toContain(sessionToken)
+  })
+  it("does not emit a fallback-routing log when a request resolves via exact id match", async () => {
+    const { logger, infosOf } = makeFakeLogger()
+    const h = createHandler({
+      ...makeDeps({
+        proxyKey: "master",
+        models: [
+          { id: "mdl_sel", providerId: "p1", providerModel: "claude-opus" },
+        ] as Config["models"],
+      }),
+      logger,
+    })
+    const res = await h.fetch(
+      new Request("http://x/v1/messages", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer master",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "mdl_sel",
+          messages: [{ role: "user", content: "hi" }],
+          stream: true,
+        }),
+      }),
+    )
+    expect(res.status).toBe(200)
+    expect(infosOf()).toHaveLength(0)
   })
 })

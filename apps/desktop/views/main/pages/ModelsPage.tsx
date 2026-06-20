@@ -85,7 +85,7 @@ export const ModelsPage = (): ReactElement => {
     setDraft({
       providerId: found.providerId,
       providerModel: found.providerModel,
-      aliases: found.aliases.join(", "),
+      aliases: (found.aliases ?? []).join(", "),
       editingOf: found.id,
     })
   }
