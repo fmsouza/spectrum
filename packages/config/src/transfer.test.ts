@@ -15,7 +15,7 @@ const configWithProvider = (): Config => ({
     },
   ],
   models: [
-    { id: "fast", providerId: "p_openai", providerModel: "gpt-4o-mini" },
+    { id: "fast", providerId: "p_openai", providerModel: "gpt-4o-mini", aliases: [] },
   ],
   settings: {
     proxyPort: 4000,
