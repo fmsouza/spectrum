@@ -1,6 +1,6 @@
 import type { Config } from "@spectrum/config"
 import type { LaunchRoute } from "@spectrum/harnesses"
-import type { RunningProxy } from "@spectrum/proxy"
+import { encodeSessionProxyKey, type RunningProxy } from "@spectrum/proxy"
 import { type ModelId, ModelIdSchema } from "@spectrum/types"
 import { type Result, err, isErr, ok } from "@spectrum/utils"
 import type { CliDeps } from "./deps"
@@ -34,21 +34,36 @@ const ensureProxiedRoute = async (
   if (alreadyRunning) {
     // Reuse the running proxy's key so auth succeeds; fall back to a fresh one only if the
     // runtime file is missing (e.g. a proxy started outside this app).
-    const proxyKey = (await deps.runtime.readProxyKey()) ?? deps.genProxyKey()
+    const masterKey = (await deps.runtime.readProxyKey()) ?? deps.genProxyKey()
     return {
-      route: { kind: "proxied", proxyUrl, proxyKey, modelId },
+      route: {
+        kind: "proxied",
+        proxyUrl,
+        proxyKey: encodeSessionProxyKey(masterKey, String(modelId)),
+        modelId,
+      },
       owned: null,
     }
   }
-  const proxyKey = deps.genProxyKey()
+  // SECURITY: the master key flows into proxy.start and writeProxyKey as the bare secret;
+  // only the route's proxyKey (handed to the harness) gets the session-encoded form.
+  const masterKey = deps.genProxyKey()
   const owned = deps.proxy.start({
     host: settings.proxyHost,
     port: settings.proxyPort,
-    proxyKey,
+    proxyKey: masterKey,
     config,
   })
-  await deps.runtime.writeProxyKey(proxyKey)
-  return { route: { kind: "proxied", proxyUrl, proxyKey, modelId }, owned }
+  await deps.runtime.writeProxyKey(masterKey)
+  return {
+    route: {
+      kind: "proxied",
+      proxyUrl,
+      proxyKey: encodeSessionProxyKey(masterKey, String(modelId)),
+      modelId,
+    },
+    owned,
+  }
 }
 
 /**

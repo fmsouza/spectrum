@@ -1,4 +1,4 @@
-export { encodeSessionProxyKey } from "./session-token"
+export { encodeSessionProxyKey, decodeSessionToken } from "./session-token"
 export { checkAuth } from "./auth"
 export type { AuthPrincipal } from "./auth"
 export { startProxy, isProxyRunning } from "./server"
