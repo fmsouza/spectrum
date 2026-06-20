@@ -48,10 +48,18 @@ export const serializeOpenAIStream = (
           controller.enqueue(
             enc.encode(chunk({}, toolUsed ? "tool_calls" : e.finishReason)),
           )
-        else
+        else {
+          // A provider failure mid-stream. Emit an OpenAI-style error object and
+          // stop — do NOT render it as assistant content with finish_reason "stop"
+          // (that masquerades a failure as a successful turn).
           controller.enqueue(
-            enc.encode(chunk({ content: `[error: ${e.detail}]` }, "stop")),
+            enc.encode(
+              `data: ${JSON.stringify({ error: { message: e.detail, type: "api_error", ...(e.statusCode !== undefined ? { code: e.statusCode } : {}) } })}\n\n`,
+            ),
           )
+          controller.close()
+          return
+        }
       }
       controller.enqueue(enc.encode("data: [DONE]\n\n"))
       controller.close()

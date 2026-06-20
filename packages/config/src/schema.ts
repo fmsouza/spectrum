@@ -44,9 +44,10 @@ export const SettingsSchema = z
     dismissedUpdateVersion: z.string().nullable().default(null),
     /**
      * Max ms to wait for the FIRST streamed chunk from the LLM provider before
-     * treating the stream as a silent hang. Generous by default — slow/local
-     * models warm up slowly; genuine provider errors surface instantly via the
-     * proxy's error fast-path regardless of this value.
+     * treating the stream as a silent hang. Generous by default — slow/local models
+     * warm up slowly. Buffered providers (e.g. Ollama Cloud) raise this further via
+     * their streaming profile. Genuine provider errors surface instantly via the
+     * gateway's deterministic error signal regardless of this value.
      */
     firstTokenTimeoutMs: z.number().int().min(5000).max(600000).default(120000),
     /** Max ms of idle gap BETWEEN streamed chunks before treating the stream as hung. */

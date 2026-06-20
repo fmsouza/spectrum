@@ -31,6 +31,7 @@ const openAiCompatible = (
   configFields: [],
   secretFields: [API_KEY_REQUIRED],
   supportsCustomHeaders: false,
+  streaming: "incremental",
   configSchema: emptyConfig,
   sdkMapping: {
     baseUrlOption: "baseURL",
@@ -51,6 +52,7 @@ const noDiscovery = (
   configFields,
   secretFields: [API_KEY_REQUIRED],
   supportsCustomHeaders: false,
+  streaming: "incremental",
   configSchema,
   sdkMapping: {
     baseUrlOption: "baseURL",
@@ -140,6 +142,7 @@ const descriptors: Record<SdkProvider, ProviderDescriptor> = {
     ],
     secretFields: [API_KEY_OPTIONAL],
     supportsCustomHeaders: true,
+    streaming: "incremental",
     configSchema: z
       .object({
         serverUrl: z.string().url().optional(),
@@ -187,6 +190,7 @@ const descriptors: Record<SdkProvider, ProviderDescriptor> = {
     ],
     secretFields: [API_KEY_REQUIRED],
     supportsCustomHeaders: false,
+    streaming: "buffered",
     configSchema: z.object({ serverUrl: z.string().url().optional() }).strict(),
     sdkMapping: {
       baseUrlOption: "baseURL",
@@ -222,6 +226,7 @@ const descriptors: Record<SdkProvider, ProviderDescriptor> = {
     ],
     secretFields: [API_KEY_REQUIRED],
     supportsCustomHeaders: false,
+    streaming: "incremental",
     configSchema: z
       .object({
         httpReferer: z.string().optional(),
