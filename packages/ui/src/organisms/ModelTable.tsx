@@ -43,7 +43,7 @@ export const ModelTable = ({
               providerNames[String(m.providerId)] ?? String(m.providerId)
             }
             model={m.providerModel}
-            aliases={m.aliases.join(", ")}
+            aliases={(m.aliases ?? []).join(", ")}
             onEdit={onEdit}
             onDelete={onDelete}
           />
