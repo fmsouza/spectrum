@@ -7,7 +7,20 @@ export type ResolvedRoute = {
   readonly provider: Provider
   readonly providerModel: string
   readonly routeId: string
-  readonly resolvedVia: "exact" | "provider-model" | "session-fallback"
+  readonly resolvedVia: "exact" | "alias" | "provider-model" | "session-fallback"
+}
+
+// Well-known model "family" keywords. A requested id is reduced to the FIRST family keyword it
+// contains (case-insensitive); a route claims a family/tier by listing the keyword in `aliases`.
+const FAMILY_KEYWORDS = [
+  "opus", "sonnet", "haiku", "fable",
+  "gpt-5", "gpt-4", "o4", "o3",
+  "mini", "nano", "flash", "pro",
+] as const
+
+const familyOf = (id: string): string | undefined => {
+  const lower = id.toLowerCase()
+  return FAMILY_KEYWORDS.find((kw) => lower.includes(kw))
 }
 
 export interface Router {
@@ -50,12 +63,24 @@ const resolveIn = (
   const exact = config.models.find((x) => (x.id as string) === id)
   if (exact !== undefined) return toResolved(config, exact, "exact")
 
-  // 2. Provider-native match: the requested id IS some route's providerModel (e.g. a raw "gpt-4o").
+  // 2. Alias / tier match: a route the user marked with this alias (or with the requested id's
+  //    family keyword) — lets a "haiku" sub-agent run on a dedicated cheap route, not the session model.
+  const norm = id.toLowerCase()
+  const fam = familyOf(id)
+  const byAlias = config.models.find((x) =>
+    (x.aliases ?? []).some((a) => {
+      const al = a.toLowerCase()
+      return al === norm || (fam !== undefined && al === fam)
+    }),
+  )
+  if (byAlias !== undefined) return toResolved(config, byAlias, "alias")
+
+  // 3. Provider-native match: the requested id IS some route's providerModel (e.g. a raw "gpt-4o").
   const byProviderModel = config.models.find((x) => x.providerModel === id)
   if (byProviderModel !== undefined)
     return toResolved(config, byProviderModel, "provider-model")
 
-  // 3. Session fallback: route an unknown id (sub-agent / background / review) to the session's
+  // 4. Session fallback: route an unknown id (sub-agent / background / review) to the session's
   //    SELECTED model, decoded from the proxy token. Correct under concurrent multi-model sessions.
   if (fallbackModelId !== undefined) {
     const fb = config.models.find((x) => (x.id as string) === fallbackModelId)
