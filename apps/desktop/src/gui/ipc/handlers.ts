@@ -219,6 +219,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         id: `mdl_${crypto.randomUUID()}` as ModelRoute["id"],
         providerId: input.providerId,
         providerModel: input.providerModel,
+        aliases: input.aliases,
       }
       const saved = await ctx.config.save({
         ...config,
@@ -234,6 +235,7 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         id,
         providerId: input.providerId,
         providerModel: input.providerModel,
+        aliases: input.aliases,
       }
       const models = config.models.map((m) => (m.id === id ? next : m))
       const saved = await ctx.config.save({ ...config, models })
@@ -296,9 +298,10 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
         route = { kind: "direct" }
       } else {
         const proxyUrl = `http://${config.settings.proxyHost}:${ctx.proxyPort}`
-        // The GUI proxy runs persistently and stored its per-run key in runtime state; reuse it so
-        // the running proxy accepts the harness's requests. If absent, mint a fresh key (security.md).
-        const proxyKey = (await ctx.runtime.readProxyKey()) ?? ctx.genProxyKey()
+        // The session's SELECTED model id is encoded into the proxy token so the running proxy can
+        // route any sub-agent / background / review request that isn't this exact id back to it.
+        // SECURITY: never log proxyKey or the rendered env.
+        const proxyKey = await ctx.mintSessionProxyKey(String(effectiveModelId))
         route = {
           kind: "proxied",
           proxyUrl,

@@ -119,7 +119,12 @@ describe("ConfigSchema", () => {
       version: CURRENT_CONFIG_VERSION,
       providers: [validProvider],
       models: [
-        { id: "fast", providerId: "p_openai", providerModel: "gpt-4o-mini" },
+        {
+          id: "fast",
+          providerId: "p_openai",
+          providerModel: "gpt-4o-mini",
+          aliases: [],
+        },
       ],
       settings: {
         proxyPort: 4000,
@@ -213,7 +218,7 @@ describe("defaultConfig", () => {
   it("produces a config that satisfies ConfigSchema", () => {
     expect(ConfigSchema.safeParse(defaultConfig()).success).toBe(true)
   })
-  it("uses the bumped CURRENT_CONFIG_VERSION of 10", () => {
-    expect(CURRENT_CONFIG_VERSION).toBe(10)
+  it("uses the bumped CURRENT_CONFIG_VERSION of 11", () => {
+    expect(CURRENT_CONFIG_VERSION).toBe(11)
   })
 })

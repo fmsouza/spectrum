@@ -112,6 +112,7 @@ const model: ModelRoute = {
   id: "m_1",
   providerId: "p_openai",
   providerModel: "gpt-4o-mini",
+  aliases: [],
 } as unknown as ModelRoute
 
 const runningSession: Session = {

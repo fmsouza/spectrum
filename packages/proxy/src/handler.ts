@@ -160,8 +160,20 @@ export const createHandler = (
     }
     const parsed = parse(body)
     if (isErr(parsed)) return fail(parsed.error)
-    const route = deps.router.resolve(parsed.value.model)
+    const fallbackModelId =
+      auth.value.kind === "session" ? auth.value.fallbackModelId : undefined
+    const route = deps.router.resolve(
+      parsed.value.model,
+      fallbackModelId !== undefined ? { fallbackModelId } : {},
+    )
     if (isErr(route)) return fail(route.error)
+    if (route.value.resolvedVia !== "exact")
+      logger.info("proxy model routed via fallback", {
+        resolvedVia: route.value.resolvedVia,
+        // The requested id is the user's own non-secret config value; bound length defensively.
+        requested: parsed.value.model.slice(0, 200),
+        routeId: route.value.routeId,
+      })
     const model = await deps.factory.getModel(
       route.value.provider,
       route.value.providerModel,

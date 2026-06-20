@@ -20,8 +20,8 @@ const v1Config = {
 }
 
 describe("migrations", () => {
-  it("ships ordered v1->v2, v2->v3, v3->v4, v4->v5, v5->v6, v6->v7, v7->v8, v8->v9, and v9->v10 migrations", () => {
-    expect(migrations).toHaveLength(9)
+  it("ships ordered v1->v2, v2->v3, v3->v4, v4->v5, v5->v6, v6->v7, v7->v8, v8->v9, v9->v10, and v10->v11 migrations", () => {
+    expect(migrations).toHaveLength(10)
     expect(migrations[0]?.from).toBe(1)
     expect(migrations[0]?.to).toBe(2)
     expect(migrations[1]?.from).toBe(2)
@@ -40,6 +40,8 @@ describe("migrations", () => {
     expect(migrations[7]?.to).toBe(9)
     expect(migrations[8]?.from).toBe(9)
     expect(migrations[8]?.to).toBe(10)
+    expect(migrations[9]?.from).toBe(10)
+    expect(migrations[9]?.to).toBe(11)
   })
 })
 
@@ -188,7 +190,12 @@ describe("v3 → v4 (aliases → models)", () => {
     if (!isOk(result)) return
     expect(result.value.version).toBe(CURRENT_CONFIG_VERSION)
     expect(result.value.models).toEqual([
-      { id: "fast", providerId: "openai", providerModel: "gpt-4o-mini" },
+      {
+        id: "fast",
+        providerId: "openai",
+        providerModel: "gpt-4o-mini",
+        aliases: [],
+      },
     ])
     expect("profiles" in result.value).toBe(false)
     expect("aliases" in result.value).toBe(false)
@@ -316,6 +323,32 @@ describe("v9 → v10 (updateChannel + dismissedUpdateVersion)", () => {
     expect(result.value.version).toBe(CURRENT_CONFIG_VERSION)
     expect(result.value.settings.updateChannel).toBe("stable")
     expect(result.value.settings.dismissedUpdateVersion).toBeNull()
+  })
+})
+
+describe("v10 → v11 (models[].aliases)", () => {
+  it("migrates a v10 config to v11, defaulting model aliases to []", () => {
+    const raw = {
+      version: 10,
+      providers: [
+        {
+          id: "p1",
+          name: "P1",
+          sdkProvider: "openai",
+          config: {},
+          secrets: {},
+          models: [],
+        },
+      ],
+      models: [{ id: "mdl_a", providerId: "p1", providerModel: "gpt-4o" }],
+      settings: {},
+    }
+    const r = runMigrations(raw)
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.value.version).toBe(11)
+      expect(r.value.models[0]?.aliases).toEqual([])
+    }
   })
 })
 

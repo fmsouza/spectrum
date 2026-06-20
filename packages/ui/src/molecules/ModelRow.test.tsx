@@ -2,7 +2,12 @@ import { describe, expect, it, mock } from "bun:test"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { ModelRow } from "./ModelRow"
 
-const props = { id: "mdl_fast", provider: "OpenAI", model: "gpt-4o-mini" }
+const props = {
+  id: "mdl_fast",
+  provider: "OpenAI",
+  model: "gpt-4o-mini",
+  aliases: "",
+}
 
 describe("ModelRow", () => {
   it("wraps row actions in a wrapping cell hook", () => {
@@ -49,5 +54,37 @@ describe("ModelRow", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: /delete/i }))
     expect(onDelete).toHaveBeenCalledWith("mdl_fast")
+  })
+  it("renders the aliases string in a cell when provided", () => {
+    render(
+      <table>
+        <tbody>
+          <ModelRow
+            {...props}
+            aliases="haiku, small"
+            onEdit={() => {}}
+            onDelete={() => {}}
+          />
+        </tbody>
+      </table>,
+    )
+    expect(screen.getByText("haiku, small")).toBeInTheDocument()
+  })
+  it("renders an empty aliases cell when aliases is empty", () => {
+    const { container } = render(
+      <table>
+        <tbody>
+          <ModelRow
+            {...props}
+            aliases=""
+            onEdit={() => {}}
+            onDelete={() => {}}
+          />
+        </tbody>
+      </table>,
+    )
+    const cells = container.querySelectorAll("td")
+    // provider, model, aliases, actions = 4 cells
+    expect(cells.length).toBe(4)
   })
 })

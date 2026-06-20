@@ -33,3 +33,23 @@ describe("ModelRouteSchema", () => {
     ).toBe(false)
   })
 })
+
+describe("ModelRouteSchema aliases", () => {
+  it("defaults aliases to [] when omitted", () => {
+    const r = ModelRouteSchema.parse({
+      id: "mdl_a",
+      providerId: "p1",
+      providerModel: "gpt-4o",
+    })
+    expect(r.aliases).toEqual([])
+  })
+  it("accepts an explicit aliases array", () => {
+    const r = ModelRouteSchema.parse({
+      id: "mdl_a",
+      providerId: "p1",
+      providerModel: "claude-haiku-4-5",
+      aliases: ["haiku", "small"],
+    })
+    expect(r.aliases).toEqual(["haiku", "small"])
+  })
+})
