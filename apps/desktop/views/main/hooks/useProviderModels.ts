@@ -3,6 +3,7 @@ import type { ProviderId } from "@spectrum/types"
 import { type Result, ok } from "@spectrum/utils"
 import { useCallback } from "react"
 import { useIpcClient } from "../IpcClientContext"
+import { sortModelIds } from "../model-sort"
 import { type AsyncResource, useAsyncResource } from "./useAsyncResource"
 
 /**
@@ -29,7 +30,7 @@ export const useProviderModels = (
       providerId: providerId as ProviderId,
     })
     if (!r.ok) return r
-    return ok(r.value.models as readonly string[])
+    return ok(sortModelIds(r.value.models as readonly string[]))
   }, [client, providerId])
 
   return useAsyncResource(call)
