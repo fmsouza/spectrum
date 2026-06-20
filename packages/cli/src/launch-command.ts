@@ -1,6 +1,6 @@
 import type { Config } from "@spectrum/config"
 import type { LaunchRoute } from "@spectrum/harnesses"
-import { encodeSessionProxyKey, type RunningProxy } from "@spectrum/proxy"
+import { type RunningProxy, encodeSessionProxyKey } from "@spectrum/proxy"
 import { type ModelId, ModelIdSchema } from "@spectrum/types"
 import { type Result, err, isErr, ok } from "@spectrum/utils"
 import type { CliDeps } from "./deps"

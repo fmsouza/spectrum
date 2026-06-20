@@ -22,7 +22,8 @@ export const checkAuth = (
   const presented = bearer ?? apiKey
   if (presented === undefined) return err({ kind: "unauthorized" })
   const { masterKey, modelId } = decodeSessionToken(presented)
-  if (!constantTimeEquals(masterKey, proxyKey)) return err({ kind: "unauthorized" })
+  if (!constantTimeEquals(masterKey, proxyKey))
+    return err({ kind: "unauthorized" })
   return ok(
     modelId === undefined
       ? { kind: "master" }

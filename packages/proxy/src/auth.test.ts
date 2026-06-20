@@ -41,7 +41,11 @@ it("returns a session principal carrying the decoded fallback model id", () => {
   const headers = new Headers({ authorization: `Bearer ${token}` })
   const r = checkAuth(headers, "the-master-key")
   expect(r.ok).toBe(true)
-  if (r.ok) expect(r.value).toEqual({ kind: "session", fallbackModelId: "mdl_selected" })
+  if (r.ok)
+    expect(r.value).toEqual({
+      kind: "session",
+      fallbackModelId: "mdl_selected",
+    })
 })
 
 it("rejects when the master-key portion does not match", () => {
@@ -57,5 +61,6 @@ it("accepts the x-api-key header carrying a session token", () => {
   const headers = new Headers({ "x-api-key": token })
   const r = checkAuth(headers, "the-master-key")
   expect(r.ok).toBe(true)
-  if (r.ok) expect(r.value).toEqual({ kind: "session", fallbackModelId: "mdl_x" })
+  if (r.ok)
+    expect(r.value).toEqual({ kind: "session", fallbackModelId: "mdl_x" })
 })

@@ -9,7 +9,8 @@
 export const encodeSessionProxyKey = (
   masterKey: string,
   modelId: string,
-): string => `${masterKey}.${Buffer.from(modelId, "utf8").toString("base64url")}`
+): string =>
+  `${masterKey}.${Buffer.from(modelId, "utf8").toString("base64url")}`
 
 export const decodeSessionToken = (
   token: string,

@@ -87,7 +87,9 @@ describe("createRouter", () => {
   // -------------------------------------------------------------------------
 
   it("resolves an exact model id with resolvedVia 'exact'", () => {
-    const router = createRouter(configWith([{ id: "mdl_a", providerId: "p1", providerModel: "gpt-4o" }]))
+    const router = createRouter(
+      configWith([{ id: "mdl_a", providerId: "p1", providerModel: "gpt-4o" }]),
+    )
     const r = router.resolve("mdl_a")
     expect(r.ok).toBe(true)
     if (r.ok) expect(r.value.resolvedVia).toBe("exact")
@@ -96,7 +98,9 @@ describe("createRouter", () => {
   })
 
   it("resolves a provider-native id to the route whose providerModel matches", () => {
-    const router = createRouter(configWith([{ id: "mdl_a", providerId: "p1", providerModel: "gpt-4o" }]))
+    const router = createRouter(
+      configWith([{ id: "mdl_a", providerId: "p1", providerModel: "gpt-4o" }]),
+    )
     const r = router.resolve("gpt-4o")
     expect(r.ok).toBe(true)
     if (r.ok) expect(r.value.resolvedVia).toBe("provider-model")
@@ -104,7 +108,11 @@ describe("createRouter", () => {
   })
 
   it("falls back to the session's selected model when the requested id is unknown", () => {
-    const router = createRouter(configWith([{ id: "mdl_sel", providerId: "p1", providerModel: "claude-opus" }]))
+    const router = createRouter(
+      configWith([
+        { id: "mdl_sel", providerId: "p1", providerModel: "claude-opus" },
+      ]),
+    )
     const r = router.resolve("claude-haiku-4-5", { fallbackModelId: "mdl_sel" })
     expect(r.ok).toBe(true)
     if (r.ok) expect(r.value.resolvedVia).toBe("session-fallback")
@@ -112,17 +120,23 @@ describe("createRouter", () => {
   })
 
   it("returns unknown-model when the id is unknown and no usable fallback is configured", () => {
-    const router = createRouter(configWith([{ id: "mdl_sel", providerId: "p1", providerModel: "claude-opus" }]))
+    const router = createRouter(
+      configWith([
+        { id: "mdl_sel", providerId: "p1", providerModel: "claude-opus" },
+      ]),
+    )
     const r = router.resolve("nope", { fallbackModelId: "also-missing" })
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.error).toEqual({ kind: "unknown-model", id: "nope" })
   })
 
   it("prefers an exact match over the session fallback", () => {
-    const router = createRouter(configWith([
-      { id: "mdl_a", providerId: "p1", providerModel: "gpt-4o" },
-      { id: "mdl_sel", providerId: "p1", providerModel: "claude-opus" },
-    ]))
+    const router = createRouter(
+      configWith([
+        { id: "mdl_a", providerId: "p1", providerModel: "gpt-4o" },
+        { id: "mdl_sel", providerId: "p1", providerModel: "claude-opus" },
+      ]),
+    )
     const r = router.resolve("mdl_a", { fallbackModelId: "mdl_sel" })
     expect(r.ok).toBe(true)
     if (r.ok) expect(r.value.resolvedVia).toBe("exact")

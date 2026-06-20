@@ -29,7 +29,10 @@ const toResolved = (
     (p) => (p.id as string) === (route.providerId as string),
   )
   if (provider === undefined)
-    return err({ kind: "unknown-provider", providerId: route.providerId as string })
+    return err({
+      kind: "unknown-provider",
+      providerId: route.providerId as string,
+    })
   return ok({
     provider,
     providerModel: route.providerModel,
