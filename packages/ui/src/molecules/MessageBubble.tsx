@@ -1,4 +1,4 @@
-import type { ReactElement } from "react"
+import { type ReactElement, useId } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
@@ -23,34 +23,38 @@ export const MessageBubble = ({
   author = "assistant",
   tone,
   onRetry,
-}: MessageBubbleProps): ReactElement => (
-  <div
-    className="lk-message-bubble"
-    data-role={author}
-    {...(tone === "error" ? { "data-tone": "error", role: "alert" } : {})}
-  >
-    <div className="lk-markdown">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          a: ({ href, children }) => (
-            <a href={href} title={href} onClick={(e) => e.preventDefault()}>
-              {children}
-            </a>
-          ),
-        }}
-      >
-        {text}
-      </ReactMarkdown>
+}: MessageBubbleProps): ReactElement => {
+  const msgId = useId()
+  return (
+    <div
+      className="lk-message-bubble"
+      data-role={author}
+      {...(tone === "error" ? { "data-tone": "error", role: "alert" } : {})}
+    >
+      <div id={msgId} className="lk-markdown">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            a: ({ href, children }) => (
+              <a href={href} title={href} onClick={(e) => e.preventDefault()}>
+                {children}
+              </a>
+            ),
+          }}
+        >
+          {text}
+        </ReactMarkdown>
+      </div>
+      {tone === "error" && onRetry !== undefined ? (
+        <button
+          type="button"
+          className="lk-message-bubble__retry"
+          aria-describedby={msgId}
+          onClick={() => onRetry()}
+        >
+          Retry
+        </button>
+      ) : null}
     </div>
-    {tone === "error" && onRetry !== undefined ? (
-      <button
-        type="button"
-        className="lk-message-bubble__retry"
-        onClick={() => onRetry()}
-      >
-        Retry
-      </button>
-    ) : null}
-  </div>
-)
+  )
+}

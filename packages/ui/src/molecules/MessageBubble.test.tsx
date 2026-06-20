@@ -73,4 +73,22 @@ describe("MessageBubble", () => {
     expect(screen.queryByRole("button", { name: /retry/i })).toBeNull()
     cleanup()
   })
+
+  it("Retry button is described by the message body element (aria-describedby)", () => {
+    const { container } = render(
+      <MessageBubble
+        text="API Error: rate limited"
+        tone="error"
+        onRetry={() => {}}
+      />,
+    )
+    const button = screen.getByRole("button", { name: /retry/i })
+    const describedById = button.getAttribute("aria-describedby")
+    expect(describedById).not.toBeNull()
+    expect(describedById).not.toBe("")
+    const bodyEl = container.querySelector(`#${describedById}`)
+    expect(bodyEl).not.toBeNull()
+    expect(bodyEl?.textContent).toContain("API Error: rate limited")
+    cleanup()
+  })
 })

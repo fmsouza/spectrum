@@ -297,6 +297,53 @@ describe("ConversationTimeline", () => {
     cleanup()
   })
 
+  it("does NOT render a Retry button when an error-toned message is not the last visible item", () => {
+    // Error is NOT the last item — a subsequent user message follows it.
+    const state = fold([
+      { type: "runner-started", runnerId: root },
+      {
+        type: "text-delta",
+        runnerId: root,
+        messageId: "u1",
+        text: "first prompt",
+        role: "user",
+      },
+      {
+        type: "text-delta",
+        runnerId: root,
+        messageId: "a1",
+        text: "Error: rate limited",
+      },
+      {
+        type: "turn-finished",
+        runnerId: root,
+        error: { detail: "Error: rate limited", messageId: "a1" },
+      },
+      // A later user message makes the error non-last:
+      {
+        type: "text-delta",
+        runnerId: root,
+        messageId: "u2",
+        text: "second prompt",
+        role: "user",
+      },
+    ])
+    const runner = state.runners.get(root)
+    if (runner === undefined) throw new Error("no root runner")
+    render(
+      <ConversationTimeline
+        runner={runner}
+        runners={state.runners}
+        onOpenSubRunner={() => {}}
+        onDecide={() => {}}
+        onAnswer={() => {}}
+        onRetry={() => {}}
+      />,
+    )
+    expect(screen.queryByRole("button", { name: /retry/i })).toBeNull()
+    cleanup()
+  })
+
   it("fires onRetry with the last user prompt when the last message is a turn error", () => {
     const state = fold([
       { type: "runner-started", runnerId: root },
