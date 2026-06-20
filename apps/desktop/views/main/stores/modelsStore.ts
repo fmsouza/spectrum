@@ -2,6 +2,7 @@ import type { IpcError, IpcMethods } from "@spectrum/ipc"
 import type { ModelId, ModelRoute } from "@spectrum/types"
 import type { Result } from "@spectrum/utils"
 import { type StoreApi, createStore } from "zustand/vanilla"
+import { sortModelRoutes } from "../model-sort"
 import { type ResourceState, createResource } from "./resource"
 import type { StoreDeps } from "./types"
 
@@ -17,10 +18,22 @@ export type ModelsStore = ResourceState<readonly ModelRoute[]> & {
   readonly remove: (id: ModelId) => Promise<Result<void, IpcError>>
 }
 
-export const createModelsStore = (deps: StoreDeps): StoreApi<ModelsStore> =>
+export type ModelsStoreDeps = StoreDeps & {
+  /** Resolves provider display names for ordering. Reads the live providers store on demand. */
+  readonly providerNameResolver?: () => Readonly<Record<string, string>>
+}
+
+export const createModelsStore = (
+  deps: ModelsStoreDeps,
+): StoreApi<ModelsStore> =>
   createStore<ModelsStore>()((set, get) => ({
     ...createResource<readonly ModelRoute[]>(
-      () => deps.client.getModels(undefined),
+      async () => {
+        const r = await deps.client.getModels(undefined)
+        if (!r.ok) return r
+        const names = deps.providerNameResolver?.() ?? {}
+        return { ok: true, value: sortModelRoutes(r.value, (id) => names[id]) }
+      },
       (patch) => set(patch),
       () => get().data,
     ),
