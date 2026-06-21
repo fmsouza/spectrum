@@ -58,20 +58,32 @@ export const mapOpencodeEvent = (
     case "session.created":
     case "session.updated": {
       const info = event.properties.info
-      // Only NEW child sessions (parentID set, not yet correlated) announce a sub-runner.
-      if (info.parentID === undefined || state.sessions.has(info.id)) return []
-      const parent = runnerFor(state, info.parentID)
-      if (parent === undefined) return [] // parent unknown -> out of scope
-      const child = state.newRunnerId()
-      state.sessions.set(info.id, child)
-      return [
-        {
-          type: "runner-started",
-          runnerId: child,
-          parentRunnerId: parent,
-          ...(info.title !== undefined ? { title: info.title } : {}),
-        },
-      ]
+      // A NEW child session (parentID set, not yet correlated) announces a sub-runner.
+      if (info.parentID !== undefined && !state.sessions.has(info.id)) {
+        const parent = runnerFor(state, info.parentID)
+        if (parent === undefined) return [] // parent unknown -> out of scope
+        const child = state.newRunnerId()
+        state.sessions.set(info.id, child)
+        return [
+          {
+            type: "runner-started",
+            runnerId: child,
+            parentRunnerId: parent,
+            ...(info.title !== undefined ? { title: info.title } : {}),
+          },
+        ]
+      }
+      // The ROOT session (already correlated to rootRunnerId) carrying a title: re-emit a
+      // root runner-started with that title so the RunManager can name the session. The reducer
+      // treats runner-started idempotently (preserves items/title), so this is a safe refinement.
+      // Only emit when a title is actually present (avoid a no-op re-emit).
+      if (
+        info.title !== undefined &&
+        state.sessions.get(info.id) === state.rootRunnerId
+      ) {
+        return [{ type: "runner-started", runnerId: state.rootRunnerId, title: info.title }]
+      }
+      return []
     }
     case "message.part.updated": {
       const part = event.properties.part
