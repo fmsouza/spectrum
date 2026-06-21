@@ -69,7 +69,12 @@ describe("openWindow", () => {
 })
 
 describe("bindExternalNavigation", () => {
-  it("opens the will-navigate url in the external browser", () => {
+  // This verifies the best-effort side-effect contract only: a will-navigate
+  // event calls openExternal with the url. It does NOT (and cannot) verify
+  // navigation prevention — will-navigate is observational in Electrobun 1.18.1
+  // (see bindExternalNavigation's doc comment). A real origin-lock would use
+  // BrowserView.setNavigationRules and is tracked as a follow-up.
+  it("opens the will-navigate url in the external browser (best-effort side-effect)", () => {
     let opened: string | undefined
     let navHandler: ((event: { readonly url: string }) => void) | undefined
     const win = {
