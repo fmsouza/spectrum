@@ -32,6 +32,12 @@ export type ProjectsStore = {
   ) => Promise<Result<LaunchResult, IpcError>>
   readonly deleteSession: (id: SessionId) => Promise<Result<void, IpcError>>
   readonly deleteProject: (id: ProjectId) => Promise<Result<void, IpcError>>
+  readonly renameSession: (
+    id: SessionId,
+    name: string,
+  ) => Promise<Result<void, IpcError>>
+  /** Update a cached session's name in place (driven by a live session-renamed frame; no IPC). */
+  readonly updateSessionName: (id: SessionId, name: string) => void
 }
 
 export const createProjectsStore = (deps: StoreDeps): StoreApi<ProjectsStore> =>
@@ -55,6 +61,23 @@ export const createProjectsStore = (deps: StoreDeps): StoreApi<ProjectsStore> =>
         errorProjects: undefined,
         loadingProjects: false,
       })
+    }
+
+    /** Replace a session's name wherever it appears in the cached pages (no IPC). */
+    const patchSessionName = (id: SessionId, name: string): void => {
+      set((state) => ({
+        sessionsByProject: Object.fromEntries(
+          Object.entries(state.sessionsByProject).map(([pid, page]) => [
+            pid,
+            {
+              ...page,
+              items: page.items.map((s) =>
+                String(s.id) === String(id) ? { ...s, name } : s,
+              ),
+            },
+          ]),
+        ),
+      }))
     }
 
     const loadSessions = async (projectId: string): Promise<void> => {
@@ -134,5 +157,12 @@ export const createProjectsStore = (deps: StoreDeps): StoreApi<ProjectsStore> =>
         if (r.ok) await get().invalidate()
         return r.ok ? ok(undefined) : r
       },
+
+      renameSession: async (id, name) => {
+        const r = await deps.client.renameSession({ sessionId: id, name })
+        if (r.ok) patchSessionName(id, name)
+        return r.ok ? ok(undefined) : r
+      },
+      updateSessionName: (id, name) => patchSessionName(id, name),
     }
   })

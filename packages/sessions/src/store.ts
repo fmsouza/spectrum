@@ -46,6 +46,8 @@ export type SessionFilter = {
 export interface SessionStore {
   create(input: SessionInput): Result<Session, SessionError>
   close(id: SessionId, exitCode: number): Result<Session, SessionError>
+  /** Update an existing session's name. Returns the updated row, or not-found / invalid-name. */
+  updateName(id: SessionId, name: string): Result<Session, SessionError>
   query(filter?: SessionFilter): Result<readonly Session[], SessionError>
   /**
    * Mark every session with `endedAt IS NULL` as ended using the injected clock timestamp.
@@ -136,6 +138,32 @@ export const createSessionStore = (deps: {
           handle
             .update(sessions)
             .set({ endedAt, exitCode })
+            .where(eq(sessions.id, id))
+            .run(),
+        ),
+      )
+      if (isErr(written)) return written
+      const fetched = asSessionError(
+        tryDb(() =>
+          handle.select().from(sessions).where(eq(sessions.id, id)).get(),
+        ),
+      )
+      if (isErr(fetched)) return fetched
+      if (fetched.value === undefined) return err({ kind: "not-found" })
+      return ok(toSession(fetched.value))
+    },
+
+    updateName: (
+      id: SessionId,
+      name: string,
+    ): Result<Session, SessionError> => {
+      const trimmed = name.trim()
+      if (trimmed === "") return err({ kind: "invalid-name" })
+      const written = asSessionError(
+        tryDb(() =>
+          handle
+            .update(sessions)
+            .set({ name: trimmed })
             .where(eq(sessions.id, id))
             .run(),
         ),

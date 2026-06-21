@@ -1,10 +1,40 @@
 import { describe, expect, it } from "bun:test"
+import type { StoredEvent } from "@spectrum/agent-events"
 import { ModelIdSchema, SessionIdSchema } from "@spectrum/types"
 import { decodeRunnerInbound } from "./protocol"
+import type { RunnerOutbound } from "./protocol"
 
 const id = SessionIdSchema.parse("s_00000000-0000-4000-8000-000000000000")
 
+describe("RunnerOutbound", () => {
+  it("accepts a session-renamed frame shape", () => {
+    const frame: RunnerOutbound = {
+      type: "session-renamed",
+      id,
+      name: "New name",
+    }
+    expect(frame.type).toBe("session-renamed")
+    expect(frame).toEqual({ type: "session-renamed", id, name: "New name" })
+  })
+
+  it("runner-event remains a valid frame", () => {
+    const stored: StoredEvent = {
+      seq: 0,
+      sessionId: id,
+      ts: "2026-06-08T10:00:00.000Z",
+      event: { type: "runner-started", runnerId: "r_root" as never },
+    }
+    const frame: RunnerOutbound = { type: "runner-event", id, event: stored }
+    expect(frame.type).toBe("runner-event")
+  })
+})
+
 describe("decodeRunnerInbound", () => {
+  it("rejects an unknown inbound type (session-renamed is outbound-only)", () => {
+    const r = decodeRunnerInbound({ type: "session-renamed", id, name: "x" })
+    expect(r.ok).toBe(false)
+  })
+
   it("decodes a run-attach message", () => {
     const r = decodeRunnerInbound({ type: "run-attach", id })
     expect(r.ok && r.value).toEqual({ type: "run-attach", id })

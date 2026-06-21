@@ -145,6 +145,17 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   // re-subscribes only on intended changes (view/runnerClient/navigate), not on every re-render.
   const notify = notifications.notify
 
+  // Live session-name pushes (auto-derived/harness title mid-run). Updates the cached
+  // session in place; the persisted name is the source of truth and is already written by the
+  // RunManager. No toast — this is a quiet background refresh of the list.
+  const updateSessionName = projectsView.updateSessionName
+  useEffect(() => {
+    const off = runnerClient.onSessionRenamed((id, name) => {
+      updateSessionName(id, name)
+    })
+    return off
+  }, [runnerClient, updateSessionName])
+
   // Toast when a BACKGROUND run finishes/errors (not the session being viewed).
   // `onAny` accumulates listeners, so the effect MUST drop its previous one via
   // the returned unsubscribe fn on every re-run — otherwise toasts would stack.
@@ -202,7 +213,7 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
     // not carry a model id.
     const r = await projectsView.launch({
       id: v.harnessId,
-      ...(v.name.trim() ? { name: v.name } : {}),
+      ...(v.name !== undefined && v.name.trim() !== "" ? { name: v.name } : {}),
       ...(v.cwd.trim() ? { cwd: v.cwd } : {}),
       env: v.env,
     })
@@ -293,6 +304,16 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
                   },
                 })
               }
+            })()
+          },
+          onRename: (id, name) => {
+            void (async () => {
+              const r = await projectsView.renameSession(id, name)
+              if (!r.ok)
+                notifications.notify({
+                  tone: "error",
+                  message: "Could not rename session",
+                })
             })()
           },
           runnerClient,

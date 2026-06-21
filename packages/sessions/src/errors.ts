@@ -2,3 +2,4 @@
 export type SessionError =
   | { readonly kind: "not-found" }
   | { readonly kind: "db-failed"; readonly detail: string }
+  | { readonly kind: "invalid-name" }

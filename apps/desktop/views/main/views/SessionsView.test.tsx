@@ -64,6 +64,7 @@ const makeFakeRunner = (): RunnerClient & {
     dispatch: (_m: RunnerOutbound) => {},
     onEvent: (_sid, _cb: (event: StoredEvent) => void) => {},
     onAny: () => () => {},
+    onSessionRenamed: () => () => {},
   }
 }
 

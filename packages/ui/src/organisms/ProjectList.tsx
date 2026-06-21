@@ -34,6 +34,8 @@ export type ProjectListProps = {
   readonly onDeleteProject?: (projectId: string) => void
   /** Delete a single session. Optional — enables the session context menu. */
   readonly onDeleteSession?: (sessionId: SessionId) => void
+  /** Rename a single session. Optional — enables inline session name editing. */
+  readonly onRename?: ((id: SessionId, name: string) => void) | undefined
 }
 
 type Menu =
@@ -66,6 +68,7 @@ export const ProjectList = ({
   onNew,
   onDeleteProject,
   onDeleteSession,
+  onRename,
 }: ProjectListProps): ReactElement => {
   const [menu, setMenu] = useState<Menu | undefined>(undefined)
   const [pending, setPending] = useState<Pending | undefined>(undefined)
@@ -114,6 +117,7 @@ export const ProjectList = ({
                         y: e.clientY,
                       }),
                   })}
+              onRename={onRename}
             />
           ))
         )}
