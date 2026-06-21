@@ -131,6 +131,13 @@ export const Utils: {
   openFileDialog(options?: OpenFileDialogOptions): Promise<string[]>
   /** Show a native desktop notification. */
   showNotification(options: NotificationOptions): void
+  /**
+   * Open a URL in the OS default browser (or the registered handler for its
+   * scheme — http/https → browser, mailto: → mail client, slack:// → Slack).
+   * Returns true if the OS opened it successfully. Mirrors Electrobun
+   * `dist/api/bun/core/Utils.ts:openExternal`.
+   */
+  openExternal(url: string): boolean
   /** Graceful native shutdown (stops the event loop and force-exits). */
   quit(): void
 }

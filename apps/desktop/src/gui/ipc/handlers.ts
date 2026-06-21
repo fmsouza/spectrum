@@ -564,6 +564,13 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return first === undefined ? {} : { path: first }
     },
 
+    // ── External links ──────────────────────────────────────────────────────
+    openExternalUrl: async ({ url }) => {
+      const opened = await ctx.openExternalUrl(url)
+      if (!opened) return fail("could not open url in default browser")
+      return null
+    },
+
     // ── Model discovery ────────────────────────────────────────────────────────
     listProviderModels: async ({ providerId }) => {
       const result = await ctx.listProviderModels(String(providerId))
