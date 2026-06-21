@@ -30,11 +30,16 @@ export interface WindowOptions {
   renderer?: "native" | "cef"
 }
 
-/** Subset of the BrowserView navigation API we consume (will-navigate). */
+/**
+ * Subset of the BrowserView navigation API we consume (will-navigate). The
+ * handler receives an `ElectrobunEvent` whose navigation URL is at
+ * `event.data.detail` (mirrors `electrobun/dist/api/bun/events/webviewEvents.ts`
+ * `willNavigate`, which builds the event from `{ detail: <url> }`).
+ */
 export interface BrowserViewNavEvents {
   on(
     name: "will-navigate",
-    handler: (event: { readonly url: string }) => void,
+    handler: (event: { readonly data: { readonly detail: string } }) => void,
   ): void
 }
 
