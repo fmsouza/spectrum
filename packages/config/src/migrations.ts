@@ -228,6 +228,18 @@ const v10ToV11: Migration = {
   migrate: (raw) => ({ ...raw, version: 11 }),
 }
 
+/**
+ * v12 adds `settings.windowBounds` (last-known main window geometry, or null).
+ * The new field has a schema-level default of `null`, so v11 documents simply
+ * gain it on first load — no data transformation beyond bumping the version
+ * (mirrors v5→v6).
+ */
+const v11ToV12: Migration = {
+  from: 11,
+  to: 12,
+  migrate: (raw) => ({ ...raw, version: 12 }),
+}
+
 /** Ordered list of forward migrations. Append a new step whenever `CURRENT_CONFIG_VERSION` bumps. */
 export const migrations: readonly Migration[] = [
   v1ToV2,
@@ -240,6 +252,7 @@ export const migrations: readonly Migration[] = [
   v8ToV9,
   v9ToV10,
   v10ToV11,
+  v11ToV12,
 ]
 
 /**
