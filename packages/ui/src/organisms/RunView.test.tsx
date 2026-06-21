@@ -359,6 +359,36 @@ describe("RunView", () => {
     cleanup()
   })
 
+  it("threads onOpenLink into the message bubble so a link click opens it", () => {
+    let opened: string | undefined
+    const withLink = {
+      ...base,
+      onOpenLink: (url: string) => {
+        opened = url
+      },
+    }
+    // Build a root runner whose timeline contains a link message.
+    const linkState: RunState = (
+      [
+        { type: "runner-started", runnerId: root },
+        {
+          type: "text-delta",
+          runnerId: root,
+          messageId: "m9",
+          text: "[docs](https://docs.example.com)",
+        },
+      ] satisfies readonly CanonicalEvent[]
+    ).reduce(reduce, initialRunState)
+    const linkRoot = linkState.runners.get(root)
+    if (linkRoot === undefined) throw new Error("missing root")
+    render(
+      <RunView {...withLink} root={linkRoot} runners={linkState.runners} />,
+    )
+    fireEvent.click(screen.getByRole("link", { name: "docs" }))
+    expect(opened).toBe("https://docs.example.com")
+    cleanup()
+  })
+
   it("hides the rail again when the sub closes and root has no tasks", () => {
     const rid = RunnerIdSchema.parse("run_root4")
     const cid = RunnerIdSchema.parse("run_child4")
