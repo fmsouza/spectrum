@@ -105,15 +105,15 @@ describe("RunView", () => {
     cleanup()
   })
 
-  it("shows the elapsed label when busy and elapsedSeconds is provided", () => {
+  it("shows the Thinking… elapsed label when busy and elapsedSeconds is provided", () => {
     render(<RunView {...base} busy elapsedSeconds={5} />)
-    expect(screen.getByText(/still generating.*5s/i)).toBeInTheDocument()
+    expect(screen.getByText(/Thinking.*5s/i)).toBeInTheDocument()
     cleanup()
   })
 
   it("shows only the typing dots (no elapsed label) when busy but elapsedSeconds is not provided", () => {
     render(<RunView {...base} busy />)
-    expect(screen.queryByText(/still generating/i)).toBeNull()
+    expect(screen.queryByText(/Thinking/i)).toBeNull()
     // The typing indicator itself is present (role=status)
     expect(screen.getByRole("status")).toBeInTheDocument()
     cleanup()
