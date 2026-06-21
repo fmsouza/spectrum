@@ -62,15 +62,33 @@ export interface WindowOptions {
 }
 
 /**
- * Subscribe to the window's webview `will-navigate` event and open any
- * attempted in-webview navigation URL in the OS browser via `openExternal`.
+ * True for a genuinely external (web) navigation target we want to hand to the
+ * OS browser. Deliberately strict: ONLY `http(s)://`. This excludes the app's
+ * own `views://` origin (the SPA's startup/internal navigations, which must
+ * stay in-window) and any non-string/garbage detail (a non-string here once
+ * crashed the bun worker via `Utils.openExternal(undefined)` →
+ * `toCString(undefined)`). Custom schemes (mailto:, slack://) are NOT opened on
+ * this native path — they remain supported on the explicit React click → IPC
+ * `openExternalUrl` path, which validates and forwards them.
+ */
+const isExternalWebUrl = (url: unknown): url is string =>
+  typeof url === "string" &&
+  (url.startsWith("https://") || url.startsWith("http://"))
+
+/**
+ * Subscribe to the window's webview `will-navigate` event and open genuinely
+ * external (`http(s)`) navigation targets in the OS browser via `openExternal`.
  * Pure over the injected window + opener; the real `createWindow` wires it with
  * the live `BrowserView` + `Utils.openExternal`.
  *
- * `window.webview` is the Electrobun `BrowserView`; its `on("will-navigate")`
- * fires with `{ url }` for in-webview navigation (right-click "Open Link",
- * dragged URLs, programmatic `location.href=`). We open that url externally as
- * a best-effort convenience.
+ * `window.webview` is the Electrobun `BrowserView`. Its `on("will-navigate")`
+ * delivers an `ElectrobunEvent` whose URL is at `event.data.detail` (see
+ * `electrobun/dist/api/bun/events/webviewEvents.ts` — `willNavigate` builds the
+ * event from `{ detail }`). We open that url externally as a best-effort
+ * convenience, but ONLY when it is an external web URL: CEF on Linux fires
+ * `will-navigate` for the SPA's own `views://` startup load, which must NOT be
+ * routed to the browser (and reading the wrong field / an undefined url
+ * previously crashed the process — see {@link isExternalWebUrl}).
  *
  * IMPORTANT — best-effort only, NOT a navigation lock. In Electrobun 1.18.1
  * `will-navigate` is purely observational: it is a plain event subscription
@@ -91,14 +109,17 @@ export const bindExternalNavigation = (
     readonly webview: {
       on(
         name: "will-navigate",
-        handler: (event: { readonly url: string }) => void,
+        handler: (event: {
+          readonly data?: { readonly detail?: unknown }
+        }) => void,
       ): void
     }
   },
   openExternal: (url: string) => boolean,
 ): void => {
   win.webview.on("will-navigate", (event) => {
-    openExternal(event.url)
+    const url = event.data?.detail
+    if (isExternalWebUrl(url)) openExternal(url)
   })
 }
 
@@ -131,8 +152,9 @@ const defaultWireServer = (
  * in `createIpcHandlers` (tested in desktop-shell-02); this only assembles Electrobun pieces, so it
  * is smoke-tested. SECURITY: the window loads the local built `views/main` only (the strict CSP in
  * `index.html` blocks remote scripts/eval), so the webview gets no direct fs/network/secret access,
- * only the validated IPC. `bindExternalNavigation` additionally opens any in-webview navigation URL
- * in the OS browser (best-effort — it does NOT prevent in-window navigation; see its doc comment).
+ * only the validated IPC. `bindExternalNavigation` additionally opens external `http(s)` in-webview
+ * navigation in the OS browser (best-effort — it does NOT prevent in-window navigation; see its doc
+ * comment).
  */
 export const openWindow = (
   ctx: AppContext,
@@ -169,9 +191,9 @@ interface WindowBundle {
  * `createIpcServer` validates both directions. The webview side (`views/main/ipc-client.ts`)
  * mirrors this with `Electroview.defineRPC`. SECURITY: the window only ever loads `views://main/*`
  * (the strict CSP in `index.html` blocks remote scripts/eval), so the webview gets no direct
- * fs/network/secret access, only validated IPC. `bindExternalNavigation` opens in-webview
- * navigation URLs in the OS browser as a best-effort convenience (it does NOT prevent the in-window
- * load — see `bindExternalNavigation`'s doc comment).
+ * fs/network/secret access, only validated IPC. `bindExternalNavigation` opens external `http(s)`
+ * in-webview navigation in the OS browser as a best-effort convenience (it does NOT prevent the
+ * in-window load — see `bindExternalNavigation`'s doc comment).
  */
 export const realOpenWindowDeps: OpenWindowDeps = {
   createWindow: (opts) => {
@@ -217,14 +239,16 @@ export const realOpenWindowDeps: OpenWindowDeps = {
         bindFocusEvents(win)
         // Persist size/position as the user resizes/moves the window.
         bindBoundsEvents(win, opts.onBoundsChange)
-        // Best-effort: open any in-webview navigation (right-click "Open Link",
-        // dragged URL, programmatic location.href) in the OS browser via
-        // Utils.openExternal. NOTE: will-navigate is observational in Electrobun
-        // 1.18.1 — this does NOT prevent the in-window load (see
-        // bindExternalNavigation's doc comment). The primary external-link path
-        // is MessageBubble's preventDefault + openExternalUrl IPC; this only
-        // catches the paths React can't see. `Utils` is already in scope from the
-        // outer import, so no second dynamic import is needed.
+        // Best-effort: open EXTERNAL http(s) in-webview navigation (right-click
+        // "Open Link", dragged URL, programmatic location.href) in the OS browser
+        // via Utils.openExternal. bindExternalNavigation filters to external web
+        // URLs only, so the SPA's own views:// startup load stays in-window (CEF on
+        // Linux fires will-navigate for it). NOTE: will-navigate is observational in
+        // Electrobun 1.18.1 — this does NOT prevent the in-window load (see
+        // bindExternalNavigation's doc comment). The primary external-link path is
+        // MessageBubble's preventDefault + openExternalUrl IPC; this only catches
+        // the paths React can't see. `Utils` is already in scope from the outer
+        // import, so no second dynamic import is needed.
         bindExternalNavigation(win, (url) => Utils.openExternal(url))
       },
     )
