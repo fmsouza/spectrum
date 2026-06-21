@@ -379,6 +379,12 @@ describe("createAppContext wiring", () => {
     expect(typeof ctx.pickFolder).toBe("function")
   })
 
+  it("exposes an openExternalUrl function on the context", () => {
+    const { deps } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+    expect(typeof ctx.openExternalUrl).toBe("function")
+  })
+
   it("exposes a projects store on the context", () => {
     const { deps } = makeFakeDeps()
     const ctx = createAppContext(deps)

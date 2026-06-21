@@ -30,12 +30,22 @@ export interface WindowOptions {
   renderer?: "native" | "cef"
 }
 
+/** Subset of the BrowserView navigation API we consume (will-navigate). */
+export interface BrowserViewNavEvents {
+  on(
+    name: "will-navigate",
+    handler: (event: { readonly url: string }) => void,
+  ): void
+}
+
 export class BrowserWindow {
   constructor(options?: WindowOptions)
   /** Subscribe to a window event (e.g. `"focus"`, `"blur"`, `"resize"`, `"move"`). */
   on(name: string, handler: (event: unknown) => void): void
   /** Read the window's current geometry synchronously. */
   getFrame(): WindowFrame
+  /** The window's webview; subscribe to navigation events via `.on("will-navigate", ...)`. */
+  readonly webview: BrowserViewNavEvents
 }
 
 /** Subset of the `defineElectrobunRPC` config (bun side). */
@@ -131,6 +141,13 @@ export const Utils: {
   openFileDialog(options?: OpenFileDialogOptions): Promise<string[]>
   /** Show a native desktop notification. */
   showNotification(options: NotificationOptions): void
+  /**
+   * Open a URL in the OS default browser (or the registered handler for its
+   * scheme — http/https → browser, mailto: → mail client, slack:// → Slack).
+   * Returns true if the OS opened it successfully. Mirrors Electrobun
+   * `dist/api/bun/core/Utils.ts:openExternal`.
+   */
+  openExternal(url: string): boolean
   /** Graceful native shutdown (stops the event loop and force-exits). */
   quit(): void
 }

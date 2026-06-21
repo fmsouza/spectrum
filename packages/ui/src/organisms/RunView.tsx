@@ -38,6 +38,8 @@ export type RunViewProps = {
   readonly models?: readonly ModelRoute[]
   readonly providerNames?: Readonly<Record<string, string>>
   readonly onModelChange?: (modelId: string) => void
+  /** Open a chat link in the OS browser; threaded to both timelines. */
+  readonly onOpenLink?: (url: string) => void
 }
 
 /** A length proxy for the feed's content so streaming text (not just new items) triggers autoscroll. */
@@ -75,6 +77,7 @@ export const RunView = ({
   models,
   providerNames,
   onModelChange,
+  onOpenLink,
 }: RunViewProps): ReactElement => {
   const scrollRef = useRef<HTMLDivElement>(null)
   // Autoscroll: pin the feed to the latest message as items stream in (and when the dots appear).
@@ -122,6 +125,7 @@ export const RunView = ({
             onDecide={onDecide}
             onAnswer={onAnswer}
             {...(onRetry !== undefined && !busy ? { onRetry } : {})}
+            {...(onOpenLink === undefined ? {} : { onOpenLink })}
             inert={inert}
           />
           {busy ? (
@@ -157,6 +161,7 @@ export const RunView = ({
         onCloseSub={onCloseSub}
         collapsed={railCollapsed}
         onToggleCollapsed={() => setRailCollapsed((c) => !c)}
+        {...(onOpenLink === undefined ? {} : { onOpenLink })}
       />
     </div>
   )

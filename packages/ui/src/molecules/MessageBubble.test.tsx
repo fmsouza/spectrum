@@ -91,4 +91,43 @@ describe("MessageBubble", () => {
     expect(bodyEl?.textContent).toContain("API Error: rate limited")
     cleanup()
   })
+
+  it("calls onOpenLink with the href when a link is clicked and onOpenLink is provided", () => {
+    let opened: string | undefined
+    render(
+      <MessageBubble
+        text="[a link](https://example.com)"
+        onOpenLink={(url) => {
+          opened = url
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("link", { name: "a link" }))
+    expect(opened).toBe("https://example.com")
+    cleanup()
+  })
+
+  it("renders a real href on the link so the native nav-lock can route it to the OS browser", () => {
+    render(
+      <MessageBubble
+        text="[a link](https://example.com)"
+        onOpenLink={() => {}}
+      />,
+    )
+    // The <a> keeps its href (so right-click "Open Link" / copy-link work and the
+    // will-navigate nav-lock has a URL to route). The onClick calls preventDefault
+    // (verified by the onOpenLink test above, which only fires because the React
+    // onClick runs) so the webview never navigates in-window.
+    const a = screen.getByRole("link", { name: "a link" })
+    expect(a.getAttribute("href")).toBe("https://example.com")
+    cleanup()
+  })
+
+  it("renders links but does not call onOpenLink when it is not provided", () => {
+    let opened: string | undefined
+    render(<MessageBubble text="[a link](https://example.com)" />)
+    fireEvent.click(screen.getByRole("link", { name: "a link" }))
+    expect(opened).toBeUndefined()
+    cleanup()
+  })
 })

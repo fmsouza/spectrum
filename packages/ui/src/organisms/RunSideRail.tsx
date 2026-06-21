@@ -18,6 +18,8 @@ export type RunSideRailProps = {
   readonly collapsed?: boolean
   /** Toggle the collapsed state. Required for the collapse/expand controls to do anything. */
   readonly onToggleCollapsed?: () => void
+  /** Open a chat link in the OS browser; threaded to the sub-runner pane's timeline. */
+  readonly onOpenLink?: (url: string) => void
 }
 
 export const RunSideRail = ({
@@ -30,6 +32,7 @@ export const RunSideRail = ({
   onCloseSub,
   collapsed = false,
   onToggleCollapsed = () => {},
+  onOpenLink,
 }: RunSideRailProps): ReactElement | null => {
   // Which segment is showing. Defaults to the sub-agent; the caller keys this component by the open
   // sub-runner id so a new sub re-mounts and resets here.
@@ -113,6 +116,7 @@ export const RunSideRail = ({
           breadcrumb={subBreadcrumb}
           onOpenSubRunner={onOpenSubRunner}
           onClose={onCloseSub}
+          {...(onOpenLink === undefined ? {} : { onOpenLink })}
         />
       )}
     </aside>

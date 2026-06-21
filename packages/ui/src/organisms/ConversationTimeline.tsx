@@ -26,6 +26,8 @@ export type ConversationTimelineProps = {
   /** Re-run the last user prompt after a turn failed. Wired only on the last error message. */
   readonly onRetry?: (prompt: string) => void
   readonly inert?: boolean
+  /** Open a chat link in the OS browser; threaded to each `MessageBubble`. */
+  readonly onOpenLink?: (url: string) => void
 }
 
 export const ConversationTimeline = ({
@@ -36,6 +38,7 @@ export const ConversationTimeline = ({
   onAnswer,
   onRetry,
   inert = false,
+  onOpenLink,
 }: ConversationTimelineProps): ReactElement => {
   // Per-item expand state lives here (the page-level store holds RunState, not
   // ephemeral toggle bits): collapsed ids that the user has opened.
@@ -74,6 +77,7 @@ export const ConversationTimeline = ({
                 {...(canRetry
                   ? { onRetry: () => onRetry(lastUserPrompt) }
                   : {})}
+                {...(onOpenLink === undefined ? {} : { onOpenLink })}
               />
             )
           }

@@ -231,6 +231,22 @@ export const PickFolderResultSchema = z
   .object({ path: z.string().optional() })
   .strict()
 
+// ── External links ──────────────────────────────────────────────────────────
+
+/**
+ * Open a URL in the OS default browser. Inbound-only (webview→main); returns
+ * void. Any non-empty string is accepted (the bun side delegates straight to
+ * Electrobun `Utils.openExternal`, which the OS routes to the registered
+ * handler for the scheme — http/https → browser, mailto: → mail client, etc.).
+ */
+export const OpenExternalUrlParamsSchema = z
+  .object({
+    /** The URL to open in the OS default browser; min(1) rejects empty strings. */
+    url: z.string().min(1),
+  })
+  .strict()
+export const OpenExternalUrlResultSchema = VoidSchema
+
 // ── Settings ──────────────────────────────────────────────────────────────
 
 // Read the persisted, non-secret settings the GUI needs to prefill its UI: the
@@ -467,6 +483,10 @@ export const IpcMethodSchemas = {
   pickFolder: {
     params: PickFolderParamsSchema,
     result: PickFolderResultSchema,
+  },
+  openExternalUrl: {
+    params: OpenExternalUrlParamsSchema,
+    result: OpenExternalUrlResultSchema,
   },
   listProviderModels: {
     params: ListProviderModelsParamsSchema,

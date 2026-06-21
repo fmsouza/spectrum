@@ -8,6 +8,8 @@ export type SubRunnerPaneProps = {
   readonly breadcrumb: readonly string[]
   readonly onOpenSubRunner: (id: RunnerId) => void
   readonly onClose: () => void
+  /** Open a chat link in the OS browser; threaded to the read-only timeline. */
+  readonly onOpenLink?: (url: string) => void
 }
 
 export const SubRunnerPane = ({
@@ -16,6 +18,7 @@ export const SubRunnerPane = ({
   breadcrumb,
   onOpenSubRunner,
   onClose,
+  onOpenLink,
 }: SubRunnerPaneProps): ReactElement => (
   <aside className="lk-sub-runner-pane" data-runner={runner.id}>
     <header className="lk-sub-runner-pane__head">
@@ -39,6 +42,7 @@ export const SubRunnerPane = ({
         onOpenSubRunner={onOpenSubRunner}
         onDecide={() => {}}
         onAnswer={() => {}}
+        {...(onOpenLink === undefined ? {} : { onOpenLink })}
         inert
       />
     </div>
