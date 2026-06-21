@@ -391,6 +391,7 @@ describe("IpcMethodSchemas", () => {
       "getRunnerSocketUrl",
       "getRunEvents",
       "pickFolder",
+      "openExternalUrl",
       "listProviderModels",
       "testProviderDraft",
       "listProviderModelsDraft",

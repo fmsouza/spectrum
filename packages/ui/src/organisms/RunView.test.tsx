@@ -359,6 +359,80 @@ describe("RunView", () => {
     cleanup()
   })
 
+  it("threads onOpenLink into the message bubble so a link click opens it", () => {
+    let opened: string | undefined
+    const withLink = {
+      ...base,
+      onOpenLink: (url: string) => {
+        opened = url
+      },
+    }
+    // Build a root runner whose timeline contains a link message.
+    const linkState: RunState = (
+      [
+        { type: "runner-started", runnerId: root },
+        {
+          type: "text-delta",
+          runnerId: root,
+          messageId: "m9",
+          text: "[docs](https://docs.example.com)",
+        },
+      ] satisfies readonly CanonicalEvent[]
+    ).reduce(reduce, initialRunState)
+    const linkRoot = linkState.runners.get(root)
+    if (linkRoot === undefined) throw new Error("missing root")
+    render(
+      <RunView {...withLink} root={linkRoot} runners={linkState.runners} />,
+    )
+    fireEvent.click(screen.getByRole("link", { name: "docs" }))
+    expect(opened).toBe("https://docs.example.com")
+    cleanup()
+  })
+
+  it("threads onOpenLink into the sub-runner pane so a link click there opens it", () => {
+    let opened: string | undefined
+    const rid = RunnerIdSchema.parse("run_root_link")
+    const cid = RunnerIdSchema.parse("run_child_link")
+    // The child runner's timeline carries the link; opening the sub pane
+    // (openRunner=childRunner) renders it through SubRunnerPane.
+    const st = (
+      [
+        { type: "runner-started", runnerId: rid },
+        { type: "text-delta", runnerId: rid, messageId: "mr", text: "root" },
+        {
+          type: "runner-started",
+          runnerId: cid,
+          parentRunnerId: rid,
+          title: "child-link",
+        },
+        {
+          type: "text-delta",
+          runnerId: cid,
+          messageId: "mc",
+          text: "[sub docs](https://sub.example.com)",
+        },
+      ] satisfies readonly CanonicalEvent[]
+    ).reduce(reduce, initialRunState)
+    const rootRunnerLink = st.runners.get(rid)
+    const childRunnerLink = st.runners.get(cid)
+    if (rootRunnerLink === undefined || childRunnerLink === undefined)
+      throw new Error("missing runners")
+    render(
+      <RunView
+        {...base}
+        root={rootRunnerLink}
+        runners={st.runners}
+        openRunner={childRunnerLink}
+        onOpenLink={(url) => {
+          opened = url
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("link", { name: "sub docs" }))
+    expect(opened).toBe("https://sub.example.com")
+    cleanup()
+  })
+
   it("hides the rail again when the sub closes and root has no tasks", () => {
     const rid = RunnerIdSchema.parse("run_root4")
     const cid = RunnerIdSchema.parse("run_child4")
