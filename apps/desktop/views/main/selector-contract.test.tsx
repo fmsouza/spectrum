@@ -84,6 +84,7 @@ const fakeRunnerClient: RunnerClient = {
   dispatch: () => {},
   onEvent: () => {},
   onAny: () => () => {},
+  onSessionRenamed: () => () => {},
 } as unknown as RunnerClient
 
 // ---------------------------------------------------------------------------
