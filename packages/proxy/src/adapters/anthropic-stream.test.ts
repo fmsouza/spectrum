@@ -17,6 +17,36 @@ describe("serializeAnthropicStream", () => {
     expect(out).toContain("event: message_stop")
   })
 
+  // CONTRACT: the harness Anthropic SDK stores message_start.message as the running
+  // message and, on message_delta, writes r.usage.output_tokens without null-guarding
+  // r.usage. The real Anthropic API always includes usage on message_start, so omitting
+  // it leaves r.usage undefined and the message_delta handler throws "undefined is not
+  // an object (evaluating 'e.input_tokens')" — fatal for every spawned subagent harness.
+  it("emits a message_start whose message carries the usage object the SDK requires", async () => {
+    const events: StreamEvent[] = [
+      { type: "text-delta", text: "hi" },
+      {
+        type: "finish",
+        finishReason: "stop",
+        usage: { inputTokens: 12, outputTokens: 5 },
+      },
+    ]
+    const out = await collectStream(serializeAnthropicStream(fromArray(events)))
+    const frameLines = out
+      .split("\n\n")
+      .map((frame) => frame.split("\n"))
+      .find(([eventLine]) => eventLine === "event: message_start")
+    expect(frameLines).toBeDefined()
+    const dataLine = frameLines?.find((line) => line.startsWith("data: "))
+    expect(dataLine).toBeDefined()
+    const parsed = JSON.parse(dataLine?.slice("data: ".length) ?? "{}") as {
+      message?: { usage?: { input_tokens?: unknown; output_tokens?: unknown } }
+    }
+    expect(parsed.message?.usage).toBeDefined()
+    expect(typeof parsed.message?.usage?.input_tokens).toBe("number")
+    expect(typeof parsed.message?.usage?.output_tokens).toBe("number")
+  })
+
   it("renders a tool-call as a tool_use block with input_json_delta and a tool_use stop_reason", async () => {
     const events: StreamEvent[] = [
       { type: "text-delta", text: "Let me check." },
