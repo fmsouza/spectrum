@@ -2,8 +2,20 @@ import { describe, expect, it, mock } from "bun:test"
 import type { AppContext } from "../composition"
 import { openWindow } from "./window"
 import type { OpenWindowDeps, WindowOptions } from "./window"
+import type { WindowBounds } from "./window-bounds"
+import type { WindowBoundsIO } from "./window-bounds-io"
 
 const fakeCtx = {} as AppContext
+
+const fakeIO = (): WindowBoundsIO => ({
+  loadInitialFrame: async (): Promise<WindowBounds> => ({
+    width: 1024,
+    height: 720,
+    x: 100,
+    y: 100,
+  }),
+  onBoundsChange: () => {},
+})
 
 const makeDeps = (
   over: Partial<OpenWindowDeps> = {},
@@ -23,6 +35,7 @@ const makeDeps = (
     wireServer: mock(() => {
       serverWired += 1
     }),
+    createBoundsIO: mock(() => fakeIO()),
     viewUrl: "views://main/index.html",
     ...over,
   }
@@ -49,5 +62,15 @@ describe("openWindow", () => {
     const { deps } = makeDeps({ wireServer })
     openWindow(fakeCtx, deps)
     expect(wireServer).toHaveBeenCalledTimes(1)
+  })
+
+  it("builds the bounds IO from the context and threads it into the window", () => {
+    const io = fakeIO()
+    const createBoundsIO = mock(() => io)
+    const { deps, created } = makeDeps({ createBoundsIO })
+    openWindow(fakeCtx, deps)
+    expect(createBoundsIO).toHaveBeenCalledTimes(1)
+    expect(created[0]?.loadInitialFrame).toBe(io.loadInitialFrame)
+    expect(created[0]?.onBoundsChange).toBe(io.onBoundsChange)
   })
 })

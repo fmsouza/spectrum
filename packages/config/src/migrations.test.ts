@@ -20,8 +20,8 @@ const v1Config = {
 }
 
 describe("migrations", () => {
-  it("ships ordered v1->v2, v2->v3, v3->v4, v4->v5, v5->v6, v6->v7, v7->v8, v8->v9, v9->v10, and v10->v11 migrations", () => {
-    expect(migrations).toHaveLength(10)
+  it("ships ordered v1->v2, v2->v3, v3->v4, v4->v5, v5->v6, v6->v7, v7->v8, v8->v9, v9->v10, v10->v11, and v11->v12 migrations", () => {
+    expect(migrations).toHaveLength(11)
     expect(migrations[0]?.from).toBe(1)
     expect(migrations[0]?.to).toBe(2)
     expect(migrations[1]?.from).toBe(2)
@@ -42,6 +42,8 @@ describe("migrations", () => {
     expect(migrations[8]?.to).toBe(10)
     expect(migrations[9]?.from).toBe(10)
     expect(migrations[9]?.to).toBe(11)
+    expect(migrations[10]?.from).toBe(11)
+    expect(migrations[10]?.to).toBe(12)
   })
 })
 
@@ -75,6 +77,7 @@ describe("runMigrations", () => {
         dismissedUpdateHash: null,
         firstTokenTimeoutMs: 120000,
         interTokenTimeoutMs: 60000,
+        windowBounds: null,
       },
     }
     expect(runMigrations(current)).toEqual({ ok: true, value: current })
@@ -347,7 +350,7 @@ describe("v10 → v11 (models[].aliases)", () => {
     const r = runMigrations(raw)
     expect(r.ok).toBe(true)
     if (r.ok) {
-      expect(r.value.version).toBe(11)
+      expect(r.value.version).toBe(CURRENT_CONFIG_VERSION)
       expect(r.value.models[0]?.aliases).toEqual([])
     }
   })
@@ -444,5 +447,33 @@ describe("v7 → v8 (fold lastSelectedModelId into lastByHarness)", () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.value.settings.lastByHarness).toEqual({})
+  })
+})
+
+describe("v11 → v12 (add settings.windowBounds)", () => {
+  it("adds windowBounds defaulting to null when migrating a v11 config", () => {
+    const raw = {
+      version: 11,
+      providers: [],
+      models: [],
+      settings: {
+        proxyPort: 4000,
+        proxyHost: "127.0.0.1" as const,
+        lastSelectedFolder: "",
+        lastSelectedHarnessId: "",
+        collapsedProjects: [],
+        lastByHarness: {},
+        updateChannel: "stable",
+        dismissedUpdateVersion: null,
+        dismissedUpdateHash: null,
+        firstTokenTimeoutMs: 120000,
+        interTokenTimeoutMs: 60000,
+      },
+    }
+    const result = runMigrations(raw)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.version).toBe(12)
+    expect(result.value.settings.windowBounds).toBeNull()
   })
 })
