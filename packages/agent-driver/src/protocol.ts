@@ -19,11 +19,17 @@ import {
 import { type Result, err, ok } from "@spectrum/utils"
 import { z } from "zod"
 
-export type RunnerOutbound = {
-  readonly type: "runner-event"
-  readonly id: SessionId
-  readonly event: StoredEvent
-}
+export type RunnerOutbound =
+  | {
+      readonly type: "runner-event"
+      readonly id: SessionId
+      readonly event: StoredEvent
+    }
+  | {
+      readonly type: "session-renamed"
+      readonly id: SessionId
+      readonly name: string
+    }
 
 export type RunnerInbound =
   | { readonly type: "run-attach"; readonly id: SessionId }
