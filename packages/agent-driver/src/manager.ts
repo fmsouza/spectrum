@@ -6,10 +6,10 @@ import type {
 import { type Logger, createNoopLogger } from "@spectrum/logger"
 import type { HarnessId, ModelId, SessionId } from "@spectrum/types"
 import { type Clock, type Result, isErr, isOk, ok } from "@spectrum/utils"
+import { deriveSessionName } from "./derive-session-name"
 import type { AgentDriver, AgentSession, DriverError } from "./driver"
 import type { RunEventSink, SessionSink } from "./ports"
 import type { RunnerInbound, RunnerOutbound } from "./protocol"
-import { deriveSessionName } from "./derive-session-name"
 
 export interface RunLaunchInput {
   readonly harnessId: HarnessId
@@ -151,7 +151,11 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
       // markUserNamed) is sticky and never overwritten. Failures are observed + swallowed.
       if (event.runnerId === agent.rootRunnerId) {
         const source = nameSource.get(id) ?? "none"
-        if (event.type === "text-delta" && event.role === "user" && source === "none") {
+        if (
+          event.type === "text-delta" &&
+          event.role === "user" &&
+          source === "none"
+        ) {
           const derived = deriveSessionName(event.text)
           if (derived !== "") {
             const written = deps.sessions.updateName(id, derived)
@@ -165,7 +169,11 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
               })
             }
           }
-        } else if (event.type === "runner-started" && event.title !== undefined && source !== "user") {
+        } else if (
+          event.type === "runner-started" &&
+          event.title !== undefined &&
+          source !== "user"
+        ) {
           const written = deps.sessions.updateName(id, event.title)
           if (isOk(written)) {
             nameSource.set(id, "auto")

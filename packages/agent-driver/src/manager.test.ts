@@ -285,7 +285,9 @@ describe("createRunManager.launch", () => {
     // Assert: no runner-event frames forwarded (append failed), but the
     // runner-started title still produced a session-renamed frame and the
     // session was still closed.
-    expect(sent).toEqual([{ type: "session-renamed", id: sessionId, name: "T" }])
+    expect(sent).toEqual([
+      { type: "session-renamed", id: sessionId, name: "T" },
+    ])
     expect(closed).toEqual([{ id: sessionId, code: 0 }])
   })
 
@@ -859,7 +861,10 @@ describe("createRunManager session naming", () => {
     const { deps, renamed } = makeDeps(scriptOf([userDelta, titled]))
     const manager = createRunManager(deps)
     manager.launch({ harnessId, cwd: "/tmp", env: {} })
-    expect(renamed.map((r) => r.name)).toEqual(["first prompt", "Harness title"])
+    expect(renamed.map((r) => r.name)).toEqual([
+      "first prompt",
+      "Harness title",
+    ])
   })
 
   it("does NOT overwrite a user-set name with a harness title (source is user)", () => {
@@ -908,7 +913,10 @@ describe("createRunManager session naming", () => {
     }
     const { logger, calls } = createFakeLogger()
     const manager = createRunManager({
-      driver: createFakeDriver({ script: scriptOf([userDelta]), scheduler: sync }),
+      driver: createFakeDriver({
+        script: scriptOf([userDelta]),
+        scheduler: sync,
+      }),
       sessions: failingSessions,
       events,
       clock,
@@ -932,7 +940,7 @@ describe("createRunManager session naming", () => {
       runnerId: root,
       title: "Harness title",
     }
-    const { deps, renamed } = makeDeps(scriptOf([titled]))
+    const { deps } = makeDeps(scriptOf([titled]))
     const manager = createRunManager(deps)
     manager.launch({ harnessId, cwd: "/tmp", env: {} })
     // Simulate a manual rename mid-run, BEFORE the title event is processed.

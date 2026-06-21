@@ -23,7 +23,10 @@ describe("renameSession round-trip", () => {
       name: "New name",
     })
     expect(r).toEqual({ ok: true, value: null })
-    expect(received).toEqual({ sessionId: "s_1" as SessionId, name: "New name" })
+    expect(received).toEqual({
+      sessionId: "s_1" as SessionId,
+      name: "New name",
+    })
   })
 
   it("rejects a blank name at the schema layer (min(1))", async () => {

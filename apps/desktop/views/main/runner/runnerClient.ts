@@ -63,6 +63,7 @@ export const createRunnerClient = (
       send({ type: "run-set-model", id, modelId })
     },
     dispatch: (message) => {
+      if (message.type !== "runner-event") return
       listeners.get(message.id)?.(message.event)
       for (const cb of anyListeners) cb(message.id, message.event)
     },

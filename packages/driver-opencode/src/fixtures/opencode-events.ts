@@ -167,7 +167,9 @@ export const sessionErrorFixture: OpencodeEvent = {
 // naming plan routes it to a root runner-started re-emit so the RunManager can name the session.
 export const rootSessionTitleFixture: OpencodeEvent = {
   type: "session.updated",
-  properties: { info: { id: S_ROOT, parentID: undefined, title: "Root title" } },
+  properties: {
+    info: { id: S_ROOT, parentID: undefined, title: "Root title" },
+  },
 }
 
 // A root-session update WITHOUT a title — must NOT emit a no-op re-emit.

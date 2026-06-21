@@ -81,7 +81,13 @@ export const mapOpencodeEvent = (
         info.title !== undefined &&
         state.sessions.get(info.id) === state.rootRunnerId
       ) {
-        return [{ type: "runner-started", runnerId: state.rootRunnerId, title: info.title }]
+        return [
+          {
+            type: "runner-started",
+            runnerId: state.rootRunnerId,
+            title: info.title,
+          },
+        ]
       }
       return []
     }
