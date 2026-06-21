@@ -258,6 +258,13 @@ export interface AppContext {
     readonly startingFolder?: string
   }) => Promise<readonly string[]>
   /**
+   * Open a URL in the OS default browser via Electrobun `Utils.openExternal`. Reached via a LAZY
+   * dynamic import so `bun test` never loads native FFI. The `openExternalUrl` IPC handler delegates
+   * here. Returns whether the OS opened the URL; a `false` result is surfaced as a handler failure by
+   * the IPC layer (non-fatal — the user simply clicked a link).
+   */
+  readonly openExternalUrl: (url: string) => Promise<boolean>
+  /**
    * The injected updater seam. Real apps wire `createElectrobunUpdater()`; tests inject
    * `createFakeUpdater(...)`. IPC handlers call `getRaw()`, `check()`, `startDownload()`,
    * `apply()`, and `setChannel()` through this interface — never through Electrobun directly.
@@ -963,6 +970,12 @@ export const createAppContext = (
     return paths.filter((p) => p.trim() !== "")
   }
 
+  // Open a URL in the OS default browser — LAZY import so bun test never loads native FFI.
+  const openExternalUrl: AppContext["openExternalUrl"] = async (url) => {
+    const { Utils } = await import("electrobun/bun")
+    return Utils.openExternal(url)
+  }
+
   return {
     config,
     secrets,
@@ -996,6 +1009,7 @@ export const createAppContext = (
     resetApp,
     driverRegistry,
     pickFolder,
+    openExternalUrl,
     updater,
     log,
     paths: { configFile, dbFile, harnessDir },

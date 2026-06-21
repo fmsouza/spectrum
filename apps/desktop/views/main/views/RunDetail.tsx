@@ -110,6 +110,9 @@ const LiveRunDetail = ({
         if (harnessId !== undefined)
           void client.updateHarnessPrefs({ harnessId, modelId })
       }}
+      onOpenLink={(url) => {
+        void client.openExternalUrl({ url })
+      }}
     />
   )
 }
@@ -173,6 +176,9 @@ const ReplayRunDetail = ({
       onDecide={() => {}}
       onAnswer={() => {}}
       inert
+      onOpenLink={(url) => {
+        void client.openExternalUrl({ url })
+      }}
       {...(models === undefined ? {} : { models })}
       {...(providerNames === undefined ? {} : { providerNames })}
     />

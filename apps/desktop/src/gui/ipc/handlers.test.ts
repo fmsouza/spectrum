@@ -73,6 +73,7 @@ const makeCtx = (
     runnerOk?: boolean
     proxyKeyStored?: string | null
     pickFolderResult?: readonly string[]
+    openExternalUrlResult?: boolean
     lastSelectedFolder?: string
     lastSelectedHarnessId?: string
     runEvents?: Result<
@@ -125,6 +126,7 @@ const makeCtx = (
   const launchParams: unknown[] = []
   const sessionInputs: unknown[] = []
   const pickFolderCalls: unknown[] = []
+  const openExternalUrlCalls: unknown[] = []
   const runnerLaunchInputs: unknown[] = []
   const runEventsIds: string[] = []
   const deletedSessionIds: string[] = []
@@ -249,6 +251,10 @@ const makeCtx = (
       pickFolderCalls.push(opts)
       return over.pickFolderResult ?? []
     },
+    openExternalUrl: async (url: unknown) => {
+      openExternalUrlCalls.push(url)
+      return over.openExternalUrlResult ?? true
+    },
     runner: {
       launch: (input: unknown) => {
         runnerLaunchInputs.push(input)
@@ -307,6 +313,7 @@ const makeCtx = (
     launchParams,
     sessionInputs,
     pickFolderCalls,
+    openExternalUrlCalls,
     runnerLaunchInputs,
     runEventsIds,
     deletedSessionIds,
@@ -1129,6 +1136,33 @@ describe("createIpcHandlers.pickFolder", () => {
     const { ctx } = makeCtx({ pickFolderResult: [] })
     const handlers = createIpcHandlers(ctx)
     expect(await handlers.pickFolder(undefined)).toEqual({})
+  })
+})
+
+// ── D.3 openExternalUrl ───────────────────────────────────────────────────────
+
+describe("createIpcHandlers.openExternalUrl", () => {
+  it("delegates the url to ctx.openExternalUrl and returns null on success", async () => {
+    const { ctx, openExternalUrlCalls } = makeCtx({
+      openExternalUrlResult: true,
+    })
+    const handlers = createIpcHandlers(ctx)
+
+    const result = await handlers.openExternalUrl({
+      url: "https://example.com",
+    })
+
+    expect(result).toBeNull()
+    expect(openExternalUrlCalls).toEqual(["https://example.com"])
+  })
+
+  it("fails the handler when the OS reports it did not open the url", async () => {
+    const { ctx } = makeCtx({ openExternalUrlResult: false })
+    const handlers = createIpcHandlers(ctx)
+
+    await expect(
+      handlers.openExternalUrl({ url: "https://example.com" }),
+    ).rejects.toThrow()
   })
 })
 

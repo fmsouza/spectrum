@@ -31,6 +31,7 @@ const METHOD_NAMES = [
   "getSessions",
   "getProxyStatus",
   "pickFolder",
+  "openExternalUrl",
   "listProviderModels",
   "getSettings",
   "getTimeoutSettings",

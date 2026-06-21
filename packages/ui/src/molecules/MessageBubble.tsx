@@ -10,19 +10,28 @@ export type MessageBubbleProps = {
   readonly tone?: "error"
   /** When the turn failed (tone="error"), fires to re-run the prompt. */
   readonly onRetry?: () => void
+  /**
+   * Open a link in the OS default browser. When provided, a left-click on a link calls this with the
+   * link's href; `preventDefault()` always runs so the SPA webview never navigates in-window. When
+   * omitted, links render but do nothing on click (the legacy inert behavior) — callers that don't
+   * need external-link handling can ignore this prop.
+   */
+  readonly onOpenLink?: (url: string) => void
 }
 
 /**
  * A chat message. `author` drives alignment (user → right, assistant → left) via `data-role`. An error
  * `tone` renders the bubble in its error state (red, `role="alert"`). The body is rendered as
- * GitHub-flavored Markdown into React elements (no innerHTML — CSP-safe). Links are made inert: a
- * same-window navigation would unload this SPA webview, so they render but do not navigate.
+ * GitHub-flavored Markdown into React elements (no innerHTML — CSP-safe). Links always prevent
+ * default (a same-window navigation would unload this SPA webview); when `onOpenLink` is wired,
+ * the click is routed to the OS browser instead of navigating in-window.
  */
 export const MessageBubble = ({
   text,
   author = "assistant",
   tone,
   onRetry,
+  onOpenLink,
 }: MessageBubbleProps): ReactElement => {
   const msgId = useId()
   return (
@@ -35,8 +44,21 @@ export const MessageBubble = ({
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
+            // react-markdown types `href` as `string | undefined`; guard so onOpenLink is never
+            // called with undefined (react-markdown emits `undefined` for `[text]()` with an empty url).
             a: ({ href, children }) => (
-              <a href={href} title={href} onClick={(e) => e.preventDefault()}>
+              <a
+                href={href}
+                title={href}
+                onClick={(e) => {
+                  // ALWAYS preventDefault: a same-window navigation would unload this SPA webview.
+                  // When onOpenLink is wired, route the click to the OS browser instead.
+                  e.preventDefault()
+                  if (href !== undefined && onOpenLink !== undefined) {
+                    onOpenLink(href)
+                  }
+                }}
+              >
                 {children}
               </a>
             ),
