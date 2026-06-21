@@ -6,6 +6,8 @@ import {
 import { detectPlatform } from "@spectrum/platform"
 import type { AppContext } from "../composition"
 import { createIpcHandlers } from "./ipc/handlers"
+import type { WindowBounds } from "./window-bounds"
+import { type WindowBoundsIO, createWindowBoundsIO } from "./window-bounds-io"
 
 // Linux must use CEF (GTK/WebKit can't handle Electrobun's webview layering); native elsewhere.
 const RENDERER: "cef" | "native" =
@@ -37,12 +39,28 @@ const bindFocusEvents = (window: {
   })
 }
 
+/** Internal: forward Electrobun resize/move events to the debounced bounds sink. */
+const bindBoundsEvents = (
+  window: {
+    on(name: string, handler: (event: unknown) => void): void
+    getFrame(): WindowBounds
+  },
+  onBoundsChange: (bounds: WindowBounds) => void,
+): void => {
+  window.on("resize", () => onBoundsChange(window.getFrame()))
+  window.on("move", () => onBoundsChange(window.getFrame()))
+}
+
 /** The subset of BrowserWindow options this shell sets (security.md webview hardening). */
 export interface WindowOptions {
   readonly url: string
   readonly title: string
   /** Lock navigation to the app origin; external links open in the system browser, not the webview. */
   readonly lockNavigationToOrigin: boolean
+  /** Resolve the initial frame from persisted (sanity-checked) bounds, or the default. */
+  readonly loadInitialFrame: () => Promise<WindowBounds>
+  /** Record a new window geometry on resize/move (debounced + persisted downstream). */
+  readonly onBoundsChange: (bounds: WindowBounds) => void
 }
 
 /**
@@ -56,6 +74,8 @@ export interface OpenWindowDeps {
   readonly createWindow: (opts: WindowOptions) => unknown
   readonly makeTransport: (window: unknown) => ServerTransport
   readonly wireServer: (transport: ServerTransport, ctx: AppContext) => void
+  /** Build the bounds restore/persist seam from the live context (config + logger). */
+  readonly createBoundsIO: (ctx: AppContext) => WindowBoundsIO
   readonly viewUrl: string
 }
 
@@ -77,10 +97,13 @@ export const openWindow = (
   ctx: AppContext,
   deps: OpenWindowDeps = realOpenWindowDeps,
 ): void => {
+  const io = deps.createBoundsIO(ctx)
   const window = deps.createWindow({
     url: deps.viewUrl,
     title: "Spectrum",
     lockNavigationToOrigin: true,
+    loadInitialFrame: io.loadInitialFrame,
+    onBoundsChange: io.onBoundsChange,
   })
   const transport = deps.makeTransport(window)
   deps.wireServer(transport, ctx)
@@ -129,7 +152,7 @@ export const realOpenWindowDeps: OpenWindowDeps = {
     // here. The webview only issues requests after its view loads, by which point `bindHandler`
     // has run, so deferring window creation past this dynamic import is safe.
     void import("electrobun/bun").then(
-      ({ BrowserWindow, defineElectrobunRPC }) => {
+      async ({ BrowserWindow, defineElectrobunRPC }) => {
         // Electrobun carries only the IPC requests now. The canonical run-event stream runs over a
         // dedicated loopback WebSocket (see runner-socket.ts), so there is no `messages` channel or
         // outbound bind here anymore.
@@ -138,15 +161,20 @@ export const realOpenWindowDeps: OpenWindowDeps = {
           handlers: { requests: {}, messages: {} },
           extraRequestHandlers: requests,
         })
+        // Restore the last-known geometry (sanity-checked upstream); falls back to
+        // the default frame on first run or when persisted bounds fail the guard.
+        const frame = await opts.loadInitialFrame()
         const win = new BrowserWindow({
           title: opts.title,
           url: opts.url,
-          frame: { width: 1024, height: 720, x: 100, y: 100 },
+          frame,
           renderer: RENDERER,
           rpc,
         })
         // Track OS focus so background runs (window unfocused) fire a native notification.
         bindFocusEvents(win)
+        // Persist size/position as the user resizes/moves the window.
+        bindBoundsEvents(win, opts.onBoundsChange)
       },
     )
 
@@ -162,6 +190,8 @@ export const realOpenWindowDeps: OpenWindowDeps = {
       ;(window as WindowBundle).bindHandler(h)
     },
   }),
+  createBoundsIO: (ctx) =>
+    createWindowBoundsIO({ config: ctx.config, log: ctx.log }),
   wireServer: defaultWireServer,
   viewUrl: "views://main/index.html",
 }
