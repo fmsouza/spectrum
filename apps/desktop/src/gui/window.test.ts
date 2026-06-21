@@ -69,30 +69,65 @@ describe("openWindow", () => {
 })
 
 describe("bindExternalNavigation", () => {
-  // This verifies the best-effort side-effect contract only: a will-navigate
-  // event calls openExternal with the url. It does NOT (and cannot) verify
+  // The real Electrobun will-navigate event is an ElectrobunEvent whose URL is
+  // at `event.data.detail` (see electrobun/dist/api/bun/events/webviewEvents.ts
+  // — `willNavigate: (data: { detail: string }) => ...`). The handler must read
+  // that field. These tests use the real shape, not a fabricated `{ url }`.
+  //
+  // This verifies the best-effort side-effect contract only: a will-navigate to
+  // an EXTERNAL url calls openExternal. It does NOT (and cannot) verify
   // navigation prevention — will-navigate is observational in Electrobun 1.18.1
   // (see bindExternalNavigation's doc comment). A real origin-lock would use
   // BrowserView.setNavigationRules and is tracked as a follow-up.
-  it("opens the will-navigate url in the external browser (best-effort side-effect)", () => {
-    let opened: string | undefined
-    let navHandler: ((event: { readonly url: string }) => void) | undefined
+  type NavEvent = { readonly data: { readonly detail: string } }
+  const wireNav = (
+    openExternal: (url: string) => boolean,
+  ): ((event: NavEvent) => void) => {
+    let navHandler: ((event: NavEvent) => void) | undefined
     const win = {
       webview: {
-        on: (
-          _name: "will-navigate",
-          handler: (event: { readonly url: string }) => void,
-        ) => {
+        on: (_name: "will-navigate", handler: (event: NavEvent) => void) => {
           navHandler = handler
         },
       },
     }
-    bindExternalNavigation(win, (url) => {
+    bindExternalNavigation(win, openExternal)
+    if (navHandler === undefined) throw new Error("handler not registered")
+    return navHandler
+  }
+
+  it("opens an external http(s) will-navigate url in the browser (best-effort side-effect)", () => {
+    let opened: string | undefined
+    const navHandler = wireNav((url) => {
       opened = url
       return true
     })
-    expect(navHandler).toBeDefined()
-    navHandler?.({ url: "https://example.com" })
+    navHandler({ data: { detail: "https://example.com" } })
     expect(opened).toBe("https://example.com")
+  })
+
+  it("ignores navigation to the app's own views:// origin (does not open it externally)", () => {
+    // CEF on Linux fires will-navigate for the SPA's own startup load. Routing
+    // that to the OS browser is wrong (and historically crashed the process).
+    let called = false
+    const navHandler = wireNav(() => {
+      called = true
+      return true
+    })
+    navHandler({ data: { detail: "views://main/index.html" } })
+    expect(called).toBe(false)
+  })
+
+  it("never calls openExternal with a non-string detail (crash regression: toCString(undefined))", () => {
+    // The startup crash was Utils.openExternal(undefined) -> toCString(undefined)
+    // -> `undefined.endsWith` TypeError, which killed the bun worker before the
+    // proxy could start (CI smoke /health failure). Guard against it.
+    let called = false
+    const navHandler = wireNav(() => {
+      called = true
+      return true
+    })
+    navHandler({ data: { detail: undefined as unknown as string } })
+    expect(called).toBe(false)
   })
 })
