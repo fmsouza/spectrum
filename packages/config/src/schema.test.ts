@@ -29,7 +29,26 @@ describe("SettingsSchema", () => {
       dismissedUpdateHash: null,
       firstTokenTimeoutMs: 120000,
       interTokenTimeoutMs: 60000,
+      windowBounds: null,
     })
+  })
+
+  it("accepts a complete windowBounds object", () => {
+    const parsed = SettingsSchema.parse({
+      windowBounds: { width: 1280, height: 800, x: 50, y: 60 },
+    })
+    expect(parsed.windowBounds).toEqual({
+      width: 1280,
+      height: 800,
+      x: 50,
+      y: 60,
+    })
+  })
+
+  it("rejects a partial windowBounds object (missing fields)", () => {
+    expect(
+      SettingsSchema.safeParse({ windowBounds: { width: 1280 } }).success,
+    ).toBe(false)
   })
   it("rejects a non-loopback proxyHost so the proxy can never bind a public interface", () => {
     expect(SettingsSchema.safeParse({ proxyHost: "0.0.0.0" }).success).toBe(
@@ -148,6 +167,7 @@ describe("ConfigSchema", () => {
         dismissedUpdateHash: null,
         firstTokenTimeoutMs: 120000,
         interTokenTimeoutMs: 60000,
+        windowBounds: null,
       },
     }
     expect(ConfigSchema.parse(config)).toEqual(config)
@@ -224,13 +244,14 @@ describe("defaultConfig", () => {
         dismissedUpdateHash: null,
         firstTokenTimeoutMs: 120000,
         interTokenTimeoutMs: 60000,
+        windowBounds: null,
       },
     })
   })
   it("produces a config that satisfies ConfigSchema", () => {
     expect(ConfigSchema.safeParse(defaultConfig()).success).toBe(true)
   })
-  it("uses the bumped CURRENT_CONFIG_VERSION of 11", () => {
-    expect(CURRENT_CONFIG_VERSION).toBe(11)
+  it("uses the bumped CURRENT_CONFIG_VERSION of 12", () => {
+    expect(CURRENT_CONFIG_VERSION).toBe(12)
   })
 })

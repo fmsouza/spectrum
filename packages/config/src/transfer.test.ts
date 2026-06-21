@@ -34,6 +34,7 @@ const configWithProvider = (): Config => ({
     dismissedUpdateHash: null,
     firstTokenTimeoutMs: 120000,
     interTokenTimeoutMs: 60000,
+    windowBounds: null,
   },
 })
 

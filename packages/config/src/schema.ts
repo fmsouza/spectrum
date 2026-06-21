@@ -2,7 +2,7 @@ import { ModelRouteSchema, ProviderSchema } from "@spectrum/types"
 import { z } from "zod"
 
 /** Bump on any breaking config shape change; add a matching `Migration` (see migrations.ts). */
-export const CURRENT_CONFIG_VERSION = 11
+export const CURRENT_CONFIG_VERSION = 12
 
 /**
  * Per-harness "last used" prefs. `mode` is the normalized permission mode the user last selected
@@ -66,6 +66,21 @@ export const SettingsSchema = z
     firstTokenTimeoutMs: z.number().int().min(5000).max(600000).default(120000),
     /** Max ms of idle gap BETWEEN streamed chunks before treating the stream as hung. */
     interTokenTimeoutMs: z.number().int().min(1000).max(600000).default(60000),
+    /**
+     * Last-known main window geometry, persisted on resize/move and restored at
+     * launch. `null` means "never resized" — the window opens at its default
+     * frame. Restored bounds are sanity-checked at the GUI seam (off-screen /
+     * too-small bounds fall back to the default), so this stores raw geometry.
+     */
+    windowBounds: z
+      .object({
+        width: z.number(),
+        height: z.number(),
+        x: z.number(),
+        y: z.number(),
+      })
+      .nullable()
+      .default(null),
   })
   .strict()
 

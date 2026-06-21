@@ -32,8 +32,10 @@ export interface WindowOptions {
 
 export class BrowserWindow {
   constructor(options?: WindowOptions)
-  /** Subscribe to a window event (e.g. `"focus"`, `"blur"`). */
+  /** Subscribe to a window event (e.g. `"focus"`, `"blur"`, `"resize"`, `"move"`). */
   on(name: string, handler: (event: unknown) => void): void
+  /** Read the window's current geometry synchronously. */
+  getFrame(): WindowFrame
 }
 
 /** Subset of the `defineElectrobunRPC` config (bun side). */
