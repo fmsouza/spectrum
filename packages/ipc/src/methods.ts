@@ -189,6 +189,13 @@ export const DeleteSessionParamsSchema = z
   .strict()
 export const DeleteSessionResultSchema = VoidSchema
 
+// Rename a session in place (manual user rename). The handler trims + rejects blank before
+// calling SessionStore.updateName; the schema's min(1) is a defense-in-depth backstop.
+export const RenameSessionParamsSchema = z
+  .object({ sessionId: SessionIdSchema, name: z.string().min(1) })
+  .strict()
+export const RenameSessionResultSchema = VoidSchema
+
 // ── Model discovery ───────────────────────────────────────────────────────
 
 export const ListProviderModelsParamsSchema = z
@@ -467,6 +474,10 @@ export const IpcMethodSchemas = {
   deleteSession: {
     params: DeleteSessionParamsSchema,
     result: DeleteSessionResultSchema,
+  },
+  renameSession: {
+    params: RenameSessionParamsSchema,
+    result: RenameSessionResultSchema,
   },
   getProxyStatus: {
     params: GetProxyStatusParamsSchema,

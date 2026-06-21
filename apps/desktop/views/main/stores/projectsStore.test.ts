@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import type { Session, SessionId } from "@spectrum/types"
 import { createProjectsStore } from "./projectsStore"
 import type { StoreDeps } from "./types"
 
@@ -16,6 +17,7 @@ const okClient = (overrides: Partial<Record<string, unknown>> = {}) =>
         startedAt: "2026-06-07T10:00:00.000Z",
       })),
     }),
+    renameSession: async () => ({ ok: true, value: null }),
     getSettings: async () => ({
       ok: true,
       value: {
@@ -28,6 +30,21 @@ const okClient = (overrides: Partial<Record<string, unknown>> = {}) =>
     launchHarness: async () => ({ ok: true, value: { sessionId: "s_new" } }),
     ...overrides,
   }) as unknown as StoreDeps["client"]
+
+const makeStoreWithSessions = async (items: readonly Session[]) => {
+  const client = okClient({
+    getProjects: async () => ({
+      ok: true,
+      value: [
+        { id: "prj_x", name: "x", path: "/x", sessionCount: items.length },
+      ],
+    }),
+    getSessions: async () => ({ ok: true, value: items }),
+  })
+  const store = createProjectsStore({ client })
+  await store.getState().fetchSessions("prj_x")
+  return { store, client }
+}
 
 describe("projectsStore", () => {
   it("loads projects and seeds collapsed from settings on fetchProjects", async () => {
@@ -147,5 +164,42 @@ describe("projectsStore", () => {
     store.getState().toggleCollapse("prj_a")
     expect(store.getState().collapsed.has("prj_a")).toBe(false)
     expect(persisted).toEqual([])
+  })
+
+  it("renameSession calls client.renameSession and updates the cached session name in place", async () => {
+    const { store, client } = await makeStoreWithSessions([
+      {
+        id: "s_1",
+        harnessId: "claude",
+        startedAt: "2026-06-21T10:00:00.000Z",
+        cwd: "/x",
+        name: "old",
+      } as Session,
+    ])
+    client.renameSession = async () => ({ ok: true, value: null })
+    const r = await store
+      .getState()
+      .renameSession("s_1" as SessionId, "new name")
+    expect(r.ok).toBe(true)
+    const sess = store
+      .getState()
+      .sessionsByProject.prj_x?.items.find((s) => s.id === "s_1")
+    expect(sess?.name).toBe("new name")
+  })
+
+  it("updateSessionName mutates the cached session name without an IPC call (used by session-renamed frames)", async () => {
+    const { store } = await makeStoreWithSessions([
+      {
+        id: "s_1",
+        harnessId: "claude",
+        startedAt: "2026-06-21T10:00:00.000Z",
+        cwd: "/x",
+      } as Session,
+    ])
+    store.getState().updateSessionName("s_1" as SessionId, "auto-derived")
+    const sess = store
+      .getState()
+      .sessionsByProject.prj_x?.items.find((s) => s.id === "s_1")
+    expect(sess?.name).toBe("auto-derived")
   })
 })

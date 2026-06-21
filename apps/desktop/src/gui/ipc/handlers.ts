@@ -395,6 +395,22 @@ export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
       return null
     },
 
+    renameSession: async ({ sessionId, name }) => {
+      const trimmed = name.trim()
+      if (trimmed === "") return fail("a session name is required")
+      const updated = ctx.sessions.updateName(sessionId, trimmed)
+      if (!isOk(updated))
+        return fail(
+          updated.error.kind === "not-found"
+            ? "session not found"
+            : "could not rename session",
+        )
+      // Stop a live run from clobbering the user's manual rename with a later
+      // auto/harness-derived name. No-op if the run already ended or is unknown.
+      ctx.runner.markUserNamed(sessionId)
+      return null
+    },
+
     getProxyStatus: async () => {
       const running = await ctx.proxy.isRunning(ctx.proxyBaseUrl)
       return { running, port: ctx.proxyPort }

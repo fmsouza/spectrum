@@ -14,6 +14,11 @@ export interface SessionSink {
     id: SessionId,
     exitCode: number,
   ): Result<Session, { kind: string; detail?: string }>
+  /** Write back a derived/harness session name (auto-naming + manual rename). */
+  updateName(
+    id: SessionId,
+    name: string,
+  ): Result<Session, { kind: string; detail?: string }>
 }
 
 /** Subset of RunStore the RunManager needs (defined locally to avoid a run-store dependency). */

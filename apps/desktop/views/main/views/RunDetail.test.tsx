@@ -45,6 +45,7 @@ const makeFakeRunner = (): RunnerClient & {
       listener = cb
     },
     onAny: () => () => {},
+    onSessionRenamed: () => () => {},
     push: (event) => listener?.(event),
   }
 }

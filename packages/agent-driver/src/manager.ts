@@ -6,6 +6,7 @@ import type {
 import { type Logger, createNoopLogger } from "@spectrum/logger"
 import type { HarnessId, ModelId, SessionId } from "@spectrum/types"
 import { type Clock, type Result, isErr, isOk, ok } from "@spectrum/utils"
+import { deriveSessionName } from "./derive-session-name"
 import type { AgentDriver, AgentSession, DriverError } from "./driver"
 import type { RunEventSink, SessionSink } from "./ports"
 import type { RunnerInbound, RunnerOutbound } from "./protocol"
@@ -51,11 +52,15 @@ export interface RunManager {
   handleInbound(message: RunnerInbound): void
   /** Late-bound once the runner socket connects; replaces the `send` sink. */
   bindSend(send: (message: RunnerOutbound) => void): void
+  /** Mark a session's name as user-set so a live run stops auto/harness-naming it. */
+  markUserNamed(id: SessionId): void
 }
 
 export const createRunManager = (deps: RunManagerDeps): RunManager => {
   const live = new Map<SessionId, AgentSession>()
   const harnessOf = new Map<SessionId, HarnessId>()
+  /** Per-session naming guard: none = not yet named, auto = derived/harness-named, user = sticky. */
+  const nameSource = new Map<SessionId, "none" | "auto" | "user">()
   const logger = deps.logger ?? createNoopLogger()
   let sink: (message: RunnerOutbound) => void = deps.send
   const send = (message: RunnerOutbound): void => sink(message)
@@ -113,6 +118,7 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
     const agent = started.value
     live.set(id, agent)
     harnessOf.set(id, input.harnessId)
+    nameSource.set(id, input.name !== undefined ? "user" : "none")
     logger.info("session launched", {
       sessionId: id,
       harnessId: input.harnessId,
@@ -138,6 +144,47 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
       ) {
         deps.sessions.close(id, 0)
         logger.info("session closed", { sessionId: id })
+      }
+
+      // Session naming: derive from the first user turn (fallback) or refine from a
+      // harness-emitted root title. A user-set name (CLI --name or a manual rename via
+      // markUserNamed) is sticky and never overwritten. Failures are observed + swallowed.
+      if (event.runnerId === agent.rootRunnerId) {
+        const source = nameSource.get(id) ?? "none"
+        if (
+          event.type === "text-delta" &&
+          event.role === "user" &&
+          source === "none"
+        ) {
+          const derived = deriveSessionName(event.text)
+          if (derived !== "") {
+            const written = deps.sessions.updateName(id, derived)
+            if (isOk(written)) {
+              nameSource.set(id, "auto")
+              send({ type: "session-renamed", id, name: derived })
+            } else {
+              logger.error("session name update failed", {
+                sessionId: id,
+                kind: written.error.kind,
+              })
+            }
+          }
+        } else if (
+          event.type === "runner-started" &&
+          event.title !== undefined &&
+          source !== "user"
+        ) {
+          const written = deps.sessions.updateName(id, event.title)
+          if (isOk(written)) {
+            nameSource.set(id, "auto")
+            send({ type: "session-renamed", id, name: event.title })
+          } else {
+            logger.error("session name update failed", {
+              sessionId: id,
+              kind: written.error.kind,
+            })
+          }
+        }
       }
     })
     return ok({ sessionId: id })
@@ -209,5 +256,11 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
     sink = next
   }
 
-  return { launch, handleInbound, bindSend }
+  const markUserNamed = (id: SessionId): void => {
+    // Only flip for sessions the manager knows; a rename of an unknown/closed
+    // session is a harmless no-op (the persisted name is still the source of truth).
+    if (live.has(id) || nameSource.has(id)) nameSource.set(id, "user")
+  }
+
+  return { launch, handleInbound, bindSend, markUserNamed }
 }

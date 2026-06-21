@@ -187,3 +187,126 @@ describe("SessionRow", () => {
     expect(container.querySelector("[data-tone]")).not.toBeNull()
   })
 })
+
+describe("SessionRow rename", () => {
+  it("renders the session name when not editing", () => {
+    render(
+      <SessionRow
+        session={running}
+        harnessName="Claude Code"
+        model="sonnet"
+        selected={false}
+        onSelect={() => {}}
+        onRename={() => {}}
+      />,
+    )
+    expect(screen.getByText("Refactor auth")).toBeInTheDocument()
+  })
+
+  it("falls back to the session id when name is absent", () => {
+    render(
+      <SessionRow
+        session={exited}
+        harnessName="Codex"
+        model="gpt"
+        selected={false}
+        onSelect={() => {}}
+        onRename={() => {}}
+      />,
+    )
+    expect(screen.getByText("s_2")).toBeInTheDocument()
+  })
+
+  it("does not render an editable input when onRename is absent", () => {
+    render(
+      <SessionRow
+        session={running}
+        harnessName="Claude Code"
+        model="sonnet"
+        selected={false}
+        onSelect={() => {}}
+      />,
+    )
+    expect(screen.queryByRole("textbox")).toBeNull()
+  })
+
+  it("switches to a text input when the name is clicked and onRename is provided", () => {
+    render(
+      <SessionRow
+        session={running}
+        harnessName="Claude Code"
+        model="sonnet"
+        selected={false}
+        onSelect={() => {}}
+        onRename={() => {}}
+      />,
+    )
+    fireEvent.click(screen.getByText("Refactor auth"))
+    expect(screen.getByRole("textbox")).toHaveValue("Refactor auth")
+  })
+
+  it("calls onRename with the trimmed new value on submit (Enter) and exits edit mode", () => {
+    const onRename = mock((_name: string) => {})
+    render(
+      <SessionRow
+        session={running}
+        harnessName="Claude Code"
+        model="sonnet"
+        selected={false}
+        onSelect={() => {}}
+        onRename={onRename}
+      />,
+    )
+    fireEvent.click(screen.getByText("Refactor auth"))
+    const input = screen.getByRole("textbox")
+    fireEvent.change(input, { target: { value: "  New name  " } })
+    fireEvent.keyDown(input, { key: "Enter" })
+    expect(onRename).toHaveBeenCalledWith("New name")
+    expect(screen.queryByRole("textbox")).toBeNull()
+    expect(screen.getByText("Refactor auth")).toBeInTheDocument()
+  })
+
+  it("does not call onRename when the value is blank or unchanged", () => {
+    const onRename = mock((_name: string) => {})
+    render(
+      <SessionRow
+        session={running}
+        harnessName="Claude Code"
+        model="sonnet"
+        selected={false}
+        onSelect={() => {}}
+        onRename={onRename}
+      />,
+    )
+    fireEvent.click(screen.getByText("Refactor auth"))
+    const input = screen.getByRole("textbox")
+    // Unchanged value + Enter -> no call
+    fireEvent.keyDown(input, { key: "Enter" })
+    expect(onRename).not.toHaveBeenCalled()
+    // Blank value + Enter -> no call
+    fireEvent.change(input, { target: { value: "   " } })
+    fireEvent.keyDown(input, { key: "Enter" })
+    expect(onRename).not.toHaveBeenCalled()
+  })
+
+  it("cancels edit on Escape without calling onRename", () => {
+    const onRename = mock((_name: string) => {})
+    render(
+      <SessionRow
+        session={running}
+        harnessName="Claude Code"
+        model="sonnet"
+        selected={false}
+        onSelect={() => {}}
+        onRename={onRename}
+      />,
+    )
+    fireEvent.click(screen.getByText("Refactor auth"))
+    const input = screen.getByRole("textbox")
+    fireEvent.change(input, { target: { value: "discarded" } })
+    fireEvent.keyDown(input, { key: "Escape" })
+    expect(onRename).not.toHaveBeenCalled()
+    expect(screen.queryByRole("textbox")).toBeNull()
+    expect(screen.getByText("Refactor auth")).toBeInTheDocument()
+  })
+})

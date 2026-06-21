@@ -8,7 +8,7 @@ import { FolderField } from "../molecules/FolderField"
 import { FormField } from "../molecules/FormField"
 
 export type NewSessionValues = {
-  readonly name: string
+  readonly name?: string
   readonly cwd: string
   readonly harnessId: HarnessId
   readonly env: Record<string, string>
@@ -84,7 +84,6 @@ export const NewSessionModal = ({
 
   const submit = (): void => {
     const values: NewSessionValues = {
-      name: "Untitled",
       cwd: state.cwd,
       harnessId: state.harnessId,
       env: state.env,

@@ -6,6 +6,8 @@ import {
   childTextPartFixture,
   otherSessionTextFixture,
   permissionUpdatedFixture,
+  rootSessionNoTitleFixture,
+  rootSessionTitleFixture,
   sessionErrorFixture,
   sessionIdleFixture,
   textPartFixture,
@@ -155,5 +157,17 @@ describe("mapOpencodeEvent", () => {
   it("ignores child fixtures with the wrong root binding when S_CHILD is the unrelated id", () => {
     // Without the child session.updated first, S_CHILD is unknown -> filtered.
     expect(mapOpencodeEvent(childTextPartFixture, mkState())).toEqual([])
+  })
+
+  it("re-emits a root runner-started with the title when the ROOT session carries info.title", () => {
+    const out = mapOpencodeEvent(rootSessionTitleFixture, mkState())
+    expect(out).toEqual([
+      { type: "runner-started", runnerId: ROOT, title: "Root title" },
+    ])
+  })
+
+  it("emits [] for a root session update with NO title (no no-op re-emit)", () => {
+    const out = mapOpencodeEvent(rootSessionNoTitleFixture, mkState())
+    expect(out).toEqual([])
   })
 })

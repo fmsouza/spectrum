@@ -28,7 +28,6 @@ describe("NewSessionModal", () => {
     render(<NewSessionModal {...baseProps} onSubmit={onSubmit} />)
     fireEvent.click(screen.getByRole("button", { name: /launch/i }))
     expect(onSubmit).toHaveBeenCalledWith({
-      name: "Untitled",
       cwd: "/Users/fred/app",
       harnessId: "claude",
       env: {},
@@ -132,12 +131,14 @@ describe("NewSessionModal", () => {
     expect(screen.queryByLabelText("Name")).toBeNull()
   })
 
-  it("submits name as 'Untitled' regardless of any prior input (Fix #3)", () => {
+  it("omits name from the submitted values so the RunManager auto-derives it at runtime (Fix #3)", () => {
     const onSubmit = mock((_v: NewSessionValues) => {})
     render(<NewSessionModal {...baseProps} onSubmit={onSubmit} />)
     fireEvent.click(screen.getByRole("button", { name: /launch/i }))
     expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "Untitled" }),
+      expect.not.objectContaining({ name: expect.anything() }),
     )
+    // Explicit: name is absent (auto-derivation owns it).
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("name")
   })
 })
