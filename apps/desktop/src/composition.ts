@@ -708,6 +708,7 @@ export const createAppContext = (
       })
     },
     close: sessions.close,
+    updateName: (id, name) => sessions.updateName(id, name),
   }
 
   // harnesses: registry of the builtins only (custom user harnesses are no longer supported, so the

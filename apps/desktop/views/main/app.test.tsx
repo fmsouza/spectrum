@@ -91,6 +91,7 @@ const fakeRunnerClient: RunnerClient = {
   dispatch: () => {},
   onEvent: () => {},
   onAny: () => () => {},
+  onSessionRenamed: () => () => {},
 } as unknown as RunnerClient
 
 const baseStubs = {
@@ -255,7 +256,7 @@ describe("App view model", () => {
     expect(window.location.hash).not.toContain("/")
   })
 
-  it("sends name 'Untitled' to launchHarness (Fix #3, formerly Bug 1)", async () => {
+  it("omits name from launchHarness so the RunManager auto-derives it at runtime (Fix #3)", async () => {
     const client = createFakeIpcClient({
       ...baseStubs,
       getHarnesses: async () => ({
@@ -288,11 +289,11 @@ describe("App view model", () => {
       />,
     )
     fireEvent.click(await screen.findByRole("button", { name: /new session/i }))
-    // Name field is removed (Fix #3); modal always submits name:"Untitled"
+    // Name field is removed (Fix #3); modal omits name so RunManager auto-derives it
     fireEvent.click(await screen.findByRole("button", { name: /launch/i }))
     await waitFor(() => expect(client.calls.launchHarness.length).toBe(1))
     const params = client.calls.launchHarness[0] as Record<string, unknown>
-    expect(params.name).toBe("Untitled")
+    expect("name" in params).toBe(false)
     expect("cwd" in params).toBe(false)
   })
 

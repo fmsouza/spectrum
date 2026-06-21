@@ -162,3 +162,18 @@ export const sessionErrorFixture: OpencodeEvent = {
     error: { name: "ProviderError", data: { message: "boom" } },
   },
 }
+
+// A root-session (parentID undefined) title update. Today the mapper drops this; the
+// naming plan routes it to a root runner-started re-emit so the RunManager can name the session.
+export const rootSessionTitleFixture: OpencodeEvent = {
+  type: "session.updated",
+  properties: {
+    info: { id: S_ROOT, parentID: undefined, title: "Root title" },
+  },
+}
+
+// A root-session update WITHOUT a title — must NOT emit a no-op re-emit.
+export const rootSessionNoTitleFixture: OpencodeEvent = {
+  type: "session.updated",
+  properties: { info: { id: S_ROOT, parentID: undefined } },
+}

@@ -36,6 +36,7 @@ export type SessionsViewInput = {
   readonly onNew: () => void
   readonly onDeleteProject: (projectId: string) => void
   readonly onDeleteSession: (sessionId: SessionId) => void
+  readonly onRename?: ((id: SessionId, name: string) => void) | undefined
   readonly runnerClient: RunnerClient
   /** All model routes, threaded to `RunDetail` so the composer can render a picker. */
   readonly models?: readonly ModelRoute[]
@@ -59,6 +60,7 @@ const SessionsMaster = ({
   onNew,
   onDeleteProject,
   onDeleteSession,
+  onRename,
   models,
   providerNames,
 }: {
@@ -72,6 +74,7 @@ const SessionsMaster = ({
   readonly onNew: () => void
   readonly onDeleteProject: (projectId: string) => void
   readonly onDeleteSession: (sessionId: SessionId) => void
+  readonly onRename?: ((id: SessionId, name: string) => void) | undefined
   readonly models?: readonly ModelRoute[]
   readonly providerNames?: Readonly<Record<string, string>>
 }): ReactElement => (
@@ -96,6 +99,7 @@ const SessionsMaster = ({
     onNew={onNew}
     onDeleteProject={onDeleteProject}
     onDeleteSession={onDeleteSession}
+    onRename={onRename}
   />
 )
 
@@ -169,6 +173,7 @@ export const SessionsView = ({
   onNew,
   onDeleteProject,
   onDeleteSession,
+  onRename,
   runnerClient,
   models,
   providerNames,
@@ -188,6 +193,7 @@ export const SessionsView = ({
       onNew={onNew}
       onDeleteProject={onDeleteProject}
       onDeleteSession={onDeleteSession}
+      onRename={onRename}
       {...(models === undefined ? {} : { models })}
       {...(providerNames === undefined ? {} : { providerNames })}
     />

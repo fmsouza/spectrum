@@ -25,6 +25,11 @@ export type UseProjects = {
   ) => Promise<Result<LaunchResult, IpcError>>
   readonly deleteSession: (id: SessionId) => Promise<Result<void, IpcError>>
   readonly deleteProject: (id: ProjectId) => Promise<Result<void, IpcError>>
+  readonly renameSession: (
+    id: SessionId,
+    name: string,
+  ) => Promise<Result<void, IpcError>>
+  readonly updateSessionName: (id: SessionId, name: string) => void
 }
 
 export const useProjects = (): UseProjects => {
@@ -42,6 +47,8 @@ export const useProjects = (): UseProjects => {
   const launch = useStore(store, (s) => s.launch)
   const deleteSession = useStore(store, (s) => s.deleteSession)
   const deleteProject = useStore(store, (s) => s.deleteProject)
+  const renameSession = useStore(store, (s) => s.renameSession)
+  const updateSessionName = useStore(store, (s) => s.updateSessionName)
 
   useEffect(() => {
     void fetchProjects()
@@ -72,5 +79,7 @@ export const useProjects = (): UseProjects => {
     launch,
     deleteSession,
     deleteProject,
+    renameSession,
+    updateSessionName,
   }
 }

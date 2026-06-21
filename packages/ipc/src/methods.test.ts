@@ -387,6 +387,7 @@ describe("IpcMethodSchemas", () => {
       "launchHarness",
       "getSessions",
       "deleteSession",
+      "renameSession",
       "getProxyStatus",
       "getRunnerSocketUrl",
       "getRunEvents",

@@ -1,4 +1,4 @@
-import type { ReactElement } from "react"
+import type { KeyboardEvent, ReactElement } from "react"
 
 export type TextInputType = "text" | "password" | "url" | "number"
 
@@ -6,6 +6,7 @@ export type TextInputProps = {
   readonly value: string
   readonly onChange: (value: string) => void
   readonly onBlur?: () => void
+  readonly onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void
   readonly placeholder?: string
   readonly type?: TextInputType
   readonly id?: string
@@ -16,6 +17,7 @@ export const TextInput = ({
   value,
   onChange,
   onBlur,
+  onKeyDown,
   placeholder,
   type = "text",
   id,
@@ -29,5 +31,6 @@ export const TextInput = ({
     disabled={disabled}
     onChange={(e) => onChange(e.currentTarget.value)}
     onBlur={onBlur}
+    onKeyDown={onKeyDown}
   />
 )

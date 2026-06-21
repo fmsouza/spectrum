@@ -107,6 +107,32 @@ describe("reduce — runner lifecycle", () => {
   })
 })
 
+describe("reduce: root runner-started title re-emit is idempotent", () => {
+  it("preserves accumulated items and updates the title when a root runner-started re-emits with a title", () => {
+    let state = initialRunState
+    const root = "rnr_root" as never
+    // Initial root start (no title) + a user text-delta accumulates an item.
+    state = reduce(state, { type: "runner-started", runnerId: root })
+    state = reduce(state, {
+      type: "text-delta",
+      runnerId: root,
+      messageId: "m1",
+      text: "hi",
+      role: "user",
+    })
+    // A later root re-emit WITH a title (e.g. OpenCode info.title) must keep the item.
+    state = reduce(state, {
+      type: "runner-started",
+      runnerId: root,
+      title: "Harness title",
+    })
+    const runner = state.runners.get(root)
+    expect(runner?.title).toBe("Harness title")
+    expect(runner?.items).toHaveLength(1)
+    expect(state.rootRunnerId).toBe(root)
+  })
+})
+
 describe("reduce — text/reasoning accumulation", () => {
   it("accumulates text-delta chunks into one message item by messageId", () => {
     const state = fold([

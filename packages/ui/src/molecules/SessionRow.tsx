@@ -1,6 +1,7 @@
 import type { Session } from "@spectrum/types"
-import type { ReactElement } from "react"
+import { type ReactElement, useState } from "react"
 import { Badge } from "../atoms/Badge"
+import { TextInput } from "../atoms/TextInput"
 import { Truncate } from "../primitives/Truncate"
 import { relativeTime } from "./relativeTime"
 
@@ -12,6 +13,8 @@ export type SessionRowProps = {
   readonly onSelect: () => void
   /** Right-click handler (e.g. open a context menu). Optional. */
   readonly onContextMenu?: (e: { clientX: number; clientY: number }) => void
+  /** Inline rename handler. When provided, clicking the name enters edit mode. Optional. */
+  readonly onRename?: (name: string) => void
 }
 
 export const SessionRow = ({
@@ -21,8 +24,30 @@ export const SessionRow = ({
   selected,
   onSelect,
   onContextMenu,
+  onRename,
 }: SessionRowProps): ReactElement => {
   const isRunning = session.endedAt === undefined
+  const displayName = session.name ?? session.id
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(displayName)
+
+  const startEdit = (): void => {
+    if (onRename === undefined) return
+    setDraft(displayName)
+    setEditing(true)
+  }
+
+  const commit = (): void => {
+    if (!editing) return
+    const trimmed = draft.trim()
+    if (trimmed !== "" && trimmed !== displayName) onRename?.(trimmed)
+    setEditing(false)
+  }
+
+  const cancel = (): void => {
+    setEditing(false)
+  }
+
   return (
     <button
       type="button"
@@ -40,9 +65,42 @@ export const SessionRow = ({
       }
     >
       <span className="lk-session-row__line">
-        <Truncate className="lk-session-row__name">
-          {session.name ?? session.id}
-        </Truncate>
+        {editing ? (
+          <TextInput
+            value={draft}
+            onChange={setDraft}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+                commit()
+              } else if (e.key === "Escape") {
+                e.preventDefault()
+                cancel()
+              }
+            }}
+            aria-label="Session name"
+          />
+        ) : onRename === undefined ? (
+          <Truncate className="lk-session-row__name">{displayName}</Truncate>
+        ) : (
+          <span
+            className="lk-session-row__name"
+            onClick={(e) => {
+              e.stopPropagation()
+              startEdit()
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                e.stopPropagation()
+                startEdit()
+              }
+            }}
+          >
+            <Truncate>{displayName}</Truncate>
+          </span>
+        )}
         {isRunning ? (
           <Badge tone="info">running</Badge>
         ) : session.exitCode === undefined ? (

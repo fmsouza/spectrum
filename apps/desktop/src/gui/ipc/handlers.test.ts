@@ -14,6 +14,7 @@ import type {
   Provider,
   ProviderId,
   Session,
+  SessionId,
 } from "@spectrum/types"
 import { type Result, err, ok } from "@spectrum/utils"
 import type { AppContext } from "../../composition"
@@ -96,6 +97,13 @@ const makeCtx = (
     resetAppResult?: Result<void, ResetError>
     log?: Logger
     resolverPathTable?: Record<string, string>
+    renameSessionResult?: Result<
+      Session,
+      | { readonly kind: "not-found" }
+      | { readonly kind: "invalid-name" }
+      | { readonly kind: "db-failed"; readonly detail: string }
+    >
+    markUserNamedCalls?: SessionId[]
     draftListResult?: Result<
       readonly string[],
       { readonly kind: string; readonly detail?: string }
@@ -120,6 +128,8 @@ const makeCtx = (
   resetCalls: number
   draftTestInputs: unknown[]
   draftListInputs: unknown[]
+  renameSessionCalls: { id: SessionId; name: string }[]
+  markUserNamedCalls: SessionId[]
 } => {
   const saves: Config[] = []
   const secretSets: string[] = []
@@ -133,6 +143,8 @@ const makeCtx = (
   const deletedProjectIds: string[] = []
   const draftTestInputs: unknown[] = []
   const draftListInputs: unknown[] = []
+  const renameSessionCalls: { id: SessionId; name: string }[] = []
+  const markUserNamedCalls: SessionId[] = []
   const resetState = { count: 0 }
   let current: Config = {
     ...baseConfig(
@@ -184,6 +196,11 @@ const makeCtx = (
       },
       close: () => ok(sampleSession),
       query: () => ok([sampleSession]),
+      updateName: (id: SessionId, name: string) => {
+        renameSessionCalls.push({ id, name })
+        return over.renameSessionResult ?? ok({ ...sampleSession, name })
+      },
+      reconcileOrphaned: () => ok(0),
     },
     launch: (params: unknown) => {
       launchParams.push(params)
@@ -264,6 +281,9 @@ const makeCtx = (
       },
       handleInbound: () => undefined,
       bindSend: () => undefined,
+      markUserNamed: (id: SessionId) => {
+        markUserNamedCalls.push(id)
+      },
     },
     runnerSocketUrl: "ws://localhost:23456/",
     runEvents: {
@@ -323,6 +343,8 @@ const makeCtx = (
     },
     draftTestInputs,
     draftListInputs,
+    renameSessionCalls,
+    markUserNamedCalls,
   }
 }
 
@@ -1804,6 +1826,40 @@ describe("createIpcHandlers.deleteProject", () => {
     await expect(
       handlers.deleteProject({ projectId: "prj_1" as never }),
     ).rejects.toThrow()
+  })
+})
+
+describe("createIpcHandlers.renameSession", () => {
+  it("trims the name, calls sessions.updateName, marks the run user-named, and returns null", async () => {
+    const { ctx, renameSessionCalls, markUserNamedCalls } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+    const r = await handlers.renameSession({
+      sessionId: "s_1" as SessionId,
+      name: "  New name  ",
+    })
+    expect(r).toBeNull()
+    expect(renameSessionCalls).toEqual([
+      { id: "s_1" as SessionId, name: "New name" },
+    ])
+    expect(markUserNamedCalls).toEqual(["s_1" as SessionId])
+  })
+
+  it("fails when the name is blank after trimming", async () => {
+    const { ctx } = makeCtx()
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.renameSession({ sessionId: "s_1" as SessionId, name: "   " }),
+    ).rejects.toThrow(/name is required/i)
+  })
+
+  it("fails with a session-not-found message when updateName returns not-found", async () => {
+    const { ctx } = makeCtx({
+      renameSessionResult: err({ kind: "not-found" }),
+    })
+    const handlers = createIpcHandlers(ctx)
+    await expect(
+      handlers.renameSession({ sessionId: "s_1" as SessionId, name: "x" }),
+    ).rejects.toThrow(/not found/i)
   })
 })
 
