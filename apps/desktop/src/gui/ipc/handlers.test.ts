@@ -1148,7 +1148,9 @@ describe("createIpcHandlers.openExternalUrl", () => {
     })
     const handlers = createIpcHandlers(ctx)
 
-    const result = await handlers.openExternalUrl({ url: "https://example.com" })
+    const result = await handlers.openExternalUrl({
+      url: "https://example.com",
+    })
 
     expect(result).toBeNull()
     expect(openExternalUrlCalls).toEqual(["https://example.com"])
