@@ -1,4 +1,4 @@
-import type { ConfigError, ConfigStore } from "@spectrum/config"
+import type { ConfigStore } from "@spectrum/config"
 import type { Logger } from "@spectrum/logger"
 import { isOk } from "@spectrum/utils"
 import {
@@ -22,14 +22,6 @@ export type WindowBoundsIO = {
 
 /** Trailing-debounce window (ms) for resize/move bursts before a config write. */
 const DEFAULT_DEBOUNCE_MS = 400
-
-/**
- * Extract loggable fields from a `ConfigError`. The `not-found` variant carries
- * no `detail`; all other variants do. Only `kind` + `detail` are logged — never
- * raw config or secret values.
- */
-const errorFields = (e: ConfigError): { kind: string; detail?: string } =>
-  e.kind === "not-found" ? { kind: e.kind } : { kind: e.kind, detail: e.detail }
 
 /**
  * Build the window-bounds IO over a config store. The debounce timer is injected
@@ -59,10 +51,12 @@ export const createWindowBoundsIO = (deps: {
     if (bounds === null) return
     const loaded = await config.load()
     if (!isOk(loaded)) {
-      log.error(
-        "window bounds save skipped: config load failed",
-        errorFields(loaded.error),
-      )
+      if (loaded.error.kind !== "not-found") {
+        log.error("window bounds save skipped: config load failed", {
+          kind: loaded.error.kind,
+          detail: loaded.error.detail,
+        })
+      }
       return
     }
     const next = {
@@ -71,7 +65,12 @@ export const createWindowBoundsIO = (deps: {
     }
     const saved = await config.save(next)
     if (!isOk(saved)) {
-      log.error("window bounds save failed", errorFields(saved.error))
+      if (saved.error.kind !== "not-found") {
+        log.error("window bounds save failed", {
+          kind: saved.error.kind,
+          detail: saved.error.detail,
+        })
+      }
     }
   }
 
@@ -79,10 +78,12 @@ export const createWindowBoundsIO = (deps: {
     loadInitialFrame: async (): Promise<WindowBounds> => {
       const loaded = await config.load()
       if (!isOk(loaded)) {
-        log.error(
-          "window bounds restore failed: config load failed",
-          errorFields(loaded.error),
-        )
+        if (loaded.error.kind !== "not-found") {
+          log.error("window bounds restore failed: config load failed", {
+            kind: loaded.error.kind,
+            detail: loaded.error.detail,
+          })
+        }
         return DEFAULT_BOUNDS
       }
       return boundsToFrame(sanitizeBounds(loaded.value.settings.windowBounds))

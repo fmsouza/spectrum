@@ -2,7 +2,7 @@ import { describe, expect, it, mock } from "bun:test"
 import { type Config, type ConfigStore, defaultConfig } from "@spectrum/config"
 import type { ConfigError } from "@spectrum/config"
 import { createNoopLogger } from "@spectrum/logger"
-import { type Result, ok } from "@spectrum/utils"
+import { type Result, err, ok } from "@spectrum/utils"
 import { DEFAULT_BOUNDS } from "./window-bounds"
 import { createWindowBoundsIO } from "./window-bounds-io"
 
@@ -74,6 +74,34 @@ describe("createWindowBoundsIO.loadInitialFrame", () => {
     const { store } = makeFakeConfig(config)
     const io = createWindowBoundsIO({ config: store, log: createNoopLogger() })
     expect(await io.loadInitialFrame()).toEqual(DEFAULT_BOUNDS)
+  })
+
+  it("returns DEFAULT_BOUNDS and logs when config.load fails", async () => {
+    const store: ConfigStore = {
+      load: async () => err({ kind: "parse-failed", detail: "bad json" }),
+      save: async () => ok(undefined),
+    }
+    const error = mock(() => {})
+    const io = createWindowBoundsIO({
+      config: store,
+      log: { ...createNoopLogger(), error },
+    })
+    expect(await io.loadInitialFrame()).toEqual(DEFAULT_BOUNDS)
+    expect(error).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns DEFAULT_BOUNDS without logging when config.load returns not-found", async () => {
+    const store: ConfigStore = {
+      load: async () => err({ kind: "not-found" }),
+      save: async () => ok(undefined),
+    }
+    const error = mock(() => {})
+    const io = createWindowBoundsIO({
+      config: store,
+      log: { ...createNoopLogger(), error },
+    })
+    expect(await io.loadInitialFrame()).toEqual(DEFAULT_BOUNDS)
+    expect(error).not.toHaveBeenCalled()
   })
 })
 
