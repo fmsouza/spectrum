@@ -24,6 +24,8 @@ export type ProjectGroupProps = {
     id: SessionId,
     e: { clientX: number; clientY: number },
   ) => void
+  /** Rename a single session. Optional — enables inline session name editing. */
+  readonly onRename?: ((id: SessionId, name: string) => void) | undefined
 }
 
 export const ProjectGroup = ({
@@ -38,6 +40,7 @@ export const ProjectGroup = ({
   onMore,
   onContextMenu,
   onSessionContextMenu,
+  onRename,
 }: ProjectGroupProps): ReactElement => {
   const hasMore = sessions.length < sessionCount
   return (
@@ -81,6 +84,9 @@ export const ProjectGroup = ({
                 {...(onSessionContextMenu === undefined
                   ? {}
                   : { onContextMenu: (e) => onSessionContextMenu(s.id, e) })}
+                {...(onRename === undefined
+                  ? {}
+                  : { onRename: (name: string) => onRename(s.id, name) })}
               />
             )
           })}

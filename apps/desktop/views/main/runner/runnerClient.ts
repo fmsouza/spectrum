@@ -30,6 +30,8 @@ export interface RunnerClient {
    * effect can drop its previous listener instead of stacking duplicates.
    */
   onAny(cb: (id: SessionId, event: StoredEvent) => void): () => void
+  /** Live session-name push (session-renamed frame). Returns an unsubscribe fn. */
+  onSessionRenamed(cb: (id: SessionId, name: string) => void): () => void
 }
 
 export const createRunnerClient = (
@@ -39,6 +41,7 @@ export const createRunnerClient = (
   const listeners = new Map<SessionId, (event: StoredEvent) => void>()
   // Firehose listeners receive every frame (e.g. background-run notifications).
   const anyListeners = new Set<(id: SessionId, event: StoredEvent) => void>()
+  const renameListeners = new Set<(id: SessionId, name: string) => void>()
 
   return {
     attach: (id) => {
@@ -63,9 +66,14 @@ export const createRunnerClient = (
       send({ type: "run-set-model", id, modelId })
     },
     dispatch: (message) => {
-      if (message.type !== "runner-event") return
-      listeners.get(message.id)?.(message.event)
-      for (const cb of anyListeners) cb(message.id, message.event)
+      if (message.type === "session-renamed") {
+        for (const cb of renameListeners) cb(message.id, message.name)
+        return
+      }
+      if (message.type === "runner-event") {
+        listeners.get(message.id)?.(message.event)
+        for (const cb of anyListeners) cb(message.id, message.event)
+      }
     },
     onEvent: (id, cb) => {
       listeners.set(id, cb)
@@ -74,6 +82,12 @@ export const createRunnerClient = (
       anyListeners.add(cb)
       return () => {
         anyListeners.delete(cb)
+      }
+    },
+    onSessionRenamed: (cb) => {
+      renameListeners.add(cb)
+      return () => {
+        renameListeners.delete(cb)
       }
     },
   }

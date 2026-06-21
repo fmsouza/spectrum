@@ -136,4 +136,20 @@ describe("createRunnerClient", () => {
     c.dispatch(frame)
     expect(seen).toEqual([id])
   })
+
+  it("dispatches a session-renamed frame to onSessionRenamed listeners", () => {
+    const c = createRunnerClient(() => {})
+    const got: { id: SessionId; name: string }[] = []
+    const off = c.onSessionRenamed((id, name) => got.push({ id, name }))
+    const frame: RunnerOutbound = {
+      type: "session-renamed",
+      id,
+      name: "New name",
+    }
+    c.dispatch(frame)
+    expect(got).toEqual([{ id, name: "New name" }])
+    off()
+    c.dispatch(frame)
+    expect(got).toHaveLength(1)
+  })
 })
