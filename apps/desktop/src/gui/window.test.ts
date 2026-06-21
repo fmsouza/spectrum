@@ -53,6 +53,7 @@ describe("openWindow", () => {
   it("locks the window to the app origin and disables remote content when called", () => {
     const { deps, created } = makeDeps()
     openWindow(fakeCtx, deps)
+    // security.md webview hardening: navigation locked to the app origin, no remote scripts.
     expect(created[0]?.lockNavigationToOrigin).toBe(true)
   })
 

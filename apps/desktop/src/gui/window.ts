@@ -190,8 +190,8 @@ export const realOpenWindowDeps: OpenWindowDeps = {
       ;(window as WindowBundle).bindHandler(h)
     },
   }),
+  wireServer: defaultWireServer,
   createBoundsIO: (ctx) =>
     createWindowBoundsIO({ config: ctx.config, log: ctx.log }),
-  wireServer: defaultWireServer,
   viewUrl: "views://main/index.html",
 }
