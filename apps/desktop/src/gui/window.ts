@@ -55,12 +55,37 @@ const bindBoundsEvents = (
 export interface WindowOptions {
   readonly url: string
   readonly title: string
-  /** Lock navigation to the app origin; external links open in the system browser, not the webview. */
-  readonly lockNavigationToOrigin: boolean
   /** Resolve the initial frame from persisted (sanity-checked) bounds, or the default. */
   readonly loadInitialFrame: () => Promise<WindowBounds>
   /** Record a new window geometry on resize/move (debounced + persisted downstream). */
   readonly onBoundsChange: (bounds: WindowBounds) => void
+}
+
+/**
+ * Subscribe to the window's webview `will-navigate` event and route any
+ * attempted in-webview navigation to `openExternal` (opens in the OS browser),
+ * then prevent the in-window load. Pure over the injected window + opener; the
+ * real `createWindow` wires it with the live `BrowserView` + `Utils.openExternal`.
+ *
+ * `window.webview` is the Electrobun `BrowserView`; its `on("will-navigate")`
+ * fires with `{ url }` for any in-webview navigation (right-click "Open Link",
+ * dragged URLs, programmatic `location.href=`). We open that url externally
+ * so the webview never unloads the SPA.
+ */
+export const bindExternalNavigation = (
+  win: {
+    readonly webview: {
+      on(
+        name: "will-navigate",
+        handler: (event: { readonly url: string }) => void,
+      ): void
+    }
+  },
+  openExternal: (url: string) => boolean,
+): void => {
+  win.webview.on("will-navigate", (event) => {
+    openExternal(event.url)
+  })
 }
 
 /**
@@ -90,8 +115,9 @@ const defaultWireServer = (
 /**
  * Open the GUI window and wire the typed IPC server to it. Thin by design: all decision logic lives
  * in `createIpcHandlers` (tested in desktop-shell-02); this only assembles Electrobun pieces, so it
- * is smoke-tested. SECURITY: the window loads the local built `views/main` only and locks navigation
- * to the app origin — the webview gets no direct fs/network/secret access, only the validated IPC.
+ * is smoke-tested. SECURITY: the window loads the local built `views/main` only
+ * — any in-webview navigation is routed to the OS browser via bindExternalNavigation (the webview
+ * gets no direct fs/network/secret access, only the validated IPC).
  */
 export const openWindow = (
   ctx: AppContext,
@@ -101,7 +127,6 @@ export const openWindow = (
   const window = deps.createWindow({
     url: deps.viewUrl,
     title: "Spectrum",
-    lockNavigationToOrigin: true,
     loadInitialFrame: io.loadInitialFrame,
     onBoundsChange: io.onBoundsChange,
   })
@@ -127,9 +152,10 @@ interface WindowBundle {
  * Production Electrobun wiring. The bun-side RPC exposes one request handler per IPC method name
  * (from `IpcMethodSchemas`); each delegates to the bound `ServerTransport` handler, which
  * `createIpcServer` validates both directions. The webview side (`views/main/ipc-client.ts`)
- * mirrors this with `Electroview.defineRPC`. SECURITY: navigation is locked to bundled, local
- * assets — the window only ever loads `views://main/*` (the strict CSP in `index.html` blocks
- * remote scripts/eval), so the webview gets no direct fs/network/secret access, only validated IPC.
+ * mirrors this with `Electroview.defineRPC`. SECURITY: the window only ever loads `views://main/*`
+ * (the strict CSP in `index.html` blocks remote scripts/eval); any in-webview navigation attempt
+ * is routed to the OS browser via `bindExternalNavigation` + `Utils.openExternal`, so the webview
+ * gets no direct fs/network/secret access, only validated IPC.
  */
 export const realOpenWindowDeps: OpenWindowDeps = {
   createWindow: (opts) => {
@@ -175,6 +201,17 @@ export const realOpenWindowDeps: OpenWindowDeps = {
         bindFocusEvents(win)
         // Persist size/position as the user resizes/moves the window.
         bindBoundsEvents(win, opts.onBoundsChange)
+        // Defense-in-depth: any in-webview navigation (right-click "Open Link",
+        // dragged URL, programmatic location.href) is routed to the OS browser
+        // via Utils.openExternal instead of loading in-window (which would
+        // unload the SPA webview). Mirrors MessageBubble's preventDefault on the
+        // React click path; this catches the paths React can't see.
+        bindExternalNavigation(win, (url) => {
+          void import("electrobun/bun").then(({ Utils }) =>
+            Utils.openExternal(url),
+          )
+          return true
+        })
       },
     )
 

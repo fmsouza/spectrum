@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from "bun:test"
 import type { AppContext } from "../composition"
-import { openWindow } from "./window"
+import { bindExternalNavigation, openWindow } from "./window"
 import type { OpenWindowDeps, WindowOptions } from "./window"
 import type { WindowBounds } from "./window-bounds"
 import type { WindowBoundsIO } from "./window-bounds-io"
@@ -50,13 +50,6 @@ describe("openWindow", () => {
     expect(created[0]?.url).toBe("views://main/index.html")
   })
 
-  it("locks the window to the app origin and disables remote content when called", () => {
-    const { deps, created } = makeDeps()
-    openWindow(fakeCtx, deps)
-    // security.md webview hardening: navigation locked to the app origin, no remote scripts.
-    expect(created[0]?.lockNavigationToOrigin).toBe(true)
-  })
-
   it("wires the IPC server over the Electrobun transport when called", () => {
     const wireServer = mock(() => {})
     const { deps } = makeDeps({ wireServer })
@@ -72,5 +65,29 @@ describe("openWindow", () => {
     expect(createBoundsIO).toHaveBeenCalledTimes(1)
     expect(created[0]?.loadInitialFrame).toBe(io.loadInitialFrame)
     expect(created[0]?.onBoundsChange).toBe(io.onBoundsChange)
+  })
+})
+
+describe("bindExternalNavigation", () => {
+  it("opens the will-navigate url in the external browser", () => {
+    let opened: string | undefined
+    let navHandler: ((event: { readonly url: string }) => void) | undefined
+    const win = {
+      webview: {
+        on: (
+          _name: "will-navigate",
+          handler: (event: { readonly url: string }) => void,
+        ) => {
+          navHandler = handler
+        },
+      },
+    }
+    bindExternalNavigation(win, (url) => {
+      opened = url
+      return true
+    })
+    expect(navHandler).toBeDefined()
+    navHandler?.({ url: "https://example.com" })
+    expect(opened).toBe("https://example.com")
   })
 })

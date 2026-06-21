@@ -30,12 +30,22 @@ export interface WindowOptions {
   renderer?: "native" | "cef"
 }
 
+/** Subset of the BrowserView navigation API we consume (will-navigate). */
+export interface BrowserViewNavEvents {
+  on(
+    name: "will-navigate",
+    handler: (event: { readonly url: string }) => void,
+  ): void
+}
+
 export class BrowserWindow {
   constructor(options?: WindowOptions)
   /** Subscribe to a window event (e.g. `"focus"`, `"blur"`, `"resize"`, `"move"`). */
   on(name: string, handler: (event: unknown) => void): void
   /** Read the window's current geometry synchronously. */
   getFrame(): WindowFrame
+  /** The window's webview; subscribe to navigation events via `.on("will-navigate", ...)`. */
+  readonly webview: BrowserViewNavEvents
 }
 
 /** Subset of the `defineElectrobunRPC` config (bun side). */
