@@ -57,6 +57,7 @@ const mapErrorType = (statusCode: number | undefined): string => {
  */
 export const serializeAnthropicStream = (
   events: AsyncIterable<StreamEvent>,
+  model = "",
 ): ReadableStream<Uint8Array> => {
   const enc = new TextEncoder()
   return new ReadableStream<Uint8Array>({
@@ -65,9 +66,27 @@ export const serializeAnthropicStream = (
         controller.enqueue(enc.encode(sse(event, data)))
       }
 
+      // CONTRACT: the harness's Anthropic SDK stores message_start.message as the
+      // running message and writes r.usage.output_tokens (and optionally
+      // r.usage.input_tokens) on message_delta WITHOUT null-guarding r.usage.
+      // The real Anthropic API always includes usage on message_start, so omitting
+      // it leaves r.usage undefined and causes "undefined is not an object
+      // (evaluating 'e.input_tokens')" on every proxied harness turn. We emit the
+      // canonical message envelope with a valid zero usage here; the final totals
+      // are overwritten by message_delta, exactly as the SDK's accumulator expects.
       send("message_start", {
         type: "message_start",
-        message: { role: "assistant" },
+        message: {
+          id: `msg_${crypto.randomUUID().replace(/-/g, "")}`,
+          model,
+          role: "assistant",
+          content: [],
+          stop_reason: null,
+          usage: {
+            input_tokens: 0,
+            output_tokens: 0,
+          },
+        },
       })
       send("content_block_start", {
         type: "content_block_start",
