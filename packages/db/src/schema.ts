@@ -32,6 +32,7 @@ export const sessions = sqliteTable(
     startedAt: text("startedAt").notNull(),
     endedAt: text("endedAt"),
     exitCode: integer("exitCode"),
+    resumeId: text("resumeId"),
     name: text("name"),
     cwd: text("cwd"),
     projectId: text("projectId")

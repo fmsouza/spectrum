@@ -17,6 +17,7 @@ describe("sessions schema", () => {
         "modelId",
         "name",
         "projectId",
+        "resumeId",
         "startedAt",
       ].sort(),
     )
