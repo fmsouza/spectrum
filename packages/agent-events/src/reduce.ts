@@ -175,6 +175,10 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
           ]
         }
         const existing = items[idx] as MessageItem
+        // Idempotent on exact-text re-emit: double-replay of the stored event
+        // must not concatenate the chunk again. If the re-emitted text matches
+        // the current message text exactly, it's a duplicate — drop it.
+        if (event.text === existing.text) return items
         const updated: MessageItem = {
           ...existing,
           text: existing.text + event.text,
@@ -201,7 +205,18 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
         return items.map((i, j) => (j === idx ? updated : i))
       })
 
-    case "tool-call-started":
+    case "tool-call-started": {
+      // Idempotent: the session-resume flow can deliver the same stored event
+      // twice (manager replay + a redundant `run-attach`). Drop the duplicate
+      // by `callId` so the timeline doesn't show the same call twice.
+      if (
+        state.runners
+          .get(event.runnerId)
+          ?.items.some(
+            (i) => i.kind === "tool-call" && i.callId === event.callId,
+          )
+      )
+        return state
       return mapRunnerItems(state, event.runnerId, (items) => [
         ...items,
         {
@@ -212,6 +227,7 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
           ...(event.input !== undefined ? { input: event.input } : {}),
         },
       ])
+    }
 
     case "tool-output-delta":
       return mapRunnerItems(state, event.runnerId, (items) =>
@@ -239,7 +255,21 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
         ),
       )
 
-    case "file-change":
+    case "file-change": {
+      // Idempotent on `callId` when present: double-replay of the stored event
+      // must not stack a second file-change row. File changes without a callId
+      // are append-only by design (the harness may emit many per turn).
+      if (event.callId !== undefined) {
+        if (
+          state.runners
+            .get(event.runnerId)
+            ?.items.some(
+              (i) =>
+                i.kind === "file-change" && i.callId === event.callId,
+            )
+        )
+          return state
+      }
       return mapRunnerItems(state, event.runnerId, (items) => [
         ...items,
         {
@@ -250,12 +280,24 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
           ...(event.diff !== undefined ? { diff: event.diff } : {}),
         },
       ])
+    }
 
-    case "approval-requested":
+    case "approval-requested": {
+      // Idempotent on `requestId`: double-replay of the stored event must not
+      // stack a second approval row.
+      if (
+        state.runners
+          .get(event.runnerId)
+          ?.items.some(
+            (i) => i.kind === "approval" && i.requestId === event.requestId,
+          )
+      )
+        return state
       return mapRunnerItems(state, event.runnerId, (items) => [
         ...items,
         { kind: "approval", requestId: event.requestId, target: event.target },
       ])
+    }
 
     case "approval-resolved":
       return mapRunnerItems(state, event.runnerId, (items) =>
