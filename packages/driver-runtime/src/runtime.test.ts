@@ -600,6 +600,57 @@ describe("createDriver", () => {
     ])
   })
 
+  describe("createDriver reportResumeToken", () => {
+    it("forwards adapter's reportResumeToken calls to deps.setResumeId bound to the current session id", () => {
+      const calls: Array<{ sessionId: string; resumeId: string }> = []
+      const fake = makeFakeAdapter()
+      const driver = createDriver({
+        adapter: fake.adapter,
+        idGen: createSequentialIdGen(),
+        scheduler: sync,
+        setResumeId: (sessionId, resumeId) => {
+          calls.push({ sessionId, resumeId })
+        },
+      })
+      driver.start({
+        ...startInput,
+        sessionId: "sess_abc" as never,
+      })
+      // Adapter calls ctx.reportResumeToken once it learns its native id.
+      fake.ctx().reportResumeToken?.("native-1")
+      expect(calls).toEqual([{ sessionId: "sess_abc", resumeId: "native-1" }])
+    })
+
+    it("does not place reportResumeToken on ctx when deps.setResumeId is undefined", () => {
+      const fake = makeFakeAdapter()
+      const driver = createDriver({
+        adapter: fake.adapter,
+        idGen: createSequentialIdGen(),
+        scheduler: sync,
+      })
+      driver.start({
+        ...startInput,
+        sessionId: "sess_abc" as never,
+      })
+      expect(fake.ctx().reportResumeToken).toBeUndefined()
+    })
+
+    it("does not place reportResumeToken on ctx when input.sessionId is undefined", () => {
+      const calls: Array<{ sessionId: string; resumeId: string }> = []
+      const fake = makeFakeAdapter()
+      const driver = createDriver({
+        adapter: fake.adapter,
+        idGen: createSequentialIdGen(),
+        scheduler: sync,
+        setResumeId: (sessionId, resumeId) => {
+          calls.push({ sessionId, resumeId })
+        },
+      })
+      driver.start(startInput)
+      expect(fake.ctx().reportResumeToken).toBeUndefined()
+    })
+  })
+
   it("emits question-requested and resolves requestQuestion on respondQuestion", async () => {
     const events: CanonicalEvent[] = []
     let resolved: QuestionAnswer | undefined
