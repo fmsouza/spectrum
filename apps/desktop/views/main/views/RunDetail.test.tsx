@@ -376,6 +376,75 @@ describe("RunDetail (live)", () => {
     expect(runner.sends).toEqual(["fix the bug"])
     cleanup()
   })
+
+  it("does NOT attach the runner socket when skipAttach is true (resumed session)", () => {
+    // The page sets skipAttach=true for a session it just resumed — the
+    // manager replays the backlog itself, so the webview's run-attach would
+    // double-replay. LiveRunDetail must honor the flag and skip attach.
+    const runner = makeFakeRunner()
+    renderWithProviders(
+      <RunDetail
+        mode="live"
+        sessionId={id}
+        runnerClient={runner}
+        skipAttach
+      />,
+      createFakeIpcClient({}),
+    )
+    expect(runner.attached).toEqual([])
+    cleanup()
+  })
+
+  it("applies each replayed event exactly once even if the socket replays the backlog twice (double-replay safety)", async () => {
+    // Mirrors the resume flow at the RunDetail level: the manager's
+    // events.read replay can be followed by a redundant run-attach, so the
+    // same stored event can land on `onEvent` twice. The reducer must drop
+    // duplicates so the timeline shows the conversation exactly once.
+    const runner = makeFakeRunner()
+    renderWithProviders(
+      <RunDetail
+        mode="live"
+        sessionId={id}
+        runnerClient={runner}
+        skipAttach
+      />,
+      createFakeIpcClient({}),
+    )
+    const events: StoredEvent[] = [
+      stored(0, { type: "runner-started", runnerId: "run_root" as never }),
+      stored(1, {
+        type: "text-delta",
+        runnerId: "run_root" as never,
+        messageId: "m1",
+        text: "hello",
+      }),
+      stored(2, {
+        type: "tool-call-started",
+        runnerId: "run_root" as never,
+        callId: "c1",
+        tool: "Bash",
+      }),
+      stored(3, {
+        type: "approval-requested",
+        runnerId: "run_root" as never,
+        requestId: "req1",
+        target: { kind: "command", detail: "ls" },
+      }),
+    ]
+    // First delivery (manager replay)
+    for (const e of events) runner.push(e)
+    // Second delivery (hypothetical redundant run-attach)
+    for (const e of events) runner.push(e)
+    // The text-delta text must NOT be doubled; the tool call and approval
+    // must each appear exactly once. (No DOM text node to assert directly
+    // for tool/approval; the reducer test covers the data invariant. Here
+    // we assert the user-visible text is not concatenated.)
+    await waitFor(() =>
+      expect(screen.getByText("hello")).toBeInTheDocument(),
+    )
+    expect(screen.queryByText("hellohello")).not.toBeInTheDocument()
+    cleanup()
+  })
 })
 
 describe("RunDetail (replay)", () => {
