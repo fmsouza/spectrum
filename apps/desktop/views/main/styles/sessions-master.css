@@ -52,6 +52,13 @@
   overflow: hidden;
 }
 
+/* The .lk-truncate leaf must be block-level here so its own
+   text-overflow:ellipsis engages; nested in the Tooltip's block wrapper it
+   would otherwise stay an inline box (ellipsis only clamps block/inline-block). */
+.lk-session-row__line .lk-session-row__name .lk-truncate {
+  display: block;
+}
+
 /* Lines 2 & 3: harness·model and cwd·time — smaller, muted. */
 .lk-session-row__sub {
   font-size: var(--sp-text-xs);
