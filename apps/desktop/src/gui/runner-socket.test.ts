@@ -83,4 +83,28 @@ describe("makeRunnerSocketHandlers", () => {
     )
     expect(inbound).toEqual([])
   })
+
+  it("calls onConnect when the socket opens", () => {
+    const { manager } = makeManager()
+    let connected = 0
+    const handlers = makeRunnerSocketHandlers(manager, {
+      onConnect: () => {
+        connected += 1
+      },
+    })
+    handlers.open({ send: () => {} })
+    expect(connected).toBe(1)
+  })
+
+  it("calls onDisconnect when the socket closes", () => {
+    const { manager } = makeManager()
+    let disconnected = 0
+    const handlers = makeRunnerSocketHandlers(manager, {
+      onDisconnect: () => {
+        disconnected += 1
+      },
+    })
+    handlers.close()
+    expect(disconnected).toBe(1)
+  })
 })
