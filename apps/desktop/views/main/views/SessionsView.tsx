@@ -42,6 +42,22 @@ export type SessionsViewInput = {
   readonly models?: readonly ModelRoute[]
   /** Map of providerId -> human name, threaded to `RunDetail` to label the picker. */
   readonly providerNames?: Readonly<Record<string, string>>
+  /** Live-busy map from `runViewStore`; drives the master row's running badge. */
+  readonly busyBySession?: Readonly<Record<string, boolean>>
+  /**
+   * Page-level handler that turns a send from the replay composer into an
+   * auto-resume: adds the session to `openSessionIds` (flips replay→live),
+   * and forwards the text to `runnerClient.send` (the manager resumes+replays).
+   * The new `LiveRunDetail` suppresses its own `run-attach` via `skipAttachIds`.
+   */
+  readonly onResumeSend?:
+    | ((sessionId: SessionId, text: string) => void)
+    | undefined
+  /**
+   * Sessions whose `LiveRunDetail` must NOT call `runnerClient.attach` on mount
+   * (the manager has already replayed the backlog in `resumeAndSend`).
+   */
+  readonly skipAttachIds?: ReadonlySet<string>
 }
 
 /**
@@ -63,6 +79,7 @@ const SessionsMaster = ({
   onRename,
   models,
   providerNames,
+  busyBySession,
 }: {
   readonly selectedSessionId?: SessionId
   readonly projects: readonly ProjectSummary[]
@@ -77,6 +94,7 @@ const SessionsMaster = ({
   readonly onRename?: ((id: SessionId, name: string) => void) | undefined
   readonly models?: readonly ModelRoute[]
   readonly providerNames?: Readonly<Record<string, string>>
+  readonly busyBySession?: Readonly<Record<string, boolean>>
 }): ReactElement => (
   <ProjectList
     projects={projects}
@@ -85,6 +103,7 @@ const SessionsMaster = ({
     {...(selectedSessionId === undefined
       ? {}
       : { selectedId: selectedSessionId })}
+    {...(busyBySession === undefined ? {} : { busyBySessionId: busyBySession })}
     labelFor={(s: Session) => ({
       harnessName: String(s.harnessId),
       model: sessionModelLabel(
@@ -116,6 +135,8 @@ const SessionsDetail = ({
   runnerClient,
   models,
   providerNames,
+  onResumeSend,
+  skipAttachIds,
 }: {
   readonly selectedSessionId?: SessionId
   readonly openSessionIds: readonly SessionId[]
@@ -123,6 +144,10 @@ const SessionsDetail = ({
   readonly runnerClient: RunnerClient
   readonly models?: readonly ModelRoute[]
   readonly providerNames?: Readonly<Record<string, string>>
+  readonly onResumeSend?:
+    | ((sessionId: SessionId, text: string) => void)
+    | undefined
+  readonly skipAttachIds?: ReadonlySet<string>
 }): ReactElement => {
   if (selectedSessionId === undefined)
     return (
@@ -147,6 +172,13 @@ const SessionsDetail = ({
           ? {}
           : { harnessId: selectedSession.harnessId })}
         runnerClient={runnerClient}
+        {...(onResumeSend === undefined
+          ? {}
+          : { onResumeSend: (text) => onResumeSend(selectedSessionId, text) })}
+        {...(skipAttachIds === undefined ||
+        !skipAttachIds.has(String(selectedSessionId))
+          ? {}
+          : { skipAttach: true })}
         {...(models === undefined ? {} : { models })}
         {...(providerNames === undefined ? {} : { providerNames })}
       />
@@ -177,6 +209,9 @@ export const SessionsView = ({
   runnerClient,
   models,
   providerNames,
+  busyBySession,
+  onResumeSend,
+  skipAttachIds,
 }: SessionsViewInput): {
   readonly master: ReactNode
   readonly detail: ReactNode
@@ -196,6 +231,7 @@ export const SessionsView = ({
       onRename={onRename}
       {...(models === undefined ? {} : { models })}
       {...(providerNames === undefined ? {} : { providerNames })}
+      {...(busyBySession === undefined ? {} : { busyBySession })}
     />
   ),
   detail: (
@@ -206,6 +242,10 @@ export const SessionsView = ({
       runnerClient={runnerClient}
       {...(models === undefined ? {} : { models })}
       {...(providerNames === undefined ? {} : { providerNames })}
+      {...(onResumeSend === undefined
+        ? {}
+        : { onResumeSend: (id, text) => onResumeSend(id, text) })}
+      {...(skipAttachIds === undefined ? {} : { skipAttachIds })}
     />
   ),
 })

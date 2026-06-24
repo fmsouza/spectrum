@@ -45,6 +45,13 @@ export interface AdapterCtx {
   newRunnerId(): RunnerId
   /** The root runner id (already minted by the runtime before `start` is called). */
   readonly rootRunnerId: RunnerId
+  /**
+   * Report the harness-native session id (e.g. Claude's session_id, Codex's threadId) once the
+   * adapter learns it, so the manager can persist it on the originating Spectrum session for
+   * later resume. Placed on ctx only when the runtime knows the Spectrum `sessionId` AND the
+   * caller wired a `setResumeId` sink; adapters that don't resume should ignore the absence.
+   */
+  reportResumeToken?(resumeToken: string): void
 }
 
 /** One per harness. `start` does the real async spawn/connect and returns a live handle. */

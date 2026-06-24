@@ -156,11 +156,6 @@ span[data-tone="success"] {
   background: var(--sp-success-soft);
 }
 
-span[data-tone="danger"] {
-  color: var(--sp-danger);
-  background: var(--sp-danger-soft);
-}
-
 /* ─────────────────────── StatusDot (span role=img) ─────────────────────── */
 span[role="img"][data-color] {
   display: inline-block;

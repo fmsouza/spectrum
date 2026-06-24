@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { CanonicalEvent, RunnerId } from "@spectrum/agent-events"
+import type { AgentStartInput } from "./driver"
 import { createFakeDriver, demoScript } from "./fake-driver"
 import type { FakeScript } from "./fake-driver"
 
@@ -205,5 +206,42 @@ describe("demoScript", () => {
     )
     expect(subStart?.spawnedByCallId).toBeDefined()
     expect(subStart?.parentRunnerId).toBe(demoScript.rootRunnerId)
+  })
+})
+
+describe("createFakeDriver resume", () => {
+  it("reports the resumeToken via the wired setResumeId on start", () => {
+    const reported: { id: string; token: string }[] = []
+    const driver = createFakeDriver({
+      script: { rootRunnerId: root, reactions: [], resumeToken: "fake-sess-1" },
+      scheduler: sync,
+      setResumeId: (id, token) => reported.push({ id: String(id), token }),
+    })
+    const r = driver.start({
+      harnessId: "demo" as never,
+      cwd: "/x",
+      env: {},
+      sessionId: "s_1" as never,
+    })
+    expect(r.ok).toBe(true)
+    expect(reported).toEqual([{ id: "s_1", token: "fake-sess-1" }])
+  })
+
+  it("records the input.resume so a test can assert the driver was started with a resume id", () => {
+    let captured: AgentStartInput | undefined
+    const driver = createFakeDriver({
+      script: { rootRunnerId: root, reactions: [] },
+      scheduler: sync,
+      onStart: (i) => {
+        captured = i
+      },
+    })
+    driver.start({
+      harnessId: "demo" as never,
+      cwd: "/x",
+      env: {},
+      resume: "resume-me",
+    })
+    expect(captured?.resume).toBe("resume-me")
   })
 })

@@ -532,6 +532,30 @@ describe("createClaudeAdapter", () => {
     expect(fake.setPermissionModeCalls).toEqual(["bypassPermissions"])
   })
 
+  // --- Task 11: resume via input.resume + reportResumeToken on system:init ----------------
+
+  it("passes input.resume to the initial sdk.query options", async () => {
+    const fake = makeFakeSdk([])
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    await adapter.start({ ...input, resume: "claude-7" }, makeCtx([], []))
+    expect(fake.capturedOptions().resume).toBe("claude-7")
+  })
+
+  it("reports the claude session id via ctx.reportResumeToken on system:init", async () => {
+    const reported: string[] = []
+    const fake = makeFakeSdk([
+      { type: "system", subtype: "init", model: "m", session_id: "claude-7" },
+      { type: "result", subtype: "success" },
+    ])
+    const adapter = createClaudeAdapter({ loadSdk: async () => fake.sdk })
+    const ctx = makeCtx([], [])
+    ctx.reportResumeToken = (t) => reported.push(t)
+    await adapter.start(input, ctx)
+    // allow the pump microtask to run
+    await new Promise((r) => setTimeout(r, 10))
+    expect(reported).toEqual(["claude-7"])
+  })
+
   // --- restart-on-rejection tests ---------------------------------------------------------
 
   it("restarts the query with resume and the new mode when setPermissionMode rejects", async () => {

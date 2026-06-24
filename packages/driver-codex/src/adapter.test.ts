@@ -499,4 +499,36 @@ describe("createCodexAdapter.start", () => {
       },
     ])
   })
+
+  it("calls thread/resume instead of thread/start when input.resume is set, and reports the threadId", async () => {
+    const ft = makeFakeTransport()
+    ft.fake.setResult("thread/resume", { thread: { id: "thread-9" } })
+    const ctx = makeCtx()
+    const reported: string[] = []
+    const resumeCtx: AdapterCtx = {
+      ...ctx.ctx,
+      reportResumeToken: (token: string) => reported.push(token),
+    }
+    await makeAdapter(ft).start(
+      {
+        harnessId: "codex" as never,
+        cwd: "/repo",
+        env: {},
+        modelId: "gpt-5" as never,
+        resume: "thread-9",
+        sessionId: "s_1" as never,
+      },
+      resumeCtx,
+    )
+    const methods = ft.fake.outgoing.map(([, m]) => m)
+    expect(methods).not.toContain("thread/start")
+    const resumeCall = ft.fake.outgoing.find(([, m]) => m === "thread/resume")
+    expect(resumeCall).toBeDefined()
+    expect(resumeCall?.[2]).toEqual({
+      threadId: "thread-9",
+      cwd: "/repo",
+      model: "gpt-5",
+    })
+    expect(reported).toEqual(["thread-9"])
+  })
 })

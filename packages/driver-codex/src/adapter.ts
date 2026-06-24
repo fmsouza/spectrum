@@ -16,6 +16,7 @@ import { CODEX_SUPPORTED_MODES, toCodexTurnPolicy } from "./permission-mode"
 import {
   M_INITIALIZE,
   M_INITIALIZED,
+  M_THREAD_RESUME,
   M_THREAD_START,
   M_TURN_INTERRUPT,
   M_TURN_START,
@@ -245,12 +246,16 @@ export const createCodexAdapter = (
     })
     dispatcher.notify(M_INITIALIZED, undefined)
 
-    // thread/start: capture the thread id (an erroring request rejects `start`).
-    const startResult = (await dispatcher.request(M_THREAD_START, {
+    // thread/start (fresh) or thread/resume (by threadId) depending on input.resume.
+    const startOrResume =
+      input.resume !== undefined ? M_THREAD_RESUME : M_THREAD_START
+    const startResult = (await dispatcher.request(startOrResume, {
+      ...(input.resume !== undefined ? { threadId: input.resume } : {}),
       cwd: input.cwd,
       ...(input.modelId !== undefined ? { model: String(input.modelId) } : {}),
     })) as { thread: { id: string } }
     const threadId = startResult.thread.id
+    ctx.reportResumeToken?.(threadId)
 
     // Root runner-started (the runtime already emitted one up front; this re-emit carries the model).
     ctx.emit({

@@ -36,6 +36,8 @@ export type ProjectListProps = {
   readonly onDeleteSession?: (sessionId: SessionId) => void
   /** Rename a single session. Optional — enables inline session name editing. */
   readonly onRename?: ((id: SessionId, name: string) => void) | undefined
+  /** Live busy signal keyed by session id, forwarded to each project group. Optional. */
+  readonly busyBySessionId?: Readonly<Record<string, boolean>>
 }
 
 type Menu =
@@ -69,6 +71,7 @@ export const ProjectList = ({
   onDeleteProject,
   onDeleteSession,
   onRename,
+  busyBySessionId,
 }: ProjectListProps): ReactElement => {
   const [menu, setMenu] = useState<Menu | undefined>(undefined)
   const [pending, setPending] = useState<Pending | undefined>(undefined)
@@ -118,6 +121,7 @@ export const ProjectList = ({
                       }),
                   })}
               onRename={onRename}
+              {...(busyBySessionId === undefined ? {} : { busyBySessionId })}
             />
           ))
         )}
