@@ -119,7 +119,12 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
    * Sessions whose just-resumed live view must NOT call `runnerClient.attach`
    * on mount — the manager has already replayed the backlog via `resumeAndSend`,
    * and a re-attach would cause the history to be replayed a second time.
-   * Cleared by the `onAny` effect below on the first live event for each id.
+   * STICKY for the resumed session's lifetime: the flag stays set until the
+   * user explicitly closes the session (removes it from `openSessionIds`).
+   * Live events for a resumed session are NOT a signal to clear it — the
+   * manager owns the replay and continues to stream the same socket, so any
+   * future re-mount of `LiveRunDetail` must still skip attach to avoid the
+   * double-replay.
    */
   const [skipAttachIds, setSkipAttachIds] = useState<ReadonlySet<string>>(
     () => new Set(),
@@ -130,6 +135,11 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   // Live turn-in-flight per session — drives the master row's running badge.
   // Read from `runViewStore` (the same store `LiveRunDetail` writes to).
   const busyBySession = useStore(useStores().runView, (s) => s.busyBySession)
+  // `applyEvent` is exposed so the firehose effect (below) can keep the
+  // runViewStore in sync regardless of whether the per-session listener on
+  // `LiveRunDetail` is registered yet — defense-in-depth against the
+  // race where the manager replays before the webview mounts.
+  const applyEvent = useStore(useStores().runView, (s) => s.applyEvent)
 
   // Prefill the New Session modal with the last launched folder/harness
   // (persisted by a successful launch). Page-level fetch — the modal stays dumb
@@ -205,18 +215,14 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   // Toast when a BACKGROUND run finishes/errors (not the session being viewed).
   // `onAny` accumulates listeners, so the effect MUST drop its previous one via
   // the returned unsubscribe fn on every re-run — otherwise toasts would stack.
+  // The firehose ALSO drives the runViewStore via `applyEvent` — the per-session
+  // listener on `LiveRunDetail` covers the common case, but if the manager replays
+  // a stored event before the webview's listener is registered, the events would
+  // be lost. Calling `applyEvent` here guarantees the store reflects every frame.
   useEffect(() => {
     const off = runnerClient.onAny((id, stored) => {
       const ev = stored.event
-      // Drop the `skipAttach` flag on the FIRST live event for a resumed session;
-      // the manager has started streaming through the same socket, so the live
-      // view's `attach` is now safe to drop on a future re-mount.
-      setSkipAttachIds((prev) => {
-        if (!prev.has(String(id))) return prev
-        const next = new Set(prev)
-        next.delete(String(id))
-        return next
-      })
+      applyEvent(id, ev)
       // Update the root map on EVERY frame so a later runner-finished can be classified.
       rootsRef.current = trackRootRunner(rootsRef.current, id, ev)
       if (ev.type !== "runner-finished") return
@@ -237,7 +243,7 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
       )
     })
     return off
-  }, [runnerClient, view, notify, navigate])
+  }, [runnerClient, view, notify, navigate, applyEvent])
 
   const mode: AppMode = view.kind === "settings" ? "settings" : "sessions"
 
@@ -300,6 +306,24 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
     openSession(sessionId)
     runnerClient.send(sessionId, text)
   }
+
+  // Garbage-collect the sticky `skipAttach` flag: when a session is no longer
+  // in `openSessionIds`, it was closed (or removed), so a future re-mount of
+  // `LiveRunDetail` (e.g. after re-opening via `onResumeSend`) must set the
+  // flag again from scratch. We clear stale entries on every change to the
+  // open-set so the set never grows unbounded.
+  const openIdStrings = openSessionIds.map((id) => String(id)).join("|")
+  useEffect(() => {
+    setSkipAttachIds((prev) => {
+      if (prev.size === 0) return prev
+      const open = new Set(openIdStrings.split("|").filter((s) => s !== ""))
+      let changed = false
+      const next = new Set<string>()
+      for (const id of prev) if (open.has(id)) next.add(id)
+      else changed = true
+      return changed ? next : prev
+    })
+  }, [openIdStrings])
 
   const { master, detail } =
     view.kind === "settings"
