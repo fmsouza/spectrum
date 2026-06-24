@@ -48,7 +48,7 @@ describe("SessionRow", () => {
     expect(screen.getByText("Untitled")).toBeInTheDocument()
     expect(screen.queryByText("s_2")).toBeNull()
   })
-  it("shows a running badge when the session has not ended", () => {
+  it("shows a running badge only when busy is true", () => {
     render(
       <SessionRow
         session={running}
@@ -56,11 +56,13 @@ describe("SessionRow", () => {
         model="sonnet"
         selected={false}
         onSelect={() => {}}
+        busy
       />,
     )
-    expect(screen.getByText("running")).toBeInTheDocument()
+    const badge = screen.getByText("running")
+    expect(badge).toHaveAttribute("data-tone", "info")
   })
-  it("shows the exit code with a danger tone for a non-zero exit", () => {
+  it("shows no badge when busy is absent, even for an ended session", () => {
     render(
       <SessionRow
         session={exited}
@@ -70,8 +72,24 @@ describe("SessionRow", () => {
         onSelect={() => {}}
       />,
     )
-    const badge = screen.getByText("exit 1")
-    expect(badge).toHaveAttribute("data-tone", "danger")
+    expect(screen.queryByText("running")).toBeNull()
+    expect(screen.queryByText("ended")).toBeNull()
+    expect(screen.queryByText(/^exit /)).toBeNull()
+  })
+  it("shows no badge when busy is false on a not-yet-ended session", () => {
+    render(
+      <SessionRow
+        session={running}
+        harnessName="Claude Code"
+        model="sonnet"
+        selected={false}
+        onSelect={() => {}}
+        busy={false}
+      />,
+    )
+    expect(screen.queryByText("running")).toBeNull()
+    expect(screen.queryByText("ended")).toBeNull()
+    expect(screen.queryByText(/^exit /)).toBeNull()
   })
   it("renders harness name and model on the second line", () => {
     render(
@@ -114,28 +132,6 @@ describe("SessionRow", () => {
     )
     expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true")
   })
-  it("shows a neutral-tone ended badge when exitCode is undefined (Fix 6)", () => {
-    const ended = {
-      id: "s_3",
-      harnessId: "claude",
-      alias: "default",
-      startedAt: "2026-06-04T10:00:00.000Z",
-      endedAt: "2026-06-04T10:05:00.000Z",
-      cwd: "/tmp",
-    } as unknown as Session
-    render(
-      <SessionRow
-        session={ended}
-        harnessName="Claude Code"
-        model="sonnet"
-        selected={false}
-        onSelect={() => {}}
-      />,
-    )
-    const badge = screen.getByText("ended")
-    expect(badge).toHaveAttribute("data-tone", "neutral")
-  })
-
   it("calls onSelect when the row is clicked", () => {
     const onSelect = mock(() => {})
     render(
@@ -233,7 +229,8 @@ describe("SessionRow", () => {
     expect(container.querySelectorAll(".lk-truncate").length).toBe(1)
     // The redundant StatusDot is gone — the Badge is the only status signal.
     expect(container.querySelector("[role='img']")).toBeNull()
-    expect(container.querySelector("[data-tone]")).not.toBeNull()
+    // No busy signal -> no badge at all.
+    expect(container.querySelector("[data-tone]")).toBeNull()
   })
 })
 

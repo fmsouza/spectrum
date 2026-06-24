@@ -12,6 +12,8 @@ export type SessionRowProps = {
   readonly model: string
   readonly selected: boolean
   readonly onSelect: () => void
+  /** Live busy signal — when true, show a `running` badge; otherwise render no badge. Optional. */
+  readonly busy?: boolean
   /** Right-click handler (e.g. open a context menu). Optional. */
   readonly onContextMenu?: (e: { clientX: number; clientY: number }) => void
   /** Inline rename handler. When provided, clicking the name enters edit mode. Optional. */
@@ -24,10 +26,10 @@ export const SessionRow = ({
   model,
   selected,
   onSelect,
+  busy,
   onContextMenu,
   onRename,
 }: SessionRowProps): ReactElement => {
-  const isRunning = session.endedAt === undefined
   const displayName = session.name ?? "Untitled"
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(displayName)
@@ -106,15 +108,7 @@ export const SessionRow = ({
             </span>
           </Tooltip>
         )}
-        {isRunning ? (
-          <Badge tone="info">running</Badge>
-        ) : session.exitCode === undefined ? (
-          <Badge tone="neutral">ended</Badge>
-        ) : (
-          <Badge tone={session.exitCode === 0 ? "success" : "danger"}>
-            {`exit ${session.exitCode}`}
-          </Badge>
-        )}
+        {busy === true ? <Badge tone="info">running</Badge> : null}
       </span>
       <span className="lk-session-row__sub">{`${harnessName} · ${model}`}</span>
       <span className="lk-session-row__meta" data-testid="session-row-meta">
