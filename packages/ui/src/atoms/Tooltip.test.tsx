@@ -52,4 +52,24 @@ describe("Tooltip", () => {
     fireEvent.keyDown(btn, { key: "Escape" })
     expect(screen.queryByRole("tooltip")).toBeNull()
   })
+
+  it("applies an extra className to the tooltip root when provided", () => {
+    const { container } = render(
+      <Tooltip label="Help text" className="lk-session-row__name">
+        <button type="button">Go</button>
+      </Tooltip>,
+    )
+    const root = container.querySelector(".lk-tooltip")
+    expect(root).not.toBeNull()
+    expect(root).toHaveClass("lk-session-row__name")
+  })
+
+  it("uses only the base class on the root when no className is given", () => {
+    const { container } = render(
+      <Tooltip label="Help text">
+        <button type="button">Go</button>
+      </Tooltip>,
+    )
+    expect(container.querySelector(".lk-tooltip")?.className).toBe("lk-tooltip")
+  })
 })
