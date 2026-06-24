@@ -238,6 +238,7 @@ span[role="status"][aria-busy="true"] {
   font-size: var(--sp-text-xs);
   white-space: normal;
   max-width: 22rem;
+  width: max-content;
   pointer-events: none;
   box-shadow: var(--sp-shadow-2);
 }
