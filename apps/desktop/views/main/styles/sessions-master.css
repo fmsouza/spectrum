@@ -37,6 +37,21 @@
   font-size: var(--sp-text-sm);
 }
 
+/* The title's Tooltip root is the flex item that must shrink; the constraint
+   has to reach the inner trigger wrapper so the .lk-truncate leaf can clamp.
+   `:not(.lk-tooltip__bubble)` excludes the absolutely-positioned bubble. */
+.lk-session-row__line .lk-session-row__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.lk-session-row__line .lk-session-row__name > span:not(.lk-tooltip__bubble) {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+}
+
 /* Lines 2 & 3: harness·model and cwd·time — smaller, muted. */
 .lk-session-row__sub {
   font-size: var(--sp-text-xs);
