@@ -5,6 +5,7 @@ import { ProjectGroup } from "./ProjectGroup"
 
 const session = (id: string): Session => ({
   id: id as Session["id"],
+  name: id,
   harnessId: "claude" as Session["harnessId"],
   startedAt: "2026-06-07T10:00:00.000Z",
 })

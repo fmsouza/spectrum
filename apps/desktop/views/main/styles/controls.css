@@ -236,7 +236,9 @@ span[role="status"][aria-busy="true"] {
   background: var(--sp-graphite-950, #222);
   color: var(--sp-text-secondary, #fff);
   font-size: var(--sp-text-xs);
-  white-space: nowrap;
+  white-space: normal;
+  max-width: 22rem;
+  width: max-content;
   pointer-events: none;
   box-shadow: var(--sp-shadow-2);
 }
