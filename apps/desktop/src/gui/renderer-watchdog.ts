@@ -98,6 +98,9 @@ export const createRendererWatchdog = (
       clearTimer()
     },
     onDisconnect: () => {
+      // Ignore a duplicate close while already tracking a disconnect — re-arming
+      // would cancel the in-flight grace/backoff timer and lose retry progress.
+      if (!connected && timer !== null) return
       deps.logger.warn("renderer disconnected")
       connected = false
       schedule(graceMs)

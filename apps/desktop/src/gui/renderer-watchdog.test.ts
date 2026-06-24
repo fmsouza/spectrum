@@ -18,13 +18,16 @@ const makeTimers = (): {
   timers: WatchdogTimers
   flushNext: () => void
   pending: () => number
+  delays: number[]
 } => {
   let queue: Array<{ id: number; fn: () => void }> = []
   let nextId = 1
+  const delays: number[] = []
   const timers: WatchdogTimers = {
-    setTimeout: (fn) => {
+    setTimeout: (fn, ms) => {
       const id = nextId++
       queue.push({ id, fn })
+      delays.push(ms)
       return id
     },
     clearTimeout: (handle) => {
@@ -38,6 +41,7 @@ const makeTimers = (): {
       next?.fn()
     },
     pending: () => queue.length,
+    delays,
   }
 }
 
@@ -134,5 +138,32 @@ describe("createRendererWatchdog", () => {
     const wd = createRendererWatchdog({ timers, logger: noopLogger() })
     wd.onDisconnect()
     expect(() => flushNext()).not.toThrow()
+  })
+
+  it("ignores a duplicate disconnect while already tracking, preserving retry progress", () => {
+    const { timers, flushNext, delays } = makeTimers()
+    let reloads = 0
+    const wd = createRendererWatchdog({ timers, logger: noopLogger() })
+    wd.bindReload(() => {
+      reloads += 1
+    })
+    wd.onDisconnect() // arms the grace timer (5000ms)
+    flushNext() // grace elapses → reload #1, schedules backoff(1) = 4000ms
+    // Simulate Bun delivering a duplicate close while the backoff timer is pending
+    wd.onDisconnect() // duplicate — must NOT re-arm and reset the delay to grace
+    flushNext() // should continue with backoff delay, not restart grace → reload #2, schedules backoff(2) = 8000ms
+    // With the guard, the duplicate is ignored and we see [5000, 4000, 8000].
+    // Without the guard, the duplicate would reset to grace: [5000, 5000, 8000] (extra grace delay).
+    expect(delays).toEqual([5000, 4000, 8000])
+    expect(reloads).toBe(2)
+  })
+
+  it("schedules the post-reload re-check using the backoff for the attempt", () => {
+    const { timers, flushNext, delays } = makeTimers()
+    const wd = createRendererWatchdog({ timers, logger: noopLogger() })
+    wd.bindReload(() => {})
+    wd.onDisconnect() // grace timer: 5000
+    flushNext() // grace → reload #1, schedules backoff(1) = 4000
+    expect(delays).toEqual([5000, 4000])
   })
 })
