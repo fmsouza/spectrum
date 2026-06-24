@@ -119,7 +119,9 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
       ...(input.command !== undefined ? { command: input.command } : {}),
       ...(input.args !== undefined ? { args: input.args } : {}),
       ...(input.resume !== undefined ? { resume: input.resume } : {}),
-      ...(input.sessionId !== undefined ? { sessionId: input.sessionId } : {}),
+      // The manager mints the id via sessions.create above; the driver needs it for callback
+      // binding (FakeDriver's resumeToken persistence gate checks input.sessionId !== undefined).
+      sessionId: id,
     })
     if (isErr(started)) {
       // Driver start boundary failure. `kind` is a DriverError kind (e.g. "start-failed"); the

@@ -1208,18 +1208,20 @@ describe("createRunManager resume (lazy auto-resume on run-send)", () => {
   it("persists the harness resume token reported by the driver on launch", () => {
     // The FakeDriver (Task 10) reports its script.resumeToken via the wired
     // setResumeId on start, gated on input.sessionId being defined. The manager
-    // does not yet forward the launched sessionId to driver.start on the initial
-    // launch path (that lives in Task 14), so this test verifies the wiring
-    // surface — setResumeId flows into the fake driver construction and through
-    // the same resumeIds array the manager's session-sink uses.
+    // forwards sessionId: id (the id it minted via sessions.create) to driver.start
+    // on the initial launch path, so setResumeId fires with the launched sessionId
+    // and the token lands in the sessions sink.
     const script: FakeScript = {
       rootRunnerId: root,
       reactions: [{ on: "start", emit: [startEvent] }],
+      resumeToken: "claude-sess-99",
     }
     const { deps, resumeIds } = makeDeps(script)
-    expect(typeof deps.sessions.setResumeId).toBe("function")
-    // makeDeps wires the FakeDriver's setResumeId into the same resumeIds array.
-    expect(resumeIds).toEqual([])
+    const manager = createRunManager(deps)
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    expect(resumeIds).toEqual([
+      { id: String(sessionId), resumeId: "claude-sess-99" },
+    ])
   })
 
   it("reopens the session and re-launches the driver with the persisted resumeId when a run-send arrives for an ended session", async () => {
