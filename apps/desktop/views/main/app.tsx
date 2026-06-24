@@ -4,7 +4,7 @@ import {
   trackRootRunner,
 } from "@spectrum/agent-events"
 import type { IpcClient, IpcError } from "@spectrum/ipc"
-import type { ProjectId } from "@spectrum/types"
+import type { ProjectId, SessionId } from "@spectrum/types"
 import {
   type AppMode,
   AppShell,
@@ -115,9 +115,21 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   // The last harness launched, used to preselect the modal's select. The
   // composer's model selector persists per-harness directly (no modal state).
   const [initialHarnessId, setInitialHarnessId] = useState<string>("")
+  /**
+   * Sessions whose just-resumed live view must NOT call `runnerClient.attach`
+   * on mount — the manager has already replayed the backlog via `resumeAndSend`,
+   * and a re-attach would cause the history to be replayed a second time.
+   * Cleared by the `onAny` effect below on the first live event for each id.
+   */
+  const [skipAttachIds, setSkipAttachIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
   const proxy = useProxyStatus()
   const update = useUpdate()
   const notifications = useNotifications()
+  // Live turn-in-flight per session — drives the master row's running badge.
+  // Read from `runViewStore` (the same store `LiveRunDetail` writes to).
+  const busyBySession = useStore(useStores().runView, (s) => s.busyBySession)
 
   // Prefill the New Session modal with the last launched folder/harness
   // (persisted by a successful launch). Page-level fetch — the modal stays dumb
@@ -176,12 +188,35 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
     return off
   }, [runnerClient, updateSessionName])
 
+  // Fresh-restart toast: the manager emits `session-resume-token` with an empty
+  // `resumeToken` when the resumed row has no resumable history. Surface this as
+  // a one-time info toast so the user knows the conversation started over.
+  useEffect(() => {
+    const off = runnerClient.onResumeToken((_id, resumeToken) => {
+      if (resumeToken !== "") return
+      notify({
+        tone: "info",
+        message: "Restarted fresh — this harness can't resume history.",
+      })
+    })
+    return off
+  }, [runnerClient, notify])
+
   // Toast when a BACKGROUND run finishes/errors (not the session being viewed).
   // `onAny` accumulates listeners, so the effect MUST drop its previous one via
   // the returned unsubscribe fn on every re-run — otherwise toasts would stack.
   useEffect(() => {
     const off = runnerClient.onAny((id, stored) => {
       const ev = stored.event
+      // Drop the `skipAttach` flag on the FIRST live event for a resumed session;
+      // the manager has started streaming through the same socket, so the live
+      // view's `attach` is now safe to drop on a future re-mount.
+      setSkipAttachIds((prev) => {
+        if (!prev.has(String(id))) return prev
+        const next = new Set(prev)
+        next.delete(String(id))
+        return next
+      })
       // Update the root map on EVERY frame so a later runner-finished can be classified.
       rootsRef.current = trackRootRunner(rootsRef.current, id, ev)
       if (ev.type !== "runner-finished") return
@@ -248,6 +283,22 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
     navigate({ kind: "sessions", selectedSessionId: id })
     setModalOpen(false)
     // sessions.launch already invalidates both groups on success.
+  }
+
+  // Replay-composer send: flip replay→live (so the new `LiveRunDetail` mounts)
+  // and forward the text via `runnerClient.send`. The manager treats `run-send`
+  // for an unknown/ended session id as an auto-resume: it relaunches the
+  // harness with the session's `resumeId` and replays the backlog itself. The
+  // `skipAttach` flag suppresses the new `LiveRunDetail`'s own `run-attach` so
+  // the history is replayed exactly once.
+  const onResumeSend = (sessionId: SessionId, text: string): void => {
+    setSkipAttachIds((prev) => {
+      const next = new Set(prev)
+      next.add(String(sessionId))
+      return next
+    })
+    openSession(sessionId)
+    runnerClient.send(sessionId, text)
   }
 
   const { master, detail } =
@@ -339,6 +390,9 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
           runnerClient,
           models: models.data ?? [],
           providerNames,
+          busyBySession,
+          onResumeSend,
+          skipAttachIds,
         })
 
   return (

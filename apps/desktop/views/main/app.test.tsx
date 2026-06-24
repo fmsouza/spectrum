@@ -92,6 +92,7 @@ const fakeRunnerClient: RunnerClient = {
   onEvent: () => {},
   onAny: () => () => {},
   onSessionRenamed: () => () => {},
+  onResumeToken: () => () => {},
 } as unknown as RunnerClient
 
 const baseStubs = {

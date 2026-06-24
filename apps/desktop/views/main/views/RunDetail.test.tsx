@@ -46,6 +46,7 @@ const makeFakeRunner = (): RunnerClient & {
     },
     onAny: () => () => {},
     onSessionRenamed: () => () => {},
+    onResumeToken: () => () => {},
     push: (event) => listener?.(event),
   }
 }
@@ -408,6 +409,59 @@ describe("RunDetail (replay)", () => {
     )
     expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled()
     expect(runner.attached).toEqual([]) // replay never attaches the socket
+    cleanup()
+  })
+
+  it("enables the composer in replay mode so a send triggers onResumeSend", async () => {
+    const runner = makeFakeRunner()
+    const resumeSends: { id: SessionId; text: string }[] = []
+    const onResumeSend = (text: string): void => {
+      resumeSends.push({ id, text })
+    }
+    const client = createFakeIpcClient({
+      getRunEvents: async () => ({
+        ok: true,
+        value: {
+          events: [
+            stored(0, {
+              type: "runner-started",
+              runnerId: "run_root" as never,
+            }),
+            stored(1, {
+              type: "text-delta",
+              runnerId: "run_root" as never,
+              messageId: "m1",
+              text: "Recorded reply",
+            }),
+          ],
+        },
+      }),
+    })
+    renderWithProviders(
+      <RunDetail
+        mode="replay"
+        sessionId={id}
+        runnerClient={runner}
+        onResumeSend={onResumeSend}
+      />,
+      client,
+    )
+    await waitFor(() =>
+      expect(screen.getByText("Recorded reply")).toBeInTheDocument(),
+    )
+    // Type into the composer; the send button enables (proving the composer isn't inert).
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "continue from here" },
+    })
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Send message" }),
+      ).not.toBeDisabled(),
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }))
+    expect(resumeSends).toEqual([{ id, text: "continue from here" }])
+    // Replay still never attached the socket — the manager replays the backlog.
+    expect(runner.attached).toEqual([])
     cleanup()
   })
 })

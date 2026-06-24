@@ -32,6 +32,11 @@ export interface RunnerClient {
   onAny(cb: (id: SessionId, event: StoredEvent) => void): () => void
   /** Live session-name push (session-renamed frame). Returns an unsubscribe fn. */
   onSessionRenamed(cb: (id: SessionId, name: string) => void): () => void
+  /**
+   * Resume-token observability frame (session-resume-token). The empty string signals
+   * a fresh restart (no resumable history). Returns an unsubscribe fn.
+   */
+  onResumeToken(cb: (id: SessionId, resumeToken: string) => void): () => void
 }
 
 export const createRunnerClient = (
@@ -42,6 +47,9 @@ export const createRunnerClient = (
   // Firehose listeners receive every frame (e.g. background-run notifications).
   const anyListeners = new Set<(id: SessionId, event: StoredEvent) => void>()
   const renameListeners = new Set<(id: SessionId, name: string) => void>()
+  const resumeTokenListeners = new Set<
+    (id: SessionId, resumeToken: string) => void
+  >()
 
   return {
     attach: (id) => {
@@ -70,6 +78,11 @@ export const createRunnerClient = (
         for (const cb of renameListeners) cb(message.id, message.name)
         return
       }
+      if (message.type === "session-resume-token") {
+        for (const cb of resumeTokenListeners)
+          cb(message.id, message.resumeToken)
+        return
+      }
       if (message.type === "runner-event") {
         listeners.get(message.id)?.(message.event)
         for (const cb of anyListeners) cb(message.id, message.event)
@@ -88,6 +101,12 @@ export const createRunnerClient = (
       renameListeners.add(cb)
       return () => {
         renameListeners.delete(cb)
+      }
+    },
+    onResumeToken: (cb) => {
+      resumeTokenListeners.add(cb)
+      return () => {
+        resumeTokenListeners.delete(cb)
       }
     },
   }
