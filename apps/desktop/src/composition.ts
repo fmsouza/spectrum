@@ -107,6 +107,11 @@ import {
 } from "./gui/driver-registry"
 import { createNotificationService } from "./gui/notification-service"
 import { defaultRelaunch } from "./gui/relaunch"
+import {
+  type RendererWatchdog,
+  createRendererWatchdog,
+  realWatchdogTimers,
+} from "./gui/renderer-watchdog"
 import { createResetApp } from "./gui/reset-app"
 import type { ResetError } from "./gui/reset-app"
 import {
@@ -223,6 +228,11 @@ export interface AppContext {
   readonly runner: RunManager
   /** Loopback `ws://localhost:<port>/` the webview connects to for the canonical run-event stream. */
   readonly runnerSocketUrl: string
+  /**
+   * Watches renderer liveness via the runner socket and reloads a dead WKWebView
+   * content process. `openWindow` calls `bindReload` once the webview exists.
+   */
+  readonly rendererWatchdog: RendererWatchdog
   /** Read a session's stored canonical event log for read-only replay. */
   readonly runEvents: {
     read(
@@ -312,6 +322,7 @@ export interface CreateAppContextDeps {
   readonly createRunStore: typeof createRunStore
   readonly createRunManager: typeof createRunManager
   readonly startRunnerSocket: typeof startRunnerSocket
+  readonly createRendererWatchdog: typeof createRendererWatchdog
   readonly createFakeDriver: typeof createFakeDriver
   readonly createCodexDriver: typeof createCodexDriver
   readonly createOpencodeDriver: typeof createOpencodeDriver
@@ -379,6 +390,7 @@ const realDeps: CreateAppContextDeps = {
   createRunStore,
   createRunManager,
   startRunnerSocket,
+  createRendererWatchdog,
   createFakeDriver,
   createCodexDriver,
   createOpencodeDriver,
@@ -893,8 +905,27 @@ export const createAppContext = (
   // otherwise native notifications would stop the moment the webview connects. Only one sink is ever
   // active, so a frame is never double-notified.
   const runner: RunManager = withNotifierTap(baseRunner, notifyOnRunFinished)
+  // Renderer watchdog: a sustained runner-socket disconnect ⇒ the WKWebView content
+  // process likely died (Electrobun 1.18.1 emits no termination event), so reload it.
+  // `bindReload` is filled later by `openWindow` once the webview exists. On give-up we
+  // fire a NATIVE notification — the webview is dead, so an in-app toast is impossible.
+  const rendererWatchdog = deps.createRendererWatchdog({
+    timers: realWatchdogTimers,
+    logger: log.child("renderer-watchdog"),
+    onGiveUp: () => {
+      void import("electrobun/bun").then(({ Utils }) =>
+        Utils.showNotification({
+          title: "Spectrum",
+          body: "The window stopped responding and couldn't recover. Please restart Spectrum.",
+        }),
+      )
+    },
+  })
   // The dedicated loopback WebSocket for the run-event stream binds `runner`'s send sink on connect.
-  const runnerSocketUrl = deps.startRunnerSocket(runner).url
+  const runnerSocketUrl = deps.startRunnerSocket(runner, {
+    onConnect: () => rendererWatchdog.onConnect(),
+    onDisconnect: () => rendererWatchdog.onDisconnect(),
+  }).url
 
   // Destructive maintenance + factory reset over the already-wired db/config/secrets. The cascade and
   // reset LOGIC live in @spectrum/data-admin and createResetApp; here we only construct + inject.
@@ -1005,6 +1036,7 @@ export const createAppContext = (
     mintSessionProxyKey,
     runner,
     runnerSocketUrl,
+    rendererWatchdog,
     runEvents: { read: runStore.read },
     dataAdmin,
     resetApp,
