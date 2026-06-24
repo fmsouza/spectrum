@@ -2,6 +2,7 @@ import type { Session } from "@spectrum/types"
 import { type ReactElement, useState } from "react"
 import { Badge } from "../atoms/Badge"
 import { TextInput } from "../atoms/TextInput"
+import { Tooltip } from "../atoms/Tooltip"
 import { Truncate } from "../primitives/Truncate"
 import { relativeTime } from "./relativeTime"
 
@@ -27,7 +28,7 @@ export const SessionRow = ({
   onRename,
 }: SessionRowProps): ReactElement => {
   const isRunning = session.endedAt === undefined
-  const displayName = session.name ?? session.id
+  const displayName = session.name ?? "Untitled"
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(displayName)
 
@@ -82,24 +83,28 @@ export const SessionRow = ({
             aria-label="Session name"
           />
         ) : onRename === undefined ? (
-          <Truncate className="lk-session-row__name">{displayName}</Truncate>
+          <Tooltip label={displayName} className="lk-session-row__name">
+            <Truncate>{displayName}</Truncate>
+          </Tooltip>
         ) : (
-          <span
-            className="lk-session-row__name"
-            onClick={(e) => {
-              e.stopPropagation()
-              startEdit()
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault()
+          <Tooltip label={displayName} className="lk-session-row__name">
+            <span
+              className="lk-truncate"
+              onClick={(e) => {
                 e.stopPropagation()
                 startEdit()
-              }
-            }}
-          >
-            <Truncate>{displayName}</Truncate>
-          </span>
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  startEdit()
+                }
+              }}
+            >
+              {displayName}
+            </span>
+          </Tooltip>
         )}
         {isRunning ? (
           <Badge tone="info">running</Badge>
