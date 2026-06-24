@@ -24,6 +24,7 @@ import { useStore } from "zustand"
 import { IpcClientProvider, useIpcClient } from "./IpcClientContext"
 import { LoggerProvider } from "./LoggerContext"
 import { createRealClients } from "./clients"
+import { MountFallback } from "./components/MountFallback"
 import { UpdateBanner } from "./components/UpdateBanner"
 import { useHarnesses } from "./hooks/useHarnesses"
 import { useModels } from "./hooks/useModels"
@@ -39,6 +40,7 @@ import { type LocationAdapter, windowLocationAdapter } from "./stores/location"
 import { encodeView } from "./stores/uiStore"
 import { SessionsView } from "./views/SessionsView"
 import { SettingsView } from "./views/SettingsView"
+import { withTimeout } from "./withTimeout"
 
 export type { View } from "./stores/uiStore"
 
@@ -380,19 +382,34 @@ export const App = ({
 export const mount = async (): Promise<void> => {
   const container = document.getElementById("root")
   if (container === null) throw new Error("missing #root element")
-  const startView = window.location.hash.replace(/^#/, "")
-  // Build the ONE shared Electroview (carries IPC requests + the runner socket)
-  // and get all clients from it. See `clients.ts`.
-  const { ipcClient, runnerClient } = await createRealClients()
-  createRoot(container).render(
-    <StrictMode>
-      <App
-        client={ipcClient}
-        runnerClient={runnerClient}
-        initialView={startView}
-      />
-    </StrictMode>,
-  )
+  const root = createRoot(container)
+  try {
+    const startView = window.location.hash.replace(/^#/, "")
+    // Bound the startup IPC: a wedged Electrobun RPC must surface a fallback, not hang blank.
+    const { ipcClient, runnerClient } = await withTimeout(
+      createRealClients(),
+      10000,
+      "client init",
+    )
+    root.render(
+      <StrictMode>
+        <App
+          client={ipcClient}
+          runnerClient={runnerClient}
+          initialView={startView}
+        />
+      </StrictMode>,
+    )
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unexpected startup error."
+    root.render(
+      <MountFallback
+        message={message}
+        onReload={() => window.location.reload()}
+      />,
+    )
+  }
 }
 
 // Auto-mount only in the real webview (a DOM with #root), never under the test
