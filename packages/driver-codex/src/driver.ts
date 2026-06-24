@@ -1,5 +1,6 @@
 import type { AgentDriver } from "@spectrum/agent-driver"
 import { createDriver } from "@spectrum/driver-runtime"
+import type { SessionId } from "@spectrum/types"
 import type { IdGen } from "@spectrum/utils"
 import { type CreateCodexAdapterDeps, createCodexAdapter } from "./adapter"
 
@@ -15,6 +16,12 @@ export interface CreateCodexDriverDeps {
   readonly command?: string
   /** Parent env merged UNDER the per-run proxy env (default `process.env`). */
   readonly baseEnv?: CreateCodexAdapterDeps["baseEnv"]
+  /**
+   * Persist the harness-native session id (Codex's `threadId`) once the adapter learns it.
+   * Forwarded to the runtime's `createDriver`; the runtime binds it to the current Spectrum
+   * `sessionId` automatically (adapters call `ctx.reportResumeToken`).
+   */
+  readonly setResumeId?: (sessionId: SessionId, resumeId: string) => void
 }
 
 /** The Codex AgentDriver: a thin app-server adapter wrapped by the shared runtime. Mirrors createClaudeDriver. */
@@ -22,6 +29,9 @@ export const createCodexDriver = (deps: CreateCodexDriverDeps): AgentDriver =>
   createDriver({
     idGen: deps.idGen,
     ...(deps.scheduler ? { scheduler: deps.scheduler } : {}),
+    ...(deps.setResumeId !== undefined
+      ? { setResumeId: deps.setResumeId }
+      : {}),
     adapter: createCodexAdapter({
       idGen: deps.idGen,
       ...(deps.spawn ? { spawn: deps.spawn } : {}),

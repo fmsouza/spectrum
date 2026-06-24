@@ -12,7 +12,7 @@ import type {
   QuestionPrompt,
   RunnerId,
 } from "@spectrum/agent-events"
-import type { ModelId } from "@spectrum/types"
+import type { ModelId, SessionId } from "@spectrum/types"
 import { type IdGen, type Result, ok } from "@spectrum/utils"
 import type { AdapterCtx, AdapterHandle, DriverAdapter } from "./adapter"
 
@@ -26,6 +26,12 @@ export const createDriver = (deps: {
   readonly adapter: DriverAdapter
   readonly idGen: IdGen
   readonly scheduler?: (fn: () => void) => void
+  /**
+   * Sink the runtime invokes whenever an adapter reports its harness-native session id via
+   * `ctx.reportResumeToken(token)`. Bound to the current Spectrum `sessionId` by the runtime —
+   * adapters should call `ctx.reportResumeToken?.("…")` rather than tracking the id themselves.
+   */
+  readonly setResumeId?: (sessionId: SessionId, resumeId: string) => void
 }): AgentDriver => {
   const schedule =
     deps.scheduler ?? ((fn: () => void): void => queueMicrotask(fn))
@@ -71,6 +77,13 @@ export const createDriver = (deps: {
           questions.set(requestId, { runnerId, resolve })
           emit({ type: "question-requested", runnerId, requestId, prompt })
         }),
+      ...(deps.setResumeId !== undefined && input.sessionId !== undefined
+        ? {
+            reportResumeToken: (resumeToken: string): void => {
+              deps.setResumeId?.(input.sessionId as SessionId, resumeToken)
+            },
+          }
+        : {}),
     }
 
     schedule(() => {

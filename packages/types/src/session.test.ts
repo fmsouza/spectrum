@@ -44,4 +44,34 @@ describe("SessionSchema", () => {
   it("rejects a session with an empty cwd", () => {
     expect(SessionSchema.safeParse({ ...open, cwd: "" }).success).toBe(false)
   })
+  it("accepts a session with a resumeId", () => {
+    const parsed = SessionSchema.safeParse({
+      id: "s_00000000-0000-4000-8000-000000000000",
+      harnessId: "claude",
+      startedAt: "2026-06-08T00:00:00.000Z",
+      resumeId: "abc-123",
+    })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) expect(parsed.data.resumeId).toBe("abc-123")
+  })
+
+  it("accepts a session without a resumeId", () => {
+    const parsed = SessionSchema.safeParse({
+      id: "s_00000000-0000-4000-8000-000000000000",
+      harnessId: "claude",
+      startedAt: "2026-06-08T00:00:00.000Z",
+    })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) expect(parsed.data.resumeId).toBeUndefined()
+  })
+
+  it("rejects a non-string resumeId", () => {
+    const parsed = SessionSchema.safeParse({
+      id: "s_00000000-0000-4000-8000-000000000000",
+      harnessId: "claude",
+      startedAt: "2026-06-08T00:00:00.000Z",
+      resumeId: 123,
+    })
+    expect(parsed.success).toBe(false)
+  })
 })

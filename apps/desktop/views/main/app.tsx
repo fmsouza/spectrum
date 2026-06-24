@@ -4,7 +4,7 @@ import {
   trackRootRunner,
 } from "@spectrum/agent-events"
 import type { IpcClient, IpcError } from "@spectrum/ipc"
-import type { ProjectId } from "@spectrum/types"
+import type { ProjectId, SessionId } from "@spectrum/types"
 import {
   type AppMode,
   AppShell,
@@ -115,9 +115,31 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   // The last harness launched, used to preselect the modal's select. The
   // composer's model selector persists per-harness directly (no modal state).
   const [initialHarnessId, setInitialHarnessId] = useState<string>("")
+  /**
+   * Sessions whose just-resumed live view must NOT call `runnerClient.attach`
+   * on mount — the manager has already replayed the backlog via `resumeAndSend`,
+   * and a re-attach would cause the history to be replayed a second time.
+   * STICKY for the resumed session's lifetime: the flag stays set until the
+   * user explicitly closes the session (removes it from `openSessionIds`).
+   * Live events for a resumed session are NOT a signal to clear it — the
+   * manager owns the replay and continues to stream the same socket, so any
+   * future re-mount of `LiveRunDetail` must still skip attach to avoid the
+   * double-replay.
+   */
+  const [skipAttachIds, setSkipAttachIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
   const proxy = useProxyStatus()
   const update = useUpdate()
   const notifications = useNotifications()
+  // Live turn-in-flight per session — drives the master row's running badge.
+  // Read from `runViewStore` (the same store `LiveRunDetail` writes to).
+  const busyBySession = useStore(useStores().runView, (s) => s.busyBySession)
+  // `applyEvent` is exposed so the firehose effect (below) can keep the
+  // runViewStore in sync regardless of whether the per-session listener on
+  // `LiveRunDetail` is registered yet — defense-in-depth against the
+  // race where the manager replays before the webview mounts.
+  const applyEvent = useStore(useStores().runView, (s) => s.applyEvent)
 
   // Prefill the New Session modal with the last launched folder/harness
   // (persisted by a successful launch). Page-level fetch — the modal stays dumb
@@ -176,12 +198,31 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
     return off
   }, [runnerClient, updateSessionName])
 
+  // Fresh-restart toast: the manager emits `session-resume-token` with an empty
+  // `resumeToken` when the resumed row has no resumable history. Surface this as
+  // a one-time info toast so the user knows the conversation started over.
+  useEffect(() => {
+    const off = runnerClient.onResumeToken((_id, resumeToken) => {
+      if (resumeToken !== "") return
+      notify({
+        tone: "info",
+        message: "Restarted fresh — this harness can't resume history.",
+      })
+    })
+    return off
+  }, [runnerClient, notify])
+
   // Toast when a BACKGROUND run finishes/errors (not the session being viewed).
   // `onAny` accumulates listeners, so the effect MUST drop its previous one via
   // the returned unsubscribe fn on every re-run — otherwise toasts would stack.
+  // The firehose ALSO drives the runViewStore via `applyEvent` — the per-session
+  // listener on `LiveRunDetail` covers the common case, but if the manager replays
+  // a stored event before the webview's listener is registered, the events would
+  // be lost. Calling `applyEvent` here guarantees the store reflects every frame.
   useEffect(() => {
     const off = runnerClient.onAny((id, stored) => {
       const ev = stored.event
+      applyEvent(id, ev)
       // Update the root map on EVERY frame so a later runner-finished can be classified.
       rootsRef.current = trackRootRunner(rootsRef.current, id, ev)
       if (ev.type !== "runner-finished") return
@@ -202,7 +243,7 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
       )
     })
     return off
-  }, [runnerClient, view, notify, navigate])
+  }, [runnerClient, view, notify, navigate, applyEvent])
 
   const mode: AppMode = view.kind === "settings" ? "settings" : "sessions"
 
@@ -249,6 +290,41 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
     setModalOpen(false)
     // sessions.launch already invalidates both groups on success.
   }
+
+  // Replay-composer send: flip replay→live (so the new `LiveRunDetail` mounts)
+  // and forward the text via `runnerClient.send`. The manager treats `run-send`
+  // for an unknown/ended session id as an auto-resume: it relaunches the
+  // harness with the session's `resumeId` and replays the backlog itself. The
+  // `skipAttach` flag suppresses the new `LiveRunDetail`'s own `run-attach` so
+  // the history is replayed exactly once.
+  const onResumeSend = (sessionId: SessionId, text: string): void => {
+    setSkipAttachIds((prev) => {
+      const next = new Set(prev)
+      next.add(String(sessionId))
+      return next
+    })
+    openSession(sessionId)
+    runnerClient.send(sessionId, text)
+  }
+
+  // Garbage-collect the sticky `skipAttach` flag: when a session is no longer
+  // in `openSessionIds`, it was closed (or removed), so a future re-mount of
+  // `LiveRunDetail` (e.g. after re-opening via `onResumeSend`) must set the
+  // flag again from scratch. We clear stale entries on every change to the
+  // open-set so the set never grows unbounded.
+  const openIdStrings = openSessionIds.map((id) => String(id)).join("|")
+  useEffect(() => {
+    setSkipAttachIds((prev) => {
+      if (prev.size === 0) return prev
+      const open = new Set(openIdStrings.split("|").filter((s) => s !== ""))
+      let changed = false
+      const next = new Set<string>()
+      for (const id of prev)
+        if (open.has(id)) next.add(id)
+        else changed = true
+      return changed ? next : prev
+    })
+  }, [openIdStrings])
 
   const { master, detail } =
     view.kind === "settings"
@@ -339,6 +415,9 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
           runnerClient,
           models: models.data ?? [],
           providerNames,
+          busyBySession,
+          onResumeSend,
+          skipAttachIds,
         })
 
   return (

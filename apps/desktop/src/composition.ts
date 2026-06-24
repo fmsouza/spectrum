@@ -242,6 +242,18 @@ export interface AppContext {
       { readonly kind: "db-failed"; readonly detail: string }
     >
   }
+  /**
+   * Re-resolve a persisted session's env/command/args from its harness + model. Shared with
+   * `resolveResumeInput` (RunManager's resume path) so the launch handler and the manager's
+   * resume path produce byte-identical inputs. ModelId present ⇒ proxied (mint a per-session
+   * proxy key + render harness env/args templates); absent ⇒ direct. SECURITY: never logs the
+   * proxy key or the rendered env.
+   */
+  readonly resolveLaunchInput: (input: {
+    readonly harnessId: import("@spectrum/types").HarnessId
+    readonly modelId?: import("@spectrum/types").ModelId
+    readonly cwd: string
+  }) => Promise<import("@spectrum/agent-driver").RunLaunchInput>
   /** Transactional cascade deletes for sessions and projects. */
   readonly dataAdmin: DataAdmin
   /**
@@ -721,6 +733,11 @@ export const createAppContext = (
     },
     close: sessions.close,
     updateName: (id, name) => sessions.updateName(id, name),
+    // Session-resume ports (Task 4: setResumeId/reopen/get): the RunManager invokes these to persist
+    // a harness-native resume token, revive an ended session, and re-resolve its row for resume.
+    setResumeId: (id, resumeId) => sessions.setResumeId(id, resumeId),
+    reopen: (id) => sessions.reopen(id),
+    get: (id) => sessions.get(id),
   }
 
   // harnesses: registry of the builtins only (custom user harnesses are no longer supported, so the
@@ -782,15 +799,37 @@ export const createAppContext = (
   // (openclaw is UNVERIFIED — no binary). The demo FakeDriver stays dev-gated
   // (SPECTRUM_DEMO_HARNESS=1). Each driver injects its own effects so the logic stays unit-testable;
   // the runtime owns the sync↔async bridge + lifecycle.
+  //
+  // Each per-harness driver receives the same `setResumeId` sink: when the adapter reports its
+  // harness-native session id (Claude's `session_id`, Codex's `threadId`) via
+  // `ctx.reportResumeToken`, the runtime binds the current Spectrum `sessionId` and calls this
+  // sink — which persists via the SessionStore. A failure is logged but never crashes the run:
+  // the session simply loses the ability to true-resume (manager still emits a fresh-restart toast).
   const idGen = deps.createCryptoIdGen()
   const driverIdGen = deps.createCryptoIdGen()
+  const setResumeIdLog = log.child("runner")
+  const setResumeId: (
+    id: import("@spectrum/types").SessionId,
+    token: string,
+  ) => void = (id, token) => {
+    const r = sessions.setResumeId(id, token)
+    if (!r.ok)
+      setResumeIdLog.error("setResumeId failed", {
+        sessionId: id,
+        kind: r.error.kind,
+      })
+  }
   const driverRegistry: DriverRegistry = createDriverRegistry({
-    claude: createClaudeDriver({ idGen, logger: log.child("driver.claude") }),
-    codex: deps.createCodexDriver({ idGen: driverIdGen }),
-    opencode: deps.createOpencodeDriver({ idGen: driverIdGen }),
+    claude: createClaudeDriver({
+      idGen,
+      logger: log.child("driver.claude"),
+      setResumeId,
+    }),
+    codex: deps.createCodexDriver({ idGen: driverIdGen, setResumeId }),
+    opencode: deps.createOpencodeDriver({ idGen: driverIdGen, setResumeId }),
     // Plan 4 (UNVERIFIED): OpenClaw gateway driver. No installed binary / published @openclaw/sdk; the
     // real connector throws (→ runner-finished:errored) until wired, but it routes native like the others.
-    openclaw: createOpenclawDriver({ idGen }),
+    openclaw: createOpenclawDriver({ idGen, setResumeId }),
     ...(deps.demoHarnessEnabled
       ? { [DEMO_HARNESS_ID]: deps.createFakeDriver({ script: demoScript }) }
       : {}),
@@ -890,6 +929,73 @@ export const createAppContext = (
     return resolved.ok ? resolved.value.env : {}
   }
 
+  /**
+   * Re-resolve a persisted session's env/command/args from its harness + model. Shared by
+   * `launchHarness` (via `ctx.resolveLaunchInput`) and the RunManager's resume path
+   * (`resolveResumeInput`). Mirrors the env/command/args resolution that `launchHarness` does
+   * today in `apps/desktop/src/gui/ipc/handlers.ts`: modelId present ⇒ proxied route (mint a
+   * per-session proxy key, render the harness env/args templates); absent ⇒ direct (no proxy
+   * env, empty args). SECURITY: never logs the proxy key or the rendered env.
+   *
+   * On any failure (harness unknown, config load fails, resolver rejects the command) returns a
+   * minimal `RunLaunchInput` with `env: {}` — the resume path's `driver.start` failure then
+   * surfaces a `runner-finished:errored` rather than throwing from here.
+   */
+  const resolveLaunchInput = async (input: {
+    readonly harnessId: import("@spectrum/types").HarnessId
+    readonly modelId?: import("@spectrum/types").ModelId
+    readonly cwd: string
+  }): Promise<import("@spectrum/agent-driver").RunLaunchInput> => {
+    const listed = await registry.list()
+    const harness = listed.ok
+      ? listed.value.find((h) => h.id === input.harnessId)
+      : undefined
+    if (harness === undefined) {
+      return {
+        harnessId: input.harnessId,
+        cwd: input.cwd,
+        env: {},
+      }
+    }
+    const loaded = await config.load()
+    const cfg = loaded.ok ? loaded.value : defaultConfig()
+    const route: import("@spectrum/harnesses").LaunchRoute =
+      input.modelId === undefined
+        ? { kind: "direct" }
+        : {
+            kind: "proxied",
+            proxyUrl: `http://${cfg.settings.proxyHost}:${proxyPort}`,
+            // SECURITY: per-session key encodes the selected model id; never logged.
+            proxyKey: await mintSessionProxyKey(String(input.modelId)),
+            modelId: input.modelId,
+          }
+    const resolved = resolveLaunch({ harness, route })
+    if (!resolved.ok) {
+      return {
+        harnessId: input.harnessId,
+        cwd: input.cwd,
+        env: {},
+      }
+    }
+    return {
+      harnessId: input.harnessId,
+      ...(input.modelId !== undefined ? { modelId: input.modelId } : {}),
+      cwd: input.cwd,
+      env: resolved.value.env,
+      command: resolved.value.command,
+      args: resolved.value.args,
+    }
+  }
+
+  const resolveResumeInput: NonNullable<
+    import("@spectrum/agent-driver").RunManagerDeps["resolveResumeInput"]
+  > = async (session) =>
+    resolveLaunchInput({
+      harnessId: session.harnessId,
+      ...(session.modelId !== undefined ? { modelId: session.modelId } : {}),
+      cwd: session.cwd,
+    })
+
   const baseRunner = deps.createRunManager({
     driver: routingDriver,
     sessions: sessionSink,
@@ -899,6 +1005,7 @@ export const createAppContext = (
     // Before the webview socket connects, the manager's sink is this notifier tap.
     send: notifyOnRunFinished,
     resolveModelEnv,
+    resolveResumeInput,
   })
   // The runner socket calls `bindSend` on connect, REPLACING the manager's sink with one that pushes
   // to the live websocket. `withNotifierTap` composes the notifier tap INTO that socket sink —
@@ -1016,6 +1123,7 @@ export const createAppContext = (
     registry,
     launch,
     resolveLaunch,
+    resolveLaunchInput,
     proxy: { isRunning: isProxyRunning, start: startProxyAdapter },
     factory,
     gateway,

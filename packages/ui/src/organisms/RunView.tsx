@@ -30,6 +30,13 @@ export type RunViewProps = {
   /** Seconds the in-flight turn has run; shown in the typing indicator. */
   readonly elapsedSeconds?: number
   readonly inert?: boolean
+  /**
+   * Whether the composer is disabled. Defaults to `inert` so the existing replay-mode
+   * call site (which passes `inert` to disable approvals) keeps the composer disabled.
+   * Pass `false` to keep the composer enabled while approvals stay inert (e.g. replay
+   * mode where sending re-opens the session for auto-resume).
+   */
+  readonly composerDisabled?: boolean
   readonly onInterrupt?: () => void
   readonly mode?: PermissionMode
   readonly onModeChange?: (mode: PermissionMode) => void
@@ -70,6 +77,7 @@ export const RunView = ({
   busy = false,
   elapsedSeconds,
   inert = false,
+  composerDisabled,
   onInterrupt,
   mode,
   onModeChange,
@@ -136,7 +144,7 @@ export const RunView = ({
         </div>
         <Composer
           onSend={onSend}
-          disabled={inert}
+          disabled={composerDisabled ?? inert}
           busy={busy}
           {...(onInterrupt === undefined ? {} : { onInterrupt })}
           {...(root.supportedModes === undefined

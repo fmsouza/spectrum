@@ -92,6 +92,7 @@ const fakeRunnerClient: RunnerClient = {
   onEvent: () => {},
   onAny: () => () => {},
   onSessionRenamed: () => () => {},
+  onResumeToken: () => () => {},
 } as unknown as RunnerClient
 
 const baseStubs = {
@@ -832,5 +833,219 @@ describe("App view model", () => {
       runnerClient.dispatch(finishedFrame("s_bg" as SessionId, "completed"))
     })
     expect(await screen.findByText("A run finished")).toBeInTheDocument()
+  })
+})
+
+describe("App — skipAttach is sticky across resume (no double-replay)", () => {
+  it("does NOT call runnerClient.attach after the manager's first live event arrives during a resumed session", async () => {
+    // C1: the previous behavior cleared `skipAttachIds` on the FIRST live
+    // event, which caused `LiveRunDetail`'s effect to re-run with
+    // skipAttach=false and call `runnerClient.attach` — leading to a
+    // double-replay of the stored backlog (manager's events.read replay
+    // + a redundant run-attach). The fix makes skipAttach sticky: the
+    // manager owns the replay, so attach must NEVER be called for a
+    // resumed session during its lifetime.
+    let attachCount = 0
+    const runnerClient = createRunnerClient((m) => {
+      if (m.type === "run-attach") attachCount += 1
+    })
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getProjects: async () => ({
+        ok: true as const,
+        value: [
+          {
+            id: "p1",
+            name: "Project",
+            sessions: [
+              {
+                id: "s_v" as SessionId,
+                harnessId: "claude",
+                cwd: "/tmp",
+                startedAt: "2026-06-16T10:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      }),
+      getRunEvents: async () => ({
+        ok: true,
+        value: {
+          events: [
+            {
+              seq: 0,
+              sessionId: "s_v" as SessionId,
+              ts: "2026-06-16T10:00:00.000Z",
+              event: {
+                type: "runner-started",
+                runnerId: ROOT_RUNNER as never,
+              },
+            },
+          ],
+        },
+      }),
+    })
+    render(
+      <App
+        client={client}
+        runnerClient={runnerClient}
+        initialView="sessions/s_v"
+      />,
+    )
+    await waitFor(() => expect(window.location.hash).toBe("#sessions/s_v"))
+    await waitFor(() => expect(screen.getByRole("textbox")).toBeInTheDocument())
+    // Trigger resume: openSession + skipAttachIds.add + runnerClient.send.
+    act(() => {
+      fireEvent.change(screen.getByRole("textbox"), {
+        target: { value: "go" },
+      })
+      fireEvent.click(screen.getByRole("button", { name: "Send message" }))
+    })
+    // LiveRunDetail mounted with skipAttach=true: attach was never called.
+    expect(attachCount).toBe(0)
+    // First live event (simulating the manager's resumed stream arriving).
+    act(() => {
+      runnerClient.dispatch({
+        type: "runner-event",
+        id: "s_v" as SessionId,
+        event: {
+          seq: 1,
+          sessionId: "s_v" as SessionId,
+          ts: "2026-06-16T10:00:01.000Z",
+          event: {
+            type: "text-delta",
+            runnerId: ROOT_RUNNER as never,
+            messageId: "m1",
+            text: "live delta",
+          },
+        },
+      })
+    })
+    // skipAttach must remain sticky: attach is STILL never called.
+    // (Previously, the first live event cleared skipAttachIds, causing
+    // LiveRunDetail's effect to re-run with skipAttach=false → attach.)
+    expect(attachCount).toBe(0)
+  })
+})
+
+describe("App — firehose populates runViewStore (defense-in-depth)", () => {
+  it("populates the runViewStore via onAny when events arrive during a resume (LiveRunDetail per-session listener may not be wired yet)", async () => {
+    // Race scenario: the manager replays the backlog via runner-event frames.
+    // If the webview's per-session listener on LiveRunDetail hasn't mounted yet
+    // (effect timing), the events would be lost. The firehose effect (`onAny`)
+    // calls `applyEvent` so the store is populated regardless of listener state.
+    //
+    // Driving path: render the App with a session selected in replay mode
+    // (selectedSessionId via the hash); the replay composer is enabled with
+    // `onResumeSend` wired. Click "Send message" → triggers `onResumeSend` →
+    // adds to skipAttachIds + openSessionIds → flips to LiveRunDetail
+    // (skipAttach=true, runViewStore empty → shows "Starting…"). Now dispatch
+    // a runner-started + text-delta on the runner client. The firehose effect
+    // must call applyEvent so the runViewStore is populated and the text
+    // appears in the DOM.
+    const runnerClient = createRunnerClient(() => {})
+    const client = createFakeIpcClient({
+      ...baseStubs,
+      getProjects: async () => ({
+        ok: true as const,
+        value: [
+          {
+            id: "p1",
+            name: "Project",
+            sessions: [
+              {
+                id: "s_v" as SessionId,
+                harnessId: "claude",
+                cwd: "/tmp",
+                startedAt: "2026-06-16T10:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      }),
+      getRunEvents: async () => ({
+        ok: true,
+        value: {
+          events: [
+            {
+              seq: 0,
+              sessionId: "s_v" as SessionId,
+              ts: "2026-06-16T10:00:00.000Z",
+              event: {
+                type: "runner-started",
+                runnerId: ROOT_RUNNER as never,
+              },
+            },
+            {
+              seq: 1,
+              sessionId: "s_v" as SessionId,
+              ts: "2026-06-16T10:00:00.000Z",
+              event: {
+                type: "text-delta",
+                runnerId: ROOT_RUNNER as never,
+                messageId: "m0",
+                text: "Recorded reply",
+              },
+            },
+          ],
+        },
+      }),
+    })
+    render(
+      <App
+        client={client}
+        runnerClient={runnerClient}
+        initialView="sessions/s_v"
+      />,
+    )
+    await waitFor(() => expect(window.location.hash).toBe("#sessions/s_v"))
+    // Wait for replay composer to render (recorded reply text + textbox).
+    await waitFor(() =>
+      expect(screen.getByText("Recorded reply")).toBeInTheDocument(),
+    )
+    await waitFor(() => expect(screen.getByRole("textbox")).toBeInTheDocument())
+    act(() => {
+      fireEvent.change(screen.getByRole("textbox"), {
+        target: { value: "continue" },
+      })
+      fireEvent.click(screen.getByRole("button", { name: "Send message" }))
+    })
+    // LiveRunDetail is now mounted (skipAttach=true, runViewStore empty).
+    // The "Recorded reply" text is gone (ReplayRunDetail unmounted); the
+    // placeholder shows "Starting…" until events arrive.
+    await waitFor(() =>
+      expect(screen.getByText(/Starting…/)).toBeInTheDocument(),
+    )
+    act(() => {
+      runnerClient.dispatch({
+        type: "runner-event",
+        id: "s_v" as SessionId,
+        event: {
+          seq: 1,
+          sessionId: "s_v" as SessionId,
+          ts: "2026-06-16T10:00:01.000Z",
+          event: {
+            type: "runner-started",
+            runnerId: ROOT_RUNNER as never,
+          },
+        },
+      })
+      runnerClient.dispatch({
+        type: "runner-event",
+        id: "s_v" as SessionId,
+        event: {
+          seq: 2,
+          sessionId: "s_v" as SessionId,
+          ts: "2026-06-16T10:00:02.000Z",
+          event: {
+            type: "text-delta",
+            runnerId: ROOT_RUNNER as never,
+            messageId: "m1",
+            text: "From the firehose",
+          },
+        },
+      })
+    })
+    expect(await screen.findByText("From the firehose")).toBeInTheDocument()
   })
 })
