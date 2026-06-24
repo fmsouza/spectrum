@@ -5,10 +5,10 @@ import {
   createInMemoryHarnessFileSource,
   createRegistry,
 } from "@spectrum/harnesses"
+import { createNoopLogger } from "@spectrum/logger"
 import { resolveAppPaths } from "@spectrum/platform"
 import { createProjectStore } from "@spectrum/projects"
 import { createInMemoryRuntimeState } from "@spectrum/proxy"
-import { createNoopLogger } from "@spectrum/logger"
 import { err, ok } from "@spectrum/utils"
 import { createAppContext } from "./composition"
 import type { CreateAppContextDeps } from "./composition"
@@ -103,7 +103,11 @@ const makeFakeDeps = (): {
       stop: () => undefined,
     })) as never,
     createRendererWatchdog: (d) =>
-      createRendererWatchdog({ ...d, timers: realWatchdogTimers, logger: createNoopLogger() }),
+      createRendererWatchdog({
+        ...d,
+        timers: realWatchdogTimers,
+        logger: createNoopLogger(),
+      }),
     createFakeDriver: (() => ({ start: () => ok({}) })) as never,
     createCodexDriver: (() => ({ start: () => ok({}) })) as never,
     createOpencodeDriver: (() => ({ start: () => ok({}) })) as never,
