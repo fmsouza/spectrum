@@ -586,7 +586,6 @@ const renderAllStates = async (): Promise<ReadonlyArray<ParentNode>> => {
   //   .lk-session-row__meta, .lk-session-list,
   //   .lk-project-group, .lk-project-group__header, .lk-project-group__toggle,
   //   .lk-project-group__name, .lk-project-group__body,
-  //   span[data-tone="danger"] (exitCode:1 badge),
   //   .lk-sessions-detail (not matched by has() — see has-not bucket)
   {
     const allSessions = [runningSession, failedSession, endedSession]
