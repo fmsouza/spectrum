@@ -1334,4 +1334,60 @@ describe("createRunManager resume (lazy auto-resume on run-send)", () => {
       resumeToken: "",
     })
   })
+
+  it("emits a synthetic runner-finished:errored frame on the runner socket when resume driver.start fails", async () => {
+    // Resume path: launch + close, then run-send. The second driver.start (the
+    // resume) errors; the manager must surface the failure to the webview as
+    // a runner-finished:errored canonical event (so the UI shows the failure
+    // state instead of hanging on "Starting…").
+    const script: FakeScript = {
+      rootRunnerId: root,
+      reactions: [
+        { on: "start", emit: [startEvent, finishEvent] },
+        { on: "send", emit: [textEvent] },
+      ],
+    }
+    // First start succeeds (initial launch), second start (the resume) errors.
+    let startCalls = 0
+    const failingDriver: AgentDriver = {
+      start: () => {
+        startCalls += 1
+        if (startCalls === 1) {
+          // The first launch uses the FakeDriver.
+          return createFakeDriver({ script, scheduler: sync }).start({
+            harnessId,
+            cwd: "/tmp",
+            env: {},
+            sessionId,
+          })
+        }
+        return err({ kind: "start-failed", detail: "harness not running" })
+      },
+    }
+    const { deps, sent, closed } = makeDeps(script)
+    const manager = createRunManager({ ...deps, driver: failingDriver })
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    sent.length = 0
+    closed.length = 0
+    manager.handleInbound({ type: "run-send", id: sessionId, text: "again" })
+    await Promise.resolve()
+    await Promise.resolve()
+    // The synthetic frame must reach the webview as a runner-event with a
+    // runner-finished:errored payload carrying the driver error detail.
+    const errored = sent.find(
+      (m) =>
+        m.type === "runner-event" &&
+        m.event.event.type === "runner-finished" &&
+        m.event.event.status === "errored",
+    )
+    expect(errored).toBeDefined()
+    if (
+      errored?.type === "runner-event" &&
+      errored.event.event.type === "runner-finished"
+    ) {
+      expect(errored.event.event.error).toContain("harness not running")
+    }
+    // Session must be closed on failure (exit code 1).
+    expect(closed).toEqual([{ id: String(sessionId), code: 1 }])
+  })
 })

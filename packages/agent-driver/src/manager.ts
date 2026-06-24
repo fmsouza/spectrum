@@ -4,7 +4,7 @@ import type {
   StoredEvent,
 } from "@spectrum/agent-events"
 import { type Logger, createNoopLogger } from "@spectrum/logger"
-import type { HarnessId, ModelId, SessionId } from "@spectrum/types"
+import type { HarnessId, ModelId, RunnerId, SessionId } from "@spectrum/types"
 import { type Clock, type Result, isErr, isOk, ok } from "@spectrum/utils"
 import { deriveSessionName } from "./derive-session-name"
 import type { AgentDriver, AgentSession, DriverError } from "./driver"
@@ -277,6 +277,25 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
     })
     if (isErr(started)) {
       logger.error("resume start failed", { kind: started.error.kind })
+      // Surface the failure to the webview as a synthetic runner-finished:errored
+      // canonical event. The wireOnEvent persist+forward path handles it as a
+      // normal frame; the reducer treats it as a terminal state so the UI
+      // shows the failure instead of hanging on "Starting…". The id is the
+      // session id (Spectrum has no RunnerId until the driver actually starts,
+      // and `runner-finished.runnerId` is informational; the runViewStore
+      // filters by the session id, not the runner id).
+      const stored: StoredEvent = {
+        seq: 0,
+        sessionId: id,
+        ts: deps.clock.now().toISOString(),
+        event: {
+          type: "runner-finished",
+          runnerId: id as unknown as RunnerId,
+          status: "errored",
+          error: started.error.detail ?? started.error.kind,
+        },
+      }
+      send({ type: "runner-event", id, event: stored })
       deps.sessions.close(id, 1)
       resuming.delete(id)
       return
