@@ -152,4 +152,30 @@ describe("createRunnerClient", () => {
     c.dispatch(frame)
     expect(got).toHaveLength(1)
   })
+
+  it("dispatches a session-resume-token frame to onResumeToken listeners", () => {
+    const c = createRunnerClient(() => {})
+    const got: { id: SessionId; resumeToken: string }[] = []
+    const off = c.onResumeToken((id, resumeToken) =>
+      got.push({ id, resumeToken }),
+    )
+    const frame: RunnerOutbound = {
+      type: "session-resume-token",
+      id,
+      resumeToken: "tok_abc",
+    }
+    c.dispatch(frame)
+    expect(got).toEqual([{ id, resumeToken: "tok_abc" }])
+    off()
+    c.dispatch(frame)
+    expect(got).toHaveLength(1)
+  })
+
+  it("onResumeToken fires for the fresh-restart signal (empty token)", () => {
+    const c = createRunnerClient(() => {})
+    const got: string[] = []
+    c.onResumeToken((_id, resumeToken) => got.push(resumeToken))
+    c.dispatch({ type: "session-resume-token", id, resumeToken: "" })
+    expect(got).toEqual([""])
+  })
 })

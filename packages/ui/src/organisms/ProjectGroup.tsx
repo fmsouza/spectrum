@@ -26,6 +26,8 @@ export type ProjectGroupProps = {
   ) => void
   /** Rename a single session. Optional — enables inline session name editing. */
   readonly onRename?: ((id: SessionId, name: string) => void) | undefined
+  /** Live busy signal keyed by session id. When true, the row shows a `running` badge. Optional. */
+  readonly busyBySessionId?: Readonly<Record<string, boolean>>
 }
 
 export const ProjectGroup = ({
@@ -41,6 +43,7 @@ export const ProjectGroup = ({
   onContextMenu,
   onSessionContextMenu,
   onRename,
+  busyBySessionId,
 }: ProjectGroupProps): ReactElement => {
   const hasMore = sessions.length < sessionCount
   return (
@@ -81,6 +84,7 @@ export const ProjectGroup = ({
                 model={label.model}
                 selected={s.id === selectedId}
                 onSelect={() => onSelect(s.id)}
+                busy={busyBySessionId?.[String(s.id)] === true}
                 {...(onSessionContextMenu === undefined
                   ? {}
                   : { onContextMenu: (e) => onSessionContextMenu(s.id, e) })}

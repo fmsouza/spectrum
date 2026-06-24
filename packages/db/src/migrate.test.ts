@@ -62,6 +62,7 @@ describe("runMigrations", () => {
         "modelId",
         "name",
         "projectId",
+        "resumeId",
         "startedAt",
       ].sort(),
     )
@@ -116,6 +117,7 @@ describe("runMigrations", () => {
         "modelId",
         "name",
         "projectId",
+        "resumeId",
         "startedAt",
       ].sort(),
     )
@@ -123,7 +125,7 @@ describe("runMigrations", () => {
       .query("SELECT COUNT(*) AS n FROM sessions")
       .get() as { n: number }
     expect(remaining.n).toBe(0)
-    // 0000, 0001 and 0002 are now tracked.
+    // 0000, 0001, 0002 and 0003 are now tracked.
     const tracked = client.connection
       .query("SELECT tag FROM __drizzle_migrations")
       .all()
@@ -132,6 +134,7 @@ describe("runMigrations", () => {
       "0000_sad_turbo",
       "0001_melted_richard_fisk",
       "0002_glamorous_maximus",
+      "0003_heavy_mesmero",
     ])
   })
 

@@ -5,6 +5,7 @@ import {
   ERROR_NOTIFICATION,
   ITEM_COMPLETED,
   ITEM_STARTED,
+  M_THREAD_RESUME,
   REASONING_TEXT_DELTA,
   REQ_COMMAND_APPROVAL,
   REQ_ELICITATION,
@@ -32,5 +33,9 @@ describe("codex protocol constants (pinned to 0.130.0)", () => {
     expect(REQ_FILECHANGE_APPROVAL).toBe("item/fileChange/requestApproval")
     expect(REQ_USER_INPUT).toBe("item/tool/requestUserInput")
     expect(REQ_ELICITATION).toBe("mcpServer/elicitation/request")
+  })
+
+  it("M_THREAD_RESUME is the codex thread/resume method string", () => {
+    expect(M_THREAD_RESUME).toBe("thread/resume")
   })
 })

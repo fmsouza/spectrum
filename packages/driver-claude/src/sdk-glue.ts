@@ -372,6 +372,7 @@ export const createClaudeAdapter = (deps: {
               typeof msg.session_id === "string"
             ) {
               claudeSessionId = msg.session_id
+              ctx.reportResumeToken?.(msg.session_id)
               // Apply any mode switch that was requested before the session id was known.
               if (pendingRestartMode !== undefined) {
                 const mode = pendingRestartMode
@@ -423,8 +424,8 @@ export const createClaudeAdapter = (deps: {
       current = launch(claudeSessionId)
     }
 
-    // Launch with the initial permission mode + model.
-    current = launch()
+    // Launch with the initial permission mode + model, resuming if a resume id was supplied.
+    current = launch(input.resume)
     // Seed the first turn from initialPrompt so the live session has something to do.
     // The prompt queue is drained asynchronously so pushing after launch() is safe.
     if (input.initialPrompt !== undefined)

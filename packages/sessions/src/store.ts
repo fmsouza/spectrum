@@ -48,6 +48,12 @@ export interface SessionStore {
   close(id: SessionId, exitCode: number): Result<Session, SessionError>
   /** Update an existing session's name. Returns the updated row, or not-found / invalid-name. */
   updateName(id: SessionId, name: string): Result<Session, SessionError>
+  /** Persist the harness-native session id so the session can be resumed later. Idempotent. */
+  setResumeId(id: SessionId, resumeId: string): Result<Session, SessionError>
+  /** Clear endedAt/exitCode so an ended session is live again (the inverse of close). */
+  reopen(id: SessionId): Result<Session, SessionError>
+  /** Read a single session row, or undefined if not found. */
+  get(id: SessionId): Result<Session | undefined, SessionError>
   query(filter?: SessionFilter): Result<readonly Session[], SessionError>
   /**
    * Mark every session with `endedAt IS NULL` as ended using the injected clock timestamp.
@@ -59,7 +65,7 @@ export interface SessionStore {
 
 type SessionRow = typeof sessions.$inferSelect
 
-/** Map a drizzle row into a Session, dropping NULL modelId/endedAt/exitCode/name/cwd. */
+/** Map a drizzle row into a Session, dropping NULL modelId/endedAt/exitCode/resumeId/name/cwd. */
 const toSession = (row: SessionRow): Session => ({
   id: row.id as SessionId,
   harnessId: row.harnessId as HarnessId,
@@ -67,6 +73,7 @@ const toSession = (row: SessionRow): Session => ({
   ...(row.modelId !== null ? { modelId: row.modelId as ModelId } : {}),
   ...(row.endedAt !== null ? { endedAt: row.endedAt } : {}),
   ...(row.exitCode !== null ? { exitCode: row.exitCode } : {}),
+  ...(row.resumeId !== null ? { resumeId: row.resumeId } : {}),
   ...(row.name !== null ? { name: row.name } : {}),
   ...(row.cwd !== null ? { cwd: row.cwd } : {}),
 })
@@ -177,6 +184,63 @@ export const createSessionStore = (deps: {
       if (isErr(fetched)) return fetched
       if (fetched.value === undefined) return err({ kind: "not-found" })
       return ok(toSession(fetched.value))
+    },
+
+    setResumeId: (
+      id: SessionId,
+      resumeId: string,
+    ): Result<Session, SessionError> => {
+      const written = asSessionError(
+        tryDb(() =>
+          handle
+            .update(sessions)
+            .set({ resumeId })
+            .where(eq(sessions.id, id))
+            .run(),
+        ),
+      )
+      if (isErr(written)) return written
+      const fetched = asSessionError(
+        tryDb(() =>
+          handle.select().from(sessions).where(eq(sessions.id, id)).get(),
+        ),
+      )
+      if (isErr(fetched)) return fetched
+      if (fetched.value === undefined) return err({ kind: "not-found" })
+      return ok(toSession(fetched.value))
+    },
+
+    reopen: (id: SessionId): Result<Session, SessionError> => {
+      const written = asSessionError(
+        tryDb(() =>
+          handle
+            .update(sessions)
+            .set({ endedAt: null, exitCode: null })
+            .where(eq(sessions.id, id))
+            .run(),
+        ),
+      )
+      if (isErr(written)) return written
+      const fetched = asSessionError(
+        tryDb(() =>
+          handle.select().from(sessions).where(eq(sessions.id, id)).get(),
+        ),
+      )
+      if (isErr(fetched)) return fetched
+      if (fetched.value === undefined) return err({ kind: "not-found" })
+      return ok(toSession(fetched.value))
+    },
+
+    get: (id: SessionId): Result<Session | undefined, SessionError> => {
+      const fetched = asSessionError(
+        tryDb(() =>
+          handle.select().from(sessions).where(eq(sessions.id, id)).get(),
+        ),
+      )
+      if (isErr(fetched)) return fetched
+      return ok(
+        fetched.value === undefined ? undefined : toSession(fetched.value),
+      )
     },
 
     reconcileOrphaned: (): Result<number, SessionError> => {

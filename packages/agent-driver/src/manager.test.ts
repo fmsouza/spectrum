@@ -88,6 +88,8 @@ const makeDeps = (
   closed: { id: string; code: number }[]
   appended: CanonicalEvent[]
   renamed: { id: string; name: string }[]
+  resumeIds: { id: string; resumeId: string }[]
+  reopened: string[]
   deps: Parameters<typeof createRunManager>[0]
 } => {
   const sent: RunnerOutbound[] = []
@@ -95,6 +97,8 @@ const makeDeps = (
   const closed: { id: string; code: number }[] = []
   const appended: CanonicalEvent[] = []
   const renamed: { id: string; name: string }[] = []
+  const resumeIds: { id: string; resumeId: string }[] = []
+  const reopened: string[] = []
   let seq = -1
   const store: StoredEvent[] = []
   const sessions: SessionSink = {
@@ -110,6 +114,15 @@ const makeDeps = (
       renamed.push({ id: String(id), name })
       return ok({ ...fakeSession, name })
     },
+    setResumeId: (id, resumeId) => {
+      resumeIds.push({ id: String(id), resumeId })
+      return ok({ ...fakeSession, resumeId })
+    },
+    reopen: (id) => {
+      reopened.push(String(id))
+      return ok(fakeSession)
+    },
+    get: (id) => ok({ ...fakeSession, id }),
   }
   const events: RunEventSink = {
     append: (sid, event) => {
@@ -126,8 +139,16 @@ const makeDeps = (
     closed,
     appended,
     renamed,
+    resumeIds,
+    reopened,
     deps: {
-      driver: createFakeDriver({ script, scheduler: sync }),
+      driver: createFakeDriver({
+        script,
+        scheduler: sync,
+        setResumeId: (id, resumeId) => {
+          resumeIds.push({ id: String(id), resumeId })
+        },
+      }),
       sessions,
       events,
       clock,
@@ -251,6 +272,60 @@ describe("createRunManager.launch", () => {
     expect(captured?.permissionMode).toBe("plan")
   })
 
+  it("forwards resume to driver.start when the launch input carries one", () => {
+    let captured: AgentStartInput | undefined
+    const capturingDriver: AgentDriver = {
+      start: (i) => {
+        captured = i
+        return ok({
+          rootRunnerId: root,
+          onEvent: () => undefined,
+          send: () => ok(undefined),
+          respondApproval: () => ok(undefined),
+          respondQuestion: () => ok(undefined),
+          interrupt: () => ok(undefined),
+          close: () => ok(undefined),
+        })
+      },
+    }
+    const { deps } = makeDeps(scriptOf([]))
+    const manager = createRunManager({ ...deps, driver: capturingDriver })
+    manager.launch({
+      harnessId,
+      cwd: "/tmp",
+      env: {},
+      resume: "claude-sess-42",
+    })
+    expect(captured?.resume).toBe("claude-sess-42")
+  })
+
+  it("forwards sessionId to driver.start when the launch input carries one", () => {
+    let captured: AgentStartInput | undefined
+    const capturingDriver: AgentDriver = {
+      start: (i) => {
+        captured = i
+        return ok({
+          rootRunnerId: root,
+          onEvent: () => undefined,
+          send: () => ok(undefined),
+          respondApproval: () => ok(undefined),
+          respondQuestion: () => ok(undefined),
+          interrupt: () => ok(undefined),
+          close: () => ok(undefined),
+        })
+      },
+    }
+    const { deps } = makeDeps(scriptOf([]))
+    const manager = createRunManager({ ...deps, driver: capturingDriver })
+    manager.launch({
+      harnessId,
+      cwd: "/tmp",
+      env: {},
+      sessionId: sessionId,
+    })
+    expect(captured?.sessionId).toBe(sessionId)
+  })
+
   it("closes the session even when the final event fails to persist", () => {
     // Arrange: append always fails so persist never succeeds.
     const sent: RunnerOutbound[] = []
@@ -262,6 +337,9 @@ describe("createRunManager.launch", () => {
         return ok({ ...fakeSession, exitCode: code })
       },
       updateName: () => ok({ ...fakeSession, name: "x" }),
+      setResumeId: () => ok(fakeSession),
+      reopen: () => ok(fakeSession),
+      get: (id) => ok({ ...fakeSession, id }),
     }
     const events: RunEventSink = {
       append: () => err({ detail: "boom" }),
@@ -445,14 +523,29 @@ describe("createRunManager.handleInbound", () => {
     expect(closed).toEqual([{ id: sessionId, code: 0 }])
   })
 
-  it("drops inbound messages for an unknown session id", () => {
+  it("drops inbound messages for an unknown session id", async () => {
     const { deps, sent } = makeDeps(scriptOf([startEvent]))
-    const manager = createRunManager(deps)
+    // Override get to return undefined for otherId — simulating a session that
+    // was never created in the store. The manager must not attempt to resume.
+    const depsNoSession: Parameters<typeof createRunManager>[0] = {
+      ...deps,
+      sessions: {
+        ...deps.sessions,
+        get: (id) =>
+          String(id) === String(otherId)
+            ? ok(undefined)
+            : ok({ ...fakeSession, id }),
+      },
+    }
+    const manager = createRunManager(depsNoSession)
     manager.launch({ harnessId, cwd: "/tmp", env: {} })
     sent.length = 0
     expect(() =>
       manager.handleInbound({ type: "run-send", id: otherId, text: "x" }),
     ).not.toThrow()
+    // Flush microtasks — doResume is async.
+    await Promise.resolve()
+    await Promise.resolve()
     expect(sent).toEqual([])
   })
 })
@@ -906,6 +999,9 @@ describe("createRunManager session naming", () => {
       create: () => ok(fakeSession),
       close: () => ok({ ...fakeSession, exitCode: 0 }),
       updateName: () => err({ kind: "db-failed", detail: "boom" }),
+      setResumeId: () => ok(fakeSession),
+      reopen: () => ok(fakeSession),
+      get: (id) => ok({ ...fakeSession, id }),
     }
     const events: RunEventSink = {
       append: (_sid, _event) => ok({ seq: 0 }),
@@ -990,6 +1086,9 @@ describe("createRunManager.bindSend", () => {
         create: () => ok(fakeSession),
         close: () => ok({ ...fakeSession, exitCode: 0 }),
         updateName: () => ok({ ...fakeSession, name: "x" }),
+        setResumeId: () => ok(fakeSession),
+        reopen: () => ok(fakeSession),
+        get: (id) => ok({ ...fakeSession, id }),
       },
       events: {
         append: (sid, event) => {
@@ -1048,6 +1147,9 @@ describe("createRunManager.bindSend", () => {
         create: () => ok(fakeSession),
         close: () => ok({ ...fakeSession, exitCode: 0 }),
         updateName: () => ok({ ...fakeSession, name: "x" }),
+        setResumeId: () => ok(fakeSession),
+        reopen: () => ok(fakeSession),
+        get: (id) => ok({ ...fakeSession, id }),
       },
       events: {
         append: (_sid, event) => {
@@ -1087,5 +1189,205 @@ describe("createRunManager.bindSend", () => {
       id: sessionId,
       event: replayed,
     })
+  })
+})
+
+describe("createRunManager resume (lazy auto-resume on run-send)", () => {
+  // Helper: wrap the fake driver to count start calls and capture inputs.
+  const wrapCountingDriver = (
+    base: AgentDriver,
+    counter: { count: number; inputs: AgentStartInput[] },
+  ): AgentDriver => ({
+    start: (input) => {
+      counter.count += 1
+      counter.inputs.push(input)
+      return base.start(input)
+    },
+  })
+
+  it("persists the harness resume token reported by the driver on launch", () => {
+    // The FakeDriver (Task 10) reports its script.resumeToken via the wired
+    // setResumeId on start, gated on input.sessionId being defined. The manager
+    // forwards sessionId: id (the id it minted via sessions.create) to driver.start
+    // on the initial launch path, so setResumeId fires with the launched sessionId
+    // and the token lands in the sessions sink.
+    const script: FakeScript = {
+      rootRunnerId: root,
+      reactions: [{ on: "start", emit: [startEvent] }],
+      resumeToken: "claude-sess-99",
+    }
+    const { deps, resumeIds } = makeDeps(script)
+    const manager = createRunManager(deps)
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    expect(resumeIds).toEqual([
+      { id: String(sessionId), resumeId: "claude-sess-99" },
+    ])
+  })
+
+  it("reopens the session and re-launches the driver with the persisted resumeId when a run-send arrives for an ended session", async () => {
+    const script: FakeScript = {
+      rootRunnerId: root,
+      reactions: [
+        { on: "start", emit: [startEvent, finishEvent] },
+        { on: "send", emit: [textEvent] },
+      ],
+    }
+    const counter = { count: 0, inputs: [] as AgentStartInput[] }
+    // The store's get returns a row with resumeId so the manager forwards it.
+    const sessionWithResume = {
+      ...fakeSession,
+      id: sessionId,
+      resumeId: "sess-A",
+    }
+    const { deps, reopened } = makeDeps(script)
+    const wrappedDriver = wrapCountingDriver(deps.driver, counter)
+    // Override get to return the persisted resumeId.
+    const depsWithResume: Parameters<typeof createRunManager>[0] = {
+      ...deps,
+      driver: wrappedDriver,
+      sessions: {
+        ...deps.sessions,
+        get: (id) => ok({ ...sessionWithResume, id }),
+      },
+    }
+    const manager = createRunManager(depsWithResume)
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    // Initial start + finish closed the session and dropped the live handle.
+    expect(counter.count).toBe(1)
+    // A run-send for the ended session triggers resume.
+    manager.handleInbound({ type: "run-send", id: sessionId, text: "again" })
+    // The manager reopens the row.
+    expect(reopened).toEqual([String(sessionId)])
+    // Allow microtasks to flush (resolveResumeInput is async via Promise.resolve).
+    await Promise.resolve()
+    await Promise.resolve()
+    // The driver was started a second time (resume).
+    expect(counter.count).toBe(2)
+    expect(counter.inputs[1]?.resume).toBe("sess-A")
+    expect(counter.inputs[1]?.sessionId).toBe(sessionId)
+  })
+
+  it("drops the live handle on root runner-finished so a later run-send triggers a resume", async () => {
+    const script: FakeScript = {
+      rootRunnerId: root,
+      reactions: [
+        { on: "start", emit: [startEvent, finishEvent] },
+        { on: "send", emit: [textEvent] },
+      ],
+    }
+    const counter = { count: 0, inputs: [] as AgentStartInput[] }
+    const { deps } = makeDeps(script)
+    const wrappedDriver = wrapCountingDriver(deps.driver, counter)
+    const manager = createRunManager({ ...deps, driver: wrappedDriver })
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    expect(counter.count).toBe(1)
+    // A send while the (now-dropped) handle is gone must resume, not no-op.
+    manager.handleInbound({ type: "run-send", id: sessionId, text: "x" })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(counter.count).toBe(2)
+  })
+
+  it("serializes two rapid run-sends to an ended session into a single resume", async () => {
+    const script: FakeScript = {
+      rootRunnerId: root,
+      reactions: [
+        { on: "start", emit: [startEvent, finishEvent] },
+        { on: "send", emit: [textEvent] },
+      ],
+    }
+    const counter = { count: 0, inputs: [] as AgentStartInput[] }
+    const { deps } = makeDeps(script)
+    const wrappedDriver = wrapCountingDriver(deps.driver, counter)
+    const manager = createRunManager({ ...deps, driver: wrappedDriver })
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    expect(counter.count).toBe(1)
+    // Two rapid sends to the ended session.
+    manager.handleInbound({ type: "run-send", id: sessionId, text: "a" })
+    manager.handleInbound({ type: "run-send", id: sessionId, text: "b" })
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    // Initial launch + ONE resume (not two resumes).
+    expect(counter.count).toBe(2)
+  })
+
+  it("emits a session-resume-token frame with empty string on resume when the row has no resumeId (fresh-restart toast signal)", async () => {
+    const script: FakeScript = {
+      rootRunnerId: root,
+      reactions: [
+        { on: "start", emit: [startEvent, finishEvent] },
+        { on: "send", emit: [textEvent] },
+      ],
+    }
+    // Row has NO resumeId — harness cannot true-resume.
+    const { deps, sent } = makeDeps(script)
+    const manager = createRunManager(deps)
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    sent.length = 0
+    manager.handleInbound({ type: "run-send", id: sessionId, text: "again" })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(sent).toContainEqual({
+      type: "session-resume-token",
+      id: sessionId,
+      resumeToken: "",
+    })
+  })
+
+  it("emits a synthetic runner-finished:errored frame on the runner socket when resume driver.start fails", async () => {
+    // Resume path: launch + close, then run-send. The second driver.start (the
+    // resume) errors; the manager must surface the failure to the webview as
+    // a runner-finished:errored canonical event (so the UI shows the failure
+    // state instead of hanging on "Starting…").
+    const script: FakeScript = {
+      rootRunnerId: root,
+      reactions: [
+        { on: "start", emit: [startEvent, finishEvent] },
+        { on: "send", emit: [textEvent] },
+      ],
+    }
+    // First start succeeds (initial launch), second start (the resume) errors.
+    let startCalls = 0
+    const failingDriver: AgentDriver = {
+      start: () => {
+        startCalls += 1
+        if (startCalls === 1) {
+          // The first launch uses the FakeDriver.
+          return createFakeDriver({ script, scheduler: sync }).start({
+            harnessId,
+            cwd: "/tmp",
+            env: {},
+            sessionId,
+          })
+        }
+        return err({ kind: "start-failed", detail: "harness not running" })
+      },
+    }
+    const { deps, sent, closed } = makeDeps(script)
+    const manager = createRunManager({ ...deps, driver: failingDriver })
+    manager.launch({ harnessId, cwd: "/tmp", env: {} })
+    sent.length = 0
+    closed.length = 0
+    manager.handleInbound({ type: "run-send", id: sessionId, text: "again" })
+    await Promise.resolve()
+    await Promise.resolve()
+    // The synthetic frame must reach the webview as a runner-event with a
+    // runner-finished:errored payload carrying the driver error detail.
+    const errored = sent.find(
+      (m) =>
+        m.type === "runner-event" &&
+        m.event.event.type === "runner-finished" &&
+        m.event.event.status === "errored",
+    )
+    expect(errored).toBeDefined()
+    if (
+      errored?.type === "runner-event" &&
+      errored.event.event.type === "runner-finished"
+    ) {
+      expect(errored.event.event.error).toContain("harness not running")
+    }
+    // Session must be closed on failure (exit code 1).
+    expect(closed).toEqual([{ id: String(sessionId), code: 1 }])
   })
 })

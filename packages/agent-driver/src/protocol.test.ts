@@ -27,11 +27,34 @@ describe("RunnerOutbound", () => {
     const frame: RunnerOutbound = { type: "runner-event", id, event: stored }
     expect(frame.type).toBe("runner-event")
   })
+
+  it("accepts a session-resume-token frame shape", () => {
+    const frame: RunnerOutbound = {
+      type: "session-resume-token",
+      id,
+      resumeToken: "claude-sess-1",
+    }
+    expect(frame.type).toBe("session-resume-token")
+    expect(frame).toEqual({
+      type: "session-resume-token",
+      id,
+      resumeToken: "claude-sess-1",
+    })
+  })
 })
 
 describe("decodeRunnerInbound", () => {
   it("rejects an unknown inbound type (session-renamed is outbound-only)", () => {
     const r = decodeRunnerInbound({ type: "session-renamed", id, name: "x" })
+    expect(r.ok).toBe(false)
+  })
+
+  it("rejects a session-resume-token as inbound (it is outbound-only)", () => {
+    const r = decodeRunnerInbound({
+      type: "session-resume-token",
+      id,
+      resumeToken: "x",
+    })
     expect(r.ok).toBe(false)
   })
 

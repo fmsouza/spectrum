@@ -30,6 +30,11 @@ export type RunnerOutbound =
       readonly id: SessionId
       readonly name: string
     }
+  | {
+      readonly type: "session-resume-token"
+      readonly id: SessionId
+      readonly resumeToken: string
+    }
 
 export type RunnerInbound =
   | { readonly type: "run-attach"; readonly id: SessionId }

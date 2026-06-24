@@ -19,6 +19,17 @@ export interface SessionSink {
     id: SessionId,
     name: string,
   ): Result<Session, { kind: string; detail?: string }>
+  /** Persist the harness's resume id (driver session id) so we can resume later. */
+  setResumeId(
+    id: SessionId,
+    resumeId: string,
+  ): Result<Session, { kind: string; detail?: string }>
+  /** Mark a previously-closed session as open again for a resumed run. */
+  reopen(id: SessionId): Result<Session, { kind: string; detail?: string }>
+  /** Look up a session by id (returns undefined if not found). */
+  get(
+    id: SessionId,
+  ): Result<Session | undefined, { kind: string; detail?: string }>
 }
 
 /** Subset of RunStore the RunManager needs (defined locally to avoid a run-store dependency). */

@@ -36,4 +36,9 @@ export const bundledMigrations: readonly BundledMigration[] = [
       "CREATE INDEX `idx_run_events_runner` ON `run_events` (`sessionId`,`runnerId`);",
     ],
   },
+  {
+    tag: "0003_heavy_mesmero",
+    when: 1782327089995,
+    statements: ["ALTER TABLE `sessions` ADD `resumeId` text;"],
+  },
 ] as const

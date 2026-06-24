@@ -36,6 +36,7 @@ export const REQ_ELICITATION = "mcpServer/elicitation/request" as const
 export const M_INITIALIZE = "initialize" as const
 export const M_INITIALIZED = "initialized" as const
 export const M_THREAD_START = "thread/start" as const
+export const M_THREAD_RESUME = "thread/resume" as const
 export const M_TURN_START = "turn/start" as const
 export const M_TURN_STEER = "turn/steer" as const
 export const M_TURN_INTERRUPT = "turn/interrupt" as const

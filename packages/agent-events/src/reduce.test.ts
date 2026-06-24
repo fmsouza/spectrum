@@ -679,3 +679,67 @@ describe("reduce — questions", () => {
     expect(item.answer?.selections[0]?.labels).toEqual(["A"])
   })
 })
+
+describe("reduce — idempotent re-emit (double-replay safety)", () => {
+  // The session-resume flow can deliver the same stored event twice (once from
+  // the manager's `events.read` replay, once from a redundant `run-attach`).
+  // The reducer must NOT re-apply the events below — re-appending would produce
+  // duplicate tool calls, duplicate approvals, and concatenated text.
+
+  it("does not duplicate a tool-call-started when re-emitted with the same callId", () => {
+    const start: CanonicalEvent = {
+      type: "tool-call-started",
+      runnerId: rid("root"),
+      callId: "c1",
+      tool: "Bash",
+    }
+    const state = fold([started("root"), start, start])
+    const items = state.runners.get(rid("root"))?.items ?? []
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ kind: "tool-call", callId: "c1" })
+  })
+
+  it("does not duplicate an approval-requested when re-emitted with the same requestId", () => {
+    const req: CanonicalEvent = {
+      type: "approval-requested",
+      runnerId: rid("root"),
+      requestId: "req1",
+      target: { kind: "command", detail: "rm -rf" },
+    }
+    const state = fold([started("root"), req, req])
+    const items = state.runners.get(rid("root"))?.items ?? []
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ kind: "approval", requestId: "req1" })
+  })
+
+  it("does not duplicate a file-change when re-emitted with the same callId", () => {
+    const change: CanonicalEvent = {
+      type: "file-change",
+      runnerId: rid("root"),
+      callId: "c1",
+      path: "/x/y.ts",
+      kind: "update",
+    }
+    const state = fold([started("root"), change, change])
+    const items = state.runners.get(rid("root"))?.items ?? []
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ kind: "file-change", callId: "c1" })
+  })
+
+  it("does not concatenate a text-delta when re-emitted with the same messageId", () => {
+    const delta: CanonicalEvent = {
+      type: "text-delta",
+      runnerId: rid("root"),
+      messageId: "m1",
+      text: "hello",
+    }
+    const state = fold([started("root"), delta, delta])
+    const items = state.runners.get(rid("root"))?.items ?? []
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({
+      kind: "message",
+      messageId: "m1",
+      text: "hello",
+    })
+  })
+})

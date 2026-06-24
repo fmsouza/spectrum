@@ -1,6 +1,7 @@
 import type { CanonicalEvent, RunnerId } from "@spectrum/agent-events"
+import type { SessionId } from "@spectrum/types"
 import { ok } from "@spectrum/utils"
-import type { AgentDriver, AgentSession } from "./driver"
+import type { AgentDriver, AgentSession, AgentStartInput } from "./driver"
 
 export type FakeReaction =
   | { on: "start"; emit: readonly CanonicalEvent[] }
@@ -12,6 +13,8 @@ export type FakeReaction =
 export type FakeScript = {
   readonly rootRunnerId: RunnerId
   readonly reactions: readonly FakeReaction[]
+  /** When set, the fake reports this token via setResumeId on start (simulating the driver learning its native id). */
+  readonly resumeToken?: string
 }
 
 /**
@@ -22,11 +25,23 @@ export type FakeScript = {
 export const createFakeDriver = (deps: {
   script: FakeScript
   scheduler?: (fn: () => void) => void
+  /** Invoked with each AgentStartInput so a test can assert resume/sessionId were forwarded. Optional. */
+  onStart?: (input: AgentStartInput) => void
+  /** Persisted-token sink the fake calls when script.resumeToken is set. Optional. */
+  setResumeId?: (sessionId: SessionId, resumeId: string) => void
 }): AgentDriver => {
   const schedule =
     deps.scheduler ?? ((fn: () => void): void => queueMicrotask(fn))
 
-  const start: AgentDriver["start"] = () => {
+  const start: AgentDriver["start"] = (input) => {
+    deps.onStart?.(input)
+    if (
+      deps.script.resumeToken !== undefined &&
+      input.sessionId !== undefined &&
+      deps.setResumeId !== undefined
+    ) {
+      deps.setResumeId(input.sessionId, deps.script.resumeToken)
+    }
     let cb: ((e: CanonicalEvent) => void) | null = null
     // Per-kind FIFO queues of batches, drained one batch per command.
     const queues = {

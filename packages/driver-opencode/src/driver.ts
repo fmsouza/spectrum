@@ -1,5 +1,6 @@
 import type { AgentDriver } from "@spectrum/agent-driver"
 import { createDriver } from "@spectrum/driver-runtime"
+import type { SessionId } from "@spectrum/types"
 import type { IdGen } from "@spectrum/utils"
 import { createOpencodeAdapter } from "./adapter"
 import type {
@@ -25,6 +26,12 @@ export interface OpencodeDriverDeps {
   readonly watchdogMs?: number
   /** Schedules the async adapter start; defaults to queueMicrotask (forwarded to createDriver). */
   readonly scheduler?: (fn: () => void) => void
+  /**
+   * Persist the harness-native session id (OpenCode's session id) once the adapter learns it.
+   * Forwarded to the runtime's `createDriver`; the runtime binds it to the current Spectrum
+   * `sessionId` automatically (adapters call `ctx.reportResumeToken`).
+   */
+  readonly setResumeId?: (sessionId: SessionId, resumeId: string) => void
 }
 
 /**
@@ -41,6 +48,9 @@ export const createOpencodeDriver = (deps: OpencodeDriverDeps): AgentDriver =>
     }),
     idGen: deps.idGen,
     ...(deps.scheduler !== undefined ? { scheduler: deps.scheduler } : {}),
+    ...(deps.setResumeId !== undefined
+      ? { setResumeId: deps.setResumeId }
+      : {}),
   })
 
 /**
