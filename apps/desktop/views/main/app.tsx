@@ -24,8 +24,10 @@ import { useStore } from "zustand"
 import { IpcClientProvider, useIpcClient } from "./IpcClientContext"
 import { LoggerProvider } from "./LoggerContext"
 import { createRealClients } from "./clients"
+import { ConnectionLostOverlay } from "./components/ConnectionLostOverlay"
 import { MountFallback } from "./components/MountFallback"
 import { UpdateBanner } from "./components/UpdateBanner"
+import { useConnectionWatch } from "./hooks/useConnectionWatch"
 import { useHarnesses } from "./hooks/useHarnesses"
 import { useModels } from "./hooks/useModels"
 import { useNotifications } from "./hooks/useNotifications"
@@ -81,6 +83,15 @@ type AppInnerProps = {
  */
 const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   const client = useIpcClient()
+  // After a sleep gap, verify the backend is reachable; if not, self-reload to
+  // re-establish the (non-reconnecting) Electrobun RPC + runner socket. Uses the
+  // cheap getProxyStatus as the liveness ping. Date.now is the wall clock here by
+  // design — the hook keys off real elapsed time, which is exactly the wake signal.
+  const conn = useConnectionWatch({
+    ping: () => client.getProxyStatus(undefined).then((r) => r.ok),
+    onLost: () => window.location.reload(),
+    now: () => Date.now(),
+  })
   const uiStore = useStores().ui
   const view = useStore(uiStore, (s) => s.view)
   const openSessionIds = useStore(uiStore, (s) => s.openSessionIds)
@@ -335,6 +346,7 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
         notifications={notifications.notifications}
         onDismiss={notifications.dismiss}
       />
+      {conn.lost ? <ConnectionLostOverlay /> : null}
       <AppShell
         mode={mode}
         onModeChange={onModeChange}
