@@ -16,6 +16,12 @@ interface SocketLike {
   send(data: string): void
 }
 
+/** Renderer-liveness callbacks: fired on webview connect (open) and disconnect (close). */
+export interface RunnerSocketHooks {
+  readonly onConnect?: () => void
+  readonly onDisconnect?: () => void
+}
+
 /**
  * The pure message-handling core of the runner socket, extracted so it is unit-tested without a live
  * `Bun.serve`. `open` binds the manager's send sink to the socket; `message` zod-decodes inbound JSON
@@ -23,9 +29,11 @@ interface SocketLike {
  */
 export const makeRunnerSocketHandlers = (
   manager: RunManager,
+  hooks: RunnerSocketHooks = {},
 ): {
   open(ws: SocketLike): void
   message(raw: string | ArrayBufferView | ArrayBuffer): void
+  close(): void
 } => ({
   open(ws) {
     manager.bindSend((message: RunnerOutbound) => {
@@ -35,6 +43,7 @@ export const makeRunnerSocketHandlers = (
         /* socket closing — drop */
       }
     })
+    hooks.onConnect?.()
   },
   message(raw) {
     if (typeof raw !== "string") return
@@ -47,6 +56,9 @@ export const makeRunnerSocketHandlers = (
     const decoded = decodeRunnerInbound(parsed)
     if (isOk(decoded)) manager.handleInbound(decoded.value)
   },
+  close() {
+    hooks.onDisconnect?.()
+  },
 })
 
 /**
@@ -55,8 +67,11 @@ export const makeRunnerSocketHandlers = (
  * `manager.bindSend` is pointed at the live socket so `RunnerOutbound` is pushed straight to the
  * webview.
  */
-export const startRunnerSocket = (manager: RunManager): RunnerSocket => {
-  const handlers = makeRunnerSocketHandlers(manager)
+export const startRunnerSocket = (
+  manager: RunManager,
+  hooks: RunnerSocketHooks = {},
+): RunnerSocket => {
+  const handlers = makeRunnerSocketHandlers(manager, hooks)
   const server = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,
@@ -70,6 +85,9 @@ export const startRunnerSocket = (manager: RunManager): RunnerSocket => {
       },
       message(_ws, raw) {
         handlers.message(raw)
+      },
+      close() {
+        handlers.close()
       },
     },
   })

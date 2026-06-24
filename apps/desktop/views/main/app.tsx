@@ -15,6 +15,7 @@ import type { NewSessionValues } from "@spectrum/ui"
 import {
   type ReactElement,
   StrictMode,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -24,7 +25,10 @@ import { useStore } from "zustand"
 import { IpcClientProvider, useIpcClient } from "./IpcClientContext"
 import { LoggerProvider } from "./LoggerContext"
 import { createRealClients } from "./clients"
+import { ConnectionLostOverlay } from "./components/ConnectionLostOverlay"
+import { MountFallback } from "./components/MountFallback"
 import { UpdateBanner } from "./components/UpdateBanner"
+import { useConnectionWatch } from "./hooks/useConnectionWatch"
 import { useHarnesses } from "./hooks/useHarnesses"
 import { useModels } from "./hooks/useModels"
 import { useNotifications } from "./hooks/useNotifications"
@@ -39,6 +43,7 @@ import { type LocationAdapter, windowLocationAdapter } from "./stores/location"
 import { encodeView } from "./stores/uiStore"
 import { SessionsView } from "./views/SessionsView"
 import { SettingsView } from "./views/SettingsView"
+import { withTimeout } from "./withTimeout"
 
 export type { View } from "./stores/uiStore"
 
@@ -79,6 +84,21 @@ type AppInnerProps = {
  */
 const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   const client = useIpcClient()
+  // After a sleep gap, verify the backend is reachable; if not, self-reload to
+  // re-establish the (non-reconnecting) Electrobun RPC + runner socket. Uses the
+  // cheap getProxyStatus as the liveness ping. Date.now is the wall clock here by
+  // design — the hook keys off real elapsed time, which is exactly the wake signal.
+  const pingBackend = useCallback(
+    () => client.getProxyStatus(undefined).then((r) => r.ok),
+    [client],
+  )
+  const reloadWebview = useCallback(() => window.location.reload(), [])
+  const nowMs = useCallback(() => Date.now(), [])
+  const conn = useConnectionWatch({
+    ping: pingBackend,
+    onLost: reloadWebview,
+    now: nowMs,
+  })
   const uiStore = useStores().ui
   const view = useStore(uiStore, (s) => s.view)
   const openSessionIds = useStore(uiStore, (s) => s.openSessionIds)
@@ -333,6 +353,7 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
         notifications={notifications.notifications}
         onDismiss={notifications.dismiss}
       />
+      {conn.lost ? <ConnectionLostOverlay /> : null}
       <AppShell
         mode={mode}
         onModeChange={onModeChange}
@@ -380,19 +401,34 @@ export const App = ({
 export const mount = async (): Promise<void> => {
   const container = document.getElementById("root")
   if (container === null) throw new Error("missing #root element")
-  const startView = window.location.hash.replace(/^#/, "")
-  // Build the ONE shared Electroview (carries IPC requests + the runner socket)
-  // and get all clients from it. See `clients.ts`.
-  const { ipcClient, runnerClient } = await createRealClients()
-  createRoot(container).render(
-    <StrictMode>
-      <App
-        client={ipcClient}
-        runnerClient={runnerClient}
-        initialView={startView}
-      />
-    </StrictMode>,
-  )
+  const root = createRoot(container)
+  try {
+    const startView = window.location.hash.replace(/^#/, "")
+    // Bound the startup IPC: a wedged Electrobun RPC must surface a fallback, not hang blank.
+    const { ipcClient, runnerClient } = await withTimeout(
+      createRealClients(),
+      10000,
+      "client init",
+    )
+    root.render(
+      <StrictMode>
+        <App
+          client={ipcClient}
+          runnerClient={runnerClient}
+          initialView={startView}
+        />
+      </StrictMode>,
+    )
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unexpected startup error."
+    root.render(
+      <MountFallback
+        message={message}
+        onReload={() => window.location.reload()}
+      />,
+    )
+  }
 }
 
 // Auto-mount only in the real webview (a DOM with #root), never under the test

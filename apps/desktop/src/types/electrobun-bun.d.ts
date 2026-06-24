@@ -31,7 +31,7 @@ export interface WindowOptions {
 }
 
 /**
- * Subset of the BrowserView navigation API we consume (will-navigate). The
+ * Subset of the BrowserView navigation API we consume (will-navigate, loadURL). The
  * handler receives an `ElectrobunEvent` whose navigation URL is at
  * `event.data.detail` (mirrors `electrobun/dist/api/bun/events/webviewEvents.ts`
  * `willNavigate`, which builds the event from `{ detail: <url> }`).
@@ -41,6 +41,8 @@ export interface BrowserViewNavEvents {
     name: "will-navigate",
     handler: (event: { readonly data: { readonly detail: string } }) => void,
   ): void
+  /** Reload the webview by navigating to a new URL (e.g. to respawn a dead content process). */
+  loadURL(url: string): void
 }
 
 export class BrowserWindow {
