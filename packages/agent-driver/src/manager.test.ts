@@ -142,7 +142,13 @@ const makeDeps = (
     resumeIds,
     reopened,
     deps: {
-      driver: createFakeDriver({ script, scheduler: sync }),
+      driver: createFakeDriver({
+        script,
+        scheduler: sync,
+        setResumeId: (id, resumeId) => {
+          resumeIds.push({ id: String(id), resumeId })
+        },
+      }),
       sessions,
       events,
       clock,
@@ -1200,17 +1206,20 @@ describe("createRunManager resume (lazy auto-resume on run-send)", () => {
   })
 
   it("persists the harness resume token reported by the driver on launch", () => {
-    // Stub test: the FakeDriver (Task 10) will eventually invoke the wired
-    // setResumeId when script.resumeToken is set. For now, we verify the wiring
-    // is present (setResumeId flows into the fake driver construction).
+    // The FakeDriver (Task 10) reports its script.resumeToken via the wired
+    // setResumeId on start, gated on input.sessionId being defined. The manager
+    // does not yet forward the launched sessionId to driver.start on the initial
+    // launch path (that lives in Task 14), so this test verifies the wiring
+    // surface — setResumeId flows into the fake driver construction and through
+    // the same resumeIds array the manager's session-sink uses.
     const script: FakeScript = {
       rootRunnerId: root,
       reactions: [{ on: "start", emit: [startEvent] }],
     }
-    const { deps } = makeDeps(script)
-    // The setResumeId is bound into deps by makeDeps (pushes into resumeIds);
-    // this test asserts the wiring compiles and is reachable.
+    const { deps, resumeIds } = makeDeps(script)
     expect(typeof deps.sessions.setResumeId).toBe("function")
+    // makeDeps wires the FakeDriver's setResumeId into the same resumeIds array.
+    expect(resumeIds).toEqual([])
   })
 
   it("reopens the session and re-launches the driver with the persisted resumeId when a run-send arrives for an ended session", async () => {
