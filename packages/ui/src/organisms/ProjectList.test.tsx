@@ -18,6 +18,7 @@ const baseProps = {
     prj_a: [
       {
         id: "s1",
+        name: "s1",
         harnessId: "claude",
         startedAt: "2026-06-07T10:00:00.000Z",
       } as Session,

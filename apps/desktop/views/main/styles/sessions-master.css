@@ -37,6 +37,27 @@
   font-size: var(--sp-text-sm);
 }
 
+/* The title's Tooltip root is the flex item that must shrink. It must NOT clip
+   (overflow:hidden here would eat the Tooltip's absolutely-positioned bubble);
+   clamping happens on the inner wrapper + .lk-truncate leaf below. */
+.lk-session-row__line .lk-session-row__name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lk-session-row__line .lk-session-row__name > span:not(.lk-tooltip__bubble) {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* The .lk-truncate leaf must be block-level here so its own
+   text-overflow:ellipsis engages; nested in the Tooltip's block wrapper it
+   would otherwise stay an inline box (ellipsis only clamps block/inline-block). */
+.lk-session-row__line .lk-session-row__name .lk-truncate {
+  display: block;
+}
+
 /* Lines 2 & 3: harness·model and cwd·time — smaller, muted. */
 .lk-session-row__sub {
   font-size: var(--sp-text-xs);

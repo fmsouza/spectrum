@@ -35,7 +35,7 @@ describe("SessionRow", () => {
     )
     expect(screen.getByText("Refactor auth")).toBeInTheDocument()
   })
-  it("falls back to the session id when there is no name", () => {
+  it("falls back to 'Untitled' when there is no name", () => {
     render(
       <SessionRow
         session={exited}
@@ -45,7 +45,8 @@ describe("SessionRow", () => {
         onSelect={() => {}}
       />,
     )
-    expect(screen.getByText("s_2")).toBeInTheDocument()
+    expect(screen.getByText("Untitled")).toBeInTheDocument()
+    expect(screen.queryByText("s_2")).toBeNull()
   })
   it("shows a running badge when the session has not ended", () => {
     render(
@@ -166,7 +167,55 @@ describe("SessionRow", () => {
     expect(onContextMenu).toHaveBeenCalledTimes(1)
   })
 
-  it("wraps the name (and only the name) in the truncating hook and renders no status dot", () => {
+  it("renders 'Untitled' rather than the id for an unnamed session", () => {
+    const unnamed = {
+      id: "s_99",
+      harnessId: "claude",
+      alias: "default",
+      startedAt: "2026-06-04T11:59:30.000Z",
+      cwd: "/tmp",
+    } as unknown as Session
+    render(
+      <SessionRow
+        session={unnamed}
+        harnessName="Claude Code"
+        model="sonnet"
+        selected={false}
+        onSelect={() => {}}
+      />,
+    )
+    expect(screen.getByText("Untitled")).toBeInTheDocument()
+    expect(screen.queryByText("s_99")).toBeNull()
+  })
+
+  it("reveals the full title in a tooltip when the name is hovered", () => {
+    const longName =
+      "Refactor the authentication module and migrate every call site to the new client"
+    const longSession = {
+      id: "s_long",
+      harnessId: "claude",
+      alias: "default",
+      startedAt: "2026-06-04T11:59:30.000Z",
+      name: longName,
+      cwd: "/tmp",
+    } as unknown as Session
+    const { container } = render(
+      <SessionRow
+        session={longSession}
+        harnessName="Claude Code"
+        model="sonnet"
+        selected={false}
+        onSelect={() => {}}
+      />,
+    )
+    expect(screen.queryByRole("tooltip")).toBeNull()
+    const nameRoot = container.querySelector(".lk-tooltip.lk-session-row__name")
+    expect(nameRoot).not.toBeNull()
+    fireEvent.mouseOver(nameRoot as Element)
+    expect(screen.getByRole("tooltip")).toHaveTextContent(longName)
+  })
+
+  it("wraps the name in a tooltip whose root carries the name hook, with exactly one truncate leaf, and renders no status dot", () => {
     const { container } = render(
       <SessionRow
         session={running}
@@ -176,14 +225,14 @@ describe("SessionRow", () => {
         onSelect={() => {}}
       />,
     )
-    // the line-1 wrapper carries the hook; only the name is truncated
     expect(container.querySelector(".lk-session-row__line")).not.toBeNull()
-    const name = container.querySelector(".lk-session-row__name.lk-truncate")
-    expect(name).not.toBeNull()
+    // The name hook now lives on the Tooltip root…
+    const nameRoot = container.querySelector(".lk-tooltip.lk-session-row__name")
+    expect(nameRoot).not.toBeNull()
+    // …and exactly one truncate leaf holds the text.
     expect(container.querySelectorAll(".lk-truncate").length).toBe(1)
     // The redundant StatusDot is gone — the Badge is the only status signal.
     expect(container.querySelector("[role='img']")).toBeNull()
-    // The Badge still conveys the state.
     expect(container.querySelector("[data-tone]")).not.toBeNull()
   })
 })
@@ -203,7 +252,7 @@ describe("SessionRow rename", () => {
     expect(screen.getByText("Refactor auth")).toBeInTheDocument()
   })
 
-  it("falls back to the session id when name is absent", () => {
+  it("falls back to 'Untitled' when name is absent", () => {
     render(
       <SessionRow
         session={exited}
@@ -214,7 +263,8 @@ describe("SessionRow rename", () => {
         onRename={() => {}}
       />,
     )
-    expect(screen.getByText("s_2")).toBeInTheDocument()
+    expect(screen.getByText("Untitled")).toBeInTheDocument()
+    expect(screen.queryByText("s_2")).toBeNull()
   })
 
   it("does not render an editable input when onRename is absent", () => {
