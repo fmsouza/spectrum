@@ -88,6 +88,8 @@ const makeDeps = (
   closed: { id: string; code: number }[]
   appended: CanonicalEvent[]
   renamed: { id: string; name: string }[]
+  resumeIds: { id: string; resumeId: string }[]
+  reopened: string[]
   deps: Parameters<typeof createRunManager>[0]
 } => {
   const sent: RunnerOutbound[] = []
@@ -95,6 +97,8 @@ const makeDeps = (
   const closed: { id: string; code: number }[] = []
   const appended: CanonicalEvent[] = []
   const renamed: { id: string; name: string }[] = []
+  const resumeIds: { id: string; resumeId: string }[] = []
+  const reopened: string[] = []
   let seq = -1
   const store: StoredEvent[] = []
   const sessions: SessionSink = {
@@ -110,6 +114,15 @@ const makeDeps = (
       renamed.push({ id: String(id), name })
       return ok({ ...fakeSession, name })
     },
+    setResumeId: (id, resumeId) => {
+      resumeIds.push({ id: String(id), resumeId })
+      return ok({ ...fakeSession, resumeId })
+    },
+    reopen: (id) => {
+      reopened.push(String(id))
+      return ok(fakeSession)
+    },
+    get: (id) => ok({ ...fakeSession, id }),
   }
   const events: RunEventSink = {
     append: (sid, event) => {
@@ -126,6 +139,8 @@ const makeDeps = (
     closed,
     appended,
     renamed,
+    resumeIds,
+    reopened,
     deps: {
       driver: createFakeDriver({ script, scheduler: sync }),
       sessions,
@@ -262,6 +277,9 @@ describe("createRunManager.launch", () => {
         return ok({ ...fakeSession, exitCode: code })
       },
       updateName: () => ok({ ...fakeSession, name: "x" }),
+      setResumeId: () => ok(fakeSession),
+      reopen: () => ok(fakeSession),
+      get: (id) => ok({ ...fakeSession, id }),
     }
     const events: RunEventSink = {
       append: () => err({ detail: "boom" }),
@@ -906,6 +924,9 @@ describe("createRunManager session naming", () => {
       create: () => ok(fakeSession),
       close: () => ok({ ...fakeSession, exitCode: 0 }),
       updateName: () => err({ kind: "db-failed", detail: "boom" }),
+      setResumeId: () => ok(fakeSession),
+      reopen: () => ok(fakeSession),
+      get: (id) => ok({ ...fakeSession, id }),
     }
     const events: RunEventSink = {
       append: (_sid, _event) => ok({ seq: 0 }),
@@ -990,6 +1011,9 @@ describe("createRunManager.bindSend", () => {
         create: () => ok(fakeSession),
         close: () => ok({ ...fakeSession, exitCode: 0 }),
         updateName: () => ok({ ...fakeSession, name: "x" }),
+        setResumeId: () => ok(fakeSession),
+        reopen: () => ok(fakeSession),
+        get: (id) => ok({ ...fakeSession, id }),
       },
       events: {
         append: (sid, event) => {
@@ -1048,6 +1072,9 @@ describe("createRunManager.bindSend", () => {
         create: () => ok(fakeSession),
         close: () => ok({ ...fakeSession, exitCode: 0 }),
         updateName: () => ok({ ...fakeSession, name: "x" }),
+        setResumeId: () => ok(fakeSession),
+        reopen: () => ok(fakeSession),
+        get: (id) => ok({ ...fakeSession, id }),
       },
       events: {
         append: (_sid, event) => {
