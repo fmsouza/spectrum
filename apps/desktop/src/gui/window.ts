@@ -181,12 +181,12 @@ export const openWindow = (
   deps: OpenWindowDeps = realOpenWindowDeps,
 ): void => {
   const io = deps.createBoundsIO(ctx)
-  // Task 4 wires onWebviewReady → ctx.rendererWatchdog.bindReload
   const window = deps.createWindow({
     url: deps.viewUrl,
     title: "Spectrum",
     loadInitialFrame: io.loadInitialFrame,
     onBoundsChange: io.onBoundsChange,
+    onWebviewReady: (reload) => ctx.rendererWatchdog.bindReload(reload),
   })
   const transport = deps.makeTransport(window)
   deps.wireServer(transport, ctx)
