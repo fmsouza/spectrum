@@ -5,7 +5,7 @@ import type {
   PermissionMode,
   QuestionAnswer,
 } from "@spectrum/agent-events"
-import type { HarnessId, ModelId } from "@spectrum/types"
+import type { HarnessId, ModelId, SessionId } from "@spectrum/types"
 import type { Result } from "@spectrum/utils"
 
 export type DriverError = {
@@ -39,6 +39,17 @@ export interface AgentStartInput {
   readonly args?: readonly string[]
   /** The normalized permission mode the session starts in; absent = "manual". */
   readonly permissionMode?: PermissionMode
+  /**
+   * The harness-native session id to resume (e.g. Claude's session_id, Codex's threadId).
+   * Absent = a fresh harness session; present = resume the exact prior conversation.
+   * Drivers that can't resume (OpenCode/OpenClaw) ignore this and start fresh.
+   */
+  readonly resume?: string
+  /**
+   * The Spectrum `SessionId` for this run. Drivers that need to bind a callback (e.g.
+   * `reportResumeToken`) to the originating Spectrum session use this to look it up.
+   */
+  readonly sessionId?: SessionId
 }
 
 export interface AgentSession {

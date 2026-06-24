@@ -24,6 +24,10 @@ export interface RunLaunchInput {
   readonly command?: string
   /** The harness-resolved launch args, forwarded to `driver.start` (see `AgentStartInput.args`). */
   readonly args?: readonly string[]
+  /** Harness-native session id to resume; absent = fresh start. Forwarded to `driver.start`. */
+  readonly resume?: string
+  /** Spectrum `SessionId` for this run; forwarded to `driver.start` for callback binding. */
+  readonly sessionId?: SessionId
 }
 
 export interface RunManagerDeps {
@@ -104,6 +108,8 @@ export const createRunManager = (deps: RunManagerDeps): RunManager => {
         : {}),
       ...(input.command !== undefined ? { command: input.command } : {}),
       ...(input.args !== undefined ? { args: input.args } : {}),
+      ...(input.resume !== undefined ? { resume: input.resume } : {}),
+      ...(input.sessionId !== undefined ? { sessionId: input.sessionId } : {}),
     })
     if (isErr(started)) {
       // Driver start boundary failure. `kind` is a DriverError kind (e.g. "start-failed"); the

@@ -266,6 +266,60 @@ describe("createRunManager.launch", () => {
     expect(captured?.permissionMode).toBe("plan")
   })
 
+  it("forwards resume to driver.start when the launch input carries one", () => {
+    let captured: AgentStartInput | undefined
+    const capturingDriver: AgentDriver = {
+      start: (i) => {
+        captured = i
+        return ok({
+          rootRunnerId: root,
+          onEvent: () => undefined,
+          send: () => ok(undefined),
+          respondApproval: () => ok(undefined),
+          respondQuestion: () => ok(undefined),
+          interrupt: () => ok(undefined),
+          close: () => ok(undefined),
+        })
+      },
+    }
+    const { deps } = makeDeps(scriptOf([]))
+    const manager = createRunManager({ ...deps, driver: capturingDriver })
+    manager.launch({
+      harnessId,
+      cwd: "/tmp",
+      env: {},
+      resume: "claude-sess-42",
+    })
+    expect(captured?.resume).toBe("claude-sess-42")
+  })
+
+  it("forwards sessionId to driver.start when the launch input carries one", () => {
+    let captured: AgentStartInput | undefined
+    const capturingDriver: AgentDriver = {
+      start: (i) => {
+        captured = i
+        return ok({
+          rootRunnerId: root,
+          onEvent: () => undefined,
+          send: () => ok(undefined),
+          respondApproval: () => ok(undefined),
+          respondQuestion: () => ok(undefined),
+          interrupt: () => ok(undefined),
+          close: () => ok(undefined),
+        })
+      },
+    }
+    const { deps } = makeDeps(scriptOf([]))
+    const manager = createRunManager({ ...deps, driver: capturingDriver })
+    manager.launch({
+      harnessId,
+      cwd: "/tmp",
+      env: {},
+      sessionId: sessionId,
+    })
+    expect(captured?.sessionId).toBe(sessionId)
+  })
+
   it("closes the session even when the final event fails to persist", () => {
     // Arrange: append always fails so persist never succeeds.
     const sent: RunnerOutbound[] = []
