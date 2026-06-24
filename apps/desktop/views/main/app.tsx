@@ -15,6 +15,7 @@ import type { NewSessionValues } from "@spectrum/ui"
 import {
   type ReactElement,
   StrictMode,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -87,10 +88,16 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
   // re-establish the (non-reconnecting) Electrobun RPC + runner socket. Uses the
   // cheap getProxyStatus as the liveness ping. Date.now is the wall clock here by
   // design — the hook keys off real elapsed time, which is exactly the wake signal.
+  const pingBackend = useCallback(
+    () => client.getProxyStatus(undefined).then((r) => r.ok),
+    [client],
+  )
+  const reloadWebview = useCallback(() => window.location.reload(), [])
+  const nowMs = useCallback(() => Date.now(), [])
   const conn = useConnectionWatch({
-    ping: () => client.getProxyStatus(undefined).then((r) => r.ok),
-    onLost: () => window.location.reload(),
-    now: () => Date.now(),
+    ping: pingBackend,
+    onLost: reloadWebview,
+    now: nowMs,
   })
   const uiStore = useStores().ui
   const view = useStore(uiStore, (s) => s.view)
