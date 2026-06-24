@@ -893,9 +893,7 @@ describe("App — skipAttach is sticky across resume (no double-replay)", () => 
       />,
     )
     await waitFor(() => expect(window.location.hash).toBe("#sessions/s_v"))
-    await waitFor(() =>
-      expect(screen.getByRole("textbox")).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.getByRole("textbox")).toBeInTheDocument())
     // Trigger resume: openSession + skipAttachIds.add + runnerClient.send.
     act(() => {
       fireEvent.change(screen.getByRole("textbox"), {
@@ -1005,9 +1003,7 @@ describe("App — firehose populates runViewStore (defense-in-depth)", () => {
     await waitFor(() =>
       expect(screen.getByText("Recorded reply")).toBeInTheDocument(),
     )
-    await waitFor(() =>
-      expect(screen.getByRole("textbox")).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.getByRole("textbox")).toBeInTheDocument())
     act(() => {
       fireEvent.change(screen.getByRole("textbox"), {
         target: { value: "continue" },

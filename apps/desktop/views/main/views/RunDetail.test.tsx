@@ -383,12 +383,7 @@ describe("RunDetail (live)", () => {
     // double-replay. LiveRunDetail must honor the flag and skip attach.
     const runner = makeFakeRunner()
     renderWithProviders(
-      <RunDetail
-        mode="live"
-        sessionId={id}
-        runnerClient={runner}
-        skipAttach
-      />,
+      <RunDetail mode="live" sessionId={id} runnerClient={runner} skipAttach />,
       createFakeIpcClient({}),
     )
     expect(runner.attached).toEqual([])
@@ -402,12 +397,7 @@ describe("RunDetail (live)", () => {
     // duplicates so the timeline shows the conversation exactly once.
     const runner = makeFakeRunner()
     renderWithProviders(
-      <RunDetail
-        mode="live"
-        sessionId={id}
-        runnerClient={runner}
-        skipAttach
-      />,
+      <RunDetail mode="live" sessionId={id} runnerClient={runner} skipAttach />,
       createFakeIpcClient({}),
     )
     const events: StoredEvent[] = [
@@ -439,9 +429,7 @@ describe("RunDetail (live)", () => {
     // must each appear exactly once. (No DOM text node to assert directly
     // for tool/approval; the reducer test covers the data invariant. Here
     // we assert the user-visible text is not concatenated.)
-    await waitFor(() =>
-      expect(screen.getByText("hello")).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.getByText("hello")).toBeInTheDocument())
     expect(screen.queryByText("hellohello")).not.toBeInTheDocument()
     cleanup()
   })

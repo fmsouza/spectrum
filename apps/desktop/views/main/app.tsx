@@ -319,8 +319,9 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
       const open = new Set(openIdStrings.split("|").filter((s) => s !== ""))
       let changed = false
       const next = new Set<string>()
-      for (const id of prev) if (open.has(id)) next.add(id)
-      else changed = true
+      for (const id of prev)
+        if (open.has(id)) next.add(id)
+        else changed = true
       return changed ? next : prev
     })
   }, [openIdStrings])

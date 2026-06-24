@@ -264,8 +264,7 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
           state.runners
             .get(event.runnerId)
             ?.items.some(
-              (i) =>
-                i.kind === "file-change" && i.callId === event.callId,
+              (i) => i.kind === "file-change" && i.callId === event.callId,
             )
         )
           return state
