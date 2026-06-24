@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from "bun:test"
 import type { AppContext } from "../composition"
-import { bindExternalNavigation, openWindow } from "./window"
+import { bindExternalNavigation, bindWebviewReload, openWindow } from "./window"
 import type { OpenWindowDeps, WindowOptions } from "./window"
 import type { WindowBounds } from "./window-bounds"
 import type { WindowBoundsIO } from "./window-bounds-io"
@@ -129,5 +129,19 @@ describe("bindExternalNavigation", () => {
     })
     navHandler({ data: { detail: undefined as unknown as string } })
     expect(called).toBe(false)
+  })
+})
+
+describe("bindWebviewReload", () => {
+  it("hands back a reload fn that loads the view url into the webview", () => {
+    const loaded: string[] = []
+    const win = { webview: { loadURL: (url: string) => loaded.push(url) } }
+    let captured: (() => void) | null = null
+    bindWebviewReload(win, "views://main/index.html", (reload) => {
+      captured = reload
+    })
+    expect(loaded).toHaveLength(0) // not loaded until invoked
+    captured?.()
+    expect(loaded).toEqual(["views://main/index.html"])
   })
 })

@@ -59,6 +59,12 @@ export interface WindowOptions {
   readonly loadInitialFrame: () => Promise<WindowBounds>
   /** Record a new window geometry on resize/move (debounced + persisted downstream). */
   readonly onBoundsChange: (bounds: WindowBounds) => void
+  /**
+   * Called once the native webview exists, handed a fn that reloads the SPA. The bun
+   * side uses this to recover from a dead WKWebView content process (Electrobun 1.18.1
+   * emits no termination event), since `loadURL` respawns the content process.
+   */
+  readonly onWebviewReady?: (reload: () => void) => void
 }
 
 /**
@@ -124,6 +130,20 @@ export const bindExternalNavigation = (
 }
 
 /**
+ * Hand the caller a fn that reloads the SPA by re-navigating the webview to its
+ * own `views://` entry. Pure over the injected window so it is testable without a
+ * real BrowserView. The real `createWindow` wires it with the live webview; the
+ * reload respawns a terminated WKWebView content process (the blank-after-sleep fix).
+ */
+export const bindWebviewReload = (
+  win: { readonly webview: { loadURL(url: string): void } },
+  viewUrl: string,
+  onReady: (reload: () => void) => void,
+): void => {
+  onReady(() => win.webview.loadURL(viewUrl))
+}
+
+/**
  * The Electrobun seam, injected so the logic is testable without a real window. `createWindow`
  * opens the BrowserWindow; `makeTransport` builds a `ServerTransport` over the Electrobun message
  * bus for that window; `wireServer` registers the validated IPC handlers on it. (The canonical
@@ -161,6 +181,7 @@ export const openWindow = (
   deps: OpenWindowDeps = realOpenWindowDeps,
 ): void => {
   const io = deps.createBoundsIO(ctx)
+  // Task 4 wires onWebviewReady → ctx.rendererWatchdog.bindReload
   const window = deps.createWindow({
     url: deps.viewUrl,
     title: "Spectrum",
@@ -250,6 +271,11 @@ export const realOpenWindowDeps: OpenWindowDeps = {
         // the paths React can't see. `Utils` is already in scope from the outer
         // import, so no second dynamic import is needed.
         bindExternalNavigation(win, (url) => Utils.openExternal(url))
+        // Hand the bun-side renderer watchdog a reload fn so it can respawn a dead
+        // WKWebView content process (Electrobun emits no termination event).
+        bindWebviewReload(win, opts.url, (reload) =>
+          opts.onWebviewReady?.(reload),
+        )
       },
     )
 
