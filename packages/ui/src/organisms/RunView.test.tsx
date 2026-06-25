@@ -203,9 +203,12 @@ describe("RunView", () => {
     cleanup()
   })
 
-  it("hides the side rail when the root has no task list and no sub is open", () => {
+  it("shows the collapsed rail strip even when the root has no task list and no sub is open", () => {
     render(<RunView {...base} />)
-    // No Tasks tab in the expanded header (rail starts collapsed with disabled vertical buttons).
+    expect(
+      screen.getByRole("button", { name: "Expand tasks panel" }),
+    ).toBeInTheDocument()
+    // No expanded Tasks tab while collapsed.
     expect(screen.queryByRole("tab", { name: "Tasks" })).toBeNull()
     cleanup()
   })
@@ -271,9 +274,12 @@ describe("RunView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Expand tasks panel" }))
     expect(screen.getByText("First task")).toBeInTheDocument()
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Collapse tasks panel" }),
-    )
+    // The expanded header has its own collapse button now; clicking it
+    // collapses the rail.
+    const railHeaderCollapse = document.querySelector(".lk-side-rail__collapse")
+    if (railHeaderCollapse === null)
+      throw new Error("missing rail header collapse")
+    fireEvent.click(railHeaderCollapse)
     expect(screen.queryByText("First task")).toBeNull()
 
     fireEvent.click(screen.getByRole("button", { name: "Expand tasks panel" }))
@@ -477,7 +483,7 @@ describe("RunView", () => {
     cleanup()
   })
 
-  it("hides the rail again when the sub closes and root has no tasks", () => {
+  it("keeps the collapsed rail strip when the sub closes and root has no tasks", () => {
     const rid = RunnerIdSchema.parse("run_root4")
     const cid = RunnerIdSchema.parse("run_child4")
     const st = (
@@ -510,11 +516,16 @@ describe("RunView", () => {
         openRunner={childRunner4}
       />,
     )
-    fireEvent.click(screen.getByRole("button", { name: "Expand tasks panel" }))
-    expect(screen.getByText("child content")).toBeInTheDocument()
+    // With a sub open the rail is collapsed by default but expandable.
+    expect(
+      screen.getByRole("button", { name: "Expand tasks panel" }),
+    ).toBeInTheDocument()
 
     rerender(<RunView {...base} root={rootRunner4} runners={st.runners} />)
-    expect(screen.queryByText("Tasks")).toBeNull()
+    // Sub closed, no tasks: the collapsed strip remains.
+    expect(
+      screen.getByRole("button", { name: "Expand tasks panel" }),
+    ).toBeInTheDocument()
     expect(screen.queryByText("child content")).toBeNull()
     cleanup()
   })
