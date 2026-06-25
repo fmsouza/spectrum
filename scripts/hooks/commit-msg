@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Reject commit messages that include a `Co-Authored-By: Claude` (or
+# `Co-authored-by: Claude`) trailer. AI-assisted authorship attribution is not
+# desired on this repository's history. Run via `core.hooksPath` (installed by
+# `scripts/install-hooks.sh` on `bun install` via the `prepare` script).
+#
+# Legitimate references to the Anthropic SDK or Claude Code product (which
+# legitimately appear in many commit subjects and bodies) are NOT matched —
+# only the literal co-author trailer line is rejected.
+#
+# Exits non-zero (with an explanation) to abort the commit.
+
+set -euo pipefail
+
+# $1 is the path to the commit message file. Git invokes commit-msg with it.
+MSG_FILE="$1"
+
+if grep -qiE '^co-?authored-?by:.*claude' "$MSG_FILE"; then
+  cat >&2 <<'EOF'
+ERROR: Commit message contains a "Co-Authored-By: Claude" trailer.
+
+This repository does not record AI co-authorship in commit history. Please
+remove the trailer line and amend or recommit.
+
+If you genuinely collaborated with a human author named Claude, use their real
+email address instead of the AI bot's address (noreply@anthropic.com).
+EOF
+  exit 1
+fi

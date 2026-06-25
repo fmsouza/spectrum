@@ -18,6 +18,7 @@
     }
   },
   "scripts": {
+    "prepare": "bash scripts/install-hooks.sh",
     "build": "turbo run build",
     "test": "bun test",
     "typecheck": "turbo run typecheck",
