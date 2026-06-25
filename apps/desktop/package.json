@@ -2,7 +2,7 @@
   "name": "spectrum",
   "type": "module",
   "private": true,
-  "version": "1.5.0",
+  "version": "1.6.0",
   "bin": {
     "spectrum": "./src/cli.ts"
   },
