@@ -577,6 +577,11 @@
   outline: none;
   resize: none;
   min-height: 2.5rem;
+  /* Grow with input up to 1/3 of the viewport, then inner-scroll.
+     The JS auto-grow reads this computed max-height as its cap, so
+     the 33dvh number lives here as the single source of truth. */
+  max-height: 33dvh;
+  overflow-y: auto;
   padding: var(--sp-space-1) 0;
   background: transparent;
   color: var(--sp-text);

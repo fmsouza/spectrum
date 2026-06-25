@@ -1,9 +1,45 @@
 import type { PermissionMode } from "@spectrum/agent-events"
 import type { ModelRoute } from "@spectrum/types"
-import { type KeyboardEvent, type ReactElement, useState } from "react"
+import {
+  type KeyboardEvent,
+  type ReactElement,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
 import { Icon } from "../atoms/Icon"
 import { ModeSelector } from "./ModeSelector"
 import { ModelSelector } from "./ModelSelector"
+
+/**
+ * Measure a textarea's content height and clamp it to a cap.
+ *
+ * Resets `el.style.height` to "auto" first so `scrollHeight` reflects the
+ * content's natural height rather than the currently-fixed height, then
+ * returns `min(scrollHeight, maxHeight)`. The caller assigns the returned
+ * value to `el.style.height`. Pure w.r.t. the passed node — no globals.
+ */
+export const growTextareaHeight = (
+  el: HTMLTextAreaElement,
+  maxHeight: number,
+): number => {
+  el.style.height = "auto"
+  return Math.min(el.scrollHeight, maxHeight)
+}
+
+/**
+ * Resolve the textarea's growth cap in px from the CSS `max-height`
+ * (the source of truth, so the `33dvh` number lives in CSS only).
+ *
+ * Falls back to `innerHeight / 3` when the computed max-height is not a
+ * usable pixel value (e.g. it was not set, or resolved to a non-px form).
+ */
+export const resolveMaxHeightPx = (el: HTMLTextAreaElement): number => {
+  const computed = window.getComputedStyle(el).maxHeight
+  const px = Number.parseFloat(computed)
+  if (Number.isFinite(px) && px > 0) return px
+  return Math.floor(window.innerHeight / 3)
+}
 
 export type ComposerProps = {
   readonly onSend: (text: string) => void
@@ -35,6 +71,25 @@ export const Composer = ({
   onModelChange,
 }: ComposerProps): ReactElement => {
   const [text, setText] = useState("")
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  const grow = (el: HTMLTextAreaElement): void => {
+    const height = growTextareaHeight(el, resolveMaxHeightPx(el))
+    el.style.height = `${height}px`
+  }
+
+  // Re-measure whenever text changes, so external mutations (notably the
+  // clear-after-send) collapse the field back to its min-height.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `grow` only closes over the stable `inputRef` and pure helpers.
+  useEffect(() => {
+    const el = inputRef.current
+    if (el === null) return
+    if (text === "") {
+      el.style.height = "auto"
+      return
+    }
+    grow(el)
+  }, [text])
   const submit = (): void => {
     const trimmed = text.trim()
     if (trimmed === "") return
@@ -51,11 +106,13 @@ export const Composer = ({
   return (
     <div className="lk-composer">
       <textarea
+        ref={inputRef}
         className="lk-composer__input"
         value={text}
         disabled={disabled}
         placeholder="Send a message  (Enter to send · Shift+Enter for newline)"
         onChange={(e) => setText(e.target.value)}
+        onInput={(e) => grow(e.currentTarget)}
         onKeyDown={onKeyDown}
       />
       <div className="lk-composer__bar">

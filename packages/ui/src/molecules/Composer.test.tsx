@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { ModelRoute } from "@spectrum/types"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { Composer } from "./Composer"
+import { Composer, growTextareaHeight, resolveMaxHeightPx } from "./Composer"
 
 describe("Composer", () => {
   it("calls onSend with the typed text when Send is clicked", () => {
@@ -174,5 +174,93 @@ describe("Composer", () => {
     render(<Composer onSend={() => {}} />)
     expect(screen.queryByRole("button", { name: /default/i })).toBeNull()
     cleanup()
+  })
+
+  it("applies an inline height to the textarea as the user types", () => {
+    // jsdom returns 0px for computed max-height, which the fallback turns
+    // into innerHeight/3 — a positive number, so the helper clamps to 160.
+    const { container } = render(<Composer onSend={() => {}} />)
+    const textarea = container.querySelector(
+      ".lk-composer__input",
+    ) as HTMLTextAreaElement
+    Object.defineProperty(textarea, "scrollHeight", {
+      configurable: true,
+      get: () => 160,
+    })
+    fireEvent.input(textarea, { target: { value: "a".repeat(500) } })
+    expect(textarea.style.height).toMatch(/^\d+(\.\d+)?px$/)
+    cleanup()
+  })
+
+  it("collapses the textarea height back to auto after a successful send", () => {
+    const { container } = render(<Composer onSend={() => {}} />)
+    const textarea = container.querySelector(
+      ".lk-composer__input",
+    ) as HTMLTextAreaElement
+    Object.defineProperty(textarea, "scrollHeight", {
+      configurable: true,
+      get: () => 160,
+    })
+    fireEvent.input(textarea, { target: { value: "do the thing" } })
+    expect(textarea.style.height).toMatch(/^\d+(\.\d+)?px$/)
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }))
+    expect(textarea.style.height).toBe("auto")
+    cleanup()
+  })
+})
+
+describe("growTextareaHeight", () => {
+  // jsdom does not compute layout, so scrollHeight is 0 by default.
+  // Stub it per element via Object.defineProperty.
+  const stubScrollHeight = (el: HTMLTextAreaElement, value: number): void => {
+    Object.defineProperty(el, "scrollHeight", {
+      configurable: true,
+      get: () => value,
+    })
+  }
+
+  it("returns scrollHeight when it is below maxHeight", () => {
+    const el = document.createElement("textarea")
+    stubScrollHeight(el, 120)
+    expect(growTextareaHeight(el, 300)).toBe(120)
+  })
+
+  it("returns maxHeight when scrollHeight equals maxHeight", () => {
+    const el = document.createElement("textarea")
+    stubScrollHeight(el, 300)
+    expect(growTextareaHeight(el, 300)).toBe(300)
+  })
+
+  it("returns maxHeight when scrollHeight exceeds maxHeight", () => {
+    const el = document.createElement("textarea")
+    stubScrollHeight(el, 900)
+    expect(growTextareaHeight(el, 300)).toBe(300)
+  })
+
+  it("resets el.style.height to auto before measuring", () => {
+    const el = document.createElement("textarea")
+    el.style.height = "250px"
+    stubScrollHeight(el, 120)
+    growTextareaHeight(el, 300)
+    expect(el.style.height).toBe("auto")
+  })
+})
+
+describe("resolveMaxHeightPx", () => {
+  it("returns the computed max-height in px when it is a usable pixel value", () => {
+    const el = document.createElement("textarea")
+    el.style.maxHeight = "300px"
+    document.body.appendChild(el)
+    expect(resolveMaxHeightPx(el)).toBe(300)
+    el.remove()
+  })
+
+  it("falls back to innerHeight / 3 when computed max-height is not usable", () => {
+    const el = document.createElement("textarea")
+    // No max-height set → computed value resolves to a non-px form in jsdom.
+    document.body.appendChild(el)
+    const fallback = Math.floor(window.innerHeight / 3)
+    expect(resolveMaxHeightPx(el)).toBe(fallback)
+    el.remove()
   })
 })
