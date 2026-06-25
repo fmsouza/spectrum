@@ -132,7 +132,30 @@ describe("RunSideRail", () => {
   it("shows the root task rail when root has tasks and no sub is open", () => {
     render(<RunSideRail {...base} rootTaskList={rootList} />)
     expect(screen.getByText("Root task")).toBeInTheDocument()
-    expect(screen.queryByRole("tab")).toBeNull()
+    // Header is present with Sub-agent disabled.
+    expect(screen.getByRole("tab", { name: "Sub-agent" })).toBeDisabled()
+    cleanup()
+  })
+
+  it("shows the Tasks/Sub-agent header even when only root tasks exist (no sub open)", () => {
+    render(<RunSideRail {...base} rootTaskList={rootList} />)
+    expect(screen.getByRole("tab", { name: "Tasks" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "Sub-agent" })).toBeDisabled()
+    expect(screen.getByText("Root task")).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("disables the Tasks tab and enables Sub-agent when a sub-runner has no tasks", () => {
+    render(<RunSideRail {...base} subRunner={childRunner} />)
+    expect(screen.getByRole("tab", { name: "Tasks" })).toBeDisabled()
+    expect(screen.getByRole("tab", { name: "Sub-agent" })).not.toBeDisabled()
+    cleanup()
+  })
+
+  it("shows the root task list under Tasks when no sub is open", () => {
+    render(<RunSideRail {...base} rootTaskList={rootList} />)
+    fireEvent.click(screen.getByRole("tab", { name: "Tasks" }))
+    expect(screen.getByText("Root task")).toBeInTheDocument()
     cleanup()
   })
 
@@ -210,9 +233,11 @@ describe("RunSideRail", () => {
         }}
       />,
     )
-    fireEvent.click(
-      screen.getByRole("button", { name: "Collapse tasks panel" }),
-    )
+    // The unified expanded structure has two collapse controls (segment header
+    // + TaskRail's own button). This test targets the TaskRail one specifically.
+    const taskRailCollapse = document.querySelector(".lk-task-rail__collapse")
+    if (taskRailCollapse === null) throw new Error("missing task-rail collapse")
+    fireEvent.click(taskRailCollapse)
     expect(toggled).toBe(true)
     cleanup()
   })

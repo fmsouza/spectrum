@@ -92,20 +92,17 @@ export const RunSideRail = ({
     )
   }
 
-  // No sub open: the column is the root task rail.
-  if (subRunner === undefined) {
-    if (rootTaskList === undefined) return null
-    return (
-      <aside className="lk-side-rail">
-        <TaskRail taskList={rootTaskList} onCollapse={onToggleCollapsed} />
-      </aside>
-    )
-  }
-
-  // Sub open: segmented column. The Tasks tab follows the focused (sub) runner.
+  // Expanded: one fixed structure. The Tasks/Sub-agent header is always
+  // present; each tab is disabled when its content is empty. The body is
+  // always a real component — a segment is only reachable by pressing an
+  // enabled tab, so the active segment always has content. The root-only
+  // case (no sub open) defaults to the Tasks segment visually since
+  // Sub-agent is unavailable; the body falls back to TaskRail when the
+  // default Sub-agent tab is the only one selected.
+  const activeTaskList = subRunner !== undefined ? subTaskList : rootTaskList
   const showingTasks = segment === "tasks" && tasksAvailable
   return (
-    <aside className="lk-side-rail" data-sub-open>
+    <aside className="lk-side-rail" data-sub-open={subRunner !== undefined}>
       <div className="lk-side-rail__seg" role="tablist" aria-label="Side panel">
         <button
           type="button"
@@ -122,6 +119,7 @@ export const RunSideRail = ({
           role="tab"
           className="lk-side-rail__tab"
           aria-selected={!showingTasks}
+          disabled={!subAvailable}
           onClick={() => setSegment("sub")}
         >
           Sub-agent
@@ -135,9 +133,9 @@ export const RunSideRail = ({
           ›
         </button>
       </div>
-      {showingTasks && subTaskList !== undefined ? (
-        <TaskRail taskList={subTaskList} />
-      ) : (
+      {showingTasks && activeTaskList !== undefined ? (
+        <TaskRail taskList={activeTaskList} onCollapse={onToggleCollapsed} />
+      ) : subAvailable ? (
         <SubRunnerPane
           runner={subRunner}
           runners={runners}
@@ -146,7 +144,11 @@ export const RunSideRail = ({
           onClose={onCloseSub}
           {...(onOpenLink === undefined ? {} : { onOpenLink })}
         />
-      )}
+      ) : activeTaskList !== undefined ? (
+        // Root-only with tasks: show them even though the default segment is "sub",
+        // because Sub-agent is unavailable.
+        <TaskRail taskList={activeTaskList} onCollapse={onToggleCollapsed} />
+      ) : null}
     </aside>
   )
 }
