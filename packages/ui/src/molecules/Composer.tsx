@@ -5,6 +5,22 @@ import { Icon } from "../atoms/Icon"
 import { ModeSelector } from "./ModeSelector"
 import { ModelSelector } from "./ModelSelector"
 
+/**
+ * Measure a textarea's content height and clamp it to a cap.
+ *
+ * Resets `el.style.height` to "auto" first so `scrollHeight` reflects the
+ * content's natural height rather than the currently-fixed height, then
+ * returns `min(scrollHeight, maxHeight)`. The caller assigns the returned
+ * value to `el.style.height`. Pure w.r.t. the passed node — no globals.
+ */
+export const growTextareaHeight = (
+  el: HTMLTextAreaElement,
+  maxHeight: number,
+): number => {
+  el.style.height = "auto"
+  return Math.min(el.scrollHeight, maxHeight)
+}
+
 export type ComposerProps = {
   readonly onSend: (text: string) => void
   readonly disabled?: boolean

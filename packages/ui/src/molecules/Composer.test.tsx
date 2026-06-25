@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { ModelRoute } from "@spectrum/types"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { Composer } from "./Composer"
+import { Composer, growTextareaHeight } from "./Composer"
 
 describe("Composer", () => {
   it("calls onSend with the typed text when Send is clicked", () => {
@@ -174,5 +174,42 @@ describe("Composer", () => {
     render(<Composer onSend={() => {}} />)
     expect(screen.queryByRole("button", { name: /default/i })).toBeNull()
     cleanup()
+  })
+})
+
+describe("growTextareaHeight", () => {
+  // jsdom does not compute layout, so scrollHeight is 0 by default.
+  // Stub it per element via Object.defineProperty.
+  const stubScrollHeight = (el: HTMLTextAreaElement, value: number): void => {
+    Object.defineProperty(el, "scrollHeight", {
+      configurable: true,
+      get: () => value,
+    })
+  }
+
+  it("returns scrollHeight when it is below maxHeight", () => {
+    const el = document.createElement("textarea")
+    stubScrollHeight(el, 120)
+    expect(growTextareaHeight(el, 300)).toBe(120)
+  })
+
+  it("returns maxHeight when scrollHeight equals maxHeight", () => {
+    const el = document.createElement("textarea")
+    stubScrollHeight(el, 300)
+    expect(growTextareaHeight(el, 300)).toBe(300)
+  })
+
+  it("returns maxHeight when scrollHeight exceeds maxHeight", () => {
+    const el = document.createElement("textarea")
+    stubScrollHeight(el, 900)
+    expect(growTextareaHeight(el, 300)).toBe(300)
+  })
+
+  it("resets el.style.height to auto before measuring", () => {
+    const el = document.createElement("textarea")
+    el.style.height = "250px"
+    stubScrollHeight(el, 120)
+    growTextareaHeight(el, 300)
+    expect(el.style.height).toBe("auto")
   })
 })
