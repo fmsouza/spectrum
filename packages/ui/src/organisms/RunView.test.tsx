@@ -205,7 +205,8 @@ describe("RunView", () => {
 
   it("hides the side rail when the root has no task list and no sub is open", () => {
     render(<RunView {...base} />)
-    expect(screen.queryByText("Tasks")).toBeNull()
+    // No Tasks tab in the expanded header (rail starts collapsed with disabled vertical buttons).
+    expect(screen.queryByRole("tab", { name: "Tasks" })).toBeNull()
     cleanup()
   })
 
