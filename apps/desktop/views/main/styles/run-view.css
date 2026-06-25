@@ -904,6 +904,28 @@
   writing-mode: vertical-rl;
 }
 
+/* Vertical Tasks/Sub-agent buttons on the collapsed strip. */
+.lk-side-rail__vtab {
+  font: inherit;
+  font-size: var(--sp-text-xs);
+  width: 100%;
+  padding: var(--sp-space-2) 0;
+  border: none;
+  background: transparent;
+  color: var(--sp-text-muted);
+  cursor: pointer;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+.lk-side-rail__vtab:hover:not(:disabled) {
+  color: var(--sp-text);
+  background: var(--sp-surface-raised);
+}
+.lk-side-rail__vtab:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /* Collapse buttons sit at the trailing edge of their header. */
 .lk-side-rail__collapse {
   margin-left: auto;
