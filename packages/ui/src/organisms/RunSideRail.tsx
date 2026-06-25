@@ -38,12 +38,17 @@ export const RunSideRail = ({
   // sub-runner id so a new sub re-mounts and resets here.
   const [segment, setSegment] = useState<"tasks" | "sub">("sub")
 
-  // Nothing to show (no tasks, no sub) → render nothing, collapsed or not.
-  if (subRunner === undefined && rootTaskList === undefined) return null
+  // Availability: which segments have content to show. Same rule for the vertical
+  // buttons (collapsed) and the tab buttons (expanded).
+  const tasksAvailable =
+    (subRunner !== undefined ? subTaskList : rootTaskList) !== undefined
+  const subAvailable = subRunner !== undefined
 
-  // Collapsed: a thin strip with an expand control and the focused list's count.
+  // Collapsed: a thin vertical strip with an expand control and vertical
+  // Tasks/Sub-agent buttons (disabled when their content is empty). Always
+  // renders — even when both are empty — so the rail never disappears.
   if (collapsed) {
-    const countList = rootTaskList ?? subTaskList
+    const countList = subRunner !== undefined ? subTaskList : rootTaskList
     return (
       <aside className="lk-side-rail lk-side-rail--collapsed">
         <button
@@ -53,6 +58,30 @@ export const RunSideRail = ({
           onClick={() => onToggleCollapsed()}
         >
           ‹
+        </button>
+        <button
+          type="button"
+          className="lk-side-rail__vtab"
+          aria-label="Tasks"
+          disabled={!tasksAvailable}
+          onClick={() => {
+            setSegment("tasks")
+            onToggleCollapsed()
+          }}
+        >
+          Tasks
+        </button>
+        <button
+          type="button"
+          className="lk-side-rail__vtab"
+          aria-label="Sub-agent"
+          disabled={!subAvailable}
+          onClick={() => {
+            setSegment("sub")
+            onToggleCollapsed()
+          }}
+        >
+          Sub-agent
         </button>
         {countList === undefined ? null : (
           <span className="lk-side-rail__collapsed-count">
@@ -74,7 +103,6 @@ export const RunSideRail = ({
   }
 
   // Sub open: segmented column. The Tasks tab follows the focused (sub) runner.
-  const tasksAvailable = subTaskList !== undefined
   const showingTasks = segment === "tasks" && tasksAvailable
   return (
     <aside className="lk-side-rail" data-sub-open>
