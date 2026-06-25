@@ -1,12 +1,52 @@
-import { type RunState, initialRunState, reduce } from "@spectrum/agent-events"
+import {
+  type CanonicalEvent,
+  type RunState,
+  initialRunState,
+  reduce,
+} from "@spectrum/agent-events"
 import type { HarnessId, ModelId, ModelRoute, SessionId } from "@spectrum/types"
 import { EmptyState, RunView, Spinner } from "@spectrum/ui"
 import { type ReactElement, useEffect, useState } from "react"
 import { useStore } from "zustand"
 import { useIpcClient } from "../IpcClientContext"
+import {
+  type ComposerSeed,
+  useComposerModeModel,
+} from "../hooks/useComposerModeModel"
 import { useElapsedSeconds } from "../hooks/useElapsedSeconds"
 import type { RunnerClient } from "../runner/runnerClient"
 import { useStores } from "../stores/createStores"
+
+/**
+ * Fold a recorded backlog into a RunState, and extract the seed for the composer
+ * mode/model from the first ROOT runner-started event (the one whose
+ * parentRunnerId is undefined). `event.model` / `event.permissionMode` are not
+ * projected into RunState by the reducer (they live only on the event envelope),
+ * so replay must seed the store from the event itself.
+ */
+const foldRun = (
+  events: ReadonlyArray<{ readonly event: CanonicalEvent }>,
+): { readonly state: RunState; readonly seed: ComposerSeed | undefined } => {
+  let state = initialRunState
+  let seed: ComposerSeed | undefined
+  for (const ev of events) {
+    state = reduce(state, ev.event)
+    if (
+      seed === undefined &&
+      ev.event.type === "runner-started" &&
+      ev.event.parentRunnerId === undefined &&
+      (ev.event.permissionMode !== undefined || ev.event.model !== undefined)
+    ) {
+      seed = {
+        ...(ev.event.permissionMode !== undefined
+          ? { mode: ev.event.permissionMode }
+          : {}),
+        ...(ev.event.model !== undefined ? { model: ev.event.model } : {}),
+      }
+    }
+  }
+  return { state, seed }
+}
 
 export type RunDetailProps = {
   readonly mode: "live" | "replay"
@@ -61,13 +101,20 @@ const LiveRunDetail = ({
   const openSubId = useStore(store, (s) => s.openSubBySession[sessionId])
   const busy = useStore(store, (s) => s.busyBySession[sessionId] ?? false)
   const elapsedSeconds = useElapsedSeconds(busy)
-  const mode = useStore(store, (s) => s.modeBySession[sessionId] ?? "manual")
-  const model = useStore(store, (s) => s.modelBySession[sessionId] ?? "")
   const applyEvent = useStore(store, (s) => s.applyEvent)
   const openSub = useStore(store, (s) => s.openSub)
   const closeSub = useStore(store, (s) => s.closeSub)
-  const setMode = useStore(store, (s) => s.setMode)
-  const setModelStore = useStore(store, (s) => s.setModel)
+
+  const { mode, onModeChange, model, onModelChange } = useComposerModeModel(
+    sessionId,
+    harnessId,
+    undefined, // live: seeding flows through applyEvent, not the hook
+    {
+      setMode: (sid, m) => runnerClient.setMode(sid, m),
+      setModel: (sid, id) =>
+        runnerClient.setModel(sid, id === "" ? null : (id as ModelId)),
+    },
+  )
 
   // Register the per-session listener and attach once. The store accumulates the
   // RunState; this effect owns the only socket coupling on the page. `skipAttach`
@@ -112,27 +159,11 @@ const LiveRunDetail = ({
       busy={busy}
       {...(elapsedSeconds === undefined ? {} : { elapsedSeconds })}
       mode={mode}
-      onModeChange={(m) => {
-        setMode(sessionId, m)
-        runnerClient.setMode(sessionId, m)
-        // Remember this harness's last-used mode so the next session of it starts here.
-        if (harnessId !== undefined)
-          void client.updateHarnessPrefs({ harnessId, mode: m })
-      }}
+      onModeChange={onModeChange}
       model={model}
       {...(models === undefined ? {} : { models })}
       {...(providerNames === undefined ? {} : { providerNames })}
-      onModelChange={(modelId) => {
-        setModelStore(sessionId, modelId)
-        // Forward to the live session: a real id routes via the proxy, "" (default) clears the
-        // model so the session switches back to the harness's own subscription/credentials.
-        runnerClient.setModel(
-          sessionId,
-          modelId === "" ? null : (modelId as ModelId),
-        )
-        if (harnessId !== undefined)
-          void client.updateHarnessPrefs({ harnessId, modelId })
-      }}
+      onModelChange={onModelChange}
       onOpenLink={(url) => {
         void client.openExternalUrl({ url })
       }}
@@ -143,17 +174,22 @@ const LiveRunDetail = ({
 /** Read-only replay: fold the stored events once; approvals inert, composer sends resume. */
 const ReplayRunDetail = ({
   sessionId,
+  harnessId,
   models,
   providerNames,
   onResumeSend,
 }: {
   readonly sessionId: SessionId
+  readonly harnessId?: HarnessId
   readonly models?: readonly ModelRoute[]
   readonly providerNames?: Readonly<Record<string, string>>
   readonly onResumeSend?: ((text: string) => void) | undefined
 }): ReactElement => {
   const client = useIpcClient()
-  const [state, setState] = useState<RunState | undefined>(undefined)
+  const [folded, setFolded] = useState<
+    | { readonly state: RunState; readonly seed: ComposerSeed | undefined }
+    | undefined
+  >(undefined)
   const [openSubId, setOpenSubId] =
     useState<RunState["rootRunnerId"]>(undefined)
 
@@ -161,19 +197,24 @@ const ReplayRunDetail = ({
     let active = true
     void client.getRunEvents({ id: sessionId }).then((r) => {
       if (!active || !r.ok) return
-      setState(
-        r.value.events.reduce(
-          (acc, ev) => reduce(acc, ev.event),
-          initialRunState,
-        ),
-      )
+      setFolded(foldRun(r.value.events))
     })
     return () => {
       active = false
     }
   }, [client, sessionId])
 
-  if (state === undefined) return <Spinner label="Loading conversation" />
+  const { mode, onModeChange, model, onModelChange } = useComposerModeModel(
+    sessionId,
+    harnessId,
+    folded?.seed,
+    undefined, // no socket in replay; mode/model forward to the live session on resume-send
+  )
+
+  if (folded === undefined) return <Spinner label="Loading conversation" />
+  const { state } = folded
+  // seed already applied via the hook's effect
+  void folded.seed
   const root =
     state.rootRunnerId === undefined
       ? undefined
@@ -209,11 +250,15 @@ const ReplayRunDetail = ({
       onAnswer={() => {}}
       inert
       composerDisabled={onResumeSend === undefined}
+      mode={mode}
+      onModeChange={onModeChange}
+      model={model}
+      {...(models === undefined ? {} : { models })}
+      {...(providerNames === undefined ? {} : { providerNames })}
+      onModelChange={onModelChange}
       onOpenLink={(url) => {
         void client.openExternalUrl({ url })
       }}
-      {...(models === undefined ? {} : { models })}
-      {...(providerNames === undefined ? {} : { providerNames })}
     />
   )
 }
@@ -246,6 +291,7 @@ export const RunDetail = ({
   ) : (
     <ReplayRunDetail
       sessionId={sessionId}
+      {...(harnessId === undefined ? {} : { harnessId })}
       {...(onResumeSend === undefined ? {} : { onResumeSend })}
       {...(models === undefined ? {} : { models })}
       {...(providerNames === undefined ? {} : { providerNames })}

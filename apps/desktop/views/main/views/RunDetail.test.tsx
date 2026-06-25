@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, mock } from "bun:test"
 import type { RunnerOutbound } from "@spectrum/agent-driver"
 import type { CanonicalEvent, StoredEvent } from "@spectrum/agent-events"
 import {
@@ -519,6 +519,174 @@ describe("RunDetail (replay)", () => {
     expect(resumeSends).toEqual([{ id, text: "continue from here" }])
     // Replay still never attached the socket — the manager replays the backlog.
     expect(runner.attached).toEqual([])
+    cleanup()
+  })
+
+  it("renders the mode and model dropdowns in replay", async () => {
+    // Regression guard: the bug was that ended-session replay omitted the
+    // mode/model props on RunView, so the Composer hid both dropdowns.
+    // Both must render in replay (Composer renders them when supportedModes
+    // / models + onChange are present).
+    const runner = makeFakeRunner()
+    const models = [
+      { id: "mdl_recorded", providerId: "p1", providerModel: "sonnet" },
+    ] as readonly ModelRoute[]
+    const providerNames: Readonly<Record<string, string>> = { p1: "Anthropic" }
+    const client = createFakeIpcClient({
+      getRunEvents: async () => ({
+        ok: true,
+        value: {
+          events: [
+            stored(0, {
+              type: "runner-started",
+              runnerId: "run_root" as never,
+              permissionMode: "plan",
+              model: "mdl_recorded",
+              supportedModes: ["manual", "plan", "auto-edits", "bypass"],
+            }),
+            stored(1, {
+              type: "text-delta",
+              runnerId: "run_root" as never,
+              messageId: "m1",
+              text: "Recorded reply",
+            }),
+          ],
+        },
+      }),
+    })
+    renderWithProviders(
+      <RunDetail
+        mode="replay"
+        sessionId={id}
+        runnerClient={runner}
+        models={models}
+        providerNames={providerNames}
+      />,
+      client,
+    )
+    // ModeSelector pill button (no role="combobox" in markup — query by label).
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /plan mode/i }),
+      ).toBeInTheDocument(),
+    )
+    // ModelSelector pill button.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Anthropic \/ sonnet/i }),
+      ).toBeInTheDocument(),
+    )
+    cleanup()
+  })
+
+  it("seeds the dropdowns from the folded root runner-started in replay", async () => {
+    // The reducer does NOT project `permissionMode`/`model` from runner-started
+    // into RunState (those fields live only on the event envelope), so replay
+    // must seed the composer store from the folded event itself. With
+    // permissionMode: "plan" on the root runner-started, the mode pill must
+    // display the plan-mode label.
+    const runner = makeFakeRunner()
+    const client = createFakeIpcClient({
+      getRunEvents: async () => ({
+        ok: true,
+        value: {
+          events: [
+            stored(0, {
+              type: "runner-started",
+              runnerId: "run_root" as never,
+              permissionMode: "plan",
+              model: "mdl_recorded",
+              supportedModes: ["manual", "plan"],
+            }),
+          ],
+        },
+      }),
+    })
+    renderWithProviders(
+      <RunDetail mode="replay" sessionId={id} runnerClient={runner} />,
+      client,
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /plan mode/i }),
+      ).toBeInTheDocument(),
+    )
+    cleanup()
+  })
+
+  it("changing the model in replay updates the store, not a live socket", async () => {
+    // Replay has no live socket — picking a model in the replay composer must
+    // persist via the harness pref (when harnessId is forwarded) but never
+    // reach the runnerClient.setModel method on the live socket.
+    const setModelSpy = mock(() => {})
+    const base = makeFakeRunner()
+    const runner: typeof base = {
+      ...base,
+      setModel: (sid, modelId) => {
+        setModelSpy(sid, modelId)
+        base.setModel(sid, modelId)
+      },
+    }
+    const models = [
+      { id: "mdl_recorded", providerId: "p1", providerModel: "sonnet" },
+      { id: "mdl_new", providerId: "p1", providerModel: "haiku" },
+    ] as readonly ModelRoute[]
+    const providerNames: Readonly<Record<string, string>> = { p1: "Anthropic" }
+    const prefsCalls: Array<{
+      harnessId: string
+      mode?: string
+      modelId?: string
+    }> = []
+    const client = createFakeIpcClient({
+      getRunEvents: async () => ({
+        ok: true,
+        value: {
+          events: [
+            stored(0, {
+              type: "runner-started",
+              runnerId: "run_root" as never,
+              model: "mdl_recorded",
+              supportedModes: ["manual", "plan"],
+            }),
+          ],
+        },
+      }),
+      updateHarnessPrefs: async (p: {
+        harnessId: string
+        mode?: string
+        modelId?: string
+      }) => {
+        prefsCalls.push(p)
+        return { ok: true, value: null }
+      },
+    })
+    renderWithProviders(
+      <RunDetail
+        mode="replay"
+        sessionId={id}
+        runnerClient={runner}
+        harnessId={"claude" as HarnessId}
+        models={models}
+        providerNames={providerNames}
+        onResumeSend={() => {}}
+      />,
+      client,
+    )
+    const modelPill = await screen.findByRole("button", {
+      name: /Anthropic \/ sonnet/i,
+    })
+    fireEvent.click(modelPill)
+    const haiku = await screen.findByRole("menuitemradio", {
+      name: /Anthropic \/ haiku/i,
+    })
+    fireEvent.click(haiku)
+    // Replay has no live forward: runnerClient.setModel is NEVER called.
+    expect(setModelSpy).not.toHaveBeenCalled()
+    // The harness pref IS still persisted so the next live session opens with
+    // the user's pick.
+    await waitFor(() =>
+      expect(prefsCalls).toEqual([{ harnessId: "claude", modelId: "mdl_new" }]),
+    )
     cleanup()
   })
 })

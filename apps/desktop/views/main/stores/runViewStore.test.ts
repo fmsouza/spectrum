@@ -105,4 +105,34 @@ describe("runViewStore", () => {
     store.getState().reset(sid)
     expect(store.getState().modelBySession[sid]).toBeUndefined()
   })
+
+  it("seedModeModel seeds mode and model when neither is set", () => {
+    const store = createRunViewStore(noDeps)
+    store.getState().seedModeModel(sid, { mode: "plan", model: "mdl_x" })
+    expect(store.getState().modeBySession[sid]).toBe("plan")
+    expect(store.getState().modelBySession[sid]).toBe("mdl_x")
+  })
+
+  it("seedModeModel is idempotent and does not clobber an existing value", () => {
+    const store = createRunViewStore(noDeps)
+    store.getState().setMode(sid, "bypass")
+    store.getState().setModel(sid, "mdl_existing")
+    store.getState().seedModeModel(sid, { mode: "plan", model: "mdl_x" })
+    expect(store.getState().modeBySession[sid]).toBe("bypass")
+    expect(store.getState().modelBySession[sid]).toBe("mdl_existing")
+  })
+
+  it("seedModeModel no-ops when seed has neither mode nor model", () => {
+    const store = createRunViewStore(noDeps)
+    store.getState().seedModeModel(sid, {})
+    expect(store.getState().modeBySession[sid]).toBeUndefined()
+    expect(store.getState().modelBySession[sid]).toBeUndefined()
+  })
+
+  it("seedModeModel seeds only the fields that are present", () => {
+    const store = createRunViewStore(noDeps)
+    store.getState().seedModeModel(sid, { mode: "auto-edits" })
+    expect(store.getState().modeBySession[sid]).toBe("auto-edits")
+    expect(store.getState().modelBySession[sid]).toBeUndefined()
+  })
 })
