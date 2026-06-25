@@ -98,7 +98,7 @@ export const RunView = ({
 
   // Collapsed state lives here, above RunSideRail's per-sub `key`, so it survives drilling in and out
   // of sub-runners (it resets only when this conversation view unmounts).
-  const [railCollapsed, setRailCollapsed] = useState(false)
+  const [railCollapsed, setRailCollapsed] = useState(true)
 
   const rootList = selectTaskList(root)
   const rootTaskList =

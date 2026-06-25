@@ -47,17 +47,115 @@ const base = {
   onCloseSub: () => {},
 }
 
+const containerFirstChildIsStrip = (): boolean => {
+  // The collapsed strip is <aside class="lk-side-rail lk-side-rail--collapsed">.
+  const aside = document.querySelector("aside.lk-side-rail--collapsed")
+  return aside !== null
+}
+
 describe("RunSideRail", () => {
-  it("renders nothing when there is no task list and no sub-runner", () => {
-    const { container } = render(<RunSideRail {...base} />)
-    expect(container.firstChild).toBeNull()
+  it("renders the collapsed strip (not nothing) when there is no task list and no sub-runner", () => {
+    render(<RunSideRail {...base} collapsed />)
+    expect(containerFirstChildIsStrip()).toBe(true)
+    expect(
+      screen.getByRole("button", { name: "Expand tasks panel" }),
+    ).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("shows disabled vertical Tasks and Sub-agent buttons on the collapsed strip when empty", () => {
+    render(<RunSideRail {...base} collapsed />)
+    expect(screen.getByRole("button", { name: /^Tasks/ })).toBeDisabled()
+    expect(screen.getByRole("button", { name: /^Sub-agent/ })).toBeDisabled()
+    cleanup()
+  })
+
+  it("enables the vertical Tasks button when a root task list is present", () => {
+    render(<RunSideRail {...base} rootTaskList={rootList} collapsed />)
+    expect(screen.getByRole("button", { name: /^Tasks/ })).not.toBeDisabled()
+    // Still no sub-runner → Sub-agent stays disabled.
+    expect(screen.getByRole("button", { name: /^Sub-agent/ })).toBeDisabled()
+    cleanup()
+  })
+
+  it("enables the vertical Sub-agent button when a sub-runner is open", () => {
+    render(
+      <RunSideRail
+        {...base}
+        subRunner={childRunner}
+        subTaskList={subList}
+        collapsed
+      />,
+    )
+    expect(
+      screen.getByRole("button", { name: /^Sub-agent/ }),
+    ).not.toBeDisabled()
+    expect(screen.getByRole("button", { name: /^Tasks/ })).not.toBeDisabled()
+    cleanup()
+  })
+
+  it("expands and selects Tasks when the vertical Tasks button is pressed", () => {
+    let toggled = 0
+    render(
+      <RunSideRail
+        {...base}
+        rootTaskList={rootList}
+        collapsed
+        onToggleCollapsed={() => {
+          toggled += 1
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: /^Tasks/ }))
+    expect(toggled).toBe(1)
+    cleanup()
+  })
+
+  it("expands and selects Sub-agent when the vertical Sub-agent button is pressed", () => {
+    let toggled = 0
+    render(
+      <RunSideRail
+        {...base}
+        subRunner={childRunner}
+        subTaskList={subList}
+        collapsed
+        onToggleCollapsed={() => {
+          toggled += 1
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: /^Sub-agent/ }))
+    expect(toggled).toBe(1)
     cleanup()
   })
 
   it("shows the root task rail when root has tasks and no sub is open", () => {
     render(<RunSideRail {...base} rootTaskList={rootList} />)
     expect(screen.getByText("Root task")).toBeInTheDocument()
-    expect(screen.queryByRole("tab")).toBeNull()
+    // Header is present with Sub-agent disabled.
+    expect(screen.getByRole("tab", { name: "Sub-agent" })).toBeDisabled()
+    cleanup()
+  })
+
+  it("shows the Tasks/Sub-agent header even when only root tasks exist (no sub open)", () => {
+    render(<RunSideRail {...base} rootTaskList={rootList} />)
+    expect(screen.getByRole("tab", { name: "Tasks" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "Sub-agent" })).toBeDisabled()
+    expect(screen.getByText("Root task")).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("disables the Tasks tab and enables Sub-agent when a sub-runner has no tasks", () => {
+    render(<RunSideRail {...base} subRunner={childRunner} />)
+    expect(screen.getByRole("tab", { name: "Tasks" })).toBeDisabled()
+    expect(screen.getByRole("tab", { name: "Sub-agent" })).not.toBeDisabled()
+    cleanup()
+  })
+
+  it("shows the root task list under Tasks when no sub is open", () => {
+    render(<RunSideRail {...base} rootTaskList={rootList} />)
+    fireEvent.click(screen.getByRole("tab", { name: "Tasks" }))
+    expect(screen.getByText("Root task")).toBeInTheDocument()
     cleanup()
   })
 
@@ -135,9 +233,11 @@ describe("RunSideRail", () => {
         }}
       />,
     )
-    fireEvent.click(
-      screen.getByRole("button", { name: "Collapse tasks panel" }),
-    )
+    // The unified expanded structure has two collapse controls (segment header
+    // + TaskRail's own button). This test targets the TaskRail one specifically.
+    const taskRailCollapse = document.querySelector(".lk-task-rail__collapse")
+    if (taskRailCollapse === null) throw new Error("missing task-rail collapse")
+    fireEvent.click(taskRailCollapse)
     expect(toggled).toBe(true)
     cleanup()
   })
