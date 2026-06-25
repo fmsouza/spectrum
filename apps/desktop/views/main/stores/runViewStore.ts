@@ -23,6 +23,12 @@ export type RunViewStore = {
   readonly closeSub: (sessionId: SessionId) => void
   readonly setMode: (sessionId: SessionId, mode: PermissionMode) => void
   readonly setModel: (sessionId: SessionId, modelId: string) => void
+  /** Seed the composer mode + model once (replay: from the folded root runner-started).
+   *  Idempotent: writes only when the slot is undefined. No-op if seed is empty. */
+  readonly seedModeModel: (
+    sessionId: SessionId,
+    seed: { readonly mode?: PermissionMode; readonly model?: string },
+  ) => void
 }
 
 /**
@@ -145,5 +151,31 @@ export const createRunViewStore = (_deps: StoreDeps): StoreApi<RunViewStore> =>
       set((state) => ({
         modelBySession: { ...state.modelBySession, [sessionId]: modelId },
       }))
+    },
+
+    seedModeModel: (sessionId, seed) => {
+      if (seed.mode === undefined && seed.model === undefined) return
+      set((state) => {
+        const next = { ...state }
+        if (
+          seed.mode !== undefined &&
+          state.modeBySession[sessionId] === undefined
+        ) {
+          next.modeBySession = {
+            ...state.modeBySession,
+            [sessionId]: seed.mode,
+          }
+        }
+        if (
+          seed.model !== undefined &&
+          state.modelBySession[sessionId] === undefined
+        ) {
+          next.modelBySession = {
+            ...state.modelBySession,
+            [sessionId]: seed.model,
+          }
+        }
+        return next
+      })
     },
   }))
