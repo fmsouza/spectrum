@@ -742,4 +742,32 @@ describe("reduce — idempotent re-emit (double-replay safety)", () => {
       text: "hello",
     })
   })
+
+  it("does not duplicate a question-requested when re-emitted with the same requestId", () => {
+    // The webview's runnerClient fans out each inbound `runner-event` frame to BOTH the
+    // per-session listener (registered by `LiveRunDetail`) AND the firehose `onAny` listener
+    // (registered by `AppInner`), so `applyEvent` runs twice for the same stored event.
+    // Without reducer-side idempotency the timeline would stack a duplicate QuestionItem and
+    // the user would see the same question twice.
+    const req: CanonicalEvent = {
+      type: "question-requested",
+      runnerId: rid("root"),
+      requestId: "q1",
+      prompt: {
+        questions: [
+          {
+            question: "Proceed?",
+            header: "Proceed",
+            options: [{ label: "Yes" }, { label: "No" }],
+            multiSelect: false,
+            allowFreeText: true,
+          },
+        ],
+      },
+    }
+    const state = fold([started("root"), req, req])
+    const items = state.runners.get(rid("root"))?.items ?? []
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ kind: "question", requestId: "q1" })
+  })
 })
