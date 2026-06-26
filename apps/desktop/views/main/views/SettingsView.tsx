@@ -3,6 +3,7 @@ import type { ReactElement, ReactNode } from "react"
 import { ErrorBoundary } from "../ErrorBoundary"
 import { useIpcClient } from "../IpcClientContext"
 import { useNotifications } from "../hooks/useNotifications"
+import { useUpdate } from "../hooks/useUpdate"
 import {
   DataPage,
   GeneralPage,
@@ -43,6 +44,37 @@ const DataPageConnected = (): ReactElement => {
   )
 }
 
+/**
+ * Renders the Settings nav with a version footer derived from the update
+ * store. A real component (not the `SettingsView` factory) so it can call
+ * `useUpdate()`. The footer uses `state.currentVersion` (which carries the
+ * `-canary.N` suffix once Task 6 bakes it) and `state.channel` (the channel
+ * authority). The footer is hidden until the update state has loaded.
+ */
+const SettingsNavConnected = ({
+  sections,
+  active,
+  onSelect,
+}: {
+  readonly sections: readonly { readonly key: string; readonly label: string }[]
+  readonly active: string
+  readonly onSelect: (key: string) => void
+}): ReactElement => {
+  const { state } = useUpdate()
+  const footer =
+    state === undefined
+      ? undefined
+      : `${state.currentVersion} · ${state.channel}`
+  return (
+    <SettingsNav
+      sections={sections}
+      active={active}
+      onSelect={onSelect}
+      footer={footer}
+    />
+  )
+}
+
 const detailFor = (section: string): ReactNode => {
   switch (section) {
     case "providers":
@@ -59,9 +91,10 @@ const detailFor = (section: string): ReactNode => {
 }
 
 /**
- * Settings master/detail factory: `SettingsNav` (sections) as master, the
- * matching page as detail (wrapped in an `ErrorBoundary` keyed by section so a
- * crashing page resets when you navigate away). Pages own their own hooks.
+ * Settings master/detail factory: `SettingsNav` (sections + version footer)
+ * as master, the matching page as detail (wrapped in an `ErrorBoundary` keyed
+ * by section so a crashing page resets when you navigate away). Pages own their
+ * own hooks.
  */
 export const SettingsView = ({
   section,
@@ -71,7 +104,11 @@ export const SettingsView = ({
   readonly onSection: (key: string) => void
 }): { readonly master: ReactNode; readonly detail: ReactNode } => ({
   master: (
-    <SettingsNav sections={SECTIONS} active={section} onSelect={onSection} />
+    <SettingsNavConnected
+      sections={SECTIONS}
+      active={section}
+      onSelect={onSection}
+    />
   ),
   detail: <ErrorBoundary key={section}>{detailFor(section)}</ErrorBoundary>,
 })

@@ -30,11 +30,26 @@ const rootPackage = JSON.parse(
   readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
 ) as { version: string }
 
+// Canary builds inject the canary build number via SPECTRUM_CANARY_BUILD (set
+// by canary.yml's `version` job) so the running build knows its own canary.N —
+// the version string then flows through version.json → localInfo.version() →
+// UpdateState.currentVersion → the UI unchanged. Stable/release.yml and dev
+// builds leave this unset, so the version stays the plain package.json version.
+const canaryBuildEnv = process.env.SPECTRUM_CANARY_BUILD
+const canaryBuild =
+  canaryBuildEnv !== undefined && Number.isInteger(Number(canaryBuildEnv))
+    ? Number(canaryBuildEnv)
+    : null
+const appVersion =
+  canaryBuild !== null
+    ? `${rootPackage.version}-canary.${canaryBuild}`
+    : rootPackage.version
+
 const config = {
   app: {
     name: "Spectrum",
     identifier: "dev.spectrum.app",
-    version: rootPackage.version,
+    version: appVersion,
   },
   // Auto-update distribution. `baseUrl` is the STABLE rolling-tag URL that CI
   // force-moves on every release, so the running app always finds the newest

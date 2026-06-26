@@ -444,6 +444,38 @@ const baseStubs = {
       collapsedProjects: [],
     },
   }),
+  // Update store stubs: the Settings nav footer reads `state.currentVersion ·
+  // state.channel` from the update store. Without these, `useUpdate().check()`
+  // fails (default stub returns handler-failed), the store stays `undefined`,
+  // and `.lk-settings-nav__footer` never mounts.
+  checkForUpdate: async () => ({
+    ok: true as const,
+    value: {
+      phase: "up-to-date" as const,
+      currentVersion: "1.0.0",
+      latestVersion: null,
+      latestHash: null,
+      available: false,
+      progress: 0,
+      error: null,
+      channel: "stable" as const,
+      showBanner: false,
+    },
+  }),
+  getUpdateState: async () => ({
+    ok: true as const,
+    value: {
+      phase: "up-to-date" as const,
+      currentVersion: "1.0.0",
+      latestVersion: null,
+      latestHash: null,
+      available: false,
+      progress: 0,
+      error: null,
+      channel: "stable" as const,
+      showBanner: false,
+    },
+  }),
 }
 
 afterEach(() => {

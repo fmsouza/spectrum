@@ -26,9 +26,30 @@ jobs:
       - run: bun test
       - run: bun audit
 
+  version:
+    name: Determine canary version
+    needs: gate
+    runs-on: ubuntu-latest
+    outputs:
+      canary-build: ${{ steps.version.outputs.canary-build }}
+      canary-tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compute canary build number
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(jq -r .version package.json)
+          LATEST=$(gh release list --json tagName --jq \
+            "[.[] | select(.tagName | startswith(\"v${VERSION}-canary.\")) | .tagName | ltrimstr(\"v${VERSION}-canary.\") | tonumber] | max // 0")
+          NEXT=$((LATEST + 1))
+          echo "canary-build=${NEXT}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}-canary.${NEXT}" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build (${{ matrix.name }})
-    needs: gate
+    needs: [gate, version]
     runs-on: ${{ matrix.os }}
     # Signing secrets live in the "Production" GitHub Environment (scoped to main + v* tags).
     # A job can only read environment secrets if it declares the environment. Canary builds
@@ -135,11 +156,14 @@ jobs:
       - name: Build desktop app (canary channel, for distribution + update artifacts)
         id: app
         if: matrix.app
+        env:
+          SPECTRUM_CANARY_BUILD: ${{ needs.version.outputs.canary-build }}
         # Hard gate: a canary build must ship a buildable channel bundle, same as
         # release.yml. Built on a clean checkout (the dev/smoke build runs LAST), so
         # build/ + artifacts/ here hold only the channel outputs the staging steps
         # publish. build:canary runs `electrobun build --env=canary` → artifacts
-        # prefixed `canary-<os>-<arch>-…`.
+        # prefixed `canary-<os>-<arch>-…`. SPECTRUM_CANARY_BUILD (from the `version`
+        # job) is baked into the bundle's version.json as `version-canary.N`.
         run: bun run --filter spectrum build:canary
 
       - name: Verify macOS signing + notarization (hard gate)
@@ -332,20 +356,13 @@ jobs:
 
   release:
     name: Publish Canary Release
-    needs: build
+    needs: [build, version]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Determine canary version
-        id: version
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Report canary version
         run: |
-          VERSION=$(jq -r .version package.json)
-          LATEST=$(gh release list --json tagName --jq \
-            "[.[] | select(.tagName | startswith(\"v${VERSION}-canary.\")) | .tagName | ltrimstr(\"v${VERSION}-canary.\") | tonumber] | max // 0")
-          NEXT=$((LATEST + 1))
-          echo "tag=v${VERSION}-canary.${NEXT}" >> "$GITHUB_OUTPUT"
+          echo "Publishing canary tag: ${{ needs.version.outputs.canary-tag }}"
       - name: Download release-page assets
         uses: actions/download-artifact@v8
         with:
@@ -364,8 +381,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ steps.version.outputs.tag }} \
-            --title "${{ steps.version.outputs.tag }}" \
+          gh release create ${{ needs.version.outputs.canary-tag }} \
+            --title "${{ needs.version.outputs.canary-tag }}" \
             --notes "Automated canary build from \`main\` (${{ github.sha }}). Unstable pre-release." \
             --prerelease --target ${{ github.sha }} \
             release-assets/*
