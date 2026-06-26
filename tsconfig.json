@@ -22,6 +22,7 @@
     { "path": "packages/driver-opencode" },
     { "path": "packages/driver-openclaw" },
     { "path": "packages/brand" },
-    { "path": "packages/providers" }
+    { "path": "packages/providers" },
+    { "path": "packages/runtime-core" }
   ]
 }
