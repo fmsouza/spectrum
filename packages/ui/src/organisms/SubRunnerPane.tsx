@@ -33,6 +33,14 @@ export const SubRunnerPane = ({
         <span className="lk-sub-runner-pane__readonly">Read-only</span>
         <button
           type="button"
+          className="lk-sub-runner-pane__back"
+          aria-label="Back to agents"
+          onClick={() => onClose()}
+        >
+          ← Back to agents
+        </button>
+        <button
+          type="button"
           className="lk-sub-runner-pane__close"
           aria-label="Close sub-runner"
           onClick={() => onClose()}
