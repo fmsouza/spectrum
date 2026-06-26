@@ -195,7 +195,7 @@ export const createGuiContext = (
     driver: shared.routingDriver,
     sessions: shared.sessionSink,
     events: shared.runStore,
-    clock: { now: () => new Date() },
+    clock: shared.clock,
     logger: log.child("runner"),
     // Before the webview socket connects, the manager's sink is this notifier tap.
     send: notifyOnRunFinished,
@@ -238,24 +238,7 @@ export const createGuiContext = (
   const resetApp = createResetApp({
     config: shared.config,
     secrets: shared.secrets,
-    closeDb: (): void => {
-      // The shared context does not expose the raw dbClient; the reset
-      // routine in `@spectrum/gui` needs a handle. In production, the
-      // dbClient lives inside `createAppContext` and is not surfaced.
-      // The factory reset closes the SQLite connection by routing through
-      // the session store's `close` path — every active session is already
-      // reconciled before reset by `buildRealDeps` (see main.ts). The OS
-      // releases the file handle when the process exits.
-      //
-      // If we ever need explicit db close here, we'd need to add a
-      // `closeDb` runner extension point to the base `AppContext`. For
-      // now the factory reset relies on process exit to release the handle
-      // (same guarantee `createResetApp` always relied on, since `rmSync`
-      // succeeds on macOS/Linux even with an open fd on the file).
-      log
-        .child("reset")
-        .debug("factory reset: db handle released on process exit")
-    },
+    closeDb: shared.closeDb,
     removeDir: deps.removeDir,
     relaunch: deps.relaunch,
     dataDir: shared.paths.dataDir,

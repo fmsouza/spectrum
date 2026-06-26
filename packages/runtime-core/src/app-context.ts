@@ -30,7 +30,7 @@ import type {
   SdkProvider,
   SessionId,
 } from "@spectrum/types"
-import type { Result } from "@spectrum/utils"
+import type { Clock, Result } from "@spectrum/utils"
 
 /** Result of testing one provider's live connectivity (mirrors ipc TestProviderResult). */
 export type ProviderTestResult = {
@@ -186,4 +186,17 @@ export interface AppContext {
   readonly resolveResumeInput: NonNullable<RunManagerDeps["resolveResumeInput"]>
   /** Re-render a session's proxied route env when the user picks a model in-session. */
   readonly resolveModelEnv: NonNullable<RunManagerDeps["resolveModelEnv"]>
+  /**
+   * GUI factory-reset hook: explicitly close the SQLite handle before rmSync. The resetApp
+   * routine (`createResetApp` in apps/desktop) calls this before `removeDir(dataDir)` so the file
+   * handle is released on every OS, not just ones where rmSync tolerates an open fd.
+   */
+  readonly closeDb: () => void
+  /**
+   * GUI runner extension point: the injectable Clock the RunManager reads from. Surfaced here so
+   * `createGuiContext` can hand it to the RunManager without re-deriving `{ now: () => new Date() }`
+   * inline — that broke the injectable seam (tests could no longer fake the clock from the GUI
+   * composition layer).
+   */
+  readonly clock: Clock
 }

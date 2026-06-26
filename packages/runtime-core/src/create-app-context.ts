@@ -677,6 +677,14 @@ export const createAppContext = (
     routingDriver,
     resolveResumeInput,
     resolveModelEnv,
+    // GUI-only runner extension points (typed + documented on AppContext; the CLI never reads
+    // these). `closeDb` lets `createResetApp` release the SQLite file handle before rmSync;
+    // `clock` preserves the injectable seam so the GUI composition layer can hand the runner a
+    // fake clock in tests instead of constructing `{ now: () => new Date() }` inline.
+    closeDb: (): void => {
+      dbClient.connection.close()
+    },
+    clock: deps.createSystemClock(),
   }
 }
 export type { RunLaunchInput, RunManagerDeps, SessionSink, AgentDriver }

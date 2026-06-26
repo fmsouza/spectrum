@@ -173,11 +173,21 @@ describe("createGuiContext", () => {
 
   it("builds resetApp with the shared config/secrets/dataDir/legacyDirs and the GUI relaunch seam", async () => {
     const deps = fakeGuiDeps()
-    const gui = createGuiContext(shared(), deps) as GuiContext
+    const sharedCtx = shared()
+    // Spy on shared.closeDb so we can assert the factory-reset path invokes it (the brief requires
+    // the real SQLite connection close before rmSync — the GUI must NOT no-op this).
+    let closeDbCalls = 0
+    ;(sharedCtx as unknown as { closeDb: () => void }).closeDb = (): void => {
+      closeDbCalls += 1
+    }
+    const gui = createGuiContext(sharedCtx, deps) as GuiContext
 
-    // Calling resetApp wires the relaunch through the injected seam.
+    // Calling resetApp wires the relaunch through the injected seam AND invokes shared.closeDb
+    // (the runtime-core runner extension point) before removeDir, so the SQLite file handle is
+    // released before rmSync runs.
     await gui.resetApp()
 
+    expect(closeDbCalls).toBe(1)
     expect(deps.calls.relaunched).toBe(true)
     expect(deps.calls.removeDir).toBeDefined() // dataDir was wiped
   })

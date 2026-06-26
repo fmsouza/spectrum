@@ -522,6 +522,44 @@ describe("createAppContext draft provider methods", () => {
   })
 })
 
+describe("createAppContext GUI runner extension points", () => {
+  it("exposes closeDb as a callable function that closes the underlying SQLite connection", () => {
+    // The GUI factory-reset routine (createResetApp) calls `closeDb()` before `rmSync` to release the
+    // SQLite file handle. AppContext must surface this seam so the GUI composition layer can wire it
+    // without reaching into a private dbClient. Verify it is callable AND that the stub dbClient's
+    // connection.close is invoked when it runs.
+    let closed = false
+    const { deps } = makeFakeDeps()
+    ;(deps as { createSqliteClient: unknown }).createSqliteClient = (() => ({
+      ok: true,
+      value: {
+        __stub: "dbClient",
+        connection: {
+          close: (): void => {
+            closed = true
+          },
+        },
+      },
+    })) as never
+    const ctx = createAppContext(deps)
+    expect(typeof ctx.closeDb).toBe("function")
+    expect(closed).toBe(false)
+    ctx.closeDb()
+    expect(closed).toBe(true)
+  })
+
+  it("exposes clock as a Clock instance returned by the injected createSystemClock", () => {
+    // The runner extension point pattern: the GUI composition layer consumes ctx.clock instead of
+    // constructing `{ now: () => new Date() }` inline. The factory must use the injected
+    // `createSystemClock` (so tests can swap it for a fixed clock).
+    const { deps } = makeFakeDeps()
+    const ctx = createAppContext(deps)
+    expect(typeof ctx.clock).toBe("object")
+    expect(typeof (ctx.clock as { now?: unknown }).now).toBe("function")
+    expect((ctx.clock as { now: () => Date }).now()).toBeInstanceOf(Date)
+  })
+})
+
 describe("createAppContext native run path wiring", () => {
   it("builds the run store from the shared db client + a clock", () => {
     const { deps, calls } = makeFakeDeps()
