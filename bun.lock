@@ -44,6 +44,7 @@
         "@spectrum/providers": "workspace:*",
         "@spectrum/proxy": "workspace:*",
         "@spectrum/run-store": "workspace:*",
+        "@spectrum/runtime-core": "workspace:*",
         "@spectrum/secrets": "workspace:*",
         "@spectrum/sessions": "workspace:*",
         "@spectrum/types": "workspace:*",

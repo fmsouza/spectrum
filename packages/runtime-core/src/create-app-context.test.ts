@@ -5,18 +5,12 @@ import {
   createInMemoryHarnessFileSource,
   createRegistry,
 } from "@spectrum/harnesses"
-import { createNoopLogger } from "@spectrum/logger"
 import { resolveAppPaths } from "@spectrum/platform"
 import { createProjectStore } from "@spectrum/projects"
 import { createInMemoryRuntimeState } from "@spectrum/proxy"
 import { err, ok } from "@spectrum/utils"
-import { createAppContext } from "./composition"
-import type { CreateAppContextDeps } from "./composition"
-import { DEMO_HARNESS_ID } from "./gui/driver-registry"
-import {
-  createRendererWatchdog,
-  realWatchdogTimers,
-} from "./gui/renderer-watchdog"
+import { createAppContext } from "./create-app-context"
+import type { CreateAppContextDeps } from "./deps"
 
 /** Record which constructor saw which argument, returning inert stand-ins. */
 const makeFakeDeps = (): {
@@ -73,6 +67,7 @@ const makeFakeDeps = (): {
         reconcileOrphaned: () => ok(0),
       }
     }) as never,
+    createProjectStore: createProjectStore,
     createRegistry: record("createRegistry") as never,
     createPathCommandResolver: record("createPathCommandResolver") as never,
     createBunProcessSpawner: record("createBunProcessSpawner") as never,
@@ -85,29 +80,10 @@ const makeFakeDeps = (): {
     createRealGateway: record("createRealGateway") as never,
     createFileRuntimeState: record("createFileRuntimeState") as never,
     genProxyKey: () => "fixed-test-key",
-    createProjectStore: createProjectStore,
     createRunStore: ((..._a: unknown[]) => {
       calls.createRunStore = _a
       return { append: () => ok({ seq: 0 }), read: () => ok([]) }
     }) as never,
-    createRunManager: ((..._a: unknown[]) => {
-      calls.createRunManager = _a
-      return {
-        launch: () => ok({ sessionId: "s1" }),
-        handleInbound: () => undefined,
-        bindSend: () => undefined,
-      }
-    }) as never,
-    startRunnerSocket: (() => ({
-      url: "ws://localhost:23456/",
-      stop: () => undefined,
-    })) as never,
-    createRendererWatchdog: (d) =>
-      createRendererWatchdog({
-        ...d,
-        timers: realWatchdogTimers,
-        logger: createNoopLogger(),
-      }),
     createFakeDriver: (() => ({ start: () => ok({}) })) as never,
     createCodexDriver: (() => ({ start: () => ok({}) })) as never,
     createOpencodeDriver: (() => ({ start: () => ok({}) })) as never,
@@ -115,8 +91,6 @@ const makeFakeDeps = (): {
       deleteSession: () => ok(undefined),
       deleteProject: () => ok(undefined),
     })) as never,
-    removeDir: () => {},
-    relaunch: () => {},
     demoHarnessEnabled: false,
     readBuildChannel: () => undefined,
   }
@@ -384,18 +358,6 @@ describe("createAppContext wiring", () => {
     expect(ctx.proxyBaseUrl).toBe("http://127.0.0.1:4000")
   })
 
-  it("exposes a pickFolder function on the context", () => {
-    const { deps } = makeFakeDeps()
-    const ctx = createAppContext(deps)
-    expect(typeof ctx.pickFolder).toBe("function")
-  })
-
-  it("exposes an openExternalUrl function on the context", () => {
-    const { deps } = makeFakeDeps()
-    const ctx = createAppContext(deps)
-    expect(typeof ctx.openExternalUrl).toBe("function")
-  })
-
   it("exposes a projects store on the context", () => {
     const { deps } = makeFakeDeps()
     const ctx = createAppContext(deps)
@@ -561,20 +523,6 @@ describe("createAppContext draft provider methods", () => {
 })
 
 describe("createAppContext native run path wiring", () => {
-  it("exposes a runner manager with launch/handleInbound/bindSend", () => {
-    const { deps } = makeFakeDeps()
-    const ctx = createAppContext(deps)
-    expect(typeof ctx.runner.launch).toBe("function")
-    expect(typeof ctx.runner.handleInbound).toBe("function")
-    expect(typeof ctx.runner.bindSend).toBe("function")
-  })
-
-  it("exposes the runner socket url bound from startRunnerSocket", () => {
-    const { deps } = makeFakeDeps()
-    const ctx = createAppContext(deps)
-    expect(ctx.runnerSocketUrl).toBe("ws://localhost:23456/")
-  })
-
   it("builds the run store from the shared db client + a clock", () => {
     const { deps, calls } = makeFakeDeps()
     createAppContext(deps)
@@ -645,23 +593,17 @@ describe("createAppContext native run path wiring", () => {
     const ctx = createAppContext(deps)
     const listed = await ctx.registry.list()
     const ids = listed.ok ? listed.value.map((h) => h.id) : []
-    expect(ids).toContain(DEMO_HARNESS_ID)
+    expect(ids).toContain("demo")
     expect(ids).toContain("claude")
-    expect(ctx.driverRegistry.isNative(DEMO_HARNESS_ID as never)).toBe(true)
+    expect(ctx.driverRegistry.isNative("demo" as never)).toBe(true)
   })
 })
 
 describe("createAppContext resolveModelEnv wiring", () => {
   it("re-renders a proxied env for an in-session model pick", async () => {
-    // This test captures the `resolveModelEnv` passed to createRunManager,
-    // then calls it with a real harness/model pair and asserts the env is proxied.
-    let capturedResolveModelEnv:
-      | ((input: {
-          readonly harnessId: import("@spectrum/types").HarnessId
-          readonly modelId: import("@spectrum/types").ModelId
-        }) => Promise<Readonly<Record<string, string>>>)
-      | undefined
-
+    // The runtime-core factory exposes `resolveModelEnv` directly on the returned context (it's a
+    // base AppContext runner-extension point). Call it directly with a real harness/model pair and
+    // assert the env is proxied.
     const { deps } = makeFakeDeps()
 
     // Override createPathCommandResolver to return a fake that resolves "claude".
@@ -711,27 +653,9 @@ describe("createAppContext resolveModelEnv wiring", () => {
         save: async () => ok(undefined),
       })
 
-    // Override createRunManager to capture the resolveModelEnv it receives.
-    ;(deps as { createRunManager: unknown }).createRunManager = ((managerDeps: {
-      resolveModelEnv?: (input: {
-        readonly harnessId: import("@spectrum/types").HarnessId
-        readonly modelId: import("@spectrum/types").ModelId
-      }) => Promise<Readonly<Record<string, string>>>
-    }) => {
-      capturedResolveModelEnv = managerDeps.resolveModelEnv
-      return {
-        launch: () => ok({ sessionId: "s1" }),
-        handleInbound: () => undefined,
-        bindSend: () => undefined,
-      }
-    }) as never
+    const ctx = createAppContext(deps)
 
-    createAppContext(deps)
-
-    expect(capturedResolveModelEnv).toBeDefined()
-    if (capturedResolveModelEnv === undefined) return
-
-    const env = await capturedResolveModelEnv({
+    const env = await ctx.resolveModelEnv({
       harnessId: "claude" as import("@spectrum/types").HarnessId,
       modelId: "mdl_default" as import("@spectrum/types").ModelId,
     })
@@ -744,16 +668,9 @@ describe("createAppContext resolveModelEnv wiring", () => {
   })
 
   it("returns {} when the harnessId is not registered", async () => {
-    let capturedResolveModelEnv:
-      | ((input: {
-          readonly harnessId: import("@spectrum/types").HarnessId
-          readonly modelId: import("@spectrum/types").ModelId
-        }) => Promise<Readonly<Record<string, string>>>)
-      | undefined
-
     const { deps } = makeFakeDeps()
 
-    // Provide a minimal config store so composition.ts can call .load() without error.
+    // Provide a minimal config store so createAppContext can call .load() without error.
     ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
       () => ({
         load: async () =>
@@ -774,27 +691,9 @@ describe("createAppContext resolveModelEnv wiring", () => {
       remove: async () => ok(undefined),
     })
 
-    // Override createRunManager to capture the resolveModelEnv it receives.
-    ;(deps as { createRunManager: unknown }).createRunManager = ((managerDeps: {
-      resolveModelEnv?: (input: {
-        readonly harnessId: import("@spectrum/types").HarnessId
-        readonly modelId: import("@spectrum/types").ModelId
-      }) => Promise<Readonly<Record<string, string>>>
-    }) => {
-      capturedResolveModelEnv = managerDeps.resolveModelEnv
-      return {
-        launch: () => ok({ sessionId: "s1" }),
-        handleInbound: () => undefined,
-        bindSend: () => undefined,
-      }
-    }) as never
+    const ctx = createAppContext(deps)
 
-    createAppContext(deps)
-
-    expect(capturedResolveModelEnv).toBeDefined()
-    if (capturedResolveModelEnv === undefined) return
-
-    const env = await capturedResolveModelEnv({
+    const env = await ctx.resolveModelEnv({
       harnessId: "not-a-real-harness" as import("@spectrum/types").HarnessId,
       modelId: "mdl_any" as import("@spectrum/types").ModelId,
     })
@@ -803,16 +702,9 @@ describe("createAppContext resolveModelEnv wiring", () => {
   })
 
   it("returns {} (direct) when resolveModelEnv is called with a null modelId", async () => {
-    let capturedResolveModelEnv:
-      | ((input: {
-          readonly harnessId: import("@spectrum/types").HarnessId
-          readonly modelId: import("@spectrum/types").ModelId | null
-        }) => Promise<Readonly<Record<string, string>>>)
-      | undefined
-
     const { deps } = makeFakeDeps()
 
-    // Provide a minimal config store so composition.ts can call .load() without error.
+    // Provide a minimal config store so createAppContext can call .load() without error.
     ;(deps as { createCachedConfigStore: unknown }).createCachedConfigStore =
       () => ({
         load: async () =>
@@ -825,27 +717,9 @@ describe("createAppContext resolveModelEnv wiring", () => {
         save: async () => ok(undefined),
       })
 
-    // Override createRunManager to capture the resolveModelEnv it receives.
-    ;(deps as { createRunManager: unknown }).createRunManager = ((managerDeps: {
-      resolveModelEnv?: (input: {
-        readonly harnessId: import("@spectrum/types").HarnessId
-        readonly modelId: import("@spectrum/types").ModelId | null
-      }) => Promise<Readonly<Record<string, string>>>
-    }) => {
-      capturedResolveModelEnv = managerDeps.resolveModelEnv
-      return {
-        launch: () => ok({ sessionId: "s1" }),
-        handleInbound: () => undefined,
-        bindSend: () => undefined,
-      }
-    }) as never
+    const ctx = createAppContext(deps)
 
-    createAppContext(deps)
-
-    expect(capturedResolveModelEnv).toBeDefined()
-    if (capturedResolveModelEnv === undefined) return
-
-    const env = await capturedResolveModelEnv({
+    const env = await ctx.resolveModelEnv({
       harnessId: "claude" as import("@spectrum/types").HarnessId,
       modelId: null,
     })
@@ -855,13 +729,6 @@ describe("createAppContext resolveModelEnv wiring", () => {
 
   it("resolveModelEnv uses the effective (channel-offset) proxy port for canary", async () => {
     // A canary build should route resolveModelEnv through port 4001 (base 4000 + offset 1)
-    let capturedResolveModelEnv:
-      | ((input: {
-          readonly harnessId: import("@spectrum/types").HarnessId
-          readonly modelId: import("@spectrum/types").ModelId
-        }) => Promise<Readonly<Record<string, string>>>)
-      | undefined
-
     const { deps } = makeFakeDeps()
 
     // Set the build channel to canary
@@ -909,27 +776,9 @@ describe("createAppContext resolveModelEnv wiring", () => {
         save: async () => ok(undefined),
       })
 
-    // Override createRunManager to capture the resolveModelEnv it receives.
-    ;(deps as { createRunManager: unknown }).createRunManager = ((managerDeps: {
-      resolveModelEnv?: (input: {
-        readonly harnessId: import("@spectrum/types").HarnessId
-        readonly modelId: import("@spectrum/types").ModelId
-      }) => Promise<Readonly<Record<string, string>>>
-    }) => {
-      capturedResolveModelEnv = managerDeps.resolveModelEnv
-      return {
-        launch: () => ok({ sessionId: "s1" }),
-        handleInbound: () => undefined,
-        bindSend: () => undefined,
-      }
-    }) as never
+    const ctx = createAppContext(deps)
 
-    createAppContext(deps)
-
-    expect(capturedResolveModelEnv).toBeDefined()
-    if (capturedResolveModelEnv === undefined) return
-
-    const env = await capturedResolveModelEnv({
+    const env = await ctx.resolveModelEnv({
       harnessId: "claude" as import("@spectrum/types").HarnessId,
       modelId: "mdl_default" as import("@spectrum/types").ModelId,
     })

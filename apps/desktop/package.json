@@ -28,6 +28,7 @@
     "@spectrum/run-store": "workspace:*",
     "@spectrum/cli": "workspace:*",
     "@spectrum/projects": "workspace:*",
+    "@spectrum/runtime-core": "workspace:*",
     "@spectrum/config": "workspace:*",
     "@spectrum/data-admin": "workspace:*",
     "@spectrum/db": "workspace:*",

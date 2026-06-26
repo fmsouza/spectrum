@@ -91,6 +91,11 @@ import {
 } from "@spectrum/proxy"
 import { createRunStore } from "@spectrum/run-store"
 import {
+  migrateLaunchkitToSpectrum,
+  migrateLegacyMacosConfig,
+  migrateProductionToCanary,
+} from "@spectrum/runtime-core"
+import {
   createBunProcessRunner,
   createFsSecretFileOps,
   createPlatformKeychainBackend,
@@ -123,11 +128,6 @@ import { startRunnerSocket } from "./gui/runner-socket"
 import { createElectrobunUpdater } from "./gui/updater/electrobun-updater"
 import type { UpdaterAdapter } from "./gui/updater/updater-adapter"
 import { isWindowFocused } from "./gui/window"
-import { migrateProductionToCanary } from "./migrate-canary-data"
-import {
-  migrateLaunchkitToSpectrum,
-  migrateLegacyMacosConfig,
-} from "./migrate-legacy-config"
 import {
   createSecretRegistry,
   withRuntimeKeyRegistration,
