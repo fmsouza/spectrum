@@ -3,7 +3,7 @@ import type { IpcHandlers, ProviderView } from "@spectrum/ipc"
 import { providerCatalog, validateProviderConfig } from "@spectrum/providers"
 import type { ModelId, ModelRoute, Provider, SecretRef } from "@spectrum/types"
 import { isOk } from "@spectrum/utils"
-import type { AppContext } from "../../composition"
+import type { GuiContext } from "../../composition"
 import { decideBanner } from "../updater/policy"
 import type { Channel } from "../updater/updater-adapter"
 
@@ -31,7 +31,7 @@ const toProviderView = (provider: Provider): ProviderView => ({
  * IpcError; nothing leaks a stack trace because the server stringifies `error.message` only).
  * `void` results are encoded as `null` (the ipc VoidSchema), matching `04-ipc.md`.
  */
-export const createIpcHandlers = (ctx: AppContext): IpcHandlers => {
+export const createIpcHandlers = (ctx: GuiContext): IpcHandlers => {
   // Raised inside a handler so the ipc server wraps it as a typed handler-failed IpcError.
   // Logged once centrally so every handler failure leaves a persisted trace (message only —
   // handlers never put secrets in fail() messages).

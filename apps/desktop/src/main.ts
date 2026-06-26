@@ -1,7 +1,7 @@
 import { runCli } from "@spectrum/cli"
 import { type ProxyHandle, type RunAppDeps, runApp } from "./app"
 import { cliDepsFrom } from "./cli-deps"
-import type { createAppContext } from "./composition"
+import type { GuiContext } from "./composition"
 import { detectMode } from "./detect-mode"
 import { mountAppMenu } from "./gui/app-menu"
 import { enrichGuiPath } from "./gui/resolve-path"
@@ -9,7 +9,7 @@ import { mountTray } from "./gui/tray"
 import { openWindow } from "./gui/window"
 
 /**
- * Build the `RunAppDeps` the mode router needs, wiring the real subsystems via `createAppContext`.
+ * Build the `RunAppDeps` the mode router needs, wiring the real subsystems via `createGuiContext`.
  * Exported (and parameterized by the factory + optional overrides) so it is unit-testable without
  * constructing real adapters or importing Electrobun at top level.
  *
@@ -17,7 +17,7 @@ import { openWindow } from "./gui/window"
  * `ctx.proxy.start(...)`, with a freshly generated per-run key — never `0.0.0.0`.
  */
 export const buildRealDeps = (
-  makeContext: typeof createAppContext,
+  makeContext: () => GuiContext,
   overrides: Partial<RunAppDeps> = {},
 ): RunAppDeps => {
   const ctx = makeContext()

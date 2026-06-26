@@ -153,8 +153,9 @@ export const realDeps: CreateAppContextDeps = {
   createDataAdmin,
   demoHarnessEnabled: process.env.SPECTRUM_DEMO_HARNESS === "1",
   genProxyKey: defaultGenProxyKey,
-  // Electrobun runs the Bun process with cwd = <bundle>/Contents/MacOS, so the app's
-  // version.json sits at ../Resources/version.json (same path electrobun-updater uses).
+  // The host shell (Electrobun bundle) runs the Bun process with cwd =
+  // <bundle>/Contents/MacOS, so the app's version.json sits at
+  // ../Resources/version.json (same path the GUI updater adapter uses).
   // Any failure (no bundle, unreadable, malformed) yields undefined → ambient-env fallback.
   readBuildChannel: (): string | undefined => {
     try {
