@@ -11,6 +11,7 @@ import {
   exportConfig,
 } from "@spectrum/config"
 import { builtinHarnesses } from "@spectrum/harnesses"
+import { createNoopLogger } from "@spectrum/logger"
 
 const dirs: string[] = []
 
@@ -94,21 +95,7 @@ describe("spectrum-cli end-to-end", () => {
         }),
       },
       genProxyKey: () => "k",
-      logger: {
-        child: () => ({
-          child: () => ({}),
-          info: () => {},
-          warn: () => {},
-          error: () => {},
-          debug: () => {},
-          fatal: () => {},
-        }),
-        info: () => {},
-        warn: () => {},
-        error: () => {},
-        debug: () => {},
-        fatal: () => {},
-      },
+      logger: createNoopLogger(),
       out,
     } as never
 
