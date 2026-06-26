@@ -78,6 +78,10 @@ describe("SubRunnerPane", () => {
         }}
       />,
     )
+    // Regression guard: the single back affordance replaces what used to be
+    // two close-like controls (the ✕ and a parallel "Back to agents"). Make
+    // sure no close-shaped button re-appears.
+    expect(screen.queryByRole("button", { name: /close/i })).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: /Back to agents/i }))
     expect(closed).toBe(true)
     cleanup()

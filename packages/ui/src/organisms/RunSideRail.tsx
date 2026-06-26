@@ -36,6 +36,11 @@ const subRunnersOf = (
     }
     subs.push(r)
   }
+  // Defense-in-depth: the loop above already excludes the root (it `continue`s
+  // past runners with `parentRunnerId === undefined`), so `subs` cannot contain
+  // the root for a well-formed `RunState`. This filter guards the pure-data
+  // case — the rail may receive any `RunState` shape, including malformed
+  // ones — and must NOT be removed.
   return subs.filter((r) => r.id !== rootId)
 }
 

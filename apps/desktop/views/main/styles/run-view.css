@@ -71,13 +71,6 @@
   color: var(--sp-text-muted);
 }
 
-.lk-sub-runner-pane__close {
-  flex: 0 0 auto;
-  border: none;
-  background: transparent;
-  color: var(--sp-text-secondary);
-  cursor: pointer;
-}
 .lk-sub-runner-pane__back {
   flex: 0 0 auto;
   border: 1px solid var(--sp-border);
