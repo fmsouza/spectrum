@@ -418,11 +418,6 @@ const isDocumentedGap = (s: string): boolean => {
   // `__dismiss` selectors (and `[data-tone="…"]` tone variants) match nothing here
   // by design. Verified by Toast.test.tsx.
   if (/^\.lk-toast(?:__(?:msg|action|dismiss))?\b/.test(s)) return true
-  // SettingsNav footer (app version string) — only rendered when the SettingsNav
-  // receives a non-null `footer` prop. The canary-version-display task wires the
-  // version string in a later task; until then the `<div className="lk-settings-nav__footer">`
-  // never mounts. Verified by SettingsNav.test.tsx footer-renders test.
-  if (s === ".lk-settings-nav__footer") return true
   return false
 }
 
@@ -447,6 +442,38 @@ const baseStubs = {
       lastSelectedFolder: "",
       lastSelectedHarnessId: "",
       collapsedProjects: [],
+    },
+  }),
+  // Update store stubs: the Settings nav footer reads `state.currentVersion ·
+  // state.channel` from the update store. Without these, `useUpdate().check()`
+  // fails (default stub returns handler-failed), the store stays `undefined`,
+  // and `.lk-settings-nav__footer` never mounts.
+  checkForUpdate: async () => ({
+    ok: true as const,
+    value: {
+      phase: "up-to-date" as const,
+      currentVersion: "1.0.0",
+      latestVersion: null,
+      latestHash: null,
+      available: false,
+      progress: 0,
+      error: null,
+      channel: "stable" as const,
+      showBanner: false,
+    },
+  }),
+  getUpdateState: async () => ({
+    ok: true as const,
+    value: {
+      phase: "up-to-date" as const,
+      currentVersion: "1.0.0",
+      latestVersion: null,
+      latestHash: null,
+      available: false,
+      progress: 0,
+      error: null,
+      channel: "stable" as const,
+      showBanner: false,
     },
   }),
 }

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test"
-import { render, screen } from "@testing-library/react"
-import { IpcClientProvider } from "../IpcClientContext"
+import { ok } from "@spectrum/utils"
+import { screen, waitFor } from "@testing-library/react"
 import { createFakeIpcClient } from "../test/fake-client"
+import { renderWithProviders } from "../test/renderWithProviders"
 import { SettingsView } from "./SettingsView"
 
 const stubs = {
@@ -21,16 +22,67 @@ describe("SettingsView", () => {
       section: "harnesses",
       onSection: () => {},
     })
-    render(
-      <IpcClientProvider client={client}>
-        <div>
-          {master}
-          {detail}
-        </div>
-      </IpcClientProvider>,
+    renderWithProviders(
+      <div>
+        {master}
+        {detail}
+      </div>,
+      client,
     )
     // SettingsNav (master) shows the Harnesses entry as a nav link. Scope to the
     // link role so we don't also match the HarnessesPage detail heading.
     expect(screen.getByRole("link", { name: /harnesses/i })).toBeInTheDocument()
+  })
+
+  it("shows the canary version in the nav footer when a canary build is running", async () => {
+    const canaryState = {
+      phase: "up-to-date" as const,
+      currentVersion: "1.6.0-canary.43",
+      latestVersion: null,
+      latestHash: null,
+      available: false,
+      progress: 0,
+      error: null,
+      channel: "canary" as const,
+      showBanner: false,
+    }
+    const client = createFakeIpcClient({
+      ...stubs,
+      checkForUpdate: async () => ok(canaryState),
+      getUpdateState: async () => ok(canaryState),
+    })
+    const { master } = SettingsView({ section: "general", onSection: () => {} })
+    renderWithProviders(<div>{master}</div>, client)
+    // useUpdate() runs check() on mount; wait for the store to populate, then the
+    // footer text derived from currentVersion · channel appears.
+    await waitFor(() =>
+      expect(
+        screen.getByText(/1\.6\.0-canary\.43 · canary/),
+      ).toBeInTheDocument(),
+    )
+  })
+
+  it("shows the stable version in the nav footer when a stable build is running", async () => {
+    const stableState = {
+      phase: "up-to-date" as const,
+      currentVersion: "1.6.0",
+      latestVersion: null,
+      latestHash: null,
+      available: false,
+      progress: 0,
+      error: null,
+      channel: "stable" as const,
+      showBanner: false,
+    }
+    const client = createFakeIpcClient({
+      ...stubs,
+      checkForUpdate: async () => ok(stableState),
+      getUpdateState: async () => ok(stableState),
+    })
+    const { master } = SettingsView({ section: "general", onSection: () => {} })
+    renderWithProviders(<div>{master}</div>, client)
+    await waitFor(() =>
+      expect(screen.getByText(/1\.6\.0 · stable/)).toBeInTheDocument(),
+    )
   })
 })
