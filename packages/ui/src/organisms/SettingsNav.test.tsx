@@ -57,4 +57,39 @@ describe("SettingsNav", () => {
     expect(container.querySelector("nav")).toBeNull()
     expect(container.querySelector("ul.lk-settings-nav")).not.toBeNull()
   })
+  it("renders no footer when the footer prop is omitted", () => {
+    const { container } = render(
+      <SettingsNav
+        sections={[{ key: "general", label: "General" }]}
+        active="general"
+        onSelect={() => {}}
+      />,
+    )
+    expect(container.querySelector(".lk-settings-nav__footer")).toBeNull()
+  })
+
+  it("renders the footer after the nav list when the footer prop is set", () => {
+    render(
+      <SettingsNav
+        sections={[{ key: "general", label: "General" }]}
+        active="general"
+        onSelect={() => {}}
+        footer={<span data-testid="ver">1.6.0-canary.43 · canary</span>}
+      />,
+    )
+    expect(screen.getByTestId("ver")).toBeInTheDocument()
+  })
+
+  it("does not render the footer as a link", () => {
+    render(
+      <SettingsNav
+        sections={[{ key: "general", label: "General" }]}
+        active="general"
+        onSelect={() => {}}
+        footer={<span data-testid="ver">1.6.0-canary.43 · canary</span>}
+      />,
+    )
+    // The footer text is not a link; only the section entries are links.
+    expect(screen.getByTestId("ver").closest("a")).toBeNull()
+  })
 })
