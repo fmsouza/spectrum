@@ -144,7 +144,7 @@
 .lk-message-bubble {
   align-self: flex-start;
   max-width: 80%;
-  padding: var(--sp-space-2) var(--sp-space-3);
+  padding: var(--sp-space-3) var(--sp-space-3); /* 12px vert (was 8px), 12px horiz — more inner room per message */
   border-radius: var(--sp-radius-md);
   background: var(--sp-surface);
   border: 1px solid var(--sp-border);
@@ -169,8 +169,8 @@
 .lk-markdown {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-space-2);
-  line-height: 1.5;
+  gap: var(--sp-space-3); /* 12px between paragraphs/blocks (was 8px) — text breathes */
+  line-height: 1.6; /* was 1.5 — more vertical air per line */
   word-break: break-word;
   overflow-wrap: anywhere;
 }
