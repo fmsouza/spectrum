@@ -16,6 +16,13 @@ export const isWakeGap = (
  * backend. A failed ping means the connection died during sleep (a half-dead
  * socket may never emit `close`), so `onLost` fires — the caller self-reloads,
  * re-establishing both the Electrobun RPC and the runner socket.
+ *
+ * Recovery is a proper state machine, not a side-effect latch: once `lost` is
+ * true we keep pinging on every tick and clear `lost` as soon as a ping succeeds.
+ * This self-heals the overlay even when the self-reload (`onLost`) never actually
+ * remounts the SPA (e.g. the Electrobun webview suppresses the reload) — which
+ * would otherwise leave the "reconnecting" overlay stuck forever while the agent
+ * keeps running fine behind it.
  */
 export const useConnectionWatch = (deps: {
   readonly ping: () => Promise<boolean>
@@ -29,6 +36,7 @@ export const useConnectionWatch = (deps: {
   const gapMs = deps.gapMs ?? 10000
   const [lost, setLost] = useState(false)
   const lastTick = useRef(now())
+  const lostRef = useRef(false)
 
   useEffect(() => {
     let active = true
@@ -36,11 +44,26 @@ export const useConnectionWatch = (deps: {
       const current = now()
       const woke = isWakeGap(lastTick.current, current, gapMs)
       lastTick.current = current
-      if (!woke) return
+      // After a detected loss, keep probing every tick until the backend answers —
+      // the wake-gap gate alone would never re-ping once the machine is awake and
+      // ticking normally, so the latch would never clear.
+      if (!woke && !lostRef.current) return
       void ping().then((ok) => {
-        if (!active || ok) return
-        setLost(true)
-        onLost()
+        if (!active) return
+        if (ok) {
+          // Connection recovered: clear the overlay.
+          if (lostRef.current) {
+            lostRef.current = false
+            setLost(false)
+          }
+          return
+        }
+        // Connection lost (or still lost): latch the overlay and nudge a reload.
+        if (!lostRef.current) {
+          lostRef.current = true
+          setLost(true)
+          onLost()
+        }
       })
     }, tickMs)
     return () => {
