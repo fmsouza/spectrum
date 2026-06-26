@@ -31,6 +31,7 @@ import type {
   SessionId,
 } from "@spectrum/types"
 import type { Clock, Result } from "@spectrum/utils"
+import type { DriverRegistry } from "./driver-registry"
 
 /** Result of testing one provider's live connectivity (mirrors ipc TestProviderResult). */
 export type ProviderTestResult = {
@@ -149,10 +150,7 @@ export interface AppContext {
   /** Transactional cascade deletes for sessions and projects. */
   readonly dataAdmin: DataAdmin
   /** Which harnesses have a registered native driver (every launchable harness does). */
-  readonly driverRegistry: {
-    get(harnessId: HarnessId): AgentDriver | undefined
-    isNative(harnessId: HarnessId): boolean
-  }
+  readonly driverRegistry: DriverRegistry
   /** Structured application logger (console + rotating file). Inject child scopes into subsystems. */
   readonly log: Logger
   /**
