@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createNoopLogger } from "@spectrum/logger"
-import type { RunAppDeps } from "./app"
 import type { createAppContext } from "./composition"
+import type { RunGuiDeps } from "./main"
 import { buildRealDeps, main } from "./main"
 
 /** Build a fake context with minimal stand-ins so real IO is never triggered. */
@@ -55,23 +55,12 @@ describe("module side effects", () => {
 })
 
 describe("buildRealDeps", () => {
-  it("produces a RunAppDeps whose runCli, startProxy, and openWindow are callable", () => {
+  it("produces a RunGuiDeps whose startProxy and openWindow are callable (no runCli)", () => {
     const deps = buildRealDeps(fakeFactory)
-    expect(typeof deps.runCli).toBe("function")
     expect(typeof deps.startProxy).toBe("function")
     expect(typeof deps.openWindow).toBe("function")
-  })
-
-  it("threads argv to the CLI runner when runCli is invoked", async () => {
-    let cliArgv: readonly string[] | undefined
-    const deps = buildRealDeps(fakeFactory, {
-      runCli: async (argv) => {
-        cliArgv = argv
-        return undefined
-      },
-    })
-    await deps.runCli(["bun", "main.ts", "list", "harnesses"])
-    expect(cliArgv).toEqual(["bun", "main.ts", "list", "harnesses"])
+    // GUI-only: no runCli field on the deps
+    expect((deps as Record<string, unknown>).runCli).toBeUndefined()
   })
 
   it("calls reconcileOrphaned() on the session store when startProxy is invoked (GUI startup)", async () => {
@@ -125,7 +114,7 @@ describe("buildRealDeps", () => {
 
     const deps = buildRealDeps(factoryWithSpy)
     // startProxy is the GUI-only path; trigger it and wait for the async load to complete
-    deps.startProxy(undefined)
+    deps.startProxy()
     // The async config.load() is deferred; flush the microtask queue
     await Promise.resolve()
     expect(reconcileOrphaned).toHaveBeenCalledTimes(1)
@@ -207,7 +196,7 @@ describe("buildRealDeps", () => {
       }) as never) as typeof createAppContext
 
     const deps = buildRealDeps(factoryWithFailingReconcile)
-    deps.startProxy(undefined)
+    deps.startProxy()
     await Promise.resolve()
     expect(warns).toHaveLength(1)
     expect(warns[0]?.scope).toBe("startup")
@@ -215,93 +204,46 @@ describe("buildRealDeps", () => {
     expect(warns[0]?.fields).toEqual({ kind: "db-failed", detail: "boom" })
   })
 
-  it("does NOT call reconcileOrphaned() when only runCli is invoked (CLI path)", async () => {
-    const reconcileOrphaned = mock(() => ({ ok: true as const, value: 0 }))
-    const factoryWithSpy = (() =>
-      ({
-        config: {
-          load: async () => ({
-            ok: true,
-            value: {
-              version: 2,
-              providers: [],
-              models: [],
-              settings: { proxyPort: 4000, proxyHost: "127.0.0.1" },
-            },
-          }),
-        },
-        secrets: {},
-        sessions: {
-          create: () => ({ ok: true, value: {} }),
-          query: () => ({ ok: true, value: [] }),
-          init: () => ({ ok: true, value: undefined }),
-          reconcileOrphaned,
-        },
-        registry: { list: async () => ({ ok: true, value: [] }) },
-        launch: () => ({
-          ok: true,
-          value: { pid: 1, exited: Promise.resolve(0) },
-        }),
-        proxy: {
-          isRunning: async () => false,
-          start: () => ({ hostname: "127.0.0.1", port: 4000, stop: () => {} }),
-        },
-        factory: {},
-        gateway: {},
-        runtime: {
-          readProxyKey: async () => null,
-          writeProxyKey: async () => ({ ok: true, value: undefined }),
-          clear: async () => {},
-        },
-        testProvider: async () => ({
-          ok: true,
-          value: { ok: true, latencyMs: 0 },
-        }),
-        proxyPort: 4000,
-        proxyBaseUrl: "http://127.0.0.1:4000",
-        genProxyKey: () => "k",
-        paths: { configFile: "", dbFile: "", harnessDir: "" },
-        log: createNoopLogger(),
-      }) as never) as typeof createAppContext
-
-    const deps = buildRealDeps(factoryWithSpy)
-    // Only invoke the CLI path, never startProxy
-    await deps.runCli(["list"])
-    await Promise.resolve()
-    expect(reconcileOrphaned).toHaveBeenCalledTimes(0)
+  it("startProxy returns a ProxyHandle whose stop() can be invoked", () => {
+    const deps = buildRealDeps(fakeFactory)
+    const handle = deps.startProxy()
+    expect(typeof handle.stop).toBe("function")
+    // Should not throw
+    handle.stop()
   })
 })
 
 describe("main (entry wiring)", () => {
-  /** A RunAppDeps that records whether/how each path ran, no real effects. */
-  const recordingDeps = (record: {
-    cliArgv?: readonly string[]
-    guiOpened?: boolean
-  }): RunAppDeps => ({
-    runCli: async (argv) => {
-      record.cliArgv = argv
-      return undefined
+  /** A RunGuiDeps that records whether/how each path ran, no real effects. */
+  const recordingDeps = (record: { guiOpened?: boolean }): RunGuiDeps => ({
+    startProxy: () => {
+      record.guiOpened = false // startProxy itself doesn't open
+      return { stop: () => {} }
     },
-    startProxy: () => ({ stop: () => {} }),
     openWindow: () => {
       record.guiOpened = true
     },
   })
 
-  it("hands the CLI the argv tail (command at index 0), not the runtime/script prefix", async () => {
-    const record: { cliArgv?: readonly string[] } = {}
-    // A real `process.argv` for `spectrum list harnesses` is [runtime, script, "list", "harnesses"].
-    await main(
-      ["bun", "/path/main.ts", "list", "harnesses"],
-      recordingDeps(record),
-    )
-    expect(record.cliArgv).toEqual(["list", "harnesses"])
+  it("calls startProxy then openWindow regardless of argv (no mode detection)", async () => {
+    const order: string[] = []
+    const deps: RunGuiDeps = {
+      startProxy: () => {
+        order.push("startProxy")
+        return { stop: () => {} }
+      },
+      openWindow: () => {
+        order.push("openWindow")
+      },
+    }
+    // Even with CLI-shaped argv, the GUI always runs.
+    await main(["bun", "/path/main.ts", "list", "harnesses"], deps)
+    expect(order).toEqual(["startProxy", "openWindow"])
   })
 
-  it("runs GUI mode (no CLI verb) without invoking the CLI runner", async () => {
-    const record: { cliArgv?: readonly string[]; guiOpened?: boolean } = {}
-    await main(["bun", "/path/main.ts"], recordingDeps(record))
-    expect(record.cliArgv).toBeUndefined()
+  it("runs the GUI path even with an empty argv", async () => {
+    const record: { guiOpened?: boolean } = {}
+    await main([], recordingDeps(record))
     expect(record.guiOpened).toBe(true)
   })
 })

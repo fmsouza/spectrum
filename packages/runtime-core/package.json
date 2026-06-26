@@ -1,0 +1,34 @@
+{
+  "name": "@spectrum/runtime-core",
+  "version": "1.6.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@spectrum/agent-driver": "workspace:*",
+    "@spectrum/agent-events": "workspace:*",
+    "@spectrum/config": "workspace:*",
+    "@spectrum/data-admin": "workspace:*",
+    "@spectrum/db": "workspace:*",
+    "@spectrum/driver-claude": "workspace:*",
+    "@spectrum/driver-codex": "workspace:*",
+    "@spectrum/driver-openclaw": "workspace:*",
+    "@spectrum/driver-opencode": "workspace:*",
+    "@spectrum/driver-runtime": "workspace:*",
+    "@spectrum/harnesses": "workspace:*",
+    "@spectrum/logger": "workspace:*",
+    "@spectrum/platform": "workspace:*",
+    "@spectrum/projects": "workspace:*",
+    "@spectrum/providers": "workspace:*",
+    "@spectrum/proxy": "workspace:*",
+    "@spectrum/run-store": "workspace:*",
+    "@spectrum/secrets": "workspace:*",
+    "@spectrum/sessions": "workspace:*",
+    "@spectrum/types": "workspace:*",
+    "@spectrum/utils": "workspace:*"
+  }
+}

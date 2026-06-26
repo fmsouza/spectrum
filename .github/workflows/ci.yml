@@ -1,3 +1,7 @@
+# Shared verify gate — runs on every push to main + every PR. No builds: code verifications
+# (typecheck/lint/test/audit + version sync) run independently of the canary/release build
+# matrices (canary.yml, release.yml). The 3-OS matrix exercises the macOS keychain integration
+# test and the Windows DPAPI-file keychain path.
 name: CI
 on:
   push: { branches: [main] }

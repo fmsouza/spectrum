@@ -1,0 +1,28 @@
+{
+  "name": "spectrum-cli",
+  "version": "1.6.0",
+  "private": true,
+  "type": "module",
+  "bin": { "spectrum-cli": "./src/main.ts" },
+  "scripts": {
+    "compile": "bun build --compile --minify --outfile dist/spectrum-cli ./src/main.ts",
+    "smoke": "bun scripts/smoke.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@spectrum/runtime-core": "workspace:*",
+    "@spectrum/cli": "workspace:*",
+    "@spectrum/config": "workspace:*",
+    "@spectrum/db": "workspace:*",
+    "@spectrum/harnesses": "workspace:*",
+    "@spectrum/logger": "workspace:*",
+    "@spectrum/platform": "workspace:*",
+    "@spectrum/projects": "workspace:*",
+    "@spectrum/proxy": "workspace:*",
+    "@spectrum/secrets": "workspace:*",
+    "@spectrum/sessions": "workspace:*",
+    "@spectrum/types": "workspace:*",
+    "@spectrum/utils": "workspace:*"
+  }
+}

@@ -19,16 +19,34 @@
         "typescript": "5.8.3",
       },
     },
+    "apps/cli": {
+      "name": "spectrum-cli",
+      "version": "1.6.0",
+      "bin": {
+        "spectrum-cli": "./src/main.ts",
+      },
+      "dependencies": {
+        "@spectrum/cli": "workspace:*",
+        "@spectrum/config": "workspace:*",
+        "@spectrum/db": "workspace:*",
+        "@spectrum/harnesses": "workspace:*",
+        "@spectrum/logger": "workspace:*",
+        "@spectrum/platform": "workspace:*",
+        "@spectrum/projects": "workspace:*",
+        "@spectrum/proxy": "workspace:*",
+        "@spectrum/runtime-core": "workspace:*",
+        "@spectrum/secrets": "workspace:*",
+        "@spectrum/sessions": "workspace:*",
+        "@spectrum/types": "workspace:*",
+        "@spectrum/utils": "workspace:*",
+      },
+    },
     "apps/desktop": {
       "name": "spectrum",
-      "version": "1.5.0",
-      "bin": {
-        "spectrum": "./src/cli.ts",
-      },
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/agent-driver": "workspace:*",
         "@spectrum/agent-events": "workspace:*",
-        "@spectrum/cli": "workspace:*",
         "@spectrum/config": "workspace:*",
         "@spectrum/data-admin": "workspace:*",
         "@spectrum/db": "workspace:*",
@@ -44,6 +62,7 @@
         "@spectrum/providers": "workspace:*",
         "@spectrum/proxy": "workspace:*",
         "@spectrum/run-store": "workspace:*",
+        "@spectrum/runtime-core": "workspace:*",
         "@spectrum/secrets": "workspace:*",
         "@spectrum/sessions": "workspace:*",
         "@spectrum/types": "workspace:*",
@@ -60,7 +79,7 @@
     },
     "packages/agent-driver": {
       "name": "@spectrum/agent-driver",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/logger": "workspace:*",
@@ -71,7 +90,7 @@
     },
     "packages/agent-events": {
       "name": "@spectrum/agent-events",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
@@ -80,14 +99,14 @@
     },
     "packages/brand": {
       "name": "@spectrum/brand",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "react": "catalog:",
       },
     },
     "packages/cli": {
       "name": "@spectrum/cli",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/config": "workspace:*",
         "@spectrum/db": "workspace:*",
@@ -103,7 +122,7 @@
     },
     "packages/config": {
       "name": "@spectrum/config",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/logger": "workspace:*",
         "@spectrum/platform": "workspace:*",
@@ -114,7 +133,7 @@
     },
     "packages/data-admin": {
       "name": "@spectrum/data-admin",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/db": "workspace:*",
         "@spectrum/types": "workspace:*",
@@ -128,7 +147,7 @@
     },
     "packages/db": {
       "name": "@spectrum/db",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/logger": "workspace:*",
         "@spectrum/utils": "workspace:*",
@@ -140,7 +159,7 @@
     },
     "packages/driver-claude": {
       "name": "@spectrum/driver-claude",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "0.3.170",
         "@spectrum/agent-driver": "workspace:*",
@@ -154,7 +173,7 @@
     },
     "packages/driver-codex": {
       "name": "@spectrum/driver-codex",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/agent-driver": "workspace:*",
         "@spectrum/agent-events": "workspace:*",
@@ -166,7 +185,7 @@
     },
     "packages/driver-openclaw": {
       "name": "@spectrum/driver-openclaw",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/agent-driver": "workspace:*",
         "@spectrum/agent-events": "workspace:*",
@@ -178,7 +197,7 @@
     },
     "packages/driver-opencode": {
       "name": "@spectrum/driver-opencode",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@opencode-ai/sdk": "^1.16.2",
         "@spectrum/agent-driver": "workspace:*",
@@ -191,7 +210,7 @@
     },
     "packages/driver-runtime": {
       "name": "@spectrum/driver-runtime",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/agent-driver": "workspace:*",
         "@spectrum/agent-events": "workspace:*",
@@ -201,7 +220,7 @@
     },
     "packages/harnesses": {
       "name": "@spectrum/harnesses",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/logger": "workspace:*",
         "@spectrum/platform": "workspace:*",
@@ -212,7 +231,7 @@
     },
     "packages/ipc": {
       "name": "@spectrum/ipc",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/providers": "workspace:*",
@@ -223,18 +242,18 @@
     },
     "packages/logger": {
       "name": "@spectrum/logger",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/utils": "workspace:*",
       },
     },
     "packages/platform": {
       "name": "@spectrum/platform",
-      "version": "1.5.0",
+      "version": "1.6.0",
     },
     "packages/projects": {
       "name": "@spectrum/projects",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/db": "workspace:*",
         "@spectrum/types": "workspace:*",
@@ -244,7 +263,7 @@
     },
     "packages/providers": {
       "name": "@spectrum/providers",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/types": "workspace:*",
         "@spectrum/utils": "workspace:*",
@@ -253,7 +272,7 @@
     },
     "packages/proxy": {
       "name": "@spectrum/proxy",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@ai-sdk/amazon-bedrock": "^4",
         "@ai-sdk/anthropic": "^3",
@@ -284,7 +303,7 @@
     },
     "packages/run-store": {
       "name": "@spectrum/run-store",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/db": "workspace:*",
@@ -296,9 +315,36 @@
         "@spectrum/sessions": "workspace:*",
       },
     },
+    "packages/runtime-core": {
+      "name": "@spectrum/runtime-core",
+      "version": "1.6.0",
+      "dependencies": {
+        "@spectrum/agent-driver": "workspace:*",
+        "@spectrum/agent-events": "workspace:*",
+        "@spectrum/config": "workspace:*",
+        "@spectrum/data-admin": "workspace:*",
+        "@spectrum/db": "workspace:*",
+        "@spectrum/driver-claude": "workspace:*",
+        "@spectrum/driver-codex": "workspace:*",
+        "@spectrum/driver-openclaw": "workspace:*",
+        "@spectrum/driver-opencode": "workspace:*",
+        "@spectrum/driver-runtime": "workspace:*",
+        "@spectrum/harnesses": "workspace:*",
+        "@spectrum/logger": "workspace:*",
+        "@spectrum/platform": "workspace:*",
+        "@spectrum/projects": "workspace:*",
+        "@spectrum/providers": "workspace:*",
+        "@spectrum/proxy": "workspace:*",
+        "@spectrum/run-store": "workspace:*",
+        "@spectrum/secrets": "workspace:*",
+        "@spectrum/sessions": "workspace:*",
+        "@spectrum/types": "workspace:*",
+        "@spectrum/utils": "workspace:*",
+      },
+    },
     "packages/secrets": {
       "name": "@spectrum/secrets",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/logger": "workspace:*",
         "@spectrum/platform": "workspace:*",
@@ -308,7 +354,7 @@
     },
     "packages/sessions": {
       "name": "@spectrum/sessions",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/db": "workspace:*",
         "@spectrum/types": "workspace:*",
@@ -318,14 +364,14 @@
     },
     "packages/types": {
       "name": "@spectrum/types",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "zod": "catalog:",
       },
     },
     "packages/ui": {
       "name": "@spectrum/ui",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@spectrum/agent-events": "workspace:*",
         "@spectrum/brand": "workspace:*",
@@ -340,15 +386,15 @@
     },
     "packages/utils": {
       "name": "@spectrum/utils",
-      "version": "1.5.0",
+      "version": "1.6.0",
     },
     "tooling/biome-config": {
       "name": "@spectrum/biome-config",
-      "version": "1.5.0",
+      "version": "1.6.0",
     },
     "tooling/tsconfig": {
       "name": "@spectrum/tsconfig",
-      "version": "1.5.0",
+      "version": "1.6.0",
     },
   },
   "overrides": {
@@ -592,6 +638,8 @@
     "@spectrum/proxy": ["@spectrum/proxy@workspace:packages/proxy"],
 
     "@spectrum/run-store": ["@spectrum/run-store@workspace:packages/run-store"],
+
+    "@spectrum/runtime-core": ["@spectrum/runtime-core@workspace:packages/runtime-core"],
 
     "@spectrum/secrets": ["@spectrum/secrets@workspace:packages/secrets"],
 
@@ -1184,6 +1232,8 @@
     "space-separated-tokens": ["space-separated-tokens@2.0.2", "", {}, "sha512-PEGlAwrG8yXGXRjW32fGbg66JAlOAwbObuqVoJpv/mRgoWDQfgH1wDPvtzWyUSNAXBGSk8h755YDbbcEy3SH2Q=="],
 
     "spectrum": ["spectrum@workspace:apps/desktop"],
+
+    "spectrum-cli": ["spectrum-cli@workspace:apps/cli"],
 
     "standardwebhooks": ["standardwebhooks@1.0.0", "", { "dependencies": { "@stablelib/base64": "^1.0.0", "fast-sha256": "^1.3.0" } }, "sha512-BbHGOQK9olHPMvQNHWul6MYlrRTAOKn03rOe4A8O3CLWhNf4YHBqq2HJKKC+sfqpxiBY52pNeesD6jIiLDz8jg=="],
 

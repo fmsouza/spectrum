@@ -1,6 +1,6 @@
 import { isOk } from "@spectrum/utils"
 import type { Tray as ElectrobunTray, MenuItemConfig } from "electrobun/bun"
-import type { AppContext } from "../composition"
+import type { GuiContext } from "../composition"
 import { type TrayItem, type TrayMenu, buildTrayMenu } from "./tray-menu"
 
 /** The native tray handle the seam returns. `setMenu` re-renders; `destroy` tears down. */
@@ -37,7 +37,7 @@ export interface TrayActions {
  * `buildTrayMenu`; this only assembles + dispatches.
  */
 export const mountTray = async (
-  ctx: AppContext,
+  ctx: GuiContext,
   actions: TrayActions,
   deps: MountTrayDeps = realMountTrayDeps,
 ): Promise<TrayHandle> => {

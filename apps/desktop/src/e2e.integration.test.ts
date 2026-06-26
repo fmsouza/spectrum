@@ -2,8 +2,6 @@ import { afterEach, describe, expect, it } from "bun:test"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { runCli } from "@spectrum/cli"
-import { createMemoryWriter } from "@spectrum/cli"
 import {
   type Config,
   createCachedConfigStore,
@@ -12,7 +10,6 @@ import {
   exportConfig,
 } from "@spectrum/config"
 import {
-  builtinHarnesses,
   createInMemoryHarnessFileSource,
   createRegistry,
 } from "@spectrum/harnesses"
@@ -69,48 +66,6 @@ afterEach(async () => {
 // These end-to-end paths (CLI over fakes, a real loopback proxy on an ephemeral port, the pure
 // tray-menu descriptor) are platform-agnostic — run them everywhere, including Linux CI.
 describe("Spectrum end-to-end", () => {
-  it("runs the CLI `list harnesses` against a temp config and prints the built-in ids", async () => {
-    const { store } = await freshConfig()
-    const out = createMemoryWriter()
-    const deps = {
-      config: store,
-      secrets: {
-        set: async () => ({ ok: true, value: { ref: "kc" } }),
-        get: async () => ({ ok: true, value: "x" }),
-        delete: async () => ({ ok: true, value: undefined }),
-        has: async () => false,
-      },
-      sessions: {
-        init: () => ({ ok: true, value: undefined }),
-        create: () => ({ ok: true, value: {} }),
-        close: () => ({ ok: true, value: {} }),
-        query: () => ({ ok: true, value: [] }),
-      },
-      registry: {
-        list: async () => ({ ok: true as const, value: builtinHarnesses }),
-      },
-      launch: () => ({
-        ok: true as const,
-        value: { pid: 1, exited: Promise.resolve(0) },
-      }),
-      proxy: {
-        isRunning: async () => false,
-        start: () => ({
-          hostname: "127.0.0.1",
-          port: 0,
-          stop: () => {},
-        }),
-      },
-      genProxyKey: () => "k",
-      out,
-    } as never
-
-    const result = await runCli(deps)(["list", "harnesses"])
-
-    expect(result.ok).toBe(true)
-    expect(out.lines.join("\n")).toContain("claude")
-  })
-
   it("answers /health from a real loopback proxy on an ephemeral port", async () => {
     const { store } = await freshConfig()
     const loaded = await store.load()

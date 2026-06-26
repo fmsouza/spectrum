@@ -1,9 +1,6 @@
 #!/usr/bin/env bun
-import { runCli } from "@spectrum/cli"
 import type { CliError } from "@spectrum/cli"
 import type { Result } from "@spectrum/utils"
-import { cliDepsFrom } from "./cli-deps"
-import { createAppContext } from "./composition"
 
 /**
  * Render a `CliError` as a single human-readable line (no trailing newline — the caller adds it).
@@ -40,17 +37,4 @@ export const runCliMain = async (
   }
   deps.errOut(formatCliError(result.error))
   deps.exit(1)
-}
-
-// --- entry point: the single side effect -------------------------------------------
-// Both `bun run src/cli.ts <verb>` and the compiled binary `./spectrum-cli <verb>` produce a
-// `process.argv` shaped `[runtime, scriptPath, ...userArgs]`, so the CLI verb sits at index 2.
-// `runCli`/`parseArgs` treat the first token as the command, so drop the two-element prefix here.
-if (import.meta.main) {
-  const ctx = createAppContext()
-  await runCliMain(process.argv.slice(2), {
-    run: (argv) => runCli(cliDepsFrom(ctx))(argv),
-    exit: (code) => process.exit(code),
-    errOut: (line) => process.stderr.write(`${line}\n`),
-  })
 }

@@ -4,7 +4,7 @@ import {
   createIpcServer,
 } from "@spectrum/ipc"
 import { detectPlatform } from "@spectrum/platform"
-import type { AppContext } from "../composition"
+import type { GuiContext } from "../composition"
 import { createIpcHandlers } from "./ipc/handlers"
 import type { WindowBounds } from "./window-bounds"
 import { type WindowBoundsIO, createWindowBoundsIO } from "./window-bounds-io"
@@ -153,16 +153,16 @@ export const bindWebviewReload = (
 export interface OpenWindowDeps {
   readonly createWindow: (opts: WindowOptions) => unknown
   readonly makeTransport: (window: unknown) => ServerTransport
-  readonly wireServer: (transport: ServerTransport, ctx: AppContext) => void
+  readonly wireServer: (transport: ServerTransport, ctx: GuiContext) => void
   /** Build the bounds restore/persist seam from the live context (config + logger). */
-  readonly createBoundsIO: (ctx: AppContext) => WindowBoundsIO
+  readonly createBoundsIO: (ctx: GuiContext) => WindowBoundsIO
   readonly viewUrl: string
 }
 
 /** Default `wireServer`: bind the contract handlers to the transport (validated both directions). */
 const defaultWireServer = (
   transport: ServerTransport,
-  ctx: AppContext,
+  ctx: GuiContext,
 ): void => {
   createIpcServer(createIpcHandlers(ctx), transport)
 }
@@ -177,7 +177,7 @@ const defaultWireServer = (
  * comment).
  */
 export const openWindow = (
-  ctx: AppContext,
+  ctx: GuiContext,
   deps: OpenWindowDeps = realOpenWindowDeps,
 ): void => {
   const io = deps.createBoundsIO(ctx)

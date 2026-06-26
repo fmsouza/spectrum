@@ -3,17 +3,12 @@
   "type": "module",
   "private": true,
   "version": "1.6.0",
-  "bin": {
-    "spectrum": "./src/cli.ts"
-  },
   "scripts": {
     "build": "electrobun build",
     "build:stable": "electrobun build --env=stable",
     "build:canary": "electrobun build --env=canary",
     "start": "SPECTRUM_ENV=development electrobun dev",
     "dev": "SPECTRUM_ENV=development electrobun dev --watch",
-    "cli:dev": "SPECTRUM_ENV=development bun src/cli.ts",
-    "compile": "bun build --compile --minify --outfile dist/spectrum-cli ./src/cli.ts",
     "smoke": "bun scripts/smoke.ts",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "bun test"
@@ -26,8 +21,8 @@
     "@spectrum/driver-openclaw": "workspace:*",
     "@spectrum/agent-events": "workspace:*",
     "@spectrum/run-store": "workspace:*",
-    "@spectrum/cli": "workspace:*",
     "@spectrum/projects": "workspace:*",
+    "@spectrum/runtime-core": "workspace:*",
     "@spectrum/config": "workspace:*",
     "@spectrum/data-admin": "workspace:*",
     "@spectrum/db": "workspace:*",
