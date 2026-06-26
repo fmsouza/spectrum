@@ -418,6 +418,11 @@ const isDocumentedGap = (s: string): boolean => {
   // `__dismiss` selectors (and `[data-tone="…"]` tone variants) match nothing here
   // by design. Verified by Toast.test.tsx.
   if (/^\.lk-toast(?:__(?:msg|action|dismiss))?\b/.test(s)) return true
+  // SettingsNav footer (app version string) — only rendered when the SettingsNav
+  // receives a non-null `footer` prop. The canary-version-display task wires the
+  // version string in a later task; until then the `<div className="lk-settings-nav__footer">`
+  // never mounts. Verified by SettingsNav.test.tsx footer-renders test.
+  if (s === ".lk-settings-nav__footer") return true
   return false
 }
 

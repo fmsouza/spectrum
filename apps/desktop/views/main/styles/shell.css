@@ -140,6 +140,18 @@ nav[aria-label="Settings"] {
   font-weight: 650;
 }
 
+/* ── Settings nav footer: app version pinned to the bottom of the column. ── */
+.lk-settings-nav__footer {
+  margin-top: auto;
+  padding: var(--sp-space-2) var(--sp-space-3);
+  color: var(--sp-text-secondary);
+  font-size: var(--sp-text-sm);
+  font-weight: 400;
+  /* Keep it clear of the scroll content above when the list is long. */
+  border-top: 1px solid var(--sp-border);
+  margin-top: var(--sp-space-4);
+}
+
 /* ── Detail (column 3): the <main> pane fills the remaining width, full height. ── */
 main {
   grid-column: 3;
