@@ -215,7 +215,7 @@ describe("RunSideRail", () => {
 
   it("reduces to a thin strip with an expand control when collapsed", () => {
     render(<RunSideRail {...base} rootTaskList={rootList} collapsed />)
-    // The task rows are hidden; only the expand control + count remain.
+    // The task rows are hidden; only the expand control + vtab buttons remain.
     expect(screen.queryByText("Root task")).toBeNull()
     expect(
       screen.getByRole("button", { name: "Expand tasks panel" }),
