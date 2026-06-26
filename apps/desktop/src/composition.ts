@@ -18,9 +18,11 @@
  *   the Stage 1 refactor (Tasks 1-4). The CLI and the GUI both consume
  *   `createAppContext`; only the GUI wraps it with `createGuiContext`.
  *
- * The dual-mode CLI/GUI routing (detectMode + runApp + runCli) still exists at
- * this checkpoint; it is removed in Stage 2 Task 8. For now, the CLI path is
- * reachable via `bun src/cli.ts <verb>` and reaches `createAppContext` directly.
+ * End-state: composition.ts is GUI-only. The CLI lives in `apps/cli/`, which
+ * imports `createAppContext` directly from `@spectrum/runtime-core` (no
+ * `createGuiContext`, no `detectMode`, no `runApp`). The dual-mode routing
+ * (detectMode + runApp + runCli) was removed in Stage 2 Task 8; this file
+ * is no longer the composition root for the whole binary.
  */
 
 // Re-exports from the shared composition root so existing

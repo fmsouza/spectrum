@@ -428,11 +428,6 @@ export const createAppContext = (
     },
   })
 
-  // runtime: already wired above (before mintSessionProxyKey, so the session-token helper can read
-  // it). The lazy declaration above is the only one; this comment exists so future readers don't
-  // think it was dropped.
-  void runtime
-
   // Native run path: structured canonical events persisted to the shared db. The RunStore
   // structurally satisfies the RunManager's RunEventSink; sessionSink structurally satisfies its
   // SessionSink. Both are surfaced as runner extension points on AppContext.

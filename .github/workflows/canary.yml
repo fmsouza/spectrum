@@ -207,7 +207,7 @@ jobs:
           KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
           API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
           API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.APPLE_API_KEY_ISSUER_ID }}
+          API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
         run: |
           set -euo pipefail
           # Preflight — every signing secret must be present (channel builds must be signed).
@@ -218,7 +218,7 @@ jobs:
           [ -n "${KEYCHAIN_PASSWORD:-}" ] || missing+=(MACOS_KEYCHAIN_PASSWORD)
           [ -n "${API_KEY_P8_BASE64:-}" ] || missing+=(APPLE_API_KEY_P8_BASE64)
           [ -n "${API_KEY_ID:-}" ]        || missing+=(APPLE_API_KEY_ID)
-          [ -n "${API_ISSUER_ID:-}" ]     || missing+=(APPLE_API_KEY_ISSUER_ID)
+          [ -n "${API_ISSUER_ID:-}" ]     || missing+=(APPLE_API_ISSUER_ID)
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::macOS signing secrets missing: ${missing[*]}. Channel builds must be signed — failing."
             exit 1
