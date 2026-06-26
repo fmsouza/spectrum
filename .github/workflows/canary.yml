@@ -47,8 +47,107 @@ jobs:
           echo "canary-build=${NEXT}" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION}-canary.${NEXT}" >> "$GITHUB_OUTPUT"
 
-  build:
-    name: Build (${{ matrix.name }})
+  build-cli:
+    name: Build CLI (${{ matrix.name }})
+    needs: [gate, version]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            os: macos-latest
+            asset: spectrum-darwin-arm64
+            archive: tar.gz
+          - name: macOS x64
+            os: macos-15-intel
+            asset: spectrum-darwin-x64
+            archive: tar.gz
+          - name: Linux x64
+            os: ubuntu-latest
+            asset: spectrum-linux-x64
+            archive: tar.gz
+          - name: Linux arm64
+            os: ubuntu-24.04-arm
+            asset: spectrum-linux-arm64
+            archive: tar.gz
+          - name: Windows x64
+            os: windows-latest
+            asset: spectrum-windows-x64
+            archive: zip
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+
+      - name: Compile CLI binary
+        run: bun run --filter spectrum-cli compile
+
+      - name: CLI smoke (unix)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BIN=apps/cli/dist/spectrum-cli
+          [ -x "$BIN" ] || { echo "::error::$BIN missing or not executable"; exit 1; }
+          "$BIN" --help > /tmp/cli-help.txt
+          grep -q . /tmp/cli-help.txt || { echo "::error::--help produced empty stdout"; exit 1; }
+          "$BIN" list > /tmp/cli-list.txt
+          grep -q . /tmp/cli-list.txt || { echo "::error::list produced empty stdout"; exit 1; }
+          echo "✓ spectrum-cli --help and list both ran cleanly"
+
+      - name: CLI smoke (windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $BIN = "apps/cli/dist/spectrum-cli.exe"
+          if (-not (Test-Path $BIN)) {
+            Write-Error "$BIN missing"
+            exit 1
+          }
+          & $BIN --help | Out-File -Encoding utf8 /tmp/cli-help.txt
+          if ((Get-Content /tmp/cli-help.txt).Count -eq 0) { Write-Error "--help produced empty stdout"; exit 1 }
+          & $BIN list | Out-File -Encoding utf8 /tmp/cli-list.txt
+          if ((Get-Content /tmp/cli-list.txt).Count -eq 0) { Write-Error "list produced empty stdout"; exit 1 }
+          Write-Host "✓ spectrum-cli --help and list both ran cleanly"
+
+      - name: Stage CLI archive (unix)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p stage-cli
+          cp apps/cli/dist/spectrum-cli "stage-cli/${{ matrix.asset }}-cli"
+          tar czf "stage-cli/${{ matrix.asset }}-cli.tar.gz" -C stage-cli "${{ matrix.asset }}-cli"
+          rm -f "stage-cli/${{ matrix.asset }}-cli"
+
+      - name: Stage CLI archive (windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path stage-cli | Out-Null
+          $cliExe = "apps/cli/dist/spectrum-cli.exe"
+          if (-not (Test-Path $cliExe)) {
+            # Some Windows builds may emit the binary without the .exe suffix — copy and rename.
+            Copy-Item "apps/cli/dist/spectrum-cli" "stage-cli/${{ matrix.asset }}-cli.exe"
+          } else {
+            Copy-Item $cliExe "stage-cli/${{ matrix.asset }}-cli.exe"
+          }
+          Compress-Archive "stage-cli/${{ matrix.asset }}-cli.exe" "stage-cli/${{ matrix.asset }}-cli.zip"
+          Remove-Item "stage-cli/${{ matrix.asset }}-cli.exe"
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.asset }}-cli
+          path: stage-cli/*
+          if-no-files-found: error
+
+  build-desktop:
+    name: Build Desktop (${{ matrix.name }})
     needs: [gate, version]
     runs-on: ${{ matrix.os }}
     # Signing secrets live in the "Production" GitHub Environment (scoped to main + v* tags).
@@ -93,9 +192,6 @@ jobs:
           bun-version: 1.3.14
       - run: bun install --frozen-lockfile
 
-      - name: Compile CLI binary
-        run: bun run --filter spectrum compile
-
       - name: Set up macOS signing
         if: matrix.app && runner.os == 'macOS'
         shell: bash
@@ -111,7 +207,7 @@ jobs:
           KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
           API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
           API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          API_ISSUER_ID: ${{ secrets.APPLE_API_KEY_ISSUER_ID }}
         run: |
           set -euo pipefail
           # Preflight — every signing secret must be present (channel builds must be signed).
@@ -122,7 +218,7 @@ jobs:
           [ -n "${KEYCHAIN_PASSWORD:-}" ] || missing+=(MACOS_KEYCHAIN_PASSWORD)
           [ -n "${API_KEY_P8_BASE64:-}" ] || missing+=(APPLE_API_KEY_P8_BASE64)
           [ -n "${API_KEY_ID:-}" ]        || missing+=(APPLE_API_KEY_ID)
-          [ -n "${API_ISSUER_ID:-}" ]     || missing+=(APPLE_API_ISSUER_ID)
+          [ -n "${API_ISSUER_ID:-}" ]     || missing+=(APPLE_API_KEY_ISSUER_ID)
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::macOS signing secrets missing: ${missing[*]}. Channel builds must be signed — failing."
             exit 1
@@ -203,50 +299,35 @@ jobs:
           xcrun stapler validate "$APP"
           echo "✓ macOS installer is signed + notarized + stapled"
 
-      - name: Stage artifacts (unix)
-        if: matrix.archive == 'tar.gz'
+      - name: Stage installers (unix)
+        if: matrix.archive == 'tar.gz' && matrix.app && steps.app.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p stage update-feed
-          # CLI archive (kept as a standalone download).
-          cp apps/desktop/dist/spectrum-cli "stage/${{ matrix.asset }}-cli"
-          tar czf "stage/${{ matrix.asset }}-cli.tar.gz" -C stage "${{ matrix.asset }}-cli"
-          rm -f "stage/${{ matrix.asset }}-cli"
+          mkdir -p stage-desktop
           # OS installer replaces the old raw app bundle: macOS *.dmg, Linux *-Setup.tar.gz.
-          if [ "${{ steps.app.outcome }}" = "success" ]; then
-            shopt -s nullglob
-            installers=(apps/desktop/artifacts/*.dmg apps/desktop/artifacts/*-Setup.tar.gz)
-            if [ ${#installers[@]} -eq 0 ]; then
-              echo "::error::No OS installer (*.dmg / *-Setup.tar.gz) in apps/desktop/artifacts/"
-              ls -la apps/desktop/artifacts/ || true
-              exit 1
-            fi
-            for f in "${installers[@]}"; do cp "$f" stage/; done
+          shopt -s nullglob
+          installers=(apps/desktop/artifacts/*.dmg apps/desktop/artifacts/*-Setup.tar.gz)
+          if [ ${#installers[@]} -eq 0 ]; then
+            echo "::error::No OS installer (*.dmg / *-Setup.tar.gz) in apps/desktop/artifacts/"
+            ls -la apps/desktop/artifacts/ || true
+            exit 1
           fi
+          for f in "${installers[@]}"; do cp "$f" stage-desktop/; done
 
-      - name: Stage artifacts (windows)
-        if: matrix.archive == 'zip'
+      - name: Stage installers (windows)
+        if: matrix.archive == 'zip' && matrix.app && steps.app.outcome == 'success'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path stage, update-feed | Out-Null
-          # CLI archive (kept as a standalone download).
-          Copy-Item "apps/desktop/dist/spectrum-cli.exe" "stage/${{ matrix.asset }}-cli.exe" -ErrorAction SilentlyContinue
-          if (-not (Test-Path "stage/${{ matrix.asset }}-cli.exe")) {
-            Copy-Item "apps/desktop/dist/spectrum-cli" "stage/${{ matrix.asset }}-cli.exe"
-          }
-          Compress-Archive "stage/${{ matrix.asset }}-cli.exe" "stage/${{ matrix.asset }}-cli.zip"
-          Remove-Item "stage/${{ matrix.asset }}-cli.exe"
+          New-Item -ItemType Directory -Force -Path stage-desktop | Out-Null
           # OS installer: Windows self-extracting installer, wrapped in a zip by Electrobun.
-          if ("${{ steps.app.outcome }}" -eq "success") {
-            $installers = Get-ChildItem "apps/desktop/artifacts" -Filter "*-Setup*.zip" -ErrorAction SilentlyContinue
-            if (-not $installers) {
-              Write-Error "No Windows installer (*-Setup*.zip) in apps/desktop/artifacts/"
-              Get-ChildItem "apps/desktop/artifacts" -ErrorAction SilentlyContinue | Format-Table
-              exit 1
-            }
-            foreach ($f in $installers) { Copy-Item $f.FullName "stage/" }
+          $installers = Get-ChildItem "apps/desktop/artifacts" -Filter "*-Setup*.zip" -ErrorAction SilentlyContinue
+          if (-not $installers) {
+            Write-Error "No Windows installer (*-Setup*.zip) in apps/desktop/artifacts/"
+            Get-ChildItem "apps/desktop/artifacts" -ErrorAction SilentlyContinue | Format-Table
+            exit 1
           }
+          foreach ($f in $installers) { Copy-Item $f.FullName "stage-desktop/" }
 
       - name: Stage update artifacts (auto-update feed → update-feed/)
         if: matrix.app && steps.app.outcome == 'success'
@@ -319,24 +400,25 @@ jobs:
           updates=(update-feed/*-update.json)
           if [ ${#updates[@]} -eq 0 ]; then
             echo "::error::No *-update.json in update-feed/ — the channel build emitted no update metadata."
-            ls -la update-feed/ stage/ || true
+            ls -la update-feed/ stage-desktop/ || true
             exit 1
           fi
-          # The release page must hold ONLY the installer(s) + CLI archive — no feed leakage, no dev bundles.
-          for f in stage/*; do
+          # The release page must hold ONLY the installer(s) — no feed leakage, no dev bundles,
+          # no CLI archive (CLI artifacts are uploaded by build-cli, not here).
+          for f in stage-desktop/*; do
             case "$(basename "$f")" in
-              *-cli.tar.gz|*-cli.zip|*.dmg|*-Setup.tar.gz|*-Setup*.zip) ;;
+              *.dmg|*-Setup.tar.gz|*-Setup*.zip) ;;
               *) echo "::error::Unexpected artifact staged for the release page: $f"; exit 1 ;;
             esac
           done
-          echo "stage/ (release-page assets):"; ls -1 stage/
+          echo "stage-desktop/ (release-page assets):"; ls -1 stage-desktop/
           echo "update-feed/:"; ls -1 update-feed/
 
       - name: Upload release-page assets
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset }}
-          path: stage/*
+          path: stage-desktop/*
           if-no-files-found: error
 
       - name: Upload auto-update feed
@@ -356,14 +438,20 @@ jobs:
 
   release:
     name: Publish Canary Release
-    needs: [build, version]
+    needs: [build-cli, build-desktop, version]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Report canary version
         run: |
           echo "Publishing canary tag: ${{ needs.version.outputs.canary-tag }}"
-      - name: Download release-page assets
+      - name: Download CLI artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: release-assets
+          pattern: '*-cli'
+          merge-multiple: true
+      - name: Download release-page assets (desktop installers)
         uses: actions/download-artifact@v8
         with:
           path: release-assets
