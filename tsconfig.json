@@ -1,6 +1,7 @@
 {
   "files": [],
   "references": [
+    { "path": "apps/cli" },
     { "path": "apps/desktop" },
     { "path": "packages/types" },
     { "path": "packages/utils" },

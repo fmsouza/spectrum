@@ -19,6 +19,28 @@
         "typescript": "5.8.3",
       },
     },
+    "apps/cli": {
+      "name": "spectrum-cli",
+      "version": "1.6.0",
+      "bin": {
+        "spectrum-cli": "./src/main.ts",
+      },
+      "dependencies": {
+        "@spectrum/cli": "workspace:*",
+        "@spectrum/config": "workspace:*",
+        "@spectrum/db": "workspace:*",
+        "@spectrum/harnesses": "workspace:*",
+        "@spectrum/logger": "workspace:*",
+        "@spectrum/platform": "workspace:*",
+        "@spectrum/projects": "workspace:*",
+        "@spectrum/proxy": "workspace:*",
+        "@spectrum/runtime-core": "workspace:*",
+        "@spectrum/secrets": "workspace:*",
+        "@spectrum/sessions": "workspace:*",
+        "@spectrum/types": "workspace:*",
+        "@spectrum/utils": "workspace:*",
+      },
+    },
     "apps/desktop": {
       "name": "spectrum",
       "version": "1.6.0",
@@ -1214,6 +1236,8 @@
     "space-separated-tokens": ["space-separated-tokens@2.0.2", "", {}, "sha512-PEGlAwrG8yXGXRjW32fGbg66JAlOAwbObuqVoJpv/mRgoWDQfgH1wDPvtzWyUSNAXBGSk8h755YDbbcEy3SH2Q=="],
 
     "spectrum": ["spectrum@workspace:apps/desktop"],
+
+    "spectrum-cli": ["spectrum-cli@workspace:apps/cli"],
 
     "standardwebhooks": ["standardwebhooks@1.0.0", "", { "dependencies": { "@stablelib/base64": "^1.0.0", "fast-sha256": "^1.3.0" } }, "sha512-BbHGOQK9olHPMvQNHWul6MYlrRTAOKn03rOe4A8O3CLWhNf4YHBqq2HJKKC+sfqpxiBY52pNeesD6jIiLDz8jg=="],
 
