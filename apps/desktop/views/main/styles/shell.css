@@ -142,14 +142,18 @@ nav[aria-label="Settings"] {
 
 /* ── Settings nav footer: app version pinned to the bottom of the column. ── */
 .lk-settings-nav__footer {
+  /* `margin-top: auto` makes this the only flex child whose leading margin can
+     absorb free space, so the footer pins to the bottom of the nav column when
+     the section list is short. When the list is long enough to scroll (the
+     nav has `overflow-y: auto`), there is no free space to absorb, so the
+     margin collapses to 0 and the footer flows naturally at the end of the
+     list — matching the "consistent spacing when list is long" intent. */
   margin-top: auto;
   padding: var(--sp-space-2) var(--sp-space-3);
   color: var(--sp-text-secondary);
   font-size: var(--sp-text-sm);
   font-weight: 400;
-  /* Keep it clear of the scroll content above when the list is long. */
   border-top: 1px solid var(--sp-border);
-  margin-top: var(--sp-space-4);
 }
 
 /* ── Detail (column 3): the <main> pane fills the remaining width, full height. ── */
