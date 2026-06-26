@@ -72,4 +72,19 @@ describe("Tooltip", () => {
     )
     expect(container.querySelector(".lk-tooltip")?.className).toBe("lk-tooltip")
   })
+
+  it("ports the bubble to document.body so ancestor overflow cannot clip it", () => {
+    render(
+      <Tooltip label="Help text">
+        <button type="button">Go</button>
+      </Tooltip>,
+    )
+    fireEvent.focus(screen.getByRole("button", { name: "Go" }))
+    const bubble = screen.getByRole("tooltip")
+    // The bubble must NOT live inside the .lk-tooltip wrapper (which is inside
+    // the trigger's DOM subtree and subject to ancestor overflow clipping). It
+    // must be a direct descendant of document.body.
+    const bubbleParent = bubble.parentElement
+    expect(bubbleParent).toBe(document.body)
+  })
 })
