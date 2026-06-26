@@ -34,10 +34,10 @@ describe("GeneralPage updates section", () => {
     await waitFor(() => expect(screen.getByText(/1\.0\.0/)).toBeTruthy())
   })
 
-  it("shows the build channel next to the current version", async () => {
+  it("shows the canary version with the -canary.N suffix and channel word", async () => {
     const canaryState = {
       ...upToDate,
-      currentVersion: "1.2.3",
+      currentVersion: "1.2.3-canary.7",
       channel: "canary" as const,
     }
     renderWithProviders(
@@ -49,7 +49,7 @@ describe("GeneralPage updates section", () => {
       }),
     )
     await waitFor(() =>
-      expect(screen.getByText(/1\.2\.3 · canary/)).toBeTruthy(),
+      expect(screen.getByText(/1\.2\.3-canary\.7 · canary/)).toBeTruthy(),
     )
   })
 

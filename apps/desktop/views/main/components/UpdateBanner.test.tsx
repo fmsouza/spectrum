@@ -41,6 +41,20 @@ describe("UpdateBanner", () => {
     expect(calls).toEqual(["download"])
   })
 
+  it("shows the full canary version string when an update is available", () => {
+    render(
+      <UpdateBanner
+        state={{ ...base, latestVersion: "1.6.0-canary.43", channel: "canary" }}
+        onDownload={() => {}}
+        onRestart={() => {}}
+        onDismiss={() => {}}
+      />,
+    )
+    expect(
+      screen.getByText(/Spectrum 1\.6\.0-canary\.43 is available/i),
+    ).toBeTruthy()
+  })
+
   it("shows a progress indicator while downloading", () => {
     render(
       <UpdateBanner
