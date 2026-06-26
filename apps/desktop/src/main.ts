@@ -1,15 +1,26 @@
-import { runCli } from "@spectrum/cli"
-import { type ProxyHandle, type RunAppDeps, runApp } from "./app"
-import { cliDepsFrom } from "./cli-deps"
 import type { GuiContext } from "./composition"
-import { detectMode } from "./detect-mode"
 import { mountAppMenu } from "./gui/app-menu"
 import { enrichGuiPath } from "./gui/resolve-path"
 import { mountTray } from "./gui/tray"
 import { openWindow } from "./gui/window"
 
+/** A handle to a running proxy this shell can later stop (mirrors proxy's RunningProxy.stop). */
+export interface ProxyHandle {
+  stop(): void
+}
+
 /**
- * Build the `RunAppDeps` the mode router needs, wiring the real subsystems via `createGuiContext`.
+ * The GUI effects the entry invokes, injected so the wiring is unit-testable without Electrobun.
+ * `startProxy` returns a handle whose `stop` halts the persistent GUI proxy; `openWindow` mounts
+ * the webview + tray. No CLI branch.
+ */
+export interface RunGuiDeps {
+  readonly startProxy: () => ProxyHandle
+  readonly openWindow: () => void
+}
+
+/**
+ * Build the `RunGuiDeps` the GUI entry needs, wiring the real subsystems via `createGuiContext`.
  * Exported (and parameterized by the factory + optional overrides) so it is unit-testable without
  * constructing real adapters or importing Electrobun at top level.
  *
@@ -18,11 +29,10 @@ import { openWindow } from "./gui/window"
  */
 export const buildRealDeps = (
   makeContext: () => GuiContext,
-  overrides: Partial<RunAppDeps> = {},
-): RunAppDeps => {
+  overrides: Partial<RunGuiDeps> = {},
+): RunGuiDeps => {
   const ctx = makeContext()
   return {
-    runCli: overrides.runCli ?? ((argv) => runCli(cliDepsFrom(ctx))(argv)),
     startProxy:
       overrides.startProxy ??
       ((): ProxyHandle => {
@@ -94,15 +104,16 @@ export const buildRealDeps = (
 }
 
 /**
- * Entry wiring (pure, exported for testing): detect the mode from the raw argv, then run it.
+ * Entry wiring (pure, exported for testing): start the proxy, then open the window. No CLI branch.
  *
- * Both `bun run src/main.ts <verb>` and the compiled binary produce a `process.argv` shaped
- * `[runtime, scriptPath, ...userArgs]`. `detectMode` reads the verb at `argv[2]`, but
- * `runCli`/`parseArgs` treat the command as the first token — so the two-element prefix is dropped
- * before argv reaches `runApp`/`runCli`. Passing the raw argv through would make the CLI parse the
- * runtime path (`"bun"`) as the command.
+ * argv is accepted for signature stability (the Electrobun Worker passes `process.argv`) but is
+ * no longer routed on — the desktop binary is single-purpose GUI.
  */
 export const main = (
-  argv: readonly string[],
-  deps: RunAppDeps,
-): Promise<void> => runApp(detectMode(argv), argv.slice(2), deps)
+  _argv: readonly string[],
+  deps: RunGuiDeps,
+): Promise<void> => {
+  deps.startProxy()
+  deps.openWindow()
+  return Promise.resolve()
+}
