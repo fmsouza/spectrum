@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { parseSmokeArgs } from "./smoke"
+import { type SmokeCheck, parseSmokeArgs } from "./smoke"
 
 describe("parseSmokeArgs", () => {
   it("uses .exe suffix on win32", () => {
@@ -12,5 +12,15 @@ describe("parseSmokeArgs", () => {
 
   it("uses bare name on linux", () => {
     expect(parseSmokeArgs("linux").binName).toBe("spectrum-cli")
+  })
+})
+
+describe("SmokeCheck", () => {
+  it("exposes the two policy variants", () => {
+    const checks: readonly SmokeCheck[] = [
+      "require-exit-0",
+      "require-exit-0-and-output",
+    ]
+    expect(checks).toHaveLength(2)
   })
 })
