@@ -71,12 +71,19 @@
   color: var(--sp-text-muted);
 }
 
-.lk-sub-runner-pane__close {
+.lk-sub-runner-pane__back {
   flex: 0 0 auto;
-  border: none;
+  border: 1px solid var(--sp-border);
   background: transparent;
   color: var(--sp-text-secondary);
+  padding: 2px var(--sp-space-2);
+  border-radius: var(--sp-radius-sm);
+  font-size: var(--sp-text-xs);
   cursor: pointer;
+}
+.lk-sub-runner-pane__back:hover {
+  background: var(--sp-surface-raised);
+  color: var(--sp-text);
 }
 
 .lk-sub-runner-pane__body {
@@ -929,6 +936,32 @@
 .lk-side-rail__vtab:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+/* Sub-agent roster list. */
+.lk-sub-runner-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-space-1);
+}
+.lk-sub-runner-list__empty {
+  margin: 0;
+  padding: var(--sp-space-4) var(--sp-space-2);
+  font-size: var(--sp-text-sm);
+  color: var(--sp-text-muted);
+  text-align: center;
+}
+.lk-sub-runner-list [aria-current="true"] > .lk-sub-runner-card {
+  background: var(--sp-surface-raised);
+  border-color: var(--sp-border);
+}
+/* Count sits close beneath the Tasks vtab (a count of tasks), with a little breathing room. */
+.lk-side-rail__collapsed-count {
+  margin-top: var(--sp-space-1);
 }
 
 /* Collapse buttons sit at the trailing edge of their header. */

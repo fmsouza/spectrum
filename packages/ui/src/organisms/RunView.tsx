@@ -100,6 +100,13 @@ export const RunView = ({
   // of sub-runners (it resets only when this conversation view unmounts).
   const [railCollapsed, setRailCollapsed] = useState(true)
 
+  // Auto-expand when a sub-runner becomes focused so pressing Open lands the
+  // user on the Sub-agent tab (issue #2). Once expanded, the user's manual
+  // collapse choice is respected until the next sub-open auto-expands again.
+  useEffect(() => {
+    if (openRunner !== undefined) setRailCollapsed(false)
+  }, [openRunner])
+
   const rootList = selectTaskList(root)
   const rootTaskList =
     rootList !== undefined && rootList.total > 0 ? rootList : undefined

@@ -10,11 +10,18 @@ import { RunnerIdSchema } from "@spectrum/types"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { RunSideRail } from "./RunSideRail"
 
+const root = RunnerIdSchema.parse("run_root")
 const child = RunnerIdSchema.parse("run_child")
 
 const state: RunState = (
   [
-    { type: "runner-started", runnerId: child, title: "sub" },
+    { type: "runner-started", runnerId: root, title: "main" },
+    {
+      type: "runner-started",
+      runnerId: child,
+      parentRunnerId: root,
+      title: "sub",
+    },
     {
       type: "text-delta",
       runnerId: child,
@@ -64,16 +71,23 @@ describe("RunSideRail", () => {
   })
 
   it("shows disabled vertical Tasks and Sub-agent buttons on the collapsed strip when empty", () => {
-    render(<RunSideRail {...base} collapsed />)
+    render(<RunSideRail {...base} runners={new Map()} collapsed />)
     expect(screen.getByRole("button", { name: /^Tasks/ })).toBeDisabled()
     expect(screen.getByRole("button", { name: /^Sub-agent/ })).toBeDisabled()
     cleanup()
   })
 
   it("enables the vertical Tasks button when a root task list is present", () => {
-    render(<RunSideRail {...base} rootTaskList={rootList} collapsed />)
+    render(
+      <RunSideRail
+        {...base}
+        runners={new Map()}
+        rootTaskList={rootList}
+        collapsed
+      />,
+    )
     expect(screen.getByRole("button", { name: /^Tasks/ })).not.toBeDisabled()
-    // Still no sub-runner → Sub-agent stays disabled.
+    // No sub-runners at all → Sub-agent stays disabled.
     expect(screen.getByRole("button", { name: /^Sub-agent/ })).toBeDisabled()
     cleanup()
   })
@@ -130,7 +144,9 @@ describe("RunSideRail", () => {
   })
 
   it("shows the root task rail when root has tasks and no sub is open", () => {
-    render(<RunSideRail {...base} rootTaskList={rootList} />)
+    render(
+      <RunSideRail {...base} runners={new Map()} rootTaskList={rootList} />,
+    )
     expect(screen.getByText("Root task")).toBeInTheDocument()
     // Header is present with Sub-agent disabled.
     expect(screen.getByRole("tab", { name: "Sub-agent" })).toBeDisabled()
@@ -138,7 +154,9 @@ describe("RunSideRail", () => {
   })
 
   it("shows the Tasks/Sub-agent header even when only root tasks exist (no sub open)", () => {
-    render(<RunSideRail {...base} rootTaskList={rootList} />)
+    render(
+      <RunSideRail {...base} runners={new Map()} rootTaskList={rootList} />,
+    )
     expect(screen.getByRole("tab", { name: "Tasks" })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: "Sub-agent" })).toBeDisabled()
     expect(screen.getByText("Root task")).toBeInTheDocument()
@@ -227,6 +245,7 @@ describe("RunSideRail", () => {
     render(
       <RunSideRail
         {...base}
+        runners={new Map()}
         rootTaskList={rootList}
         onToggleCollapsed={() => {
           toggled = true
@@ -239,6 +258,92 @@ describe("RunSideRail", () => {
     if (taskRailCollapse === null) throw new Error("missing task-rail collapse")
     fireEvent.click(taskRailCollapse)
     expect(toggled).toBe(true)
+    cleanup()
+  })
+
+  it("enables the Sub-agent tab when any sub-runner exists, even with none focused", () => {
+    // state has one child runner; pass runners but no subRunner → today this disables Sub-agent.
+    render(<RunSideRail {...base} runners={state.runners} />)
+    expect(screen.getByRole("tab", { name: "Sub-agent" })).not.toBeDisabled()
+    cleanup()
+  })
+
+  it("shows the sub-agent roster when no sub is focused", () => {
+    render(<RunSideRail {...base} runners={state.runners} />)
+    // childRunner title is "sub" (from the module-level state).
+    expect(screen.getByText("sub")).toBeInTheDocument()
+    // The focused timeline text is NOT shown (no sub focused).
+    expect(screen.queryByText("child says hi")).toBeNull()
+    cleanup()
+  })
+
+  it("swaps to the focused agent timeline when a roster row is opened", () => {
+    let opened: string | undefined
+    render(
+      <RunSideRail
+        {...base}
+        runners={state.runners}
+        onOpenSubRunner={(id) => {
+          opened = String(id)
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByText("sub"))
+    expect(opened).toBe(String(child))
+    cleanup()
+  })
+
+  it("shows the focused agent timeline and a back control when a sub is focused", () => {
+    render(
+      <RunSideRail {...base} runners={state.runners} subRunner={childRunner} />,
+    )
+    expect(screen.getByText("child says hi")).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Back to agents/i }),
+    ).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("returns to the roster when back is pressed", () => {
+    let closed = false
+    render(
+      <RunSideRail
+        {...base}
+        runners={state.runners}
+        subRunner={childRunner}
+        onCloseSub={() => {
+          closed = true
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: /Back to agents/i }))
+    expect(closed).toBe(true)
+    cleanup()
+  })
+
+  it("renders the tasks count beside the Tasks vtab, not the Sub-agent vtab", () => {
+    render(
+      <RunSideRail
+        {...base}
+        runners={state.runners}
+        rootTaskList={rootList}
+        collapsed
+      />,
+    )
+    const tasksBtn = screen.getByRole("button", { name: /^Tasks/ })
+    const count = screen.getByText("0/1")
+    // The count is a sibling that immediately follows the Tasks vtab,
+    // and precedes the Sub-agent vtab.
+    const strip = tasksBtn.parentElement
+    if (strip === null) throw new Error("no strip")
+    const children = Array.from(strip.children)
+    const tasksIdx = children.indexOf(tasksBtn)
+    const countIdx = children.indexOf(count)
+    const subIdx = children.indexOf(
+      screen.getByRole("button", { name: /^Sub-agent/ }),
+    )
+    expect(countIdx).toBeGreaterThan(tasksIdx)
+    expect(countIdx).toBeLessThan(subIdx)
     cleanup()
   })
 })

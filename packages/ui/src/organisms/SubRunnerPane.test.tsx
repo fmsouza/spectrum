@@ -65,7 +65,7 @@ describe("SubRunnerPane", () => {
     cleanup()
   })
 
-  it("calls onClose when the close control is clicked", () => {
+  it("calls onClose when the back affordance is clicked", () => {
     let closed = false
     render(
       <SubRunnerPane
@@ -78,7 +78,11 @@ describe("SubRunnerPane", () => {
         }}
       />,
     )
-    fireEvent.click(screen.getByRole("button", { name: /close/i }))
+    // Regression guard: the single back affordance replaces what used to be
+    // two close-like controls (the ✕ and a parallel "Back to agents"). Make
+    // sure no close-shaped button re-appears.
+    expect(screen.queryByRole("button", { name: /close/i })).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: /Back to agents/i }))
     expect(closed).toBe(true)
     cleanup()
   })

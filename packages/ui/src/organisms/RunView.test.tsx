@@ -99,7 +99,15 @@ describe("RunView", () => {
 
   it("renders the sub-runner pane content when a sub-runner is open", () => {
     render(<RunView {...base} openRunner={childRunner} />)
-    fireEvent.click(screen.getByRole("button", { name: "Expand tasks panel" }))
+    expect(screen.getByText("child says hi")).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("auto-expands the rail to the focused sub-agent when openRunner is set", () => {
+    render(
+      <RunView {...base} openRunner={childRunner} onOpenSubRunner={() => {}} />,
+    )
+    // No need to click Expand tasks panel — focusing a sub auto-expands.
     expect(screen.getByText("child says hi")).toBeInTheDocument()
     cleanup()
   })
@@ -335,7 +343,6 @@ describe("RunView", () => {
         openRunner={childRunner2}
       />,
     )
-    fireEvent.click(screen.getByRole("button", { name: "Expand tasks panel" }))
     expect(screen.getByRole("tab", { name: "Sub-agent" })).toBeInTheDocument()
     expect(screen.getByText("child working")).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: "Tasks" })).toBeDisabled()
@@ -399,7 +406,6 @@ describe("RunView", () => {
         openRunner={childRunner3}
       />,
     )
-    fireEvent.click(screen.getByRole("button", { name: "Expand tasks panel" }))
     const tasksTab = screen.getByRole("tab", { name: "Tasks" })
     expect(tasksTab).not.toBeDisabled()
     fireEvent.click(tasksTab)
@@ -477,13 +483,12 @@ describe("RunView", () => {
         }}
       />,
     )
-    fireEvent.click(screen.getByRole("button", { name: "Expand tasks panel" }))
     fireEvent.click(screen.getByRole("link", { name: "sub docs" }))
     expect(opened).toBe("https://sub.example.com")
     cleanup()
   })
 
-  it("keeps the collapsed rail strip when the sub closes and root has no tasks", () => {
+  it("auto-expands the rail on sub-open and stays expanded after the sub closes", () => {
     const rid = RunnerIdSchema.parse("run_root4")
     const cid = RunnerIdSchema.parse("run_child4")
     const st = (
@@ -516,17 +521,18 @@ describe("RunView", () => {
         openRunner={childRunner4}
       />,
     )
-    // With a sub open the rail is collapsed by default but expandable.
+    // With a sub open the rail auto-expands (no Expand tasks panel button).
     expect(
-      screen.getByRole("button", { name: "Expand tasks panel" }),
-    ).toBeInTheDocument()
+      screen.queryByRole("button", { name: "Expand tasks panel" }),
+    ).toBeNull()
+    expect(screen.getByText("child content")).toBeInTheDocument()
 
     rerender(<RunView {...base} root={rootRunner4} runners={st.runners} />)
-    // Sub closed, no tasks: the collapsed strip remains.
+    // Sub closed, no tasks: the rail stays expanded (the user's last manual
+    // collapse wins; with no manual collapse it stays open from the auto-expand).
     expect(
-      screen.getByRole("button", { name: "Expand tasks panel" }),
-    ).toBeInTheDocument()
-    expect(screen.queryByText("child content")).toBeNull()
+      screen.queryByRole("button", { name: "Expand tasks panel" }),
+    ).toBeNull()
     cleanup()
   })
 })

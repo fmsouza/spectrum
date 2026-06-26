@@ -1,5 +1,6 @@
 import type { RunnerId, RunnerState, TaskList } from "@spectrum/agent-events"
 import { type ReactElement, useState } from "react"
+import { SubRunnerList } from "./SubRunnerList"
 import { SubRunnerPane } from "./SubRunnerPane"
 import { TaskRail } from "./TaskRail"
 
@@ -22,6 +23,27 @@ export type RunSideRailProps = {
   readonly onOpenLink?: (url: string) => void
 }
 
+/** Non-root runners — the session's sub-agents — in spawn order. */
+const subRunnersOf = (
+  runners: ReadonlyMap<RunnerId, RunnerState>,
+): readonly RunnerState[] => {
+  const subs: RunnerState[] = []
+  let rootId: RunnerId | undefined
+  for (const r of runners.values()) {
+    if (r.parentRunnerId === undefined) {
+      rootId = r.id
+      continue
+    }
+    subs.push(r)
+  }
+  // Defense-in-depth: the loop above already excludes the root (it `continue`s
+  // past runners with `parentRunnerId === undefined`), so `subs` cannot contain
+  // the root for a well-formed `RunState`. This filter guards the pure-data
+  // case — the rail may receive any `RunState` shape, including malformed
+  // ones — and must NOT be removed.
+  return subs.filter((r) => r.id !== rootId)
+}
+
 export const RunSideRail = ({
   rootTaskList,
   subRunner,
@@ -42,11 +64,13 @@ export const RunSideRail = ({
   // buttons (collapsed) and the tab buttons (expanded).
   const tasksAvailable =
     (subRunner !== undefined ? subTaskList : rootTaskList) !== undefined
-  const subAvailable = subRunner !== undefined
+  const subs = subRunnersOf(runners)
+  const subAvailable = subs.length > 0
 
   // Collapsed: a thin vertical strip with an expand control and vertical
   // Tasks/Sub-agent buttons (disabled when their content is empty). Always
-  // renders — even when both are empty — so the rail never disappears.
+  // renders — even when both are empty — so the rail never disappears. The
+  // tasks count sits beside the Tasks button (it is a count of tasks).
   if (collapsed) {
     const countList = subRunner !== undefined ? subTaskList : rootTaskList
     return (
@@ -71,6 +95,11 @@ export const RunSideRail = ({
         >
           Tasks
         </button>
+        {countList === undefined ? null : (
+          <span className="lk-side-rail__collapsed-count">
+            {countList.completed}/{countList.total}
+          </span>
+        )}
         <button
           type="button"
           className="lk-side-rail__vtab"
@@ -83,24 +112,17 @@ export const RunSideRail = ({
         >
           Sub-agent
         </button>
-        {countList === undefined ? null : (
-          <span className="lk-side-rail__collapsed-count">
-            {countList.completed}/{countList.total}
-          </span>
-        )}
       </aside>
     )
   }
 
   // Expanded: one fixed structure. The Tasks/Sub-agent header is always
   // present; each tab is disabled when its content is empty. The body is
-  // always a real component — a segment is only reachable by pressing an
-  // enabled tab, so the active segment always has content. The root-only
-  // case (no sub open) defaults to the Tasks segment visually since
-  // Sub-agent is unavailable; the body falls back to TaskRail when the
-  // default Sub-agent tab is the only one selected.
+  // always a real component. Sub-agent shows the roster when no sub is
+  // focused, or the focused agent's timeline (with Back) when one is.
   const activeTaskList = subRunner !== undefined ? subTaskList : rootTaskList
   const showingTasks = segment === "tasks" && tasksAvailable
+  const subRunnerId = subRunner?.id
   return (
     <aside className="lk-side-rail" data-sub-open={subRunner !== undefined}>
       <div className="lk-side-rail__seg" role="tablist" aria-label="Side panel">
@@ -136,14 +158,24 @@ export const RunSideRail = ({
       {showingTasks && activeTaskList !== undefined ? (
         <TaskRail taskList={activeTaskList} onCollapse={onToggleCollapsed} />
       ) : subAvailable ? (
-        <SubRunnerPane
-          runner={subRunner}
-          runners={runners}
-          breadcrumb={subBreadcrumb}
-          onOpenSubRunner={onOpenSubRunner}
-          onClose={onCloseSub}
-          {...(onOpenLink === undefined ? {} : { onOpenLink })}
-        />
+        subRunner !== undefined ? (
+          <SubRunnerPane
+            runner={subRunner}
+            runners={runners}
+            breadcrumb={subBreadcrumb}
+            onOpenSubRunner={onOpenSubRunner}
+            onClose={onCloseSub}
+            {...(onOpenLink === undefined ? {} : { onOpenLink })}
+          />
+        ) : (
+          <SubRunnerList
+            runners={runners}
+            {...(subRunnerId === undefined
+              ? {}
+              : { openRunnerId: subRunnerId })}
+            onOpen={onOpenSubRunner}
+          />
+        )
       ) : activeTaskList !== undefined ? (
         // Root-only with tasks: show them even though the default segment is "sub",
         // because Sub-agent is unavailable.
