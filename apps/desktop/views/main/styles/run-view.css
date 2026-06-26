@@ -144,7 +144,7 @@
 .lk-message-bubble {
   align-self: flex-start;
   max-width: 80%;
-  padding: var(--sp-space-2) var(--sp-space-3);
+  padding: var(--sp-space-3) var(--sp-space-3); /* 12px vert (was 8px), 12px horiz — more inner room per message */
   border-radius: var(--sp-radius-md);
   background: var(--sp-surface);
   border: 1px solid var(--sp-border);
@@ -169,8 +169,8 @@
 .lk-markdown {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-space-2);
-  line-height: 1.5;
+  gap: var(--sp-space-3); /* 12px between paragraphs/blocks (was 8px) — text breathes */
+  line-height: 1.6; /* was 1.5 — more vertical air per line */
   word-break: break-word;
   overflow-wrap: anywhere;
 }
@@ -909,12 +909,6 @@
 .lk-side-rail__expand {
   font-size: var(--sp-text-base);
 }
-.lk-side-rail__collapsed-count {
-  font-size: var(--sp-text-xs);
-  color: var(--sp-text-muted);
-  font-variant-numeric: tabular-nums;
-  writing-mode: vertical-rl;
-}
 
 /* Vertical Tasks/Sub-agent buttons on the collapsed strip. */
 .lk-side-rail__vtab {
@@ -958,10 +952,6 @@
 .lk-sub-runner-list [aria-current="true"] > .lk-sub-runner-card {
   background: var(--sp-surface-raised);
   border-color: var(--sp-border);
-}
-/* Count sits close beneath the Tasks vtab (a count of tasks), with a little breathing room. */
-.lk-side-rail__collapsed-count {
-  margin-top: var(--sp-space-1);
 }
 
 /* Collapse buttons sit at the trailing edge of their header. */
