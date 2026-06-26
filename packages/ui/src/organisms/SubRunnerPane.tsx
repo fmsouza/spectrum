@@ -39,14 +39,6 @@ export const SubRunnerPane = ({
         >
           ← Back to agents
         </button>
-        <button
-          type="button"
-          className="lk-sub-runner-pane__close"
-          aria-label="Close sub-runner"
-          onClick={() => onClose()}
-        >
-          ✕
-        </button>
       </header>
       <div className="lk-sub-runner-pane__body">
         <ConversationTimeline

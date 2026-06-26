@@ -65,7 +65,7 @@ describe("SubRunnerPane", () => {
     cleanup()
   })
 
-  it("calls onClose when the close control is clicked", () => {
+  it("calls onClose when the back affordance is clicked", () => {
     let closed = false
     render(
       <SubRunnerPane
@@ -78,7 +78,7 @@ describe("SubRunnerPane", () => {
         }}
       />,
     )
-    fireEvent.click(screen.getByRole("button", { name: /close/i }))
+    fireEvent.click(screen.getByRole("button", { name: /Back to agents/i }))
     expect(closed).toBe(true)
     cleanup()
   })
