@@ -321,7 +321,7 @@ describe("RunSideRail", () => {
     cleanup()
   })
 
-  it("renders the tasks count beside the Tasks vtab, not the Sub-agent vtab", () => {
+  it("does not render the tasks count on the collapsed strip", () => {
     render(
       <RunSideRail
         {...base}
@@ -330,20 +330,16 @@ describe("RunSideRail", () => {
         collapsed
       />,
     )
-    const tasksBtn = screen.getByRole("button", { name: /^Tasks/ })
-    const count = screen.getByText("0/1")
-    // The count is a sibling that immediately follows the Tasks vtab,
-    // and precedes the Sub-agent vtab.
-    const strip = tasksBtn.parentElement
-    if (strip === null) throw new Error("no strip")
-    const children = Array.from(strip.children)
-    const tasksIdx = children.indexOf(tasksBtn)
-    const countIdx = children.indexOf(count)
-    const subIdx = children.indexOf(
-      screen.getByRole("button", { name: /^Sub-agent/ }),
+    // The count (e.g. "0/1") must be hidden in the collapsed strip — it only
+    // appears inside the expanded TaskRail panel.
+    expect(screen.queryByText("0/1")).toBeNull()
+  })
+
+  it("renders the tasks count inside the expanded panel, not the collapsed strip", () => {
+    render(
+      <RunSideRail {...base} runners={new Map()} rootTaskList={rootList} />,
     )
-    expect(countIdx).toBeGreaterThan(tasksIdx)
-    expect(countIdx).toBeLessThan(subIdx)
-    cleanup()
+    // Expanded: the count IS shown via TaskRail.
+    expect(screen.getByText("0/1")).toBeInTheDocument()
   })
 })

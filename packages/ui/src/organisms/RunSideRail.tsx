@@ -70,9 +70,8 @@ export const RunSideRail = ({
   // Collapsed: a thin vertical strip with an expand control and vertical
   // Tasks/Sub-agent buttons (disabled when their content is empty). Always
   // renders — even when both are empty — so the rail never disappears. The
-  // tasks count sits beside the Tasks button (it is a count of tasks).
+  // tasks count lives only inside the expanded TaskRail panel.
   if (collapsed) {
-    const countList = subRunner !== undefined ? subTaskList : rootTaskList
     return (
       <aside className="lk-side-rail lk-side-rail--collapsed">
         <button
@@ -95,11 +94,6 @@ export const RunSideRail = ({
         >
           Tasks
         </button>
-        {countList === undefined ? null : (
-          <span className="lk-side-rail__collapsed-count">
-            {countList.completed}/{countList.total}
-          </span>
-        )}
         <button
           type="button"
           className="lk-side-rail__vtab"

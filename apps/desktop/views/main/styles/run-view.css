@@ -909,12 +909,6 @@
 .lk-side-rail__expand {
   font-size: var(--sp-text-base);
 }
-.lk-side-rail__collapsed-count {
-  font-size: var(--sp-text-xs);
-  color: var(--sp-text-muted);
-  font-variant-numeric: tabular-nums;
-  writing-mode: vertical-rl;
-}
 
 /* Vertical Tasks/Sub-agent buttons on the collapsed strip. */
 .lk-side-rail__vtab {
@@ -958,10 +952,6 @@
 .lk-sub-runner-list [aria-current="true"] > .lk-sub-runner-card {
   background: var(--sp-surface-raised);
   border-color: var(--sp-border);
-}
-/* Count sits close beneath the Tasks vtab (a count of tasks), with a little breathing room. */
-.lk-side-rail__collapsed-count {
-  margin-top: var(--sp-space-1);
 }
 
 /* Collapse buttons sit at the trailing edge of their header. */
