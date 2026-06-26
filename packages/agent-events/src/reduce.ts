@@ -307,11 +307,24 @@ export const reduce = (state: RunState, event: CanonicalEvent): RunState => {
         ),
       )
 
-    case "question-requested":
+    case "question-requested": {
+      // Idempotent on `requestId`: the webview runnerClient fans out every inbound
+      // `runner-event` frame to both the per-session listener AND the firehose
+      // `onAny` listener, so `applyEvent` runs twice per stored event. Without this
+      // guard the same question would stack a duplicate QuestionItem in the timeline.
+      if (
+        state.runners
+          .get(event.runnerId)
+          ?.items.some(
+            (i) => i.kind === "question" && i.requestId === event.requestId,
+          )
+      )
+        return state
       return mapRunnerItems(state, event.runnerId, (items) => [
         ...items,
         { kind: "question", requestId: event.requestId, prompt: event.prompt },
       ])
+    }
 
     case "question-resolved":
       return mapRunnerItems(state, event.runnerId, (items) =>
