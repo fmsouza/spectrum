@@ -172,10 +172,17 @@ describe("QuestionCard", () => {
     cleanup()
   })
 
-  it("renders one question at a time with a tab per question when unanswered", () => {
-    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+  it("renders one question visible at a time with hidden panels for others when unanswered", () => {
+    const { container } = render(
+      <QuestionCard item={multi} onAnswer={() => {}} />,
+    )
+    // The current panel is the only one in the accessibility tree.
     expect(screen.getByText("Which provider?")).toBeInTheDocument()
-    expect(screen.queryByText("Which region?")).toBeNull()
+    expect(screen.queryByRole("tabpanel", { hidden: false })).not.toBeNull()
+    // Hidden panels exist in the DOM but are excluded from the a11y tree.
+    const panels = container.querySelectorAll('[role="tabpanel"]')
+    expect(panels).toHaveLength(2)
+    expect(panels[1]).toHaveAttribute("hidden")
     expect(
       screen.getByRole("tab", { name: /1\. Provider/ }),
     ).toBeInTheDocument()
@@ -196,7 +203,10 @@ describe("QuestionCard", () => {
     fireEvent.click(screen.getByLabelText("Anthropic"))
     fireEvent.click(screen.getByRole("button", { name: /next/i }))
     expect(screen.getByText("Which region?")).toBeInTheDocument()
-    expect(screen.queryByText("Which provider?")).toBeNull()
+    // The previous panel is now hidden from the accessibility tree.
+    expect(
+      screen.queryByRole("tabpanel", { hidden: false })?.textContent,
+    ).toContain("Which region?")
     expect(screen.getByRole("button", { name: /back/i })).toBeEnabled()
     cleanup()
   })
@@ -352,6 +362,88 @@ describe("QuestionCard", () => {
     expect(screen.queryByRole("button", { name: /submit/i })).toBeNull()
     cleanup()
   })
+
+  it("renders one panel per question and hides non-current ones", () => {
+    const { container } = render(
+      <QuestionCard item={multi} onAnswer={() => {}} />,
+    )
+    // Hidden panels are excluded from the accessibility tree, so query the DOM
+    // directly to verify every panel exists in the markup.
+    const panels = container.querySelectorAll('[role="tabpanel"]')
+    expect(panels).toHaveLength(2)
+    // Step 0: panel 0 is the current (visible) one, panel 1 is hidden.
+    expect(panels[0]).not.toHaveAttribute("hidden")
+    expect(panels[1]).toHaveAttribute("hidden")
+    cleanup()
+  })
+
+  it("moves to the next tab on ArrowRight and focuses it", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    const tab0 = screen.getByRole("tab", { name: /1\. Provider/ })
+    const tab1 = screen.getByRole("tab", { name: /2\. Region/ })
+    tab0.focus()
+    expect(document.activeElement).toBe(tab0)
+    fireEvent.keyDown(tab0, { key: "ArrowRight" })
+    expect(document.activeElement).toBe(tab1)
+    expect(tab1.getAttribute("aria-selected")).toBe("true")
+    cleanup()
+  })
+
+  it("moves to the previous tab on ArrowLeft and focuses it", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    const tab0 = screen.getByRole("tab", { name: /1\. Provider/ })
+    const tab1 = screen.getByRole("tab", { name: /2\. Region/ })
+    // Advance to step 1 via tab click; clicks don't focus buttons in jsdom.
+    fireEvent.click(tab1)
+    tab1.focus()
+    expect(document.activeElement).toBe(tab1)
+    fireEvent.keyDown(tab1, { key: "ArrowLeft" })
+    expect(document.activeElement).toBe(tab0)
+    expect(tab0.getAttribute("aria-selected")).toBe("true")
+    cleanup()
+  })
+
+  it("wraps around from last to first on ArrowRight", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    const tab0 = screen.getByRole("tab", { name: /1\. Provider/ })
+    const tab1 = screen.getByRole("tab", { name: /2\. Region/ })
+    fireEvent.click(tab1)
+    tab1.focus()
+    expect(document.activeElement).toBe(tab1)
+    fireEvent.keyDown(tab1, { key: "ArrowRight" })
+    expect(document.activeElement).toBe(tab0)
+    expect(tab0.getAttribute("aria-selected")).toBe("true")
+    cleanup()
+  })
+
+  it("wraps around from first to last on ArrowLeft", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    const tab0 = screen.getByRole("tab", { name: /1\. Provider/ })
+    const tab1 = screen.getByRole("tab", { name: /2\. Region/ })
+    tab0.focus()
+    expect(document.activeElement).toBe(tab0)
+    fireEvent.keyDown(tab0, { key: "ArrowLeft" })
+    expect(document.activeElement).toBe(tab1)
+    expect(tab1.getAttribute("aria-selected")).toBe("true")
+    cleanup()
+  })
+
+  it("goes to first on Home and last on End", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    const tab0 = screen.getByRole("tab", { name: /1\. Provider/ })
+    const tab1 = screen.getByRole("tab", { name: /2\. Region/ })
+    // Start at step 1.
+    fireEvent.click(tab1)
+    tab1.focus()
+    expect(document.activeElement).toBe(tab1)
+    fireEvent.keyDown(tab1, { key: "Home" })
+    expect(document.activeElement).toBe(tab0)
+    expect(tab0.getAttribute("aria-selected")).toBe("true")
+    fireEvent.keyDown(tab0, { key: "End" })
+    expect(document.activeElement).toBe(tab1)
+    expect(tab1.getAttribute("aria-selected")).toBe("true")
+    cleanup()
+  })
 })
 
 describe("QuestionCard wizard DOM", () => {
@@ -388,10 +480,24 @@ describe("QuestionCard wizard DOM", () => {
     cleanup()
   })
 
-  it("renders a tabpanel with role=tabpanel and aria-labelledby attribute set", () => {
-    render(<QuestionCard item={multi} onAnswer={() => {}} />)
-    const panel = screen.getByRole("tabpanel")
-    expect(panel.getAttribute("aria-labelledby")).toBeTruthy()
+  it("renders each panel with role=tabpanel and aria-labelledby matching its tab id", () => {
+    const { container } = render(
+      <QuestionCard item={multi} onAnswer={() => {}} />,
+    )
+    // Hidden panels are excluded from the accessibility tree — query the DOM.
+    const panels = Array.from(
+      container.querySelectorAll<HTMLElement>('[role="tabpanel"]'),
+    )
+    const tabs = screen.getAllByRole("tab")
+    expect(panels).toHaveLength(tabs.length)
+    for (let i = 0; i < panels.length; i++) {
+      const panel = panels[i] as HTMLElement
+      const tab = tabs[i] as HTMLElement
+      const tabId = tab.getAttribute("id")
+      expect(panel.getAttribute("aria-labelledby")).toBe(tabId)
+      // Each tab's aria-controls must resolve to the matching panel id.
+      expect(tab.getAttribute("aria-controls")).toBe(panel.getAttribute("id"))
+    }
     cleanup()
   })
 
