@@ -3,6 +3,7 @@ import { EmptyState, ProjectList } from "@spectrum/ui"
 import type { ProjectSummary } from "@spectrum/ui"
 import type { ReactElement, ReactNode } from "react"
 import type { RunnerClient } from "../runner/runnerClient"
+import type { TerminalClient } from "../terminal/terminalClient"
 import { RunDetail } from "./RunDetail"
 
 /**
@@ -38,6 +39,11 @@ export type SessionsViewInput = {
   readonly onDeleteSession: (sessionId: SessionId) => void
   readonly onRename?: ((id: SessionId, name: string) => void) | undefined
   readonly runnerClient: RunnerClient
+  /**
+   * Terminal PTY transport. Optional — tests run without a real socket; production wires
+   * one via `createRealClients` in `clients.ts`. `SessionsDetail` threads it to `RunDetail`.
+   */
+  readonly terminalClient?: TerminalClient
   /** All model routes, threaded to `RunDetail` so the composer can render a picker. */
   readonly models?: readonly ModelRoute[]
   /** Map of providerId -> human name, threaded to `RunDetail` to label the picker. */
@@ -133,6 +139,7 @@ const SessionsDetail = ({
   openSessionIds,
   allSessions,
   runnerClient,
+  terminalClient,
   models,
   providerNames,
   onResumeSend,
@@ -142,6 +149,7 @@ const SessionsDetail = ({
   readonly openSessionIds: readonly SessionId[]
   readonly allSessions: readonly Session[]
   readonly runnerClient: RunnerClient
+  readonly terminalClient?: TerminalClient
   readonly models?: readonly ModelRoute[]
   readonly providerNames?: Readonly<Record<string, string>>
   readonly onResumeSend?:
@@ -172,6 +180,7 @@ const SessionsDetail = ({
           ? {}
           : { harnessId: selectedSession.harnessId })}
         runnerClient={runnerClient}
+        {...(terminalClient === undefined ? {} : { terminalClient })}
         {...(onResumeSend === undefined
           ? {}
           : { onResumeSend: (text) => onResumeSend(selectedSessionId, text) })}
@@ -207,6 +216,7 @@ export const SessionsView = ({
   onDeleteSession,
   onRename,
   runnerClient,
+  terminalClient,
   models,
   providerNames,
   busyBySession,
@@ -240,6 +250,7 @@ export const SessionsView = ({
       openSessionIds={openSessionIds}
       allSessions={allSessions}
       runnerClient={runnerClient}
+      {...(terminalClient === undefined ? {} : { terminalClient })}
       {...(models === undefined ? {} : { models })}
       {...(providerNames === undefined ? {} : { providerNames })}
       {...(onResumeSend === undefined
