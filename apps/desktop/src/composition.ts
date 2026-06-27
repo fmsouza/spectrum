@@ -49,7 +49,9 @@ import { isRootRunnerFinished, trackRootRunner } from "@spectrum/agent-events"
 import type { Logger } from "@spectrum/logger"
 import {
   type TerminalManager,
+  checkNativePtyAvailable,
   createNodePtySpawner,
+  createNoopTerminalManager,
   createTerminalManager,
 } from "@spectrum/pty"
 import type { ProjectId, SessionId } from "@spectrum/types"
@@ -271,10 +273,16 @@ export const createGuiContext = (
   // ------------------------------------------------------------------
   // The TerminalManager owns a single PTY per (sessionId, tabId) pair; the socket fans PTY bytes
   // out to the webview over a separate loopback WebSocket (independent of the runner socket).
-  const terminalManager = createTerminalManager({
-    spawner: createNodePtySpawner(),
-    log: log.child("terminal"),
-  })
+  //
+  // If the native `node-pty` addon fails to load (e.g. packaged GUI build missing the prebuilt),
+  // fall back to a no-op manager whose `launch` returns `{ kind: "not-implemented" }`. The
+  // webview surfaces that error as the "Terminal unavailable" notice rather than crashing boot.
+  const terminalManager = checkNativePtyAvailable()
+    ? createTerminalManager({
+        spawner: createNodePtySpawner(),
+        log: log.child("terminal"),
+      })
+    : createNoopTerminalManager()
   const terminalSocket: TerminalSocket = deps.startTerminalSocket(
     terminalManager,
     {

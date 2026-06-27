@@ -213,3 +213,16 @@ const toBase64 = (bytes: Uint8Array): string =>
   Buffer.from(bytes).toString("base64")
 const fromBase64 = (data: string): Uint8Array =>
   new Uint8Array(Buffer.from(data, "base64"))
+
+/**
+ * No-op terminal manager used when the native PTY addon cannot be loaded
+ * (e.g. a packaged GUI build missing `node-pty`'s prebuilt). The webview
+ * surfaces the resulting `{ kind: "not-implemented" }` as the "Terminal
+ * unavailable" notice rather than crashing the app at boot.
+ */
+export const createNoopTerminalManager = (): TerminalManager => ({
+  launch: () => ({ ok: false, error: { kind: "not-implemented" } }),
+  handleInbound: () => {},
+  bindSend: () => {},
+  dispose: () => {},
+})

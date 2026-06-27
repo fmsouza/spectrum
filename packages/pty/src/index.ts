@@ -20,4 +20,8 @@ export type {
   TerminalManagerDeps,
   TerminalSession,
 } from "./manager"
-export { createTerminalManager } from "./manager"
+export { createTerminalManager, createNoopTerminalManager } from "./manager"
+export {
+  checkNativePtyAvailable,
+  nativePtyAvailable,
+} from "./native-availability"
