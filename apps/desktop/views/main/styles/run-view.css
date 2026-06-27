@@ -1030,3 +1030,60 @@
 .lk-question__nav:not(:has(button:first-child)) {
   justify-content: flex-end;
 }
+
+/* ───────────────────── Internal terminal panel ─────────────────────────────
+   A draggable bottom panel that hosts one or more xterm terminals. The
+   resize strip lives on top (drag up to grow). CSS is read by
+   .lk-terminal-pane / .lk-terminal-tabs / .lk-terminal-tab* selectors. */
+.lk-terminal-pane {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--sp-border);
+  background: var(--sp-surface);
+  transition: height 120ms ease-out;
+  overflow: hidden;
+}
+.lk-terminal-tabs {
+  display: flex;
+  flex-direction: column;
+}
+.lk-terminal-tabs__resize {
+  height: 4px;
+  cursor: ns-resize;
+  background: transparent;
+}
+.lk-terminal-tabs__strip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-2);
+  padding: 0 var(--sp-space-2);
+  height: 32px;
+  border-bottom: 1px solid var(--sp-border);
+}
+.lk-terminal-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-space-1);
+  padding: 2px var(--sp-space-2);
+  border-radius: var(--sp-radius-sm);
+  cursor: pointer;
+}
+.lk-terminal-tab.is-active {
+  background: var(--sp-surface-raised);
+}
+.lk-terminal-tab__close {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--sp-text-muted);
+}
+.lk-terminal-pane__close {
+  position: absolute;
+  right: var(--sp-space-2);
+}
+.lk-terminal-pane__screen {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 var(--sp-space-2);
+}
