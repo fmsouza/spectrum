@@ -183,6 +183,33 @@ export const GetRunEventsResultSchema = z
   .object({ events: z.array(StoredEventSchema) })
   .strict()
 
+// ── Terminal (in-app terminal panel) ──────────────────────────────────────
+
+/**
+ * The webview asks for the dedicated terminal WebSocket URL (a loopback ws the
+ * bun side serves for the internal terminal panel — see
+ * apps/desktop/src/gui/terminal-socket.ts). Distinct from `getRunnerSocketUrl`,
+ * which carries canonical run events for the harness driver; the terminal
+ * socket carries raw PTY bytes for the in-app terminal tab.
+ */
+export const GetTerminalSocketUrlParamsSchema = z.undefined()
+export const GetTerminalSocketUrlResultSchema = z
+  .object({ url: z.string().min(1) })
+  .strict()
+
+/**
+ * Resolve the effective working directory the terminal panel should spawn the
+ * shell in. The bun side runs the resolver (where the DB row + project path
+ * are available); the webview never sees `projectId` — the public `Session`
+ * type drops it.
+ */
+export const ResolveTerminalCwdParamsSchema = z
+  .object({ sessionId: SessionIdSchema })
+  .strict()
+export const ResolveTerminalCwdResultSchema = z
+  .object({ cwd: z.string().min(1) })
+  .strict()
+
 // Delete a single session and all its run events (cascade lives in @spectrum/data-admin).
 export const DeleteSessionParamsSchema = z
   .object({ sessionId: SessionIdSchema })
@@ -486,6 +513,14 @@ export const IpcMethodSchemas = {
   getRunnerSocketUrl: {
     params: GetRunnerSocketUrlParamsSchema,
     result: GetRunnerSocketUrlResultSchema,
+  },
+  getTerminalSocketUrl: {
+    params: GetTerminalSocketUrlParamsSchema,
+    result: GetTerminalSocketUrlResultSchema,
+  },
+  resolveTerminalCwd: {
+    params: ResolveTerminalCwdParamsSchema,
+    result: ResolveTerminalCwdResultSchema,
   },
   getRunEvents: {
     params: GetRunEventsParamsSchema,

@@ -54,6 +54,12 @@ export interface SessionStore {
   reopen(id: SessionId): Result<Session, SessionError>
   /** Read a single session row, or undefined if not found. */
   get(id: SessionId): Result<Session | undefined, SessionError>
+  /**
+   * Read a single session by id and return the underlying DB row (retains all columns, including
+   * `projectId`, which the public `Session` type drops). Returns `undefined` if not found.
+   * Use this for cross-domain lookups (e.g. resolving a session's project from the GUI).
+   */
+  findById(id: SessionId): Result<SessionRow | undefined, SessionError>
   query(filter?: SessionFilter): Result<readonly Session[], SessionError>
   /**
    * Mark every session with `endedAt IS NULL` as ended using the injected clock timestamp.
@@ -241,6 +247,16 @@ export const createSessionStore = (deps: {
       return ok(
         fetched.value === undefined ? undefined : toSession(fetched.value),
       )
+    },
+
+    findById: (id: SessionId): Result<SessionRow | undefined, SessionError> => {
+      const fetched = asSessionError(
+        tryDb(() =>
+          handle.select().from(sessions).where(eq(sessions.id, id)).get(),
+        ),
+      )
+      if (isErr(fetched)) return fetched
+      return ok(fetched.value)
     },
 
     reconcileOrphaned: (): Result<number, SessionError> => {

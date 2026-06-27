@@ -1,3 +1,5 @@
+import { stat } from "node:fs/promises"
+
 import { PermissionModeSchema } from "@spectrum/agent-events"
 import type { IpcHandlers, ProviderView } from "@spectrum/ipc"
 import { providerCatalog, validateProviderConfig } from "@spectrum/providers"
@@ -6,6 +8,7 @@ import { isOk } from "@spectrum/utils"
 import type { GuiContext } from "../../composition"
 import { decideBanner } from "../updater/policy"
 import type { Channel } from "../updater/updater-adapter"
+import { resolveTerminalCwd } from "./terminal-cwd"
 
 /**
  * Project a `Provider` to the secret-free `ProviderView` that crosses IPC to the webview.
@@ -24,6 +27,19 @@ const toProviderView = (provider: Provider): ProviderView => ({
   ),
   models: provider.models,
 })
+
+/**
+ * Async existence check for a filesystem path (true if stat() resolves, false on any error).
+ * Lives at module scope so the terminal cwd handler can reuse it without re-implementing.
+ */
+const fsExists = async (path: string): Promise<boolean> => {
+  try {
+    await stat(path)
+    return true
+  } catch {
+    return false
+  }
+}
 
 /**
  * Bind the `@spectrum/ipc` contract to the wired subsystems. Each handler is `async` and either
@@ -417,6 +433,39 @@ export const createIpcHandlers = (ctx: GuiContext): IpcHandlers => {
     },
 
     getRunnerSocketUrl: async () => ({ url: ctx.runnerSocketUrl }),
+
+    // ── Terminal (in-app terminal panel) ──────────────────────────────────────
+    // The terminal socket URL is wired in Task 7; the handler is registered here so the contract
+    // is complete and only the composition needs to add the `terminalSocketUrl` field.
+    getTerminalSocketUrl: async () => ({ url: ctx.terminalSocketUrl }),
+
+    resolveTerminalCwd: async ({ sessionId }) => {
+      // Look up the session row (which retains projectId) + the project path. The public Session
+      // type drops projectId, but the DB row carries it; the bun-side row resolver exposes it.
+      const row = await ctx.resolveSessionRow(sessionId)
+      const projectPath =
+        row?.projectId !== undefined
+          ? await ctx.resolveProjectPath(row.projectId)
+          : undefined
+      const r = await resolveTerminalCwd({
+        sessionId,
+        sessionCwd: row?.cwd,
+        projectPath,
+        homeDir: ctx.homeDir,
+        exists: fsExists,
+      })
+      if (!r.ok) {
+        // `cwd-missing` is a user-actionable condition (the session's saved directory no longer
+        // exists). Surface the failed path cleanly in the IPC error detail so logs see it;
+        // `useTerminal` handles the resulting `handler-failed` via the notifications engine.
+        const detail =
+          r.error.kind === "cwd-missing"
+            ? `cwd-missing: ${r.error.path}`
+            : `terminal-cwd: ${r.error.kind}`
+        return fail(detail)
+      }
+      return r.value
+    },
 
     // ── Run events (canonical replay) ────────────────────────────────────────────
     getRunEvents: async ({ id }) => {

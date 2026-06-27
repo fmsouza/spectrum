@@ -35,6 +35,7 @@ export type {
 export { createAppContext, realDeps } from "@spectrum/runtime-core"
 
 import { rmSync } from "node:fs"
+import { homedir } from "node:os"
 
 import type {
   AgentDriver,
@@ -46,6 +47,14 @@ import { createRunManager } from "@spectrum/agent-driver"
 import type { RootRunnerMap } from "@spectrum/agent-events"
 import { isRootRunnerFinished, trackRootRunner } from "@spectrum/agent-events"
 import type { Logger } from "@spectrum/logger"
+import {
+  type TerminalManager,
+  checkNativePtyAvailable,
+  createNodePtySpawner,
+  createNoopTerminalManager,
+  createTerminalManager,
+} from "@spectrum/pty"
+import type { ProjectId, SessionId } from "@spectrum/types"
 import type { Result } from "@spectrum/utils"
 
 import type { AppContext } from "@spectrum/runtime-core"
@@ -64,6 +73,7 @@ import {
 } from "./gui/run-finished-mapping"
 import { withNotifierTap } from "./gui/runner-sink"
 import { type RunnerSocket, startRunnerSocket } from "./gui/runner-socket"
+import { type TerminalSocket, startTerminalSocket } from "./gui/terminal-socket"
 import { createElectrobunUpdater } from "./gui/updater/electrobun-updater"
 import type { UpdaterAdapter } from "./gui/updater/updater-adapter"
 import { isWindowFocused } from "./gui/window"
@@ -87,6 +97,28 @@ export interface GuiContext extends AppContext {
   >
   readonly openExternalUrl: (url: string) => Promise<boolean>
   readonly updater: UpdaterAdapter
+  /** In-app terminal PTY manager (terminal-panel plan). */
+  readonly terminalManager: TerminalManager
+  /** `ws://localhost:<port>/` the webview connects to for the terminal byte stream. */
+  readonly terminalSocketUrl: string
+  /**
+   * Resolve a session's raw DB row (`cwd`, `projectId`) for the terminal cwd resolver. Returns
+   * `undefined` when the session id is unknown. The public `Session` type drops `projectId`,
+   * so the GUI composes this on top of the row type so the IPC handler can look up the project.
+   */
+  readonly resolveSessionRow: (sessionId: SessionId) => Promise<
+    | {
+        readonly cwd: string | undefined
+        readonly projectId: string | undefined
+      }
+    | undefined
+  >
+  /** Resolve a project id (plain string) to its absolute path, or `undefined` when unknown. */
+  readonly resolveProjectPath: (
+    projectId: string,
+  ) => Promise<string | undefined>
+  /** Cached at construction: `os.homedir()`. */
+  readonly homeDir: string
 }
 
 /**
@@ -97,6 +129,7 @@ export interface GuiContext extends AppContext {
 export interface CreateGuiContextDeps {
   readonly createRunManager: typeof createRunManager
   readonly startRunnerSocket: typeof startRunnerSocket
+  readonly startTerminalSocket: typeof startTerminalSocket
   readonly createRendererWatchdog: typeof createRendererWatchdog
   /** Recursively remove a directory (factory reset). */
   readonly removeDir: (dir: string) => void
@@ -117,6 +150,7 @@ const defaultRemoveDir = (dir: string): void => {
 export const realGuiDeps: CreateGuiContextDeps = {
   createRunManager,
   startRunnerSocket,
+  startTerminalSocket,
   createRendererWatchdog,
   removeDir: defaultRemoveDir,
   relaunch: defaultRelaunch,
@@ -235,6 +269,30 @@ export const createGuiContext = (
   })
 
   // ------------------------------------------------------------------
+  // Terminal (in-app terminal panel) — dedicated PTY registry + socket
+  // ------------------------------------------------------------------
+  // The TerminalManager owns a single PTY per (sessionId, tabId) pair; the socket fans PTY bytes
+  // out to the webview over a separate loopback WebSocket (independent of the runner socket).
+  //
+  // If the native `node-pty` addon fails to load (e.g. packaged GUI build missing the prebuilt),
+  // fall back to a no-op manager whose `launch` returns `{ kind: "not-implemented" }`. The
+  // webview surfaces that error as the "Terminal unavailable" notice rather than crashing boot.
+  const terminalManager = checkNativePtyAvailable()
+    ? createTerminalManager({
+        spawner: createNodePtySpawner(),
+        log: log.child("terminal"),
+      })
+    : createNoopTerminalManager()
+  const terminalSocket: TerminalSocket = deps.startTerminalSocket(
+    terminalManager,
+    {
+      onConnect: () => log.child("terminal").info("terminal socket connected"),
+      onDisconnect: () =>
+        log.child("terminal").info("terminal socket disconnected"),
+    },
+  )
+
+  // ------------------------------------------------------------------
   // Factory reset — uses shared dataDir/legacyDirs, GUI relaunch seam
   // ------------------------------------------------------------------
   const resetApp = createResetApp({
@@ -278,6 +336,40 @@ export const createGuiContext = (
     return Utils.openExternal(url)
   }
 
+  // ------------------------------------------------------------------
+  // Session row / project path resolvers — feed the terminal cwd handler.
+  //
+  // `SessionSink.get` returns the public `Session` (which drops `projectId`), so the GUI composes
+  // its own row lookup through the shared `sessions` store. `SessionRow` is the drizzle-typed row
+  // and retains `projectId`. Both resolve closures return `undefined` on db-error so the IPC
+  // handler's terminal-cwd logic treats a missing row/folder uniformly with "unknown id".
+  // ------------------------------------------------------------------
+  const resolveSessionRow = async (
+    sessionId: SessionId,
+  ): Promise<
+    | {
+        readonly cwd: string | undefined
+        readonly projectId: string | undefined
+      }
+    | undefined
+  > => {
+    const row = shared.sessions.findById(sessionId)
+    if (!row.ok || row.value === undefined) return undefined
+    return {
+      cwd: row.value.cwd ?? undefined,
+      projectId: row.value.projectId,
+    }
+  }
+  // The IPC contract passes the project id as a plain string (it comes from the DB row); the
+  // branded `ProjectId` is enforced at the store boundary.
+  const resolveProjectPath = async (
+    projectId: string,
+  ): Promise<string | undefined> => {
+    const p = shared.projects.findById(projectId as ProjectId)
+    if (!p.ok || p.value === undefined) return undefined
+    return p.value.path
+  }
+
   return {
     ...shared,
     runner,
@@ -287,6 +379,11 @@ export const createGuiContext = (
     pickFolder,
     openExternalUrl,
     updater,
+    terminalManager,
+    terminalSocketUrl: terminalSocket.url,
+    resolveSessionRow,
+    resolveProjectPath,
+    homeDir: homedir(),
   }
 }
 

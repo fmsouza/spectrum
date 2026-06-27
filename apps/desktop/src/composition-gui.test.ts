@@ -51,6 +51,15 @@ const fakeGuiDeps = (): CreateGuiContextDeps & {
       }
       return next
     },
+    startTerminalSocket: (manager, hooks) => {
+      calls.startTerminalSocketArgs = { manager, hooks }
+      hooks.onConnect?.()
+      hooks.onDisconnect?.()
+      return {
+        url: "ws://localhost:0/terminal",
+        stop: () => {},
+      }
+    },
     createRendererWatchdog: (deps) => {
       calls.createRendererWatchdogDeps = deps
       return {
@@ -121,6 +130,18 @@ describe("createGuiContext", () => {
     expect(typeof gui.openExternalUrl).toBe("function")
     // resetApp: factory function with the right return shape.
     expect(typeof gui.resetApp).toBe("function")
+    // Terminal: terminal manager has the launch/handleInbound/bindSend/dispose shape; socket url
+    // is a loopback ws URL matching the same scheme the runner socket uses.
+    expect(typeof gui.terminalManager.launch).toBe("function")
+    expect(typeof gui.terminalManager.handleInbound).toBe("function")
+    expect(typeof gui.terminalManager.bindSend).toBe("function")
+    expect(typeof gui.terminalManager.dispose).toBe("function")
+    expect(gui.terminalSocketUrl).toMatch(/^ws:\/\/localhost:\d+\//)
+    // Resolvers + home dir surface: typed resolvers return undefined for unknown ids so the
+    // terminal cwd handler's fall-through path is exercised without db state.
+    expect(typeof gui.resolveSessionRow).toBe("function")
+    expect(typeof gui.resolveProjectPath).toBe("function")
+    expect(typeof gui.homeDir).toBe("string")
   })
 
   it("wires the RunManager from the shared runner extension points", () => {

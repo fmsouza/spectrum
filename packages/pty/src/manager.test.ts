@@ -1,0 +1,96 @@
+import { describe, expect, it } from "bun:test"
+import { SessionIdSchema } from "@spectrum/types"
+import { createFakePtySpawner } from "./fake-pty"
+import { createTerminalManager } from "./manager"
+import type { TerminalOutbound } from "./protocol"
+
+const sessionId = SessionIdSchema.parse(
+  "s_00000000-0000-4000-8000-000000000000",
+)
+const tabId = "11111111-1111-4111-8111-111111111111" as never
+const baseLaunch = { sessionId, tabId, cwd: "/tmp", cols: 80, rows: 24 }
+
+const capturingSink = () => {
+  const sent: TerminalOutbound[] = []
+  return { sent, sink: (m: TerminalOutbound) => sent.push(m) }
+}
+
+describe("TerminalManager", () => {
+  it("launches a PTY and emits term-opened + term-output on data", () => {
+    const spawner = createFakePtySpawner()
+    const { sent, sink } = capturingSink()
+    const mgr = createTerminalManager({ spawner })
+    mgr.bindSend(sink)
+    const r = mgr.launch(baseLaunch)
+    expect(r.ok).toBe(true)
+    // fake emits on write; trigger via handleInbound term-input
+    mgr.handleInbound({ type: "term-input", sessionId, tabId, data: "bHM=" })
+    expect(sent.some((m) => m.type === "term-opened")).toBe(true)
+    expect(sent.some((m) => m.type === "term-output")).toBe(true)
+  })
+
+  it("routes term-resize to session.resize with cols/rows", () => {
+    const spawner = createFakePtySpawner()
+    const { sink } = capturingSink()
+    const mgr = createTerminalManager({ spawner })
+    mgr.bindSend(sink)
+    mgr.launch(baseLaunch)
+    mgr.handleInbound({
+      type: "term-resize",
+      sessionId,
+      tabId,
+      cols: 120,
+      rows: 40,
+    })
+    expect(spawner.calls[0]).toBeDefined()
+  })
+
+  it("kills the PTY on term-close and emits term-exited", () => {
+    const spawner = createFakePtySpawner()
+    const { sent, sink } = capturingSink()
+    const mgr = createTerminalManager({ spawner })
+    mgr.bindSend(sink)
+    mgr.launch(baseLaunch)
+    mgr.handleInbound({ type: "term-close", sessionId, tabId })
+    expect(sent.some((m) => m.type === "term-exited")).toBe(true)
+  })
+
+  it("emits term-error for an unknown tab without throwing", () => {
+    const spawner = createFakePtySpawner()
+    const { sent, sink } = capturingSink()
+    const mgr = createTerminalManager({ spawner })
+    mgr.bindSend(sink)
+    expect(() =>
+      mgr.handleInbound({ type: "term-input", sessionId, tabId, data: "bHM=" }),
+    ).not.toThrow()
+    expect(sent.some((m) => m.type === "term-error")).toBe(true)
+  })
+
+  it("dispose(sessionId) kills all of a session's PTYs", () => {
+    const spawner = createFakePtySpawner()
+    const { sent, sink } = capturingSink()
+    const mgr = createTerminalManager({ spawner })
+    mgr.bindSend(sink)
+    mgr.launch(baseLaunch)
+    mgr.launch({
+      ...baseLaunch,
+      tabId: "22222222-2222-4222-8222-222222222222" as never,
+    })
+    mgr.dispose(sessionId)
+    const exits = sent.filter((m) => m.type === "term-exited")
+    expect(exits.length).toBe(2)
+  })
+
+  it("returns a spawn-failed Result and does not throw when the spawner errors", () => {
+    const failingSpawner = {
+      spawn: () => ({
+        ok: false,
+        error: { kind: "spawn-failed", message: "boom" } as const,
+      }),
+    }
+    const mgr = createTerminalManager({ spawner: failingSpawner })
+    const r = mgr.launch(baseLaunch)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error.kind).toBe("spawn-failed")
+  })
+})

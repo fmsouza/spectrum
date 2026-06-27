@@ -12,6 +12,34 @@ import { TypingIndicator } from "../atoms/TypingIndicator"
 import { Composer } from "../molecules/Composer"
 import { ConversationTimeline } from "./ConversationTimeline"
 import { RunSideRail } from "./RunSideRail"
+import { TerminalPane } from "./TerminalPane"
+
+/**
+ * Minimum shape `RunView` consumes from a `useTerminal` controller
+ * (dumb-presentational seam so this organism never imports the desktop store).
+ *
+ * `mountTerminal` returns a cleanup that fires when the tab swaps or the pane
+ * unmounts — `TerminalPane` honors it so per-tab xterm instances are torn down
+ * on tab change without a manual dispose call here.
+ */
+export interface TerminalController {
+  readonly paneOpen: boolean
+  readonly tabs: ReadonlyArray<{
+    readonly id: string
+    readonly title: string
+    readonly exitCode: number | null
+    readonly closed: boolean
+  }>
+  readonly activeTabId: string | null
+  readonly paneHeightPx: number
+  openPane(): Promise<void>
+  closePane(): void
+  newTab(): Promise<void>
+  closeTab(tabId: string): void
+  resizeHeight(px: number): void
+  selectTab(tabId: string): void
+  mountTerminal(tabId: string, container: HTMLElement): () => void
+}
 
 export type RunViewProps = {
   readonly root: RunnerState
@@ -47,6 +75,10 @@ export type RunViewProps = {
   readonly onModelChange?: (modelId: string) => void
   /** Open a chat link in the OS browser; threaded to both timelines. */
   readonly onOpenLink?: (url: string) => void
+  /** Optional terminal controller (threaded from `RunDetail`'s `useTerminal` call). */
+  readonly terminal?: TerminalController
+  /** Session working directory — used to enable the rail's terminal toggle. */
+  readonly cwd?: string
 }
 
 /** A length proxy for the feed's content so streaming text (not just new items) triggers autoscroll. */
@@ -86,6 +118,8 @@ export const RunView = ({
   providerNames,
   onModelChange,
   onOpenLink,
+  terminal,
+  cwd,
 }: RunViewProps): ReactElement => {
   const scrollRef = useRef<HTMLDivElement>(null)
   // Autoscroll: pin the feed to the latest message as items stream in (and when the dots appear).
@@ -149,6 +183,21 @@ export const RunView = ({
             />
           ) : null}
         </div>
+        {terminal?.paneOpen ? (
+          <TerminalPane
+            tabs={terminal.tabs}
+            activeTabId={terminal.activeTabId}
+            paneHeightPx={terminal.paneHeightPx}
+            onSelectTab={terminal.selectTab}
+            onNewTab={() => {
+              void terminal.newTab()
+            }}
+            onCloseTab={terminal.closeTab}
+            onResizeHeight={terminal.resizeHeight}
+            onClose={terminal.closePane}
+            mountTerminal={terminal.mountTerminal}
+          />
+        ) : null}
         <Composer
           onSend={onSend}
           disabled={composerDisabled ?? inert}
@@ -177,6 +226,13 @@ export const RunView = ({
         collapsed={railCollapsed}
         onToggleCollapsed={() => setRailCollapsed((c) => !c)}
         {...(onOpenLink === undefined ? {} : { onOpenLink })}
+        {...(terminal === undefined ? {} : { paneOpen: terminal.paneOpen })}
+        {...(cwd === undefined ? {} : { cwd })}
+        onToggleTerminal={() => {
+          if (terminal === undefined) return
+          if (terminal.paneOpen) terminal.closePane()
+          else void terminal.openPane()
+        }}
       />
     </div>
   )

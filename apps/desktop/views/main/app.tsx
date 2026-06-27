@@ -41,6 +41,7 @@ import type { RunnerClient } from "./runner/runnerClient"
 import { StoreProvider, useStores } from "./stores/createStores"
 import { type LocationAdapter, windowLocationAdapter } from "./stores/location"
 import { encodeView } from "./stores/uiStore"
+import type { TerminalClient } from "./terminal/terminalClient"
 import { SessionsView } from "./views/SessionsView"
 import { SettingsView } from "./views/SettingsView"
 import { withTimeout } from "./withTimeout"
@@ -67,6 +68,12 @@ export type AppProps = {
    * `createRealClients` in `clients.ts`.
    */
   readonly runnerClient: RunnerClient
+  /**
+   * The terminal transport client for the in-app PTY panel. Optional so the
+   * existing test render sites don't need a stub socket; production wires a
+   * real WS client via `createRealClients` in `clients.ts`.
+   */
+  readonly terminalClient?: TerminalClient
   /** Injected so the hash-sync effect is testable; defaults to window. */
   readonly location?: LocationAdapter
 }
@@ -75,6 +82,7 @@ export type AppProps = {
 type AppInnerProps = {
   readonly location: LocationAdapter
   readonly runnerClient: RunnerClient
+  readonly terminalClient?: TerminalClient
 }
 
 /**
@@ -82,7 +90,11 @@ type AppInnerProps = {
  * `useProxyStatus`) and the view factories' hooks all run INSIDE the
  * `IpcClientProvider` that `App` mounts.
  */
-const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
+const AppInner = ({
+  location,
+  runnerClient,
+  terminalClient,
+}: AppInnerProps): ReactElement => {
   const client = useIpcClient()
   // After a sleep gap, verify the backend is reachable; if not, self-reload to
   // re-establish the (non-reconnecting) Electrobun RPC + runner socket. Uses the
@@ -418,6 +430,7 @@ const AppInner = ({ location, runnerClient }: AppInnerProps): ReactElement => {
           busyBySession,
           onResumeSend,
           skipAttachIds,
+          ...(terminalClient === undefined ? {} : { terminalClient }),
         })
 
   return (
@@ -462,6 +475,7 @@ export const App = ({
   client,
   initialView = "sessions",
   runnerClient,
+  terminalClient,
   location = windowLocationAdapter,
 }: AppProps): ReactElement => {
   const log = createWebviewLogger({ forward: (p) => client.logClientError(p) })
@@ -469,7 +483,11 @@ export const App = ({
     <IpcClientProvider client={client}>
       <LoggerProvider logger={log}>
         <StoreProvider client={client} initialView={initialView}>
-          <AppInner runnerClient={runnerClient} location={location} />
+          <AppInner
+            runnerClient={runnerClient}
+            {...(terminalClient === undefined ? {} : { terminalClient })}
+            location={location}
+          />
         </StoreProvider>
       </LoggerProvider>
     </IpcClientProvider>
@@ -484,7 +502,7 @@ export const mount = async (): Promise<void> => {
   try {
     const startView = window.location.hash.replace(/^#/, "")
     // Bound the startup IPC: a wedged Electrobun RPC must surface a fallback, not hang blank.
-    const { ipcClient, runnerClient } = await withTimeout(
+    const { ipcClient, runnerClient, terminalClient } = await withTimeout(
       createRealClients(),
       10000,
       "client init",
@@ -494,6 +512,7 @@ export const mount = async (): Promise<void> => {
         <App
           client={ipcClient}
           runnerClient={runnerClient}
+          terminalClient={terminalClient}
           initialView={startView}
         />
       </StrictMode>,

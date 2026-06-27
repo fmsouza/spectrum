@@ -20,6 +20,8 @@ export type ProjectWithCount = Project & { readonly sessionCount: number }
 export interface ProjectStore {
   /** Dedupes on path: returns the existing project for a known path, else creates one. */
   findOrCreateByPath(path: string): Result<Project, ProjectError>
+  /** Look up a project by id; returns undefined when the id is unknown. */
+  findById(id: ProjectId): Result<Project | undefined, ProjectError>
   /** Alphabetical (case-insensitive) by name; each row carries its session count. */
   list(): Result<readonly ProjectWithCount[], ProjectError>
 }
@@ -105,6 +107,18 @@ export const createProjectStore = (deps: {
           createdAt: r.createdAt,
           sessionCount: Number(r.sessionCount),
         })),
+      )
+    },
+
+    findById: (id: ProjectId): Result<Project | undefined, ProjectError> => {
+      const fetched = asProjectError(
+        tryDb(() =>
+          handle.select().from(projects).where(eq(projects.id, id)).get(),
+        ),
+      )
+      if (isErr(fetched)) return fetched
+      return ok(
+        fetched.value === undefined ? undefined : toProject(fetched.value),
       )
     },
   }
