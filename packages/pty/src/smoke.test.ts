@@ -112,16 +112,14 @@ describe.skipIf(!checkNativePtyAvailable())(
       // signals reliably but drop stdout for fast-exiting non-login
       // shells. If we got term-exited but no `hi`, the PTY is still
       // exercised end-to-end; only the byte-delivery path is local-env
-      // specific.
+      // specific. CI's bun env should deliver stdout correctly.
       expect(sent.some((m) => m.type === "term-exited")).toBe(true)
-      const output = collectOutput(sent)
-      if (!output.includes("hi")) {
-        // Soft assertion: log a note, do not fail. CI's bun env should
-        // deliver stdout correctly; this branch catches local-only env
-        // quirks without losing the lifecycle validation.
-        console.warn(
-          `[pty smoke] term-exited arrived without stdout (output="${output.slice(0, 80)}"); ` +
-            `byte-delivery is bun+node-pty-env-specific, lifecycle is OK.`,
+      // Soft stdout check (not an assertion): lifecycle is the contract.
+      if (!collectOutput(sent).includes("hi")) {
+        // Soft note via stderr so the env-quirk is visible without
+        // breaking the test on local-only delivery quirks.
+        process.stderr.write(
+          "[pty smoke] term-exited without stdout; lifecycle OK, byte-delivery is bun+node-pty-env-specific\n",
         )
       }
 
