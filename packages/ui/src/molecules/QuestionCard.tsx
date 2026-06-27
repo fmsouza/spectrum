@@ -48,6 +48,7 @@ export const QuestionCard = ({
   const [drafts, setDrafts] = useState<readonly Draft[]>(
     item.prompt.questions.map(() => ({ labels: [], freeText: "" })),
   )
+  const [step, setStep] = useState(0)
 
   if (item.answer !== undefined) {
     const answer = item.answer
@@ -95,21 +96,59 @@ export const QuestionCard = ({
     onAnswer({ selections })
   }
 
+  const questions = item.prompt.questions
+  const last = questions.length - 1
+  const current = questions[step] as Question
+
+  const tabState = (qi: number): "current" | "answered" | "todo" => {
+    if (qi === step) return "current"
+    return isAnswered(drafts[qi] as Draft, questions[qi] as Question)
+      ? "answered"
+      : "todo"
+  }
+
   return (
-    <div className="lk-question">
-      {item.prompt.questions.map((q, qi) => (
-        <fieldset className="lk-question__q" key={`${item.requestId}-${qi}`}>
-          <legend className="lk-question__header">{q.header}</legend>
-          <p className="lk-question__text">{q.question}</p>
-          {q.options.map((o) => (
+    <div className="lk-question" data-wizard>
+      <div className="lk-question__tabs" role="tablist" aria-label="Questions">
+        {questions.map((q, qi) => (
+          <button
+            type="button"
+            key={`${item.requestId}-tab-${qi}`}
+            role="tab"
+            aria-selected={qi === step}
+            data-state={tabState(qi)}
+            className="lk-question__tab"
+            title={`${qi + 1}. ${q.header}`}
+            disabled={inert}
+            onClick={() => setStep(qi)}
+          >
+            <span className="lk-question__tab-label">{`${qi + 1}. ${q.header}`}</span>
+            {tabState(qi) === "answered" ? (
+              <span className="lk-question__tab-check" aria-hidden="true">
+                ✓
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+
+      <div
+        className="lk-question__step"
+        role="tabpanel"
+        aria-labelledby={`${item.requestId}-tab-${step}`}
+      >
+        <fieldset className="lk-question__q" key={`${item.requestId}-${step}`}>
+          <legend className="lk-question__header">{current.header}</legend>
+          <p className="lk-question__text">{current.question}</p>
+          {current.options.map((o) => (
             <label className="lk-question__opt" key={o.label}>
               <input
-                type={q.multiSelect ? "checkbox" : "radio"}
-                name={`${item.requestId}-${qi}`}
+                type={current.multiSelect ? "checkbox" : "radio"}
+                name={`${item.requestId}-${step}`}
                 aria-label={o.label}
                 disabled={inert}
-                checked={(drafts[qi] as Draft).labels.includes(o.label)}
-                onChange={() => toggle(qi, o.label, q.multiSelect)}
+                checked={(drafts[step] as Draft).labels.includes(o.label)}
+                onChange={() => toggle(step, o.label, current.multiSelect)}
               />
               <span className="lk-question__opt-text">
                 <span className="lk-question__opt-label">{o.label}</span>
@@ -119,28 +158,52 @@ export const QuestionCard = ({
               </span>
             </label>
           ))}
-          {q.allowFreeText ? (
+          {current.allowFreeText ? (
             <input
               type="text"
               className="lk-question__other"
               placeholder="Other…"
               aria-label="Other"
               disabled={inert}
-              value={(drafts[qi] as Draft).freeText}
+              value={(drafts[step] as Draft).freeText}
               onChange={(e) =>
-                setDraft(qi, {
-                  ...(drafts[qi] as Draft),
+                setDraft(step, {
+                  ...(drafts[step] as Draft),
                   freeText: e.target.value,
                 })
               }
             />
           ) : null}
         </fieldset>
-      ))}
-      <div className="lk-question__actions">
-        <Button variant="primary" disabled={inert} onClick={submit}>
-          Submit
-        </Button>
+      </div>
+
+      <div className="lk-question__nav">
+        {questions.length > 1 ? (
+          <Button
+            variant="secondary"
+            disabled={inert || step === 0}
+            onClick={() => setStep(Math.max(0, step - 1))}
+          >
+            Back
+          </Button>
+        ) : null}
+        {step < last ? (
+          <Button
+            variant="primary"
+            disabled={inert || !isAnswered(drafts[step] as Draft, current)}
+            onClick={() => setStep(step + 1)}
+          >
+            Next
+          </Button>
+        ) : (
+          <Button
+            variant="primary"
+            disabled={inert || !allAnswered(drafts, questions)}
+            onClick={submit}
+          >
+            Submit
+          </Button>
+        )}
       </div>
     </div>
   )

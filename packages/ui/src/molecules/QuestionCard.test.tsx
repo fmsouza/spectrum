@@ -148,6 +148,210 @@ describe("QuestionCard", () => {
     ).toBeNull()
     cleanup()
   })
+
+  const multi: QuestionItem = {
+    kind: "question",
+    requestId: "q2",
+    prompt: {
+      questions: [
+        {
+          question: "Which provider?",
+          header: "Provider",
+          options: [{ label: "Anthropic" }, { label: "OpenAI" }],
+          multiSelect: false,
+          allowFreeText: false,
+        },
+        {
+          question: "Which region?",
+          header: "Region",
+          options: [{ label: "us" }, { label: "eu" }],
+          multiSelect: false,
+          allowFreeText: false,
+        },
+      ],
+    },
+  }
+
+  it("renders one question at a time with a tab per question when unanswered", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    expect(screen.getByText("Which provider?")).toBeInTheDocument()
+    expect(screen.queryByText("Which region?")).toBeNull()
+    expect(
+      screen.getByRole("tab", { name: /1\. Provider/ }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /2\. Region/ })).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("disables Next until the current question is answered", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    expect(screen.getByRole("button", { name: /next/i })).toBeDisabled()
+    fireEvent.click(screen.getByLabelText("Anthropic"))
+    expect(screen.getByRole("button", { name: /next/i })).toBeEnabled()
+    cleanup()
+  })
+
+  it("advances to the next question on Next and shows Back", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    fireEvent.click(screen.getByLabelText("Anthropic"))
+    fireEvent.click(screen.getByRole("button", { name: /next/i }))
+    expect(screen.getByText("Which region?")).toBeInTheDocument()
+    expect(screen.queryByText("Which provider?")).toBeNull()
+    expect(screen.getByRole("button", { name: /back/i })).toBeEnabled()
+    cleanup()
+  })
+
+  it("disables Back on the first step and shows Submit only on the last step", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    expect(screen.getByRole("button", { name: /back/i })).toBeDisabled()
+    expect(screen.queryByRole("button", { name: /submit/i })).toBeNull()
+    fireEvent.click(screen.getByLabelText("Anthropic"))
+    fireEvent.click(screen.getByRole("button", { name: /next/i }))
+    fireEvent.click(screen.getByLabelText("us"))
+    expect(screen.getByRole("button", { name: /submit/i })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /next/i })).toBeNull()
+    cleanup()
+  })
+
+  it("marks a tab as answered with a checkmark once its question has a selection", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    fireEvent.click(screen.getByLabelText("Anthropic"))
+    fireEvent.click(screen.getByRole("button", { name: /next/i }))
+    const providerTab = screen.getByRole("tab", { name: /1\. Provider/ })
+    expect(providerTab.getAttribute("data-state")).toBe("answered")
+    expect(providerTab.querySelector(".lk-question__tab-check")).not.toBeNull()
+    cleanup()
+  })
+
+  it("clears the checkmark when a previously answered question is cleared", () => {
+    // Uses a multiSelect fixture so a checkbox click toggles off (single-select
+    // radios do not deselect under the current `toggle`). Navigates AWAY from
+    // step 0 before asserting because `tabState` always returns "current" for
+    // `qi === step` regardless of answered status.
+    const multiSelect: QuestionItem = {
+      kind: "question",
+      requestId: "q3",
+      prompt: {
+        questions: [
+          {
+            question: "Which providers?",
+            header: "Providers",
+            options: [{ label: "Anthropic" }, { label: "OpenAI" }],
+            multiSelect: true,
+            allowFreeText: false,
+          },
+          {
+            question: "Which region?",
+            header: "Region",
+            options: [{ label: "us" }, { label: "eu" }],
+            multiSelect: false,
+            allowFreeText: false,
+          },
+        ],
+      },
+    }
+    render(<QuestionCard item={multiSelect} onAnswer={() => {}} />)
+    // Step 0: pick Anthropic.
+    fireEvent.click(screen.getByLabelText("Anthropic"))
+    // Advance to step 1 — tab 0 should be answered + checkmark.
+    fireEvent.click(screen.getByRole("button", { name: /next/i }))
+    // Go back to step 0, then clear the selection by clicking again (multiSelect).
+    fireEvent.click(screen.getByRole("button", { name: /back/i }))
+    fireEvent.click(screen.getByLabelText("Anthropic"))
+    // Advance away from step 0 so tabState evaluates the answered branch
+    // (jump directly via tab click — Next is disabled because step 0 is now empty).
+    fireEvent.click(screen.getByRole("tab", { name: /2\. Region/ }))
+    const providersTab = screen.getByRole("tab", { name: /1\. Providers/ })
+    expect(providersTab.getAttribute("data-state")).toBe("todo")
+    expect(providersTab.querySelector(".lk-question__tab-check")).toBeNull()
+    cleanup()
+  })
+
+  it("jumps directly to a question when its tab is clicked", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    fireEvent.click(screen.getByRole("tab", { name: /2\. Region/ }))
+    expect(screen.getByText("Which region?")).toBeInTheDocument()
+    expect(
+      screen
+        .getByRole("tab", { name: /2\. Region/ })
+        .getAttribute("data-state"),
+    ).toBe("current")
+    cleanup()
+  })
+
+  it("disables Submit on the last step until every question is answered", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    fireEvent.click(screen.getByRole("tab", { name: /2\. Region/ }))
+    fireEvent.click(screen.getByLabelText("us"))
+    expect(screen.getByRole("button", { name: /submit/i })).toBeDisabled() // first still unanswered
+    fireEvent.click(screen.getByRole("tab", { name: /1\. Provider/ }))
+    fireEvent.click(screen.getByLabelText("Anthropic"))
+    fireEvent.click(screen.getByRole("tab", { name: /2\. Region/ }))
+    expect(screen.getByRole("button", { name: /submit/i })).toBeEnabled()
+    cleanup()
+  })
+
+  it("submits a selection per question with correct questionIndex on final Submit", () => {
+    let got: unknown
+    render(
+      <QuestionCard
+        item={multi}
+        onAnswer={(a) => {
+          got = a
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByLabelText("Anthropic"))
+    fireEvent.click(screen.getByRole("button", { name: /next/i }))
+    fireEvent.click(screen.getByLabelText("eu"))
+    fireEvent.click(screen.getByRole("button", { name: /submit/i }))
+    expect(got).toEqual({
+      selections: [
+        { questionIndex: 0, labels: ["Anthropic"] },
+        { questionIndex: 1, labels: ["eu"] },
+      ],
+    })
+    cleanup()
+  })
+
+  it("preserves drafts across Back/Next navigation", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    fireEvent.click(screen.getByLabelText("Anthropic"))
+    fireEvent.click(screen.getByRole("button", { name: /next/i }))
+    fireEvent.click(screen.getByRole("button", { name: /back/i }))
+    expect(screen.getByLabelText("Anthropic")).toBeChecked()
+    cleanup()
+  })
+
+  it("shows only Submit with no Back/Next for a single-question prompt", () => {
+    render(<QuestionCard item={item} onAnswer={() => {}} />)
+    expect(screen.queryByRole("button", { name: /back/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /next/i })).toBeNull()
+    expect(screen.getByRole("button", { name: /submit/i })).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("still renders the flat resolved list when item.answer is present", () => {
+    render(
+      <QuestionCard
+        item={{
+          ...multi,
+          answer: {
+            selections: [
+              { questionIndex: 0, labels: ["OpenAI"] },
+              { questionIndex: 1, labels: ["eu"] },
+            ],
+          },
+        }}
+        onAnswer={() => {}}
+      />,
+    )
+    expect(screen.getByText("Which provider?")).toBeInTheDocument()
+    expect(screen.getByText("Which region?")).toBeInTheDocument()
+    expect(screen.queryByRole("tab")).toBeNull()
+    expect(screen.queryByRole("button", { name: /submit/i })).toBeNull()
+    cleanup()
+  })
 })
 
 describe("QuestionCard helpers", () => {
