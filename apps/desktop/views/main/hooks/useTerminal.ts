@@ -55,7 +55,14 @@ export interface UseTerminalResult {
   selectTab(tabId: string): void
   sendInput(tabId: string, data: string): void
   resize(tabId: string, cols: number, rows: number): void
-  mountTerminal(tabId: string, container: HTMLElement): void
+  /** Persist a new pane height (drag updates). */
+  resizeHeight(px: number): void
+  /**
+   * Mount xterm into `container`; returns a cleanup that tears it down on
+   * unmount/tab-swap. The pane relies on the returned cleanup to swap tabs
+   * cleanly without leaking per-tab xterm instances.
+   */
+  mountTerminal(tabId: string, container: HTMLElement): () => void
 }
 
 const DEFAULT_COLS = 80
@@ -242,13 +249,25 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
     [input],
   )
 
+  const resizeHeight = useCallback(
+    (px: number) => {
+      useTerminalStore.getState().setHeight(input.sessionId, px)
+    },
+    [input.sessionId],
+  )
+
   const mountTerminal = useCallback(
-    (tabId: string, container: HTMLElement): void => {
+    (tabId: string, container: HTMLElement): (() => void) => {
       const existing = terms.current.get(tabId)
       if (existing) {
         if (!existing.element) existing.open(container)
         fits.current.get(tabId)?.fit()
-        return
+        return () => {
+          // Background survival: the terminal stays mounted across tab swaps;
+          // do nothing on cleanup unless the tab is being explicitly closed.
+          // The pane's useEffect cleanup runs every tab switch, so leaving the
+          // term open here preserves scrollback.
+        }
       }
       const xtermMod = tryRequire<XtermModule>("@xterm/xterm")
       const fitMod = tryRequire<FitModule>("@xterm/addon-fit")
@@ -258,7 +277,7 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
           tone: "error",
           message: "Terminal renderer unavailable",
         })
-        return
+        return () => {}
       }
       const term: XtermTerminal = new Ctor({ convertEol: false })
       const fit = new fitMod.FitAddon()
@@ -286,6 +305,11 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
       fits.current.set(tabId, fit)
       if (!term.element) term.open(container)
       fit.fit()
+      return () => {
+        // Background survival: xterm instances live in `terms.current` and
+        // are torn down only by `closeTab`. Returning a noop cleanup lets
+        // the pane swap tabs without disposing scrollback.
+      }
     },
     [input, sendInput, notify],
   )
@@ -308,6 +332,7 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
       selectTab,
       sendInput,
       resize,
+      resizeHeight,
       mountTerminal,
     }),
     [
@@ -319,6 +344,7 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
       selectTab,
       sendInput,
       resize,
+      resizeHeight,
       mountTerminal,
     ],
   )

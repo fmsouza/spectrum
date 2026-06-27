@@ -959,6 +959,51 @@
   flex: 1 1 auto;
 }
 
+/* Footer zone pinned to the bottom of the expanded rail. The rail is a flex
+   column; `margin-top: auto` consumes the slack so the footer sits flush at
+   the trailing edge regardless of how much task/sub content is rendered. */
+.lk-side-rail__footer {
+  margin-top: auto;
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--sp-space-2);
+  border-top: 1px solid var(--sp-border);
+}
+/* The collapsed rail is also a flex column; its footer pushes the terminal
+   toggle to the trailing edge below the vertical Tasks/Sub-agent buttons. */
+.lk-side-rail--collapsed .lk-side-rail__footer {
+  margin-top: auto;
+  padding: 0;
+  border-top: none;
+}
+
+/* Terminal toggle button — shared between expanded footer and collapsed strip.
+   The default `IconButton` is a bare `<button>`; the side-rail variant inherits
+   the muted-text-on-hover idiom already used by `__tab` / `__vtab`. */
+.lk-side-rail__footer > button {
+  font: inherit;
+  line-height: 1;
+  border: none;
+  background: transparent;
+  color: var(--sp-text-muted);
+  cursor: pointer;
+  border-radius: var(--sp-radius-sm);
+  padding: 2px 6px;
+}
+.lk-side-rail__footer > button:hover:not(:disabled) {
+  color: var(--sp-text);
+  background: var(--sp-surface-raised);
+}
+.lk-side-rail__footer > button[aria-current="page"] {
+  color: var(--sp-text);
+  background: var(--sp-surface-raised);
+}
+.lk-side-rail__footer > button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .lk-message-bubble__retry {
   align-self: flex-start;
   margin-top: var(--sp-space-2);

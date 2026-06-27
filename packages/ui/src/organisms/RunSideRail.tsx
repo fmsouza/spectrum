@@ -1,5 +1,7 @@
 import type { RunnerId, RunnerState, TaskList } from "@spectrum/agent-events"
 import { type ReactElement, useState } from "react"
+import { IconButton } from "../atoms/IconButton"
+import { Tooltip } from "../atoms/Tooltip"
 import { SubRunnerList } from "./SubRunnerList"
 import { SubRunnerPane } from "./SubRunnerPane"
 import { TaskRail } from "./TaskRail"
@@ -21,6 +23,15 @@ export type RunSideRailProps = {
   readonly onToggleCollapsed?: () => void
   /** Open a chat link in the OS browser; threaded to the sub-runner pane's timeline. */
   readonly onOpenLink?: (url: string) => void
+  /** Whether the terminal pane is currently open. Drives the footer's active state. */
+  readonly paneOpen?: boolean
+  /** Toggle the terminal pane (open if closed, close if open). */
+  readonly onToggleTerminal?: () => void
+  /**
+   * Session working directory. When absent/empty the terminal toggle is disabled
+   * (the pane cannot be mounted without a cwd) and a tooltip explains why.
+   */
+  readonly cwd?: string
 }
 
 /** Non-root runners — the session's sub-agents — in spawn order. */
@@ -55,6 +66,9 @@ export const RunSideRail = ({
   collapsed = false,
   onToggleCollapsed = () => {},
   onOpenLink,
+  paneOpen = false,
+  onToggleTerminal = () => {},
+  cwd,
 }: RunSideRailProps): ReactElement | null => {
   // Which segment is showing. Defaults to the sub-agent; the caller keys this component by the open
   // sub-runner id so a new sub re-mounts and resets here.
@@ -66,6 +80,14 @@ export const RunSideRail = ({
     (subRunner !== undefined ? subTaskList : rootTaskList) !== undefined
   const subs = subRunnersOf(runners)
   const subAvailable = subs.length > 0
+  // The terminal toggle needs a cwd to mount a real shell; without one the button
+  // stays disabled with an explanatory tooltip rather than opening a half-broken pane.
+  const terminalDisabled = cwd === undefined || cwd === ""
+  const terminalLabel = terminalDisabled
+    ? "No working directory for this session"
+    : paneOpen
+      ? "Hide terminal pane"
+      : "Show terminal pane"
 
   // Collapsed: a thin vertical strip with an expand control and vertical
   // Tasks/Sub-agent buttons (disabled when their content is empty). Always
@@ -106,6 +128,16 @@ export const RunSideRail = ({
         >
           Sub-agent
         </button>
+        <Tooltip label={terminalLabel} placement="left">
+          <IconButton
+            label={terminalLabel}
+            active={paneOpen}
+            disabled={terminalDisabled}
+            onClick={() => onToggleTerminal()}
+          >
+            ▤
+          </IconButton>
+        </Tooltip>
       </aside>
     )
   }
@@ -175,6 +207,18 @@ export const RunSideRail = ({
         // because Sub-agent is unavailable.
         <TaskRail taskList={activeTaskList} onCollapse={onToggleCollapsed} />
       ) : null}
+      <div className="lk-side-rail__footer">
+        <Tooltip label={terminalLabel} placement="top">
+          <IconButton
+            label={terminalLabel}
+            active={paneOpen}
+            disabled={terminalDisabled}
+            onClick={() => onToggleTerminal()}
+          >
+            ▤
+          </IconButton>
+        </Tooltip>
+      </div>
     </aside>
   )
 }

@@ -14,8 +14,10 @@ import {
   useComposerModeModel,
 } from "../hooks/useComposerModeModel"
 import { useElapsedSeconds } from "../hooks/useElapsedSeconds"
+import { useTerminal } from "../hooks/useTerminal"
 import type { RunnerClient } from "../runner/runnerClient"
 import { useStores } from "../stores/createStores"
+import type { TerminalClient } from "../terminal/terminalClient"
 
 /**
  * Fold a recorded backlog into a RunState, and extract the seed for the composer
@@ -72,6 +74,37 @@ export type RunDetailProps = {
    * doesn't double-replay the history.
    */
   readonly skipAttach?: boolean
+  /**
+   * Session working directory. Threaded to `RunView` + `RunSideRail`; the rail
+   * disables the terminal toggle when absent (no real shell can mount).
+   */
+  readonly cwd?: string
+  /**
+   * Terminal transport (over the dedicated terminal WebSocket). When absent,
+   * the terminal pane + rail toggle are not wired up; existing tests that
+   * never spawn a PTY keep passing.
+   */
+  readonly terminalClient?: TerminalClient
+}
+
+/**
+ * A `TerminalClient` whose methods are no-ops. Lets `RunDetail` call the
+ * `useTerminal` hook unconditionally (rules-of-hooks safe) even when the
+ * page hasn't plumbed a real transport — the hook then yields a controller
+ * whose `paneOpen` stays `false`, so the pane never renders and the rail
+ * button stays disabled (no cwd).
+ */
+const noopTerminalClient: TerminalClient = {
+  open: () => {},
+  attach: () => {},
+  input: () => {},
+  resize: () => {},
+  close: () => {},
+  dispatch: () => {},
+  onOutput: () => () => {},
+  onExited: () => () => {},
+  onError: () => () => {},
+  onOpened: () => () => {},
 }
 
 /** Live conversation: owns the runner socket attach + per-frame reduce. */
@@ -82,6 +115,8 @@ const LiveRunDetail = ({
   models,
   providerNames,
   skipAttach = false,
+  cwd,
+  terminalClient,
 }: {
   readonly sessionId: SessionId
   readonly runnerClient: RunnerClient
@@ -94,6 +129,8 @@ const LiveRunDetail = ({
    * `runnerClient.attach` so the socket doesn't double-replay.
    */
   readonly skipAttach?: boolean
+  readonly cwd?: string
+  readonly terminalClient?: TerminalClient
 }): ReactElement => {
   const client = useIpcClient()
   const store = useStores().runView
@@ -115,6 +152,19 @@ const LiveRunDetail = ({
         runnerClient.setModel(sid, id === "" ? null : (id as ModelId)),
     },
   )
+
+  // Wire the terminal controller. The hook needs `useTerminalStore` +
+  // `useNotifications` provider scope (renderWithProviders mounts both) and a
+  // `TerminalClient` transport. When the page hasn't plumbed a real socket
+  // (e.g. in `RunDetail.test.tsx`) we pass a noop transport so the hook still
+  // yields a stable controller; `paneOpen` stays false, so the pane never
+  // renders and the rail button stays disabled.
+  // Must run unconditionally before any early returns (rules of hooks).
+  const terminal = useTerminal({
+    sessionId,
+    terminalClient: terminalClient ?? noopTerminalClient,
+    ipcClient: client,
+  })
 
   // Register the per-session listener and attach once. The store accumulates the
   // RunState; this effect owns the only socket coupling on the page. `skipAttach`
@@ -167,6 +217,8 @@ const LiveRunDetail = ({
       onOpenLink={(url) => {
         void client.openExternalUrl({ url })
       }}
+      {...(terminal === undefined ? {} : { terminal })}
+      {...(cwd === undefined ? {} : { cwd })}
     />
   )
 }
@@ -278,6 +330,8 @@ export const RunDetail = ({
   providerNames,
   onResumeSend,
   skipAttach = false,
+  cwd,
+  terminalClient,
 }: RunDetailProps): ReactElement =>
   mode === "live" ? (
     <LiveRunDetail
@@ -287,6 +341,8 @@ export const RunDetail = ({
       {...(models === undefined ? {} : { models })}
       {...(providerNames === undefined ? {} : { providerNames })}
       skipAttach={skipAttach}
+      {...(cwd === undefined ? {} : { cwd })}
+      {...(terminalClient === undefined ? {} : { terminalClient })}
     />
   ) : (
     <ReplayRunDetail
