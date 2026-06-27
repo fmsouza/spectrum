@@ -3,6 +3,7 @@ import { isOk } from "@spectrum/utils"
 import { useCallback, useEffect, useMemo, useRef } from "react"
 import { useTerminalStore } from "../stores/terminalStore"
 import type { TerminalClient } from "../terminal/terminalClient"
+import { useNotifications } from "./useNotifications"
 
 export interface UseTerminalInput {
   readonly sessionId: SessionId
@@ -15,12 +16,6 @@ export interface UseTerminalInput {
       | { ok: false; error: { kind: string; path?: string } }
     >
   }
-  /**
-   * Injectable user-feedback sink. Defaults to no-op. The page-level consumer
-   * typically wraps `useNotifications().notify({ tone: "error", message })`
-   * here so error toasts surface in the GUI.
-   */
-  readonly notify?: (message: string) => void
   /**
    * Injectable for tests; defaults to the real Terminal constructor. Lazy-
    * loaded only on mount so test runs that never mount a pane never need
@@ -97,6 +92,7 @@ const tryRequire = <T>(specifier: string): T | undefined => {
 }
 
 export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
+  const { notify } = useNotifications()
   const state = useTerminalStore(
     (s) =>
       s.sessions[input.sessionId] ?? {
@@ -144,7 +140,10 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
       sessionId: input.sessionId,
     })
     if (!isOk(r)) {
-      input.notify?.("No working directory for this session")
+      notify({
+        tone: "error",
+        message: "No working directory for this session",
+      })
       return
     }
     const s = useTerminalStore.getState().sessions[input.sessionId]
@@ -166,9 +165,9 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
       useTerminalStore.getState().setTabExit(input.sessionId, tab.id, exitCode)
     })
     input.terminalClient.onError(input.sessionId, tab.id, (message) => {
-      input.notify?.(message)
+      notify({ tone: "error", message })
     })
-  }, [input, measureColsRows])
+  }, [input, measureColsRows, notify])
 
   const closePane = useCallback(() => {
     useTerminalStore.getState().closePane(input.sessionId)
@@ -185,7 +184,10 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
       sessionId: input.sessionId,
     })
     if (!isOk(r)) {
-      input.notify?.("No working directory for this session")
+      notify({
+        tone: "error",
+        message: "No working directory for this session",
+      })
       return
     }
     const { cols, rows } = measureColsRows()
@@ -203,9 +205,9 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
       useTerminalStore.getState().setTabExit(input.sessionId, tab.id, exitCode),
     )
     input.terminalClient.onError(input.sessionId, tab.id, (message) =>
-      input.notify?.(message),
+      notify({ tone: "error", message }),
     )
-  }, [input, measureColsRows])
+  }, [input, measureColsRows, notify])
 
   const closeTab = useCallback(
     (tabId: string) => {
@@ -251,7 +253,13 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
       const xtermMod = tryRequire<XtermModule>("@xterm/xterm")
       const fitMod = tryRequire<FitModule>("@xterm/addon-fit")
       const Ctor = input.createTerminal ?? xtermMod?.Terminal
-      if (!Ctor || !fitMod) return
+      if (!Ctor || !fitMod) {
+        notify({
+          tone: "error",
+          message: "Terminal renderer unavailable",
+        })
+        return
+      }
       const term: XtermTerminal = new Ctor({ convertEol: false })
       const fit = new fitMod.FitAddon()
       term.loadAddon(fit)
@@ -279,7 +287,7 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
       if (!term.element) term.open(container)
       fit.fit()
     },
-    [input, sendInput],
+    [input, sendInput, notify],
   )
 
   // hydrate persisted pane state on mount
