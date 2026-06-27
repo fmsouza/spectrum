@@ -39,6 +39,7 @@ export interface XtermTerminal {
 
 export interface XtermFitAddon {
   fit(): void
+  proposeDimensions?(): { cols: number; rows: number } | undefined
 }
 
 export interface UseTerminalResult {
@@ -113,6 +114,11 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
   // scrollback survival; disposed only on explicit closeTab.
   const terms = useRef(new Map<string, XtermTerminal>())
   const fits = useRef(new Map<string, XtermFitAddon>())
+  // Per-tab ResizeObservers — disconnect on closeTab so the observer dies
+  // with the terminal. Each observer calls fit() and forwards the new
+  // cols/rows to term-resize, so pane drag + window resize both reach
+  // node-pty's TIOCSWINSZ.
+  const resizeObservers = useRef(new Map<string, ResizeObserver>())
 
   const measureColsRows = useCallback(
     (container?: HTMLElement): { cols: number; rows: number } => {
@@ -128,6 +134,28 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
       }
     },
     [],
+  )
+
+  // Recompute cols/rows via fit(), then forward to term-resize so the shell
+  // reissues TIOCSWINSZ. Called on every container resize tick (pane drag,
+  // window resize). Falls back to measurement if proposeDimensions is
+  // unavailable (older addon or test stub).
+  const refitAndResize = useCallback(
+    (tabId: string): void => {
+      const fit = fits.current.get(tabId)
+      if (!fit) return
+      fit.fit()
+      const proposed = fit.proposeDimensions?.()
+      const cols = proposed?.cols ?? DEFAULT_COLS
+      const rows = proposed?.rows ?? DEFAULT_ROWS
+      input.terminalClient.resize({
+        sessionId: input.sessionId,
+        tabId,
+        cols,
+        rows,
+      })
+    },
+    [input],
   )
 
   const sendInput = useCallback(
@@ -219,6 +247,11 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
   const closeTab = useCallback(
     (tabId: string) => {
       input.terminalClient.close({ sessionId: input.sessionId, tabId })
+      const observer = resizeObservers.current.get(tabId)
+      if (observer) {
+        observer.disconnect()
+        resizeObservers.current.delete(tabId)
+      }
       const term = terms.current.get(tabId)
       if (term) {
         term.dispose()
@@ -305,13 +338,22 @@ export const useTerminal = (input: UseTerminalInput): UseTerminalResult => {
       fits.current.set(tabId, fit)
       if (!term.element) term.open(container)
       fit.fit()
+      // ResizeObserver on the container: pane drag + window resize both
+      // reflow cols/rows here and forward to term-resize so node-pty
+      // issues TIOCSWINSZ. The observer is kept alive while the tab is
+      // open and disconnected in closeTab.
+      const observer = new ResizeObserver(() => {
+        refitAndResize(tabId)
+      })
+      observer.observe(container)
+      resizeObservers.current.set(tabId, observer)
       return () => {
         // Background survival: xterm instances live in `terms.current` and
-        // are torn down only by `closeTab`. Returning a noop cleanup lets
-        // the pane swap tabs without disposing scrollback.
+        // are torn down only by `closeTab`. The observer likewise stays
+        // attached for the lifetime of the tab; `closeTab` disconnects it.
       }
     },
-    [input, sendInput, notify],
+    [input, sendInput, notify, refitAndResize],
   )
 
   // hydrate persisted pane state on mount
