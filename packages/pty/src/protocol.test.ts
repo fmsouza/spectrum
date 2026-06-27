@@ -2,7 +2,9 @@ import { describe, expect, it } from "bun:test"
 import { SessionIdSchema } from "@spectrum/types"
 import { decodeTerminalInbound } from "./protocol"
 
-const sessionId = SessionIdSchema.parse("s_00000000-0000-4000-8000-000000000000")
+const sessionId = SessionIdSchema.parse(
+  "s_00000000-0000-4000-8000-000000000000",
+)
 const validTabId = "11111111-1111-4111-8111-111111111111"
 
 describe("decodeTerminalInbound", () => {
@@ -43,7 +45,11 @@ describe("decodeTerminalInbound", () => {
   })
 
   it("rejects an unknown frame type", () => {
-    const r = decodeTerminalInbound({ type: "term-bogus", sessionId, tabId: validTabId })
+    const r = decodeTerminalInbound({
+      type: "term-bogus",
+      sessionId,
+      tabId: validTabId,
+    })
     expect(r.ok).toBe(false)
   })
 
@@ -60,19 +66,31 @@ describe("decodeTerminalInbound", () => {
   })
 
   it("accepts a term-attach frame", () => {
-    const r = decodeTerminalInbound({ type: "term-attach", sessionId, tabId: validTabId })
+    const r = decodeTerminalInbound({
+      type: "term-attach",
+      sessionId,
+      tabId: validTabId,
+    })
     expect(r.ok).toBe(true)
   })
 
   it("accepts a term-resize frame", () => {
     const r = decodeTerminalInbound({
-      type: "term-resize", sessionId, tabId: validTabId, cols: 120, rows: 40,
+      type: "term-resize",
+      sessionId,
+      tabId: validTabId,
+      cols: 120,
+      rows: 40,
     })
     expect(r.ok).toBe(true)
   })
 
   it("accepts a term-close frame", () => {
-    const r = decodeTerminalInbound({ type: "term-close", sessionId, tabId: validTabId })
+    const r = decodeTerminalInbound({
+      type: "term-close",
+      sessionId,
+      tabId: validTabId,
+    })
     expect(r.ok).toBe(true)
   })
 })

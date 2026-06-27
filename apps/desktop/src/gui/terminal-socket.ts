@@ -77,9 +77,15 @@ export const startTerminalSocket = (
       return new Response("spectrum terminal socket", { status: 426 })
     },
     websocket: {
-      open(ws) { handlers.open(ws) },
-      message(_ws, raw) { handlers.message(raw) },
-      close() { handlers.close() },
+      open(ws) {
+        handlers.open(ws)
+      },
+      message(_ws, raw) {
+        handlers.message(raw)
+      },
+      close() {
+        handlers.close()
+      },
     },
   })
   return {

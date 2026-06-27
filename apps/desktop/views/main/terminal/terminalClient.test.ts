@@ -1,9 +1,11 @@
 import { describe, expect, it } from "bun:test"
+import type { TerminalOutbound } from "@spectrum/pty"
 import { SessionIdSchema } from "@spectrum/types"
 import { createTerminalClient } from "./terminalClient"
-import type { TerminalOutbound } from "@spectrum/pty"
 
-const sessionId = SessionIdSchema.parse("s_00000000-0000-4000-8000-000000000000")
+const sessionId = SessionIdSchema.parse(
+  "s_00000000-0000-4000-8000-000000000000",
+)
 const tabId = "11111111-1111-4111-8111-111111111111"
 
 describe("createTerminalClient", () => {
@@ -11,21 +13,27 @@ describe("createTerminalClient", () => {
     const sent: unknown[] = []
     const c = createTerminalClient((m) => sent.push(m))
     c.open({ sessionId, tabId, cwd: "/tmp", cols: 80, rows: 24 })
-    expect(sent).toEqual([{ type: "term-open", sessionId, tabId, cwd: "/tmp", cols: 80, rows: 24 }])
+    expect(sent).toEqual([
+      { type: "term-open", sessionId, tabId, cwd: "/tmp", cols: 80, rows: 24 },
+    ])
   })
 
   it("sends a term-input message with base64 data", () => {
     const sent: unknown[] = []
     const c = createTerminalClient((m) => sent.push(m))
     c.input({ sessionId, tabId, data: "aGk=" })
-    expect(sent).toEqual([{ type: "term-input", sessionId, tabId, data: "aGk=" }])
+    expect(sent).toEqual([
+      { type: "term-input", sessionId, tabId, data: "aGk=" },
+    ])
   })
 
   it("sends a term-resize message", () => {
     const sent: unknown[] = []
     const c = createTerminalClient((m) => sent.push(m))
     c.resize({ sessionId, tabId, cols: 120, rows: 40 })
-    expect(sent).toEqual([{ type: "term-resize", sessionId, tabId, cols: 120, rows: 40 }])
+    expect(sent).toEqual([
+      { type: "term-resize", sessionId, tabId, cols: 120, rows: 40 },
+    ])
   })
 
   it("sends a term-close message", () => {
@@ -39,7 +47,12 @@ describe("createTerminalClient", () => {
     const c = createTerminalClient(() => {})
     const received: string[] = []
     c.onOutput(sessionId, tabId, (data) => received.push(data))
-    const frame: TerminalOutbound = { type: "term-output", sessionId, tabId, data: "aGk=" }
+    const frame: TerminalOutbound = {
+      type: "term-output",
+      sessionId,
+      tabId,
+      data: "aGk=",
+    }
     c.dispatch(frame)
     expect(received).toEqual(["aGk="])
   })
@@ -47,7 +60,9 @@ describe("createTerminalClient", () => {
   it("dispatches term-exited to the per-tab listener with exitCode", () => {
     const c = createTerminalClient(() => {})
     let exitCode: number | null = null
-    c.onExited(sessionId, tabId, (code) => (exitCode = code))
+    c.onExited(sessionId, tabId, (code) => {
+      exitCode = code
+    })
     c.dispatch({ type: "term-exited", sessionId, tabId, exitCode: 0 })
     expect(exitCode).toBe(0)
   })
@@ -55,7 +70,9 @@ describe("createTerminalClient", () => {
   it("dispatches term-error to the per-tab listener", () => {
     const c = createTerminalClient(() => {})
     let msg = ""
-    c.onError(sessionId, tabId, (message) => (msg = message))
+    c.onError(sessionId, tabId, (message) => {
+      msg = message
+    })
     c.dispatch({ type: "term-error", sessionId, tabId, message: "boom" })
     expect(msg).toBe("boom")
   })
