@@ -1,4 +1,8 @@
-import type { QuestionAnswer, QuestionItem } from "@spectrum/agent-events"
+import type {
+  Question,
+  QuestionAnswer,
+  QuestionItem,
+} from "@spectrum/agent-events"
 import { type ReactElement, useState } from "react"
 import { Button } from "../atoms/Button"
 
@@ -10,6 +14,21 @@ export type QuestionCardProps = {
 }
 
 type Draft = { labels: string[]; freeText: string }
+
+/** A step is answered when it has >=1 selected label, OR non-empty free text
+ * (only when the question allows it), OR has no options and no free text
+ * (degenerate but schema-valid — treat as answered so it never blocks). */
+export const isAnswered = (draft: Draft, question: Question): boolean => {
+  if (draft.labels.length > 0) return true
+  if (question.allowFreeText && draft.freeText.trim().length > 0) return true
+  if (question.options.length === 0 && !question.allowFreeText) return true
+  return false
+}
+
+export const allAnswered = (
+  drafts: readonly Draft[],
+  questions: readonly Question[],
+): boolean => drafts.every((d, i) => isAnswered(d, questions[i] as Question))
 
 const selectionText = (
   answer: QuestionAnswer,

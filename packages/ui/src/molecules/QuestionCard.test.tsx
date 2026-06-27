@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
-import type { QuestionItem } from "@spectrum/agent-events"
+import type { Question, QuestionItem } from "@spectrum/agent-events"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { QuestionCard } from "./QuestionCard"
+import { QuestionCard, allAnswered, isAnswered } from "./QuestionCard"
 
 const item: QuestionItem = {
   kind: "question",
@@ -147,5 +147,73 @@ describe("QuestionCard", () => {
       opt?.querySelector("input")?.closest(".lk-question__opt-text"),
     ).toBeNull()
     cleanup()
+  })
+})
+
+describe("QuestionCard helpers", () => {
+  const multiOpt: Question = {
+    question: "q",
+    header: "h",
+    options: [{ label: "a" }, { label: "b" }],
+    multiSelect: false,
+    allowFreeText: false,
+  }
+  const freeTextOnly: Question = {
+    question: "q",
+    header: "h",
+    options: [],
+    multiSelect: false,
+    allowFreeText: true,
+  }
+  const empty: Question = {
+    question: "q",
+    header: "h",
+    options: [],
+    multiSelect: false,
+    allowFreeText: false,
+  }
+
+  it("isAnswered is false when no labels and no free text", () => {
+    expect(isAnswered({ labels: [], freeText: "" }, multiOpt)).toBe(false)
+  })
+
+  it("isAnswered is true when a label is selected", () => {
+    expect(isAnswered({ labels: ["a"], freeText: "" }, multiOpt)).toBe(true)
+  })
+
+  it("isAnswered is true when free text is present and allowed", () => {
+    expect(isAnswered({ labels: [], freeText: "custom" }, freeTextOnly)).toBe(
+      true,
+    )
+  })
+
+  it("isAnswered ignores free text when allowFreeText is false", () => {
+    expect(isAnswered({ labels: [], freeText: "custom" }, multiOpt)).toBe(false)
+  })
+
+  it("isAnswered treats a question with no options and no free text as answered by default", () => {
+    expect(isAnswered({ labels: [], freeText: "" }, empty)).toBe(true)
+  })
+
+  it("allAnswered is true only when every question is answered", () => {
+    const qs = [multiOpt, freeTextOnly] as const
+    expect(
+      allAnswered(
+        [
+          { labels: [], freeText: "" },
+          { labels: [], freeText: "x" },
+        ],
+        qs,
+      ),
+    ).toBe(false)
+    expect(
+      allAnswered(
+        [
+          { labels: ["a"], freeText: "" },
+          { labels: [], freeText: "x" },
+        ],
+        qs,
+      ),
+    ).toBe(true)
   })
 })
