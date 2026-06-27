@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs"
+
 import { PermissionModeSchema } from "@spectrum/agent-events"
 import type { IpcHandlers, ProviderView } from "@spectrum/ipc"
 import { providerCatalog, validateProviderConfig } from "@spectrum/providers"
@@ -6,6 +8,7 @@ import { isOk } from "@spectrum/utils"
 import type { GuiContext } from "../../composition"
 import { decideBanner } from "../updater/policy"
 import type { Channel } from "../updater/updater-adapter"
+import { resolveTerminalCwd } from "./terminal-cwd"
 
 /**
  * Project a `Provider` to the secret-free `ProviderView` that crosses IPC to the webview.
@@ -417,6 +420,33 @@ export const createIpcHandlers = (ctx: GuiContext): IpcHandlers => {
     },
 
     getRunnerSocketUrl: async () => ({ url: ctx.runnerSocketUrl }),
+
+    // ── Terminal (in-app terminal panel) ──────────────────────────────────────
+    // The terminal socket URL is wired in Task 7; the handler is registered here so the contract
+    // is complete and only the composition needs to add the `terminalSocketUrl` field.
+    getTerminalSocketUrl: async () => ({ url: ctx.terminalSocketUrl }),
+
+    resolveTerminalCwd: async ({ sessionId }) => {
+      // Look up the session row (which retains projectId) + the project path. The public Session
+      // type drops projectId, but the DB row carries it; the bun-side row resolver exposes it.
+      const row = await ctx.resolveSessionRow(sessionId)
+      const projectPath =
+        row?.projectId !== undefined
+          ? await ctx.resolveProjectPath(row.projectId)
+          : undefined
+      const r = await resolveTerminalCwd({
+        sessionId,
+        sessionCwd: row?.cwd,
+        projectPath,
+        homeDir: ctx.homeDir,
+        exists: async (p: string) => existsSync(p),
+      })
+      if (!r.ok)
+        return fail(
+          `cwd-missing: ${r.error.kind === "cwd-missing" ? r.error.path : ""}`,
+        )
+      return r.value
+    },
 
     // ── Run events (canonical replay) ────────────────────────────────────────────
     getRunEvents: async ({ id }) => {

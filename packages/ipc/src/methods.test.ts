@@ -390,6 +390,8 @@ describe("IpcMethodSchemas", () => {
       "renameSession",
       "getProxyStatus",
       "getRunnerSocketUrl",
+      "getTerminalSocketUrl",
+      "resolveTerminalCwd",
       "getRunEvents",
       "pickFolder",
       "openExternalUrl",
