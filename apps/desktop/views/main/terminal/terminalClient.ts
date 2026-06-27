@@ -51,6 +51,34 @@ export const createTerminalClient = (
   const errorListeners = new Map<TabKey, (message: string) => void>()
   const openedListeners = new Map<TabKey, () => void>()
 
+  type Dispatcher = (message: TerminalOutbound, k: TabKey) => void
+  const dispatchers: Map<TerminalOutbound["type"], Dispatcher> = new Map([
+    [
+      "term-opened",
+      (m, k) => {
+        if (m.type === "term-opened") openedListeners.get(k)?.()
+      },
+    ],
+    [
+      "term-output",
+      (m, k) => {
+        if (m.type === "term-output") outputListeners.get(k)?.(m.data)
+      },
+    ],
+    [
+      "term-exited",
+      (m, k) => {
+        if (m.type === "term-exited") exitListeners.get(k)?.(m.exitCode)
+      },
+    ],
+    [
+      "term-error",
+      (m, k) => {
+        if (m.type === "term-error") errorListeners.get(k)?.(m.message)
+      },
+    ],
+  ])
+
   return {
     open: (input) =>
       send({
@@ -93,20 +121,9 @@ export const createTerminalClient = (
     dispatch: (message) => {
       if (!isTerminalOutbound(message)) return
       const k = tabKey(message.sessionId, message.tabId)
-      switch (message.type) {
-        case "term-opened":
-          openedListeners.get(k)?.()
-          return
-        case "term-output":
-          outputListeners.get(k)?.(message.data)
-          return
-        case "term-exited":
-          exitListeners.get(k)?.(message.exitCode)
-          return
-        case "term-error":
-          errorListeners.get(k)?.(message.message)
-          return
-      }
+      const dispatcher = dispatchers.get(message.type)
+      if (!dispatcher) return
+      dispatcher(message, k)
     },
 
     onOutput: (sessionId, tabId, cb) => {
