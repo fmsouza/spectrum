@@ -441,10 +441,16 @@ export const createIpcHandlers = (ctx: GuiContext): IpcHandlers => {
         homeDir: ctx.homeDir,
         exists: async (p: string) => existsSync(p),
       })
-      if (!r.ok)
-        return fail(
-          `cwd-missing: ${r.error.kind === "cwd-missing" ? r.error.path : ""}`,
-        )
+      if (!r.ok) {
+        // `cwd-missing` is a user-actionable condition (the session's saved directory no longer
+        // exists). Surface the failed path cleanly in the IPC error detail so logs see it;
+        // `useTerminal` handles the resulting `handler-failed` via the notifications engine.
+        const detail =
+          r.error.kind === "cwd-missing"
+            ? `cwd-missing: ${r.error.path}`
+            : `terminal-cwd: ${r.error.kind}`
+        return fail(detail)
+      }
       return r.value
     },
 
