@@ -6,6 +6,10 @@ name: CI
 on:
   push: { branches: [main] }
   pull_request:
+# Least-privilege defaults for GITHUB_TOKEN; individual jobs opt up by re-declaring
+# the specific scopes they need (none currently do).
+permissions:
+  contents: read
 jobs:
   verify:
     name: Verify (${{ matrix.os }})
