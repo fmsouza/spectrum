@@ -232,7 +232,7 @@ span[role="status"][aria-busy="true"] {
   padding: var(--sp-space-1) var(--sp-space-2);
   border-radius: var(--sp-radius-sm);
   background: var(--sp-graphite-950, #222);
-  color: var(--sp-text-inverse, #fff);
+  color: var(--sp-graphite-50, #fff);
   font-size: var(--sp-text-xs);
   white-space: normal;
   max-width: 22rem;
