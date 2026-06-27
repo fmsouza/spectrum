@@ -51,6 +51,33 @@ export const createRunnerClient = (
     (id: SessionId, resumeToken: string) => void
   >()
 
+  type Dispatcher = (message: RunnerOutbound) => void
+  const dispatchers: Map<RunnerOutbound["type"], Dispatcher> = new Map([
+    [
+      "session-renamed",
+      (m) => {
+        if (m.type === "session-renamed")
+          for (const cb of renameListeners) cb(m.id, m.name)
+      },
+    ],
+    [
+      "session-resume-token",
+      (m) => {
+        if (m.type === "session-resume-token")
+          for (const cb of resumeTokenListeners) cb(m.id, m.resumeToken)
+      },
+    ],
+    [
+      "runner-event",
+      (m) => {
+        if (m.type === "runner-event") {
+          listeners.get(m.id)?.(m.event)
+          for (const cb of anyListeners) cb(m.id, m.event)
+        }
+      },
+    ],
+  ])
+
   return {
     attach: (id) => {
       send({ type: "run-attach", id })
@@ -74,19 +101,9 @@ export const createRunnerClient = (
       send({ type: "run-set-model", id, modelId })
     },
     dispatch: (message) => {
-      if (message.type === "session-renamed") {
-        for (const cb of renameListeners) cb(message.id, message.name)
-        return
-      }
-      if (message.type === "session-resume-token") {
-        for (const cb of resumeTokenListeners)
-          cb(message.id, message.resumeToken)
-        return
-      }
-      if (message.type === "runner-event") {
-        listeners.get(message.id)?.(message.event)
-        for (const cb of anyListeners) cb(message.id, message.event)
-      }
+      const dispatcher = dispatchers.get(message.type)
+      if (!dispatcher) return
+      dispatcher(message)
     },
     onEvent: (id, cb) => {
       listeners.set(id, cb)
