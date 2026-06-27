@@ -1,0 +1,21 @@
+{
+  "name": "@spectrum/pty",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@spectrum/logger": "workspace:*",
+    "@spectrum/types": "workspace:*",
+    "@spectrum/utils": "workspace:*"
+  },
+  "optionalDependencies": {
+    "@homebridge/node-pty": "^1.0.0"
+  }
+}
