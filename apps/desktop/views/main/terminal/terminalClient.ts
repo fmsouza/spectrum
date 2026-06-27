@@ -122,7 +122,7 @@ export const createTerminalClient = (
       if (!isTerminalOutbound(message)) return
       const k = tabKey(message.sessionId, message.tabId)
       const dispatcher = dispatchers.get(message.type)
-      if (!dispatcher) return
+      if (typeof dispatcher !== "function") return
       dispatcher(message, k)
     },
 

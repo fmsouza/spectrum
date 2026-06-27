@@ -102,7 +102,7 @@ export const createRunnerClient = (
     },
     dispatch: (message) => {
       const dispatcher = dispatchers.get(message.type)
-      if (!dispatcher) return
+      if (typeof dispatcher !== "function") return
       dispatcher(message)
     },
     onEvent: (id, cb) => {
