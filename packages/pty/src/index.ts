@@ -15,3 +15,9 @@ export { createNodePtySpawner } from "./pty-adapter"
 export { createFakePtySpawner } from "./fake-pty"
 export type { FakePtySpawner, FakePtyHandle } from "./fake-pty"
 export type { TerminalError } from "./errors"
+export type {
+  TerminalManager,
+  TerminalManagerDeps,
+  TerminalSession,
+} from "./manager"
+export { createTerminalManager } from "./manager"
