@@ -32,6 +32,7 @@
     "@spectrum/platform": "workspace:*",
     "@spectrum/providers": "workspace:*",
     "@spectrum/proxy": "workspace:*",
+    "@spectrum/pty": "workspace:*",
     "@spectrum/secrets": "workspace:*",
     "@spectrum/sessions": "workspace:*",
     "@spectrum/types": "workspace:*",

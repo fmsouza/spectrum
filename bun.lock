@@ -61,6 +61,7 @@
         "@spectrum/projects": "workspace:*",
         "@spectrum/providers": "workspace:*",
         "@spectrum/proxy": "workspace:*",
+        "@spectrum/pty": "workspace:*",
         "@spectrum/run-store": "workspace:*",
         "@spectrum/runtime-core": "workspace:*",
         "@spectrum/secrets": "workspace:*",
