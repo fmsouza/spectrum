@@ -22,6 +22,29 @@ const item: QuestionItem = {
   },
 }
 
+const multi: QuestionItem = {
+  kind: "question",
+  requestId: "q2",
+  prompt: {
+    questions: [
+      {
+        question: "Which provider?",
+        header: "Provider",
+        options: [{ label: "Anthropic" }, { label: "OpenAI" }],
+        multiSelect: false,
+        allowFreeText: false,
+      },
+      {
+        question: "Which region?",
+        header: "Region",
+        options: [{ label: "us" }, { label: "eu" }],
+        multiSelect: false,
+        allowFreeText: false,
+      },
+    ],
+  },
+}
+
 describe("QuestionCard", () => {
   it("renders the question, header and options", () => {
     render(<QuestionCard item={item} onAnswer={() => {}} />)
@@ -148,29 +171,6 @@ describe("QuestionCard", () => {
     ).toBeNull()
     cleanup()
   })
-
-  const multi: QuestionItem = {
-    kind: "question",
-    requestId: "q2",
-    prompt: {
-      questions: [
-        {
-          question: "Which provider?",
-          header: "Provider",
-          options: [{ label: "Anthropic" }, { label: "OpenAI" }],
-          multiSelect: false,
-          allowFreeText: false,
-        },
-        {
-          question: "Which region?",
-          header: "Region",
-          options: [{ label: "us" }, { label: "eu" }],
-          multiSelect: false,
-          allowFreeText: false,
-        },
-      ],
-    },
-  }
 
   it("renders one question at a time with a tab per question when unanswered", () => {
     render(<QuestionCard item={multi} onAnswer={() => {}} />)
@@ -348,6 +348,117 @@ describe("QuestionCard", () => {
     )
     expect(screen.getByText("Which provider?")).toBeInTheDocument()
     expect(screen.getByText("Which region?")).toBeInTheDocument()
+    expect(screen.queryByRole("tab")).toBeNull()
+    expect(screen.queryByRole("button", { name: /submit/i })).toBeNull()
+    cleanup()
+  })
+})
+
+describe("QuestionCard wizard DOM", () => {
+  // Structural / a11y contract for the wizard shell. These assertions lock the
+  // shape of the rendered DOM (data-wizard root, tablist/tab/tabpanel roles,
+  // nav button counts, resolved-state guard) so future refactors of QuestionCard
+  // can't silently regress the breadcrumb UI without breaking tests here.
+  it("marks the interactive root with data-wizard", () => {
+    const { container } = render(
+      <QuestionCard item={multi} onAnswer={() => {}} />,
+    )
+    expect(container.querySelector("[data-wizard]")).not.toBeNull()
+    cleanup()
+  })
+
+  it("renders a tablist with role + aria-label", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    const tablist = screen.getByRole("tablist")
+    expect(tablist.getAttribute("aria-label")).toBeTruthy()
+    cleanup()
+  })
+
+  it("renders each tab as a button with role=tab, aria-selected and data-state", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    const tabs = screen.getAllByRole("tab")
+    expect(tabs).toHaveLength(2)
+    for (const tab of tabs) {
+      expect(tab.tagName).toBe("BUTTON")
+      const selected = tab.getAttribute("aria-selected")
+      expect(selected === "true" || selected === "false").toBe(true)
+      const state = tab.getAttribute("data-state")
+      expect(["current", "answered", "todo"]).toContain(state)
+    }
+    cleanup()
+  })
+
+  it("renders a tabpanel with role=tabpanel and aria-labelledby attribute set", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    const panel = screen.getByRole("tabpanel")
+    expect(panel.getAttribute("aria-labelledby")).toBeTruthy()
+    cleanup()
+  })
+
+  it("shows at most one of {submit, next} at a time (not both)", () => {
+    // Single-question: submit only, no next.
+    render(<QuestionCard item={item} onAnswer={() => {}} />)
+    expect(screen.queryByRole("button", { name: /next/i })).toBeNull()
+    expect(screen.getByRole("button", { name: /submit/i })).toBeInTheDocument()
+    cleanup()
+    // Multi-question on step 0: next only, no submit.
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    expect(screen.queryByRole("button", { name: /submit/i })).toBeNull()
+    expect(screen.getByRole("button", { name: /next/i })).toBeInTheDocument()
+    cleanup()
+  })
+
+  it("hides Back and Next for a single-question prompt", () => {
+    render(<QuestionCard item={item} onAnswer={() => {}} />)
+    expect(screen.queryByRole("button", { name: /back/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /next/i })).toBeNull()
+    cleanup()
+  })
+
+  it("shows a single Submit button on the last step when every question is answered", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    fireEvent.click(screen.getByRole("tab", { name: /2\. Region/ }))
+    fireEvent.click(screen.getByLabelText("us"))
+    fireEvent.click(screen.getByRole("tab", { name: /1\. Provider/ }))
+    fireEvent.click(screen.getByLabelText("Anthropic"))
+    fireEvent.click(screen.getByRole("tab", { name: /2\. Region/ }))
+    const submits = screen.getAllByRole("button", { name: /submit/i })
+    expect(submits).toHaveLength(1)
+    expect(screen.queryByRole("button", { name: /next/i })).toBeNull()
+    cleanup()
+  })
+
+  it("renders a .lk-question__tab-check only on answered tabs", () => {
+    render(<QuestionCard item={multi} onAnswer={() => {}} />)
+    const currentTab = screen.getByRole("tab", { name: /1\. Provider/ })
+    expect(currentTab.querySelector(".lk-question__tab-check")).toBeNull()
+    // Answer step 0 then move away so tabState evaluates the answered branch.
+    fireEvent.click(screen.getByLabelText("Anthropic"))
+    fireEvent.click(screen.getByRole("tab", { name: /2\. Region/ }))
+    const answeredTab = screen.getByRole("tab", { name: /1\. Provider/ })
+    expect(answeredTab.getAttribute("data-state")).toBe("answered")
+    expect(answeredTab.querySelector(".lk-question__tab-check")).not.toBeNull()
+    const todoTab = screen.getByRole("tab", { name: /2\. Region/ })
+    expect(todoTab.querySelector(".lk-question__tab-check")).toBeNull()
+    cleanup()
+  })
+
+  it("renders the flat resolved view when item.answer is present (no wizard chrome)", () => {
+    const { container } = render(
+      <QuestionCard
+        item={{
+          ...multi,
+          answer: {
+            selections: [
+              { questionIndex: 0, labels: ["Anthropic"] },
+              { questionIndex: 1, labels: ["eu"] },
+            ],
+          },
+        }}
+        onAnswer={() => {}}
+      />,
+    )
+    expect(container.querySelector("[data-wizard]")).toBeNull()
     expect(screen.queryByRole("tab")).toBeNull()
     expect(screen.queryByRole("button", { name: /submit/i })).toBeNull()
     cleanup()

@@ -114,8 +114,10 @@ export const QuestionCard = ({
           <button
             type="button"
             key={`${item.requestId}-tab-${qi}`}
+            id={`${item.requestId}-tab-${qi}`}
             role="tab"
             aria-selected={qi === step}
+            aria-controls={`${item.requestId}-panel-${qi}`}
             data-state={tabState(qi)}
             className="lk-question__tab"
             title={`${qi + 1}. ${q.header}`}
@@ -135,6 +137,7 @@ export const QuestionCard = ({
       <div
         className="lk-question__step"
         role="tabpanel"
+        id={`${item.requestId}-panel-${step}`}
         aria-labelledby={`${item.requestId}-tab-${step}`}
       >
         <fieldset className="lk-question__q" key={`${item.requestId}-${step}`}>
