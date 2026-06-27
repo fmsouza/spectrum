@@ -58,82 +58,79 @@ describe.skipIf(
     process.env.CI === "true" ||
     process.platform === "darwin" ||
     process.platform === "win32",
-)(
-  "terminal smoke (real node-pty)",
-  () => {
-    it("spawns /bin/sh -c, captures stdout, and emits term-exited on close", async () => {
-      const cwd = mkdtempSync(join(tmpdir(), "spectrum-term-"))
+)("terminal smoke (real node-pty)", () => {
+  it("spawns /bin/sh -c, captures stdout, and emits term-exited on close", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "spectrum-term-"))
 
-      // Force a deterministic command instead of `process.env.SHELL` (the
-      // user's login shell), which varies wildly across environments and
-      // is the root cause of the CI flake we're fixing.
-      const isWin = process.platform === "win32"
-      const command = isWin ? "cmd.exe" : "/bin/sh"
-      const args = isWin ? ["/c", "echo hi"] : ["-c", "echo hi"]
-      const baseSpawner = createNodePtySpawner()
-      const spawner: PtySpawner = {
-        spawn(input) {
-          return baseSpawner.spawn({ ...input, command, args })
-        },
-      }
+    // Force a deterministic command instead of `process.env.SHELL` (the
+    // user's login shell), which varies wildly across environments and
+    // is the root cause of the CI flake we're fixing.
+    const isWin = process.platform === "win32"
+    const command = isWin ? "cmd.exe" : "/bin/sh"
+    const args = isWin ? ["/c", "echo hi"] : ["-c", "echo hi"]
+    const baseSpawner = createNodePtySpawner()
+    const spawner: PtySpawner = {
+      spawn(input) {
+        return baseSpawner.spawn({ ...input, command, args })
+      },
+    }
 
-      const sent: TerminalOutbound[] = []
-      const mgr = createTerminalManager({ spawner })
-      mgr.bindSend((m) => sent.push(m))
-      const tabId = "11111111-1111-4111-8111-111111111111" as TabId
-      const r = mgr.launch({ sessionId, tabId, cwd, cols: 80, rows: 24 })
-      expect(r.ok).toBe(true)
-      if (!r.ok) throw new Error("launch failed; cannot continue smoke test")
+    const sent: TerminalOutbound[] = []
+    const mgr = createTerminalManager({ spawner })
+    mgr.bindSend((m) => sent.push(m))
+    const tabId = "11111111-1111-4111-8111-111111111111" as TabId
+    const r = mgr.launch({ sessionId, tabId, cwd, cols: 80, rows: 24 })
+    expect(r.ok).toBe(true)
+    if (!r.ok) throw new Error("launch failed; cannot continue smoke test")
 
-      // Poll until either the shell prints `hi` or it exits. `/bin/sh -c`
-      // exits as soon as `echo hi` returns, so term-exited may arrive
-      // before all term-output chunks are delivered — we continue polling
-      // a little longer after term-exited to drain any pending output.
-      const echoDeadline = Date.now() + 10_000
-      while (Date.now() < echoDeadline) {
-        if (collectOutput(sent).includes("hi")) break
+    // Poll until either the shell prints `hi` or it exits. `/bin/sh -c`
+    // exits as soon as `echo hi` returns, so term-exited may arrive
+    // before all term-output chunks are delivered — we continue polling
+    // a little longer after term-exited to drain any pending output.
+    const echoDeadline = Date.now() + 10_000
+    while (Date.now() < echoDeadline) {
+      if (collectOutput(sent).includes("hi")) break
+      if (sent.some((m) => m.type === "term-exited")) break
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+
+    // Drain: a few short polls after term-exited to let any pending
+    // term-output arrive before we assert.
+    for (let i = 0; i < 10; i++) {
+      if (collectOutput(sent).includes("hi")) break
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+
+    // If the shell somehow hasn't exited (some Windows/cmd.exe runs
+    // leave cmd open for a moment), close the terminal explicitly so
+    // we exercise the `term-close` → kill() → term-exited path.
+    if (!sent.some((m) => m.type === "term-exited")) {
+      mgr.handleInbound({ type: "term-close", sessionId, tabId })
+      const closeDeadline = Date.now() + 5_000
+      while (Date.now() < closeDeadline) {
         if (sent.some((m) => m.type === "term-exited")) break
         await new Promise((resolve) => setTimeout(resolve, 50))
       }
+    }
 
-      // Drain: a few short polls after term-exited to let any pending
-      // term-output arrive before we assert.
-      for (let i = 0; i < 10; i++) {
-        if (collectOutput(sent).includes("hi")) break
-        await new Promise((resolve) => setTimeout(resolve, 50))
-      }
+    // The PTY-lifecycle assertion is the load-bearing check: term-exited
+    // must arrive (proves spawn → onData wiring → onExit → sink is
+    // functional). The stdout assertion is best-effort — some bun + node-pty
+    // combos (notably bun 1.3.x on certain macOS hosts) deliver exit
+    // signals reliably but drop stdout for fast-exiting non-login
+    // shells. If we got term-exited but no `hi`, the PTY is still
+    // exercised end-to-end; only the byte-delivery path is local-env
+    // specific. CI's bun env should deliver stdout correctly.
+    expect(sent.some((m) => m.type === "term-exited")).toBe(true)
+    // Soft stdout check (not an assertion): lifecycle is the contract.
+    if (!collectOutput(sent).includes("hi")) {
+      // Soft note via stderr so the env-quirk is visible without
+      // breaking the test on local-only delivery quirks.
+      process.stderr.write(
+        "[pty smoke] term-exited without stdout; lifecycle OK, byte-delivery is bun+node-pty-env-specific\n",
+      )
+    }
 
-      // If the shell somehow hasn't exited (some Windows/cmd.exe runs
-      // leave cmd open for a moment), close the terminal explicitly so
-      // we exercise the `term-close` → kill() → term-exited path.
-      if (!sent.some((m) => m.type === "term-exited")) {
-        mgr.handleInbound({ type: "term-close", sessionId, tabId })
-        const closeDeadline = Date.now() + 5_000
-        while (Date.now() < closeDeadline) {
-          if (sent.some((m) => m.type === "term-exited")) break
-          await new Promise((resolve) => setTimeout(resolve, 50))
-        }
-      }
-
-      // The PTY-lifecycle assertion is the load-bearing check: term-exited
-      // must arrive (proves spawn → onData wiring → onExit → sink is
-      // functional). The stdout assertion is best-effort — some bun + node-pty
-      // combos (notably bun 1.3.x on certain macOS hosts) deliver exit
-      // signals reliably but drop stdout for fast-exiting non-login
-      // shells. If we got term-exited but no `hi`, the PTY is still
-      // exercised end-to-end; only the byte-delivery path is local-env
-      // specific. CI's bun env should deliver stdout correctly.
-      expect(sent.some((m) => m.type === "term-exited")).toBe(true)
-      // Soft stdout check (not an assertion): lifecycle is the contract.
-      if (!collectOutput(sent).includes("hi")) {
-        // Soft note via stderr so the env-quirk is visible without
-        // breaking the test on local-only delivery quirks.
-        process.stderr.write(
-          "[pty smoke] term-exited without stdout; lifecycle OK, byte-delivery is bun+node-pty-env-specific\n",
-        )
-      }
-
-      mgr.dispose(sessionId)
-    }, 30_000)
-  },
-)
+    mgr.dispose(sessionId)
+  }, 30_000)
+})
