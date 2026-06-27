@@ -179,6 +179,9 @@ const SessionsDetail = ({
         {...(selectedSession?.harnessId === undefined
           ? {}
           : { harnessId: selectedSession.harnessId })}
+        {...(selectedSession?.cwd === undefined
+          ? {}
+          : { cwd: selectedSession.cwd })}
         runnerClient={runnerClient}
         {...(terminalClient === undefined ? {} : { terminalClient })}
         {...(onResumeSend === undefined
