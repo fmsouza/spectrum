@@ -173,7 +173,9 @@ export const useTerminalStore = create<TerminalStoreState>()((set) => ({
   setHeight: (sessionId, px) =>
     set((state) => {
       const existing = state.sessions[sessionId] ?? blank()
-      const max = 70 * Math.floor(globalThis.innerHeight ?? 1000)
+      // Clamp the pane between 80px (min drag) and 70% of viewport height (max sensible pane).
+      // The brief's `70 * floor(innerHeight)` was effectively uncapped — fixed here.
+      const max = Math.floor(0.7 * (globalThis.innerHeight ?? 1000))
       const clamped = Math.min(Math.max(px, 80), max)
       persist(sessionId, existing.paneOpen, clamped)
       return {
