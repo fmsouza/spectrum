@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs"
+import { stat } from "node:fs/promises"
 
 import { PermissionModeSchema } from "@spectrum/agent-events"
 import type { IpcHandlers, ProviderView } from "@spectrum/ipc"
@@ -27,6 +27,19 @@ const toProviderView = (provider: Provider): ProviderView => ({
   ),
   models: provider.models,
 })
+
+/**
+ * Async existence check for a filesystem path (true if stat() resolves, false on any error).
+ * Lives at module scope so the terminal cwd handler can reuse it without re-implementing.
+ */
+const fsExists = async (path: string): Promise<boolean> => {
+  try {
+    await stat(path)
+    return true
+  } catch {
+    return false
+  }
+}
 
 /**
  * Bind the `@spectrum/ipc` contract to the wired subsystems. Each handler is `async` and either
@@ -439,7 +452,7 @@ export const createIpcHandlers = (ctx: GuiContext): IpcHandlers => {
         sessionCwd: row?.cwd,
         projectPath,
         homeDir: ctx.homeDir,
-        exists: async (p: string) => existsSync(p),
+        exists: fsExists,
       })
       if (!r.ok) {
         // `cwd-missing` is a user-actionable condition (the session's saved directory no longer
