@@ -1,9 +1,11 @@
 {
   "name": "spectrum-cli",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
   "type": "module",
-  "bin": { "spectrum-cli": "./src/main.ts" },
+  "bin": {
+    "spectrum-cli": "./src/main.ts"
+  },
   "scripts": {
     "compile": "bun build --compile --minify --outfile dist/spectrum-cli ./src/main.ts",
     "smoke": "bun scripts/smoke.ts",
