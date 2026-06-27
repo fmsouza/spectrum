@@ -491,10 +491,6 @@
   background: var(--sp-bg);
   color: var(--sp-text);
 }
-.lk-question__actions {
-  display: flex;
-  justify-content: flex-end;
-}
 .lk-question__resolved-q {
   display: flex;
   flex-direction: column;
@@ -977,4 +973,60 @@
 .lk-typing__elapsed {
   color: var(--sp-text-secondary);
   font-size: var(--sp-text-xs);
+}
+
+/* Ask-user-question wizard (interactive state). */
+.lk-question[data-wizard] {
+  gap: var(--sp-space-2);
+}
+.lk-question__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-space-1);
+  border-bottom: 1px solid var(--sp-border);
+  padding-bottom: var(--sp-space-2);
+}
+.lk-question__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-space-1);
+  max-width: 16rem;
+  padding: var(--sp-space-1) var(--sp-space-2);
+  border: none;
+  border-radius: var(--sp-radius-pill);
+  background: none;
+  color: var(--sp-text-muted);
+  font-size: var(--sp-text-xs);
+  cursor: pointer;
+}
+.lk-question__tab[disabled] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.lk-question__tab[data-state="current"] {
+  background: var(--sp-info-soft);
+  color: var(--sp-text);
+  font-weight: 600;
+}
+.lk-question__tab[data-state="answered"] {
+  color: var(--sp-text);
+}
+.lk-question__tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lk-question__tab-check {
+  color: var(--sp-success);
+}
+.lk-question__nav {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-space-2);
+  margin-top: var(--sp-space-2);
+}
+/* When only Submit is shown (single question / last step with no Back), the
+   nav right-aligns the lone button. */
+.lk-question__nav:not(:has(button:first-child)) {
+  justify-content: flex-end;
 }

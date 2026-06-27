@@ -1,5 +1,9 @@
-import type { QuestionAnswer, QuestionItem } from "@spectrum/agent-events"
-import { type ReactElement, useState } from "react"
+import type {
+  Question,
+  QuestionAnswer,
+  QuestionItem,
+} from "@spectrum/agent-events"
+import { type ReactElement, useRef, useState } from "react"
 import { Button } from "../atoms/Button"
 
 export type QuestionCardProps = {
@@ -10,6 +14,21 @@ export type QuestionCardProps = {
 }
 
 type Draft = { labels: string[]; freeText: string }
+
+/** A step is answered when it has >=1 selected label, OR non-empty free text
+ * (only when the question allows it), OR has no options and no free text
+ * (degenerate but schema-valid — treat as answered so it never blocks). */
+export const isAnswered = (draft: Draft, question: Question): boolean => {
+  if (draft.labels.length > 0) return true
+  if (question.allowFreeText && draft.freeText.trim().length > 0) return true
+  if (question.options.length === 0 && !question.allowFreeText) return true
+  return false
+}
+
+export const allAnswered = (
+  drafts: readonly Draft[],
+  questions: readonly Question[],
+): boolean => drafts.every((d, i) => isAnswered(d, questions[i] as Question))
 
 const selectionText = (
   answer: QuestionAnswer,
@@ -29,6 +48,8 @@ export const QuestionCard = ({
   const [drafts, setDrafts] = useState<readonly Draft[]>(
     item.prompt.questions.map(() => ({ labels: [], freeText: "" })),
   )
+  const [step, setStep] = useState(0)
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
 
   if (item.answer !== undefined) {
     const answer = item.answer
@@ -76,52 +97,163 @@ export const QuestionCard = ({
     onAnswer({ selections })
   }
 
+  const questions = item.prompt.questions
+  const last = questions.length - 1
+  const current = questions[step] as Question
+
+  const tabState = (qi: number): "current" | "answered" | "todo" => {
+    if (qi === step) return "current"
+    return isAnswered(drafts[qi] as Draft, questions[qi] as Question)
+      ? "answered"
+      : "todo"
+  }
+
   return (
-    <div className="lk-question">
-      {item.prompt.questions.map((q, qi) => (
-        <fieldset className="lk-question__q" key={`${item.requestId}-${qi}`}>
-          <legend className="lk-question__header">{q.header}</legend>
-          <p className="lk-question__text">{q.question}</p>
-          {q.options.map((o) => (
-            <label className="lk-question__opt" key={o.label}>
-              <input
-                type={q.multiSelect ? "checkbox" : "radio"}
-                name={`${item.requestId}-${qi}`}
-                aria-label={o.label}
-                disabled={inert}
-                checked={(drafts[qi] as Draft).labels.includes(o.label)}
-                onChange={() => toggle(qi, o.label, q.multiSelect)}
-              />
-              <span className="lk-question__opt-text">
-                <span className="lk-question__opt-label">{o.label}</span>
-                {o.description === undefined ? null : (
-                  <span className="lk-question__opt-desc">{o.description}</span>
-                )}
+    <div className="lk-question" data-wizard>
+      <div
+        className="lk-question__tabs"
+        role="tablist"
+        aria-label="Questions"
+        onKeyDown={(event) => {
+          // WAI-ARIA Tabs keyboard pattern: ArrowLeft / ArrowRight wrap between
+          // tabs; Home / End jump to the first / last tab. Skip the handler if a
+          // modifier key is held so we never hijack browser shortcuts.
+          if (event.altKey || event.ctrlKey || event.metaKey) return
+          const n = questions.length
+          const moveTo = (next: number): void => {
+            const wrapped = ((next % n) + n) % n
+            setStep(wrapped)
+            tabRefs.current[wrapped]?.focus()
+          }
+          switch (event.key) {
+            case "ArrowRight":
+              moveTo(step + 1)
+              event.preventDefault()
+              return
+            case "ArrowLeft":
+              moveTo(step - 1)
+              event.preventDefault()
+              return
+            case "Home":
+              moveTo(0)
+              event.preventDefault()
+              return
+            case "End":
+              moveTo(n - 1)
+              event.preventDefault()
+              return
+            default:
+              return
+          }
+        }}
+      >
+        {questions.map((q, qi) => (
+          <button
+            type="button"
+            key={`${item.requestId}-tab-${qi}`}
+            id={`${item.requestId}-tab-${qi}`}
+            role="tab"
+            aria-selected={qi === step}
+            aria-controls={`${item.requestId}-panel-${qi}`}
+            tabIndex={qi === step ? 0 : -1}
+            ref={(el) => {
+              tabRefs.current[qi] = el
+            }}
+            data-state={tabState(qi)}
+            className="lk-question__tab"
+            title={`${qi + 1}. ${q.header}`}
+            disabled={inert}
+            onClick={() => setStep(qi)}
+          >
+            <span className="lk-question__tab-label">{`${qi + 1}. ${q.header}`}</span>
+            {tabState(qi) === "answered" ? (
+              <span className="lk-question__tab-check" aria-hidden="true">
+                ✓
               </span>
-            </label>
-          ))}
-          {q.allowFreeText ? (
-            <input
-              type="text"
-              className="lk-question__other"
-              placeholder="Other…"
-              aria-label="Other"
-              disabled={inert}
-              value={(drafts[qi] as Draft).freeText}
-              onChange={(e) =>
-                setDraft(qi, {
-                  ...(drafts[qi] as Draft),
-                  freeText: e.target.value,
-                })
-              }
-            />
-          ) : null}
-        </fieldset>
+            ) : null}
+          </button>
+        ))}
+      </div>
+
+      {questions.map((q, qi) => (
+        <div
+          key={`${item.requestId}-panel-${qi}`}
+          className="lk-question__step"
+          role="tabpanel"
+          id={`${item.requestId}-panel-${qi}`}
+          aria-labelledby={`${item.requestId}-tab-${qi}`}
+          hidden={qi !== step}
+        >
+          <fieldset className="lk-question__q">
+            <legend className="lk-question__header">{q.header}</legend>
+            <p className="lk-question__text">{q.question}</p>
+            {q.options.map((o) => (
+              <label className="lk-question__opt" key={o.label}>
+                <input
+                  type={q.multiSelect ? "checkbox" : "radio"}
+                  name={`${item.requestId}-${qi}`}
+                  aria-label={o.label}
+                  disabled={inert}
+                  checked={(drafts[qi] as Draft).labels.includes(o.label)}
+                  onChange={() => toggle(qi, o.label, q.multiSelect)}
+                />
+                <span className="lk-question__opt-text">
+                  <span className="lk-question__opt-label">{o.label}</span>
+                  {o.description === undefined ? null : (
+                    <span className="lk-question__opt-desc">
+                      {o.description}
+                    </span>
+                  )}
+                </span>
+              </label>
+            ))}
+            {q.allowFreeText ? (
+              <input
+                type="text"
+                className="lk-question__other"
+                placeholder="Other…"
+                aria-label="Other"
+                disabled={inert}
+                value={(drafts[qi] as Draft).freeText}
+                onChange={(e) =>
+                  setDraft(qi, {
+                    ...(drafts[qi] as Draft),
+                    freeText: e.target.value,
+                  })
+                }
+              />
+            ) : null}
+          </fieldset>
+        </div>
       ))}
-      <div className="lk-question__actions">
-        <Button variant="primary" disabled={inert} onClick={submit}>
-          Submit
-        </Button>
+
+      <div className="lk-question__nav">
+        {questions.length > 1 ? (
+          <Button
+            variant="secondary"
+            disabled={inert || step === 0}
+            onClick={() => setStep(Math.max(0, step - 1))}
+          >
+            Back
+          </Button>
+        ) : null}
+        {step < last ? (
+          <Button
+            variant="primary"
+            disabled={inert || !isAnswered(drafts[step] as Draft, current)}
+            onClick={() => setStep(step + 1)}
+          >
+            Next
+          </Button>
+        ) : (
+          <Button
+            variant="primary"
+            disabled={inert || !allAnswered(drafts, questions)}
+            onClick={submit}
+          >
+            Submit
+          </Button>
+        )}
       </div>
     </div>
   )
